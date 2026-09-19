@@ -9,9 +9,11 @@ import subprocess
 from pathlib import Path
 
 from apply_scoped_ca import ROOT, load_root, root_header
+from configure_build import TARGET_ABIS, render_gn_args, target_cpu
 
 
-def validate_inputs() -> dict:
+def validate_inputs(arch: str = "arm64") -> dict:
+    cpu = target_cpu(arch)
     lock = json.loads((ROOT / "build-lock.json").read_text())
     actual = subprocess.check_output(
         ["git", "-C", str(ROOT / "vanadium"), "rev-parse", "HEAD"], text=True
@@ -27,8 +29,9 @@ def validate_inputs() -> dict:
     der = load_root()
     if (ROOT / "chromium_overlay/net/cert/titanium_ru_root.h").read_text() != root_header(der):
         raise ValueError("Root header differs from the pinned certificate")
-    args = (ROOT / "args.gn").read_text()
-    for required in ['target_cpu = "arm64"', 'is_desktop_android = true',
+    args = render_gn_args(cpu)
+    for required in [f'target_cpu = "{cpu}"', 'target_os = "android"',
+                     'enable_android_secondary_abi = false', 'is_desktop_android = true',
                      f'chrome_public_manifest_package = "{lock["application_id"]}"']:
         if required not in args:
             raise ValueError(f"Required build argument missing: {required}")
@@ -38,9 +41,11 @@ def validate_inputs() -> dict:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inputs-only", action="store_true")
+    parser.add_argument("--arch", type=target_cpu, default="arm64")
     args = parser.parse_args()
-    lock = validate_inputs()
-    print(f'Inputs verified: Chromium {lock["chromium_version"]}, arm64, extensions enabled')
+    lock = validate_inputs(args.arch)
+    print(f'Inputs verified: Chromium {lock["chromium_version"]}, '
+          f'{TARGET_ABIS[args.arch]} ({args.arch}), extensions enabled')
     print(f'Russian root DER SHA-256: {hashlib.sha256(load_root()).hexdigest()}')
     if not args.inputs_only:
         free = shutil.disk_usage(ROOT).free / (1024 ** 3)
