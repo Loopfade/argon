@@ -1,0 +1,29 @@
+name: Validate scoped Russian CA
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Validate patches and pinned inputs
+        run: |
+          python3 scripts/preflight.py --inputs-only
+          python3 -m unittest discover -s tests -v
+          bash -n build-arm64.sh
+      - name: Obtain pinned BoringSSL
+        run: |
+          revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')
+          git init .build/boringssl
+          git -C .build/boringssl remote add origin https://github.com/google/boringssl.git
+          git -C .build/boringssl fetch --depth=1 origin "$revision"
+          git -C .build/boringssl checkout --detach "$revision"
+      - name: Test production DNS and IP constraints
+        run: |
+          cmake -S tests -B .build/policy-tests -DBORINGSSL_SOURCE_DIR="$PWD/.build/boringssl" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/policy-tests --target scoped_ca_test -j 4
+          ctest --test-dir .build/policy-tests --output-on-failure
