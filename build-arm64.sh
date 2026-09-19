@@ -33,6 +33,11 @@ git -C depot_tools fetch --depth=1 origin "$DEPOT_REVISION"
 git -C depot_tools checkout --detach "$DEPOT_REVISION"
 export PATH="$SCRIPT_DIR/depot_tools:$PATH"
 export DEPOT_TOOLS_UPDATE=0
+# Disabling auto-updates also skips gclient's normal Python bootstrap. This
+# initializes the pinned checkout without fetching a newer depot_tools commit.
+bash "$SCRIPT_DIR/depot_tools/ensure_bootstrap"
+"$SCRIPT_DIR/depot_tools/python-bin/python3" --version
+[[ $(git -C "$SCRIPT_DIR/depot_tools" rev-parse HEAD) == "$DEPOT_REVISION" ]]
 # gclient hooks run git am inside independent V8/search-engine repositories.
 # Their commits do not inherit chromium/src/.git/config. Scope this identity
 # to the build process and its children instead of changing global Git config.
