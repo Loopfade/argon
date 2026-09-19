@@ -14,10 +14,11 @@
 | GitHub Actions: закреплённые входные данные, 6 Python-тестов, сборка C++ helper и 32 проверки BoringSSL | [Успешно, запуск №2](https://github.com/su8d/android-titanium-ru/actions/runs/35429972730), commit `f919a2a17cec9cc11d7e1a9819216acbebfbd553` |
 | Совпадение опубликованного кода с локально проверенным | Все blob SHA и commit submodule совпали; новые скрипты запускаются через `bash`/`python3` |
 | Полная локальная сборка APK | Не выполнена: preflight обнаружил 29.1 GiB вместо требуемых 100 GiB |
-| Полная сборка APK в GitHub Actions | [Запуск №1](https://github.com/su8d/android-titanium-ru/actions/runs/35430044143) начат 2026-09-19; preflight пройден, после очистки runner было 108 GiB свободно |
+| Полная сборка APK в GitHub Actions | [Запуск №1](https://github.com/su8d/android-titanium-ru/actions/runs/35430044143) остановился до компиляции на hook патчей подпроектов Vanadium; preflight, базовые патчи и синхронизация зависимостей пройдены, после очистки runner было 108 GiB свободно |
+| Исправление hook подпроектов | Локально воспроизведён тот же `IndexError` при Git identity только в родительском репозитории. Передача `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` дочерним процессам устранила ошибку; тестовый патч применился тем же скриптом Vanadium. Глобальная конфигурация Git не меняется |
 | Подпись/ABI/package реального APK | Не проверены; выполняются скриптом после будущей успешной сборки |
 | Запуск браузера и расширений на Android | Не проверены |
 
 Локальные тесты не доказывают успешную компиляцию всего Chromium, работоспособность
-APK или интеграцию TLS в работающем Android-браузере. Полная сборка запущена
-в GitHub Actions; её актуальный результат и артефакты доступны по ссылке выше.
+APK или интеграцию TLS в работающем Android-браузере. Актуальные запуски полной
+сборки и артефакты доступны в [GitHub Actions](https://github.com/su8d/android-titanium-ru/actions/workflows/build.yml).
