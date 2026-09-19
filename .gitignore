@@ -7,3 +7,10 @@ keys/
 
 *.aab
 *.apk
+
+.build/
+artifacts/
+__pycache__/
+*.pyc
+*.jks
+*.keystore
