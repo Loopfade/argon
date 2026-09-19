@@ -12,8 +12,12 @@ jobs:
           persist-credentials: false
       - name: Validate patches and pinned inputs
         run: |
-          python3 scripts/preflight.py --inputs-only
+          for arch in arm64 arm x64 x86; do
+            python3 scripts/preflight.py --inputs-only --arch "$arch"
+            python3 scripts/configure_build.py --arch "$arch" --output ".build/args/$arch/args.gn"
+          done
           python3 -m unittest discover -s tests -v
+          bash -n build.sh
           bash -n build-arm64.sh
       - name: Obtain pinned BoringSSL
         run: |

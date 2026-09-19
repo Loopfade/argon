@@ -1,4 +1,4 @@
-name: Build Titanium RU arm64
+name: Build Titanium RU
 
 on:
   workflow_dispatch:
@@ -14,18 +14,29 @@ on:
         type: choice
         options: [test, release]
         default: test
+      arch:
+        description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), x86, or all'
+        required: true
+        type: choice
+        options: [arm64, arm, x64, x86, all]
+        default: arm64
 
 permissions:
   contents: read
 
 concurrency:
-  group: titanium-ru-arm64-${{ github.ref }}
+  group: titanium-ru-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
+    name: Build ${{ matrix.arch }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJSON(inputs.arch == 'all' && '["arm64","arm","x64","x86"]' || format('["{0}"]', inputs.arch)) }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -39,16 +50,17 @@ jobs:
           df -h .
       - name: Build, sign and verify APK
         env:
+          TARGET_ARCH: ${{ matrix.arch }}
           SIGNING_MODE: ${{ inputs.signing }}
           TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
           TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
           TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
           TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
-        run: bash build-arm64.sh
-      - name: Upload verified arm64 APK and provenance
+        run: bash build.sh "$TARGET_ARCH"
+      - name: Upload verified APK and provenance
         uses: actions/upload-artifact@v4
         with:
-          name: Titanium-RU-arm64-${{ github.sha }}
+          name: Titanium-RU-${{ matrix.arch }}-${{ github.sha }}
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
