@@ -19,9 +19,11 @@ PROFILE = Path("chrome/browser/net/profile_network_context_service.cc")
 VERIFIER = Path("net/cert/cert_verify_proc_builtin.cc")
 GN = Path("net/BUILD.gn")
 CHROME_NET_GN = Path("chrome/browser/net/BUILD.gn")
-CHROME_ANDROID_GN = Path("chrome/android/BUILD.gn")
 TITANIUM_CHROME_JAVA_SOURCES = Path(
     "titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni"
+)
+TITANIUM_CHROME_JAVA_SRCJAR_DEPS = Path(
+    "titanium/chromium_src/chrome/android/chrome_java_ext_srcjar_deps.gni"
 )
 TITANIUM_CHROME_RESOURCES = Path(
     "titanium/chromium_src/chrome/android/chrome_app_java_resources_ext_sources.gni"
@@ -217,18 +219,6 @@ def patch_chrome_net_gn(text: str) -> str:
     )
 
 
-def patch_chrome_android_gn(text: str) -> str:
-    anchor = (
-        '      "java/src/org/chromium/chrome/browser/privacy/settings/'
-        'PrivacyPreferencesManagerImpl.java",'
-    )
-    addition = (
-        '      "//titanium/chromium_src/chrome/android/java/src/org/chromium/'
-        'chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",'
-    )
-    return replace_once(text, anchor, anchor + "\n" + addition)
-
-
 def patch_titanium_chrome_java_sources(text: str) -> str:
     anchor = (
         '  "java/src/org/chromium/chrome/browser/privacy/settings/'
@@ -239,6 +229,15 @@ def patch_titanium_chrome_java_sources(text: str) -> str:
         'ArgonCertificateDomainsSettings.java",'
     )
     return replace_once(text, anchor, anchor + "\n" + addition)
+
+
+def patch_titanium_chrome_java_srcjar_deps(text: str) -> str:
+    anchor = "chrome_java_ext_full_path_srcjar_deps = ["
+    addition = (
+        '\n  "//titanium/chromium_src/chrome/browser/android:'
+        'argon_certificate_domains_jni_headers",'
+    )
+    return replace_once(text, anchor, anchor + addition)
 
 
 def patch_titanium_chrome_resources(text: str) -> str:
@@ -263,11 +262,11 @@ def patch_titanium_android_cc_deps(text: str) -> str:
     anchor = "android_cc_ext_full_path_deps = ["
     replacement = anchor + """
   "//base",
-  "//chrome/android:jni_headers",
   "//chrome/browser/net",
   "//chrome/browser/profiles:profile",
   "//components/prefs",
-  "//net","""
+  "//net",
+  "//titanium/chromium_src/chrome/browser/android:argon_certificate_domains_jni_headers","""
     return replace_once(text, anchor, replacement)
 
 
@@ -295,12 +294,13 @@ def apply(src: Path, product_name: bool = True) -> None:
         src / CHROME_NET_GN: patch_chrome_net_gn(
             (src / CHROME_NET_GN).read_text()
         ),
-        src / CHROME_ANDROID_GN: patch_chrome_android_gn(
-            (src / CHROME_ANDROID_GN).read_text()
-        ),
         src / TITANIUM_CHROME_JAVA_SOURCES: patch_titanium_chrome_java_sources(
             (src / TITANIUM_CHROME_JAVA_SOURCES).read_text()
         ),
+        src / TITANIUM_CHROME_JAVA_SRCJAR_DEPS:
+            patch_titanium_chrome_java_srcjar_deps(
+                (src / TITANIUM_CHROME_JAVA_SRCJAR_DEPS).read_text()
+            ),
         src / TITANIUM_CHROME_RESOURCES: patch_titanium_chrome_resources(
             (src / TITANIUM_CHROME_RESOURCES).read_text()
         ),

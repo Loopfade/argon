@@ -37,14 +37,13 @@ class PatchTests(unittest.TestCase):
                 '    "profile_network_context_service.h",',
             ),
             (
-                patch.patch_chrome_android_gn,
-                '      "java/src/org/chromium/chrome/browser/privacy/settings/'
-                'PrivacyPreferencesManagerImpl.java",',
-            ),
-            (
                 patch.patch_titanium_chrome_java_sources,
                 '  "java/src/org/chromium/chrome/browser/privacy/settings/'
                 'PrivacySettingsExt.java",',
+            ),
+            (
+                patch.patch_titanium_chrome_java_srcjar_deps,
+                "chrome_java_ext_full_path_srcjar_deps = [\n]",
             ),
             (
                 patch.patch_titanium_chrome_resources,
@@ -106,6 +105,42 @@ class PatchTests(unittest.TestCase):
 
         self.assertIn("ArgonCertificateDomainsSettings.java", java)
         self.assertIn("ArgonCertificateDomainsSettings", xml)
+
+    def test_android_settings_jni_is_generated_once_and_shared(self):
+        srcjar_deps = patch.patch_titanium_chrome_java_srcjar_deps(
+            "chrome_java_ext_full_path_srcjar_deps = [\n]"
+        )
+        cc_deps = patch.patch_titanium_android_cc_deps(
+            "android_cc_ext_full_path_deps = [\n]"
+        )
+        target = (
+            "//titanium/chromium_src/chrome/browser/android:"
+            "argon_certificate_domains_jni_headers"
+        )
+
+        self.assertEqual(srcjar_deps.count(target), 1)
+        self.assertEqual(cc_deps.count(target), 1)
+        self.assertNotIn("//chrome/android:jni_headers", cc_deps)
+
+        build_gn = (
+            ROOT
+            / "chromium_overlay/titanium/chromium_src/chrome/browser/android/BUILD.gn"
+        ).read_text()
+        self.assertEqual(
+            build_gn.count('generate_jni("argon_certificate_domains_jni_headers")'),
+            1,
+        )
+        self.assertEqual(build_gn.count("ArgonCertificateDomainsSettings.java"), 1)
+
+        native_source = (
+            ROOT
+            / "chromium_overlay/chrome/browser/android/argon_certificate_domains_settings.cc"
+        ).read_text()
+        self.assertIn(
+            "argon_certificate_domains_jni_headers/"
+            "ArgonCertificateDomainsSettings_jni.h",
+            native_source,
+        )
 
     def test_missing_or_duplicate_anchor_fails(self):
         for source in ["", self.profile() + self.profile()]:

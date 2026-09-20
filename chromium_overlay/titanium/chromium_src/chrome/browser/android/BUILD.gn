@@ -1,0 +1,10 @@
+import("//build/config/android/rules.gni")
+import("//third_party/jni_zero/jni_zero.gni")
+
+# Kept separate from Chromium's global chrome_jni_headers target so downstream
+# JNI remains self-contained and Java/C++ depend on the same generated output.
+generate_jni("argon_certificate_domains_jni_headers") {
+  sources = [
+    "//titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",
+  ]
+}

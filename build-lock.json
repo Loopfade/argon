@@ -8,5 +8,23 @@
   "depot_tools_commit": "0306e4682b4ac35287c726fa35a983157a625902",
   "extension_url": "https://github.com/jqssun/android-titanium-extension/releases/download/v0.0.1/titanium.crx",
   "extension_sha256": "9374d141153c7d2f5218ac9b96d0bc290818f19a0c5df774728a04664d397974",
+  "filter_lists": [
+    {
+      "name": "antiadblockfilters.txt",
+      "url": "https://easylist-downloads.adblockplus.org/antiadblockfilters.txt",
+      "sha256": "47de51909886eaf08c3114b18496a98ac372b8cb2349dbba84b0ac02a7b168a6",
+      "strip_volatile_headers": true
+    },
+    {
+      "name": "easylist.txt",
+      "url": "https://raw.githubusercontent.com/easylist/easylist/d3c6eba30eda4cf1526f7a0aaa8984e6b8def292/easylist.txt",
+      "sha256": "de5d80697aa9328a3f337bbe4a50c5f88b89d19aab61791fc4deb57189be91e5"
+    },
+    {
+      "name": "easyprivacy.txt",
+      "url": "https://raw.githubusercontent.com/easylist/easylist/d3c6eba30eda4cf1526f7a0aaa8984e6b8def292/easyprivacy.txt",
+      "sha256": "cda05ecc82902c795c5c9568a251a097024a5eaae26e2bcde7eb820dcce41c8b"
+    }
+  ],
   "application_id": "app.titaniumru.browser"
 }
