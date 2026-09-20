@@ -1,4 +1,4 @@
-Argon is an open-source Chromium-based browser for Android with support for extensions, including Manifest V2. It is based on Titanium. The certificate injection mechanism, using Chromium's AdditionalCertificates integration, is adapted from Ruthenium for Android under the BSD-3-Clause license; Argon adds constraints limiting Russian CA trust to .ru, .рф and .su.
+Argon is an open-source Chromium-based browser for Android with support for extensions, including Manifest V2. It is based on Titanium. The certificate injection mechanism and the base .ru, .рф and .su DNS constraints are adapted from Ruthenium for Android under the BSD-3-Clause license. Argon additionally enforces the same policy in Chromium's built-in verifier, binds it to the exact pinned DER root, and rejects IP SANs.
 
 Installing Extensions
 - For Chrome extensions, open the Chrome Web Store, enable "Desktop site" from the menu, and proceed as normal.
@@ -18,5 +18,5 @@ WebRTC IP Policy
 Titanium Extension for Android is available at https://github.com/jqssun/android-titanium-extension
 
 Based on Titanium Browser for Android (GPL-2.0): https://github.com/jqssun/android-titanium-browser
-Certificate integration adapted from Ruthenium for Android (BSD-3-Clause): https://github.com/rutheniumteam/ruthenium-android
+Certificate integration and base DNS constraints adapted from Ruthenium for Android (BSD-3-Clause): https://github.com/rutheniumteam/ruthenium-android
 Ruthenium license notice: https://github.com/su8d/argon/blob/main/licenses/Ruthenium-BSD-3-Clause.txt
