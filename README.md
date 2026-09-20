@@ -2,6 +2,8 @@
 
 Форк [Titanium](https://github.com/jqssun/android-titanium-browser) для Android: расширения (включая Manifest V2) и российский УЦ только для `.ru`, `.рф` и `.su`.
 
+Механизм внедрения сертификата через Chromium `AdditionalCertificates` адаптирован из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android) по лицензии BSD-3-Clause; ограничения доверия зонами `.ru`, `.рф` и `.su` реализованы в Argon.
+
 Цели сборки: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`.
 
 Сборка: **Actions → Build Argon → Run workflow**. `arch=all` — все архитектуры; требуется ≥100 GiB на каждую сборку.
