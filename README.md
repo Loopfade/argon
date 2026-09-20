@@ -6,7 +6,7 @@
 
 Цели сборки: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`.
 
-Сборка: **Actions → Build Argon → Run workflow**. `arch=all` — все архитектуры; требуется ≥100 GiB на каждую сборку.
+Сборка: [локально на Debian](BUILDING.md) или **Actions → Build Argon → Run workflow**. `arch=all` — все архитектуры в Actions; локально `build.sh` собирает по одной ABI. Требуется ≥100 GiB на каждую сборку.
 
 **Полный APK пока не собран и не проверен.**
 
