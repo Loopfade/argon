@@ -87,12 +87,12 @@ VERIFIER_ANCHOR = "    CheckExtraConstraints(path->certs, &path->errors);"
 VERIFIER_BLOCK = """
     // BEGIN TITANIUM_RU_DNS_AND_IP_CONSTRAINTS
 #if BUILDFLAG(IS_ANDROID)
-    base::span<const std::string> titanium_permitted_dns_names;
+    bssl::Span<const std::string> titanium_permitted_dns_names;
     for (const auto& cert_with_constraints : *additional_constraints_) {
       if (cert_with_constraints.certificate &&
           IsTitaniumRussianRoot(*cert_with_constraints.certificate)) {
         titanium_permitted_dns_names =
-            base::span<const std::string>(
+            bssl::Span<const std::string>(
                 cert_with_constraints.permitted_dns_names);
         break;
       }

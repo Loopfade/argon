@@ -8,7 +8,8 @@
 #include <string>
 #include <utility>
 
-#include "base/containers/span.h"
+#include <openssl/span.h>
+
 #include "net/cert/titanium_ru_root.h"
 #include "third_party/boringssl/src/pki/cert_errors.h"
 #include "third_party/boringssl/src/pki/name_constraints.h"
@@ -24,7 +25,7 @@ inline bool IsTitaniumRussianRoot(const bssl::ParsedCertificate& certificate) {
 
 inline std::unique_ptr<bssl::NameConstraints>
 CreateTitaniumRussianRootConstraints(
-    base::span<const std::string> permitted_dns_names = {}) {
+    bssl::Span<const std::string> permitted_dns_names = {}) {
   bssl::GeneralNames permitted;
   if (permitted_dns_names.empty()) {
     permitted.dns_names = {".ru", ".xn--p1ai", ".su"};
@@ -47,7 +48,7 @@ CreateTitaniumRussianRootConstraints(
 inline void CheckTitaniumRussianRootConstraints(
     const bssl::ParsedCertificateList& certificates,
     bssl::CertPathErrors* errors,
-    base::span<const std::string> permitted_dns_names = {}) {
+    bssl::Span<const std::string> permitted_dns_names = {}) {
   if (certificates.empty() || !IsTitaniumRussianRoot(*certificates.back())) {
     return;
   }
