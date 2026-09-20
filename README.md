@@ -8,8 +8,6 @@
 
 Сборка: [локально на Debian](BUILDING.md) или **Actions → Build Argon → Run workflow**. `arch=all` — все архитектуры в Actions; локально `build.sh` собирает по одной ABI. Требуется ≥100 GiB на каждую сборку.
 
-**Полный APK пока не собран и не проверен.**
-
 [Проверки](VALIDATION.md) · [Исходный README](README.upstream.md) · [Лицензия](LICENSE) · [Лицензия Ruthenium](licenses/Ruthenium-BSD-3-Clause.txt)
 
-Версия Chromium, на которой основана сборка: `153.0.8010.52` (commit `78e5e45d4bb41035e17ea4da2cc257f496416ac9`).
+Версия Chromium, на которой основана сборка: `153.0.8010.52`(commit`78e5e45d4bb41035e17ea4da2cc257f496416ac9`).
