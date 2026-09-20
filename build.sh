@@ -12,7 +12,7 @@ if [[ ${1:-} == --help || ${1:-} == -h ]]; then
   exit 0
 fi
 TARGET_CPU=$(python3 scripts/configure_build.py --arch "${1:-arm64}" --print-cpu)
-OUT_DIR="out/TitaniumRu-${TARGET_CPU}"
+OUT_DIR="out/Argon-${TARGET_CPU}"
 
 SIGNING_MODE=${SIGNING_MODE:-test}
 case "$SIGNING_MODE" in test|release) ;; *) echo 'SIGNING_MODE must be test or release' >&2; exit 1;; esac
@@ -52,8 +52,8 @@ bash "$SCRIPT_DIR/depot_tools/ensure_bootstrap"
 # gclient hooks run git am inside independent V8/search-engine repositories.
 # Their commits do not inherit chromium/src/.git/config. Scope this identity
 # to the build process and its children instead of changing global Git config.
-export GIT_COMMITTER_NAME='Titanium RU Build'
-export GIT_COMMITTER_EMAIL='titanium-ru-build@users.noreply.github.com'
+export GIT_COMMITTER_NAME='Argon Build'
+export GIT_COMMITTER_EMAIL='argon-build@users.noreply.github.com'
 mkdir -p chromium/src .build/vanadium-patches
 cp .gclient chromium/.gclient
 cp vanadium/patches/*.patch .build/vanadium-patches/
@@ -73,8 +73,8 @@ replace "$SCRIPT_DIR/.build/vanadium-patches" vanadium titanium
 
 cd chromium/src
 git init
-git config user.name 'Titanium RU Build'
-git config user.email 'titanium-ru-build@users.noreply.github.com'
+git config user.name 'Argon Build'
+git config user.email 'argon-build@users.noreply.github.com'
 git remote add origin https://chromium.googlesource.com/chromium/src.git
 git fetch --depth=1 origin "refs/tags/$VERSION"
 [[ $(git rev-parse FETCH_HEAD) == "$CHROMIUM_REVISION" ]]
