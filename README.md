@@ -1,13 +1,35 @@
 # Argon
 
-Форк [Titanium](https://github.com/jqssun/android-titanium-browser) для Android: расширения (включая Manifest V2) и российский УЦ только для `.ru`, `.рф` и `.su`.
+Argon — Android-браузер на базе [Titanium](https://github.com/jqssun/android-titanium-browser) и Chromium с поддержкой расширений и ограниченным доверием к встроенному российскому корневому УЦ.
 
-Механизм внедрения сертификата через Chromium `AdditionalCertificates` и базовое ограничение доверия доменами `.ru`, `.рф` и `.su` адаптированы из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android) по лицензии BSD-3-Clause. Argon дополнительно проверяет ту же политику во встроенном верификаторе Chromium, привязывает её к точному DER-корню и запрещает IP SAN.
+## Реализовано
 
-Цели сборки: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`.
+- Поддержка расширений Chromium, включая Manifest V2.
+- Встроенный российский корневой УЦ с ограничением доверия доменами `.ru`, `.рф` / `.xn--p1ai` и `.su`.
+- Дополнительная проверка политики во встроенном верификаторе Chromium: доверие привязано к точному DER-корню, IP SAN запрещены, существующие ограничения не ослабляются.
+- Цели сборки: `arm64-v8a`, `armeabi-v7a`, `x86_64` и `x86`.
+- Автоматические проверки генератора патча и ограничений доверия российского УЦ.
 
-Сборка: [локально на Debian](BUILDING.md) или **Actions → Build Argon → Run workflow**. `arch=all` — все архитектуры в Actions; локально `build.sh` собирает по одной ABI. Требуется ≥100 GiB на каждую сборку.
+## Планируется
 
-[Проверки](VALIDATION.md) · [Исходный README](README.upstream.md) · [Лицензия](LICENSE) · [Лицензия Ruthenium](licenses/Ruthenium-BSD-3-Clause.txt)
+- Завершить проверку пользовательского списка дополнительных доменов в ветке [`experimental/ca-domain-allowlist`](https://github.com/Loopfade/argon/tree/experimental/ca-domain-allowlist).
+- Выполнить полную сборку APK и тестирование экспериментальной функции на Android-устройстве или эмуляторе.
+- Провести TLS smoke-тесты для разрешённых доменов и отрицательных сценариев.
+- Расширить интеграционные тесты Android UI и сетевого контекста.
+- После успешной проверки отдельно принять решение о переносе экспериментальной функции в `main`.
 
-Версия Chromium, на которой основана сборка: `153.0.8010.52`(commit`78e5e45d4bb41035e17ea4da2cc257f496416ac9`).
+## Сборка и проверка
+
+Поддерживается [локальная сборка на Debian](BUILDING.md). Скрипт `build.sh` собирает одну ABI за запуск. Для каждой сборки требуется не менее 100 GiB свободного места.
+
+Подробные сценарии проверки описаны в [VALIDATION.md](VALIDATION.md).
+
+## Происхождение и лицензии
+
+Механизм внедрения сертификата через Chromium `AdditionalCertificates` и базовое ограничение доверия доменами `.ru`, `.рф` и `.su` адаптированы из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android) по лицензии BSD-3-Clause.
+
+[Исходный README Titanium](README.upstream.md) · [Лицензия Argon](LICENSE) · [Лицензия Ruthenium](licenses/Ruthenium-BSD-3-Clause.txt)
+
+## Версия Chromium
+
+`153.0.8010.52` — commit `78e5e45d4bb41035e17ea4da2cc257f496416ac9`.
