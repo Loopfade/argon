@@ -1,8 +1,8 @@
 # Argon
 
-Форк [Titanium](https://github.com/jqssun/android-titanium-browser) для Android: расширения (включая Manifest V2) и российский УЦ только для `.ru`, `.рф` и `.su`.
+Форк [Titanium](https://github.com/jqssun/android-titanium-browser) для Android: расширения (включая Manifest V2) и российский УЦ для `.ru`, `.рф`, `.su` и явно добавленных пользователем доменов.
 
-Механизм внедрения сертификата через Chromium `AdditionalCertificates` и базовое ограничение доверия доменами `.ru`, `.рф` и `.su` адаптированы из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android) по лицензии BSD-3-Clause. Argon дополнительно проверяет ту же политику во встроенном верификаторе Chromium, привязывает её к точному DER-корню и запрещает IP SAN.
+Механизм внедрения сертификата через Chromium `AdditionalCertificates` и базовое ограничение доверия доменами `.ru`, `.рф` и `.su` адаптированы из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android) по лицензии BSD-3-Clause. Argon дополнительно проверяет ту же политику во встроенном верификаторе Chromium, привязывает её к точному DER-корню и запрещает IP SAN. Дополнительные домены настраиваются в **Настройки → Конфиденциальность и безопасность → Сертификаты Argon**; публичные суффиксы, IP-адреса и `*` не принимаются.
 
 Цели сборки: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`.
 

@@ -1,6 +1,23 @@
 # Проверки подготовленных исходников
 
-Дата: 2026-09-19.
+Дата: 2026-09-20.
+
+## Экспериментальный список дополнительных доменов УЦ
+
+| Проверка | Результат |
+|---|---|
+| Profile list-pref, его наблюдение и live-update `AdditionalCertificates` | Проверены по точному `profile_network_context_service.cc` Chromium `78e5e45d...` |
+| Точки расширения Android Java/resources/C++ | Патчер дважды применён к результату всей закреплённой серии Vanadium/Titanium patches |
+| Безопасное копирование DER | Сохранён `base::ToVector(base::span(net::kTitaniumRussianRootDer))`; арифметика указателей не используется |
+| Exact/subdomain-семантика BoringSSL | В production test добавлены `example.com`, его поддомены и отрицательные sibling/suffix cases |
+| Нормализация, IDN, Public Suffix List, wildcard/IP/URL и встроенные зоны | Добавлен Chromium `net_unittests` gtest на production helper |
+| Python regression/idempotence tests | 21 тест пройден |
+| Preflight закреплённых входов и синтаксис shell | Пройдены |
+
+В текущей среде отсутствуют `cmake`, Ninja и полный Chromium checkout, поэтому
+новые C++/Java цели здесь не собраны. Workflow `Validate scoped Russian CA`
+собирает BoringSSL test, а полная проверка Android UI/JNI требует workflow сборки
+APK или локального полного checkout.
 
 ## Расширение архитектур
 
