@@ -23,6 +23,18 @@ class PatchTests(unittest.TestCase):
                 value = transform(source)
                 self.assertEqual(value, transform(value))
 
+    def test_profile_patch_avoids_unsafe_pointer_arithmetic(self):
+        value = patch.patch_profile(self.profile())
+
+        self.assertIn(
+            "base::ToVector(base::span(net::kTitaniumRussianRootDer))",
+            value,
+        )
+        self.assertNotIn(
+            "kTitaniumRussianRootDer + sizeof",
+            value,
+        )
+
     def test_missing_or_duplicate_anchor_fails(self):
         for source in ["", self.profile() + self.profile()]:
             with self.assertRaises(ValueError):

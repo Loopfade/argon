@@ -24,9 +24,8 @@ PROFILE_BLOCK = """
   // BEGIN TITANIUM_RU_SCOPED_ANCHOR
 #if BUILDFLAG(IS_ANDROID)
   auto russian_root = cert_verifier::mojom::CertWithConstraints::New();
-  russian_root->certificate = std::vector<uint8_t>(
-      net::kTitaniumRussianRootDer,
-      net::kTitaniumRussianRootDer + sizeof(net::kTitaniumRussianRootDer));
+  russian_root->certificate =
+      base::ToVector(base::span(net::kTitaniumRussianRootDer));
   russian_root->permitted_dns_names = {".ru", ".xn--p1ai", ".su"};
   additional_certificates->trust_anchors_with_additional_constraints.push_back(
       std::move(russian_root));
