@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         git \
         python3 \
         sudo \
-    && useradd --create-home --shell /bin/bash --uid 1000 argon \
+    && useradd --create-home --shell /bin/bash --uid 1001 argon \
     && printf 'argon ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/argon \
     && chmod 0440 /etc/sudoers.d/argon
 
