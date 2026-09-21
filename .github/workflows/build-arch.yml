@@ -6,6 +6,9 @@ on:
       arch:
         required: true
         type: string
+      image:
+        required: true
+        type: string
       runner:
         required: true
         type: string
@@ -25,6 +28,7 @@ on:
 permissions:
   actions: write
   contents: read
+  packages: read
 
 env:
   CCACHE_CACHE_PREFIX: argon-ccache-v2-${{ inputs.arch }}
@@ -32,6 +36,7 @@ env:
   BUILD_JOB_BUDGET_SECONDS: 21600
   BUILD_FINALIZE_RESERVE_SECONDS: 1800
   BUILD_CHECKPOINT_MINUTES: 20
+  BUILD_CONTAINER_NAME: argon-build
 
 jobs:
   build:
@@ -62,13 +67,29 @@ jobs:
           restore-keys: |
             ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-
             argon-ccache-v2-${{ inputs.arch }}-
-      - name: Prepare Chromium source tree
+      - name: Start prepared Argon build container
         env:
-          BUILD_MODE: prepare
-          TARGET_ARCH: ${{ inputs.arch }}
-        run: bash build.sh "$TARGET_ARCH"
+          GHCR_TOKEN: ${{ github.token }}
+          PREPARED_IMAGE: ${{ inputs.image }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+          docker pull "$PREPARED_IMAGE"
+          mkdir -p "$CCACHE_DIR"
+          ln -s /opt/argon/chromium chromium
+          ln -s /opt/argon/depot_tools depot_tools
+          docker create \
+            --name "$BUILD_CONTAINER_NAME" \
+            --user 0 \
+            --workdir /workspace \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --volume "$CCACHE_DIR:/ccache" \
+            "$PREPARED_IMAGE" sleep infinity
+          docker start "$BUILD_CONTAINER_NAME"
+          docker exec "$BUILD_CONTAINER_NAME" git config --global --add safe.directory '*'
+          docker exec "$BUILD_CONTAINER_NAME" test -d /opt/argon/chromium/src
+          df -h .
       - name: Reset compiler-cache statistics
-        run: ccache --zero-stats
+        run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --zero-stats
       - name: Warm local compiler cache (checkpoint 1/12)
         id: checkpoint_1
         env:
@@ -76,8 +97,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -106,8 +127,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -135,8 +156,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -164,8 +185,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -193,8 +214,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -222,8 +243,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -251,8 +272,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -280,8 +301,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -309,8 +330,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -338,8 +359,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -367,8 +388,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -396,8 +417,8 @@ jobs:
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
-          env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
-          ccache --cleanup || true
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -436,14 +457,17 @@ jobs:
             exit 1
           fi
           echo "Final build time budget: ${remaining}s (elapsed: ${elapsed}s, finalize reserve: ${BUILD_FINALIZE_RESERVE_SECONDS}s)"
-          timeout --signal=INT --kill-after=3m "${remaining}s" \
-            env BUILD_JOBS="$(nproc)" bash build.sh "$TARGET_ARCH"
+          BUILD_EXEC_TIMEOUT_SECONDS="$remaining" BUILD_JOBS="$(nproc)" \
+            bash .github/ci/run-in-build-container.sh
       - name: Show local compiler-cache statistics
         if: always()
         run: |
-          ccache --show-stats || true
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --show-stats || true
           du -sh "$CCACHE_DIR" 2>/dev/null || true
           df -h .
+      - name: Stop prepared build container
+        if: always()
+        run: docker rm --force "$BUILD_CONTAINER_NAME" || true
       - name: Upload verified APK and provenance
         if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
