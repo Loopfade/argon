@@ -19,6 +19,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         git \
+        lsb-release \
         python3 \
         sudo \
     && useradd --create-home --shell /bin/bash --uid 1001 argon \
