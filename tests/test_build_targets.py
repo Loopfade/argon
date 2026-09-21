@@ -96,7 +96,7 @@ class BuildTargetsTests(unittest.TestCase):
             env={**os.environ, "BUILD_MODE": "invalid"},
         )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("BUILD_MODE must be apk, warm, prepare, or finish", result.stderr)
+        self.assertIn("BUILD_MODE must be apk, warm, prepare, checkpoint, or finish", result.stderr)
         self.assertNotIn("preflight.py", result.stderr)
 
     def test_shell_requires_cache_directory_for_warm_mode(self):
@@ -217,3 +217,4 @@ class ApkArchitectureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

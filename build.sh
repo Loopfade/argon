@@ -43,7 +43,7 @@ if [[ ( "$BUILD_MODE" == apk || "$BUILD_MODE" == finish ) && "$SIGNING_MODE" == 
   : "${TITANIUM_RU_KEY_PASSWORD:?Missing release key password}"
   : "${TITANIUM_RU_KEY_ALIAS:?Missing release alias}"
 fi
-if [[ "$BUILD_MODE" != finish && ( -e chromium/src || -e depot_tools ) ]]; then
+if [[ "$BUILD_MODE" != finish && "$BUILD_MODE" != checkpoint && ( -e chromium/src || -e depot_tools ) ]]; then
   echo 'Use a fresh dedicated checkout: chromium/src or depot_tools already exists.' >&2
   exit 1
 fi
@@ -180,4 +180,3 @@ mapfile -t apks < <(find "$OUT_DIR/apks" -maxdepth 1 -name 'Chrome*.apk' -type f
 python3 "$SCRIPT_DIR/scripts/sign_and_verify.py" --apk "${apks[0]}" \
   --sdk "$PWD/third_party/android_sdk/public" --jdk "$PWD/third_party/jdk/current" \
   --mode "$SIGNING_MODE" --arch "$TARGET_CPU"
-
