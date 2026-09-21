@@ -51,7 +51,7 @@ class PatchTests(unittest.TestCase):
             ),
             (
                 patch.patch_titanium_android_cc_sources,
-                "android_cc_ext_rel_path_sources = [\n]",
+                "android_cc_ext_full_path_sources = [\n]",
             ),
             (
                 patch.patch_titanium_android_cc_deps,
@@ -121,6 +121,18 @@ class PatchTests(unittest.TestCase):
         self.assertEqual(srcjar_deps.count(target), 1)
         self.assertEqual(cc_deps.count(target), 1)
         self.assertNotIn("//chrome/android:jni_headers", cc_deps)
+
+        cc_sources = patch.patch_titanium_android_cc_sources(
+            "android_cc_ext_full_path_sources = [\n]"
+        )
+        self.assertIn(
+            '"//chrome/browser/android/argon_certificate_domains_settings.cc"',
+            cc_sources,
+        )
+        self.assertNotIn(
+            '"argon_certificate_domains_settings.cc"',
+            cc_sources,
+        )
 
         build_gn = (
             ROOT

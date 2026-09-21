@@ -250,12 +250,12 @@ def patch_titanium_chrome_resources(text: str) -> str:
 
 
 def patch_titanium_android_cc_sources(text: str) -> str:
-    anchor = """android_cc_ext_rel_path_sources = [
-]"""
-    replacement = """android_cc_ext_rel_path_sources = [
-  "argon_certificate_domains_settings.cc",
-]"""
-    return replace_once(text, anchor, replacement)
+    anchor = "android_cc_ext_full_path_sources = ["
+    addition = (
+        '\n  "//chrome/browser/android/'
+        'argon_certificate_domains_settings.cc",'
+    )
+    return replace_once(text, anchor, anchor + addition)
 
 
 def patch_titanium_android_cc_deps(text: str) -> str:
