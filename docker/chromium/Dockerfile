@@ -13,11 +13,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DEPOT_TOOLS_UPDATE=0 \
     ARGON_PREPARED_ROOT=/opt/argon
 
+# Bootstrap commands used by build.sh and Chromium's pinned
+# install-build-deps.py before it can install the remaining packages.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        file \
         git \
         lsb-release \
         python3 \
