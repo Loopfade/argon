@@ -31,7 +31,11 @@ fi
 
 SIGNING_MODE=${SIGNING_MODE:-test}
 case "$SIGNING_MODE" in test|release) ;; *) echo 'SIGNING_MODE must be test or release' >&2; exit 1;; esac
-python3 scripts/preflight.py --arch "$TARGET_CPU"
+preflight_args=(--arch "$TARGET_CPU")
+if [[ "$BUILD_MODE" == finish ]]; then
+  preflight_args+=(--inputs-only)
+fi
+python3 scripts/preflight.py "${preflight_args[@]}"
 python3 -m unittest discover -s tests -v
 if [[ ( "$BUILD_MODE" == apk || "$BUILD_MODE" == finish ) && "$SIGNING_MODE" == release ]]; then
   : "${TITANIUM_RU_KEYSTORE_BASE64:?Missing release keystore}"
