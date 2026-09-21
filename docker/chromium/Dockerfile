@@ -26,6 +26,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && chmod 0440 /etc/sudoers.d/argon
 
 WORKDIR /opt/argon
+RUN chown argon:argon /opt/argon
 COPY --chown=argon:argon . .
 
 USER argon
