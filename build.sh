@@ -24,8 +24,8 @@ if [[ ! "$BUILD_TIME_LIMIT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
   echo 'BUILD_TIME_LIMIT_MINUTES must be a positive integer' >&2
   exit 2
 fi
-if [[ "$BUILD_MODE" == warm && -z ${CCACHE_DIR:-} ]]; then
-  echo 'CCACHE_DIR is required when BUILD_MODE=warm' >&2
+if [[ "$BUILD_MODE" == warm && -z ${CCACHE_DIR:-} && -z ${SCCACHE_DIR:-} ]]; then
+  echo 'CCACHE_DIR or SCCACHE_DIR is required when BUILD_MODE=warm' >&2
   exit 2
 fi
 
@@ -109,7 +109,15 @@ cmake --build "$SCRIPT_DIR/.build/policy-tests" --target scoped_ca_test -j "${BU
 ctest --test-dir "$SCRIPT_DIR/.build/policy-tests" --output-on-failure
 
 configure_args=(--arch "$TARGET_CPU" --output "$OUT_DIR/args.gn")
-if [[ -n ${CCACHE_DIR:-} ]]; then
+if [[ -n ${SCCACHE_DIR:-} ]]; then
+  command -v sccache >/dev/null || {
+    echo 'SCCACHE_DIR is set but sccache is not available' >&2
+    exit 1
+  }
+  export SCCACHE_DIR
+  mkdir -p "$SCCACHE_DIR"
+  configure_args+=(--sccache)
+elif [[ -n ${CCACHE_DIR:-} ]]; then
   export CCACHE_DIR
   export CCACHE_BASEDIR="$PWD"
   export CCACHE_COMPILERCHECK=content

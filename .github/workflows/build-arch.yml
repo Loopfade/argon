@@ -13,6 +13,8 @@ on:
         required: true
         type: string
     secrets:
+      TS_OAUTH_SECRET:
+        required: true
       TITANIUM_RU_KEYSTORE_BASE64:
         required: false
       TITANIUM_RU_STORE_PASSWORD:
@@ -27,13 +29,30 @@ permissions:
   contents: read
 
 env:
-  CACHE_PREFIX: argon-ccache-v1-${{ inputs.arch }}-${{ github.sha }}
-  CCACHE_DIR: ${{ github.workspace }}/.ccache
-  CCACHE_MAXSIZE: 7G
+  SCCACHE_CACHE_PREFIX: argon-sccache-v1-${{ inputs.arch }}
+  SCCACHE_CACHE_SIZE: 7G
 
 jobs:
-  warm-1:
-    name: Warm compiler cache 1/2 (${{ inputs.arch }})
+  workers:
+    name: Compile worker ${{ matrix.index }} (${{ inputs.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Join ephemeral compiler farm
+        uses: xdqi/sccache-dist-action@b936d2b08e8eae69a9f9b44d949328d7706bf333 # v0.0.6
+        with:
+          mode: worker
+          worker-index: ${{ matrix.index }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          slots: 0
+          tags: tag:ci-sccache
+
+  build:
+    name: Build, sign and verify APK (${{ inputs.arch }})
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 360
     steps:
@@ -51,94 +70,40 @@ jobs:
         id: cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: .ccache
-          key: ${{ env.CACHE_PREFIX }}-warm-1
+          path: ~/.cache/sccache
+          key: ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            argon-ccache-v1-${{ inputs.arch }}-
-      - name: Warm compiler cache for four hours
-        if: steps.cache.outputs.cache-hit != 'true'
-        env:
-          BUILD_MODE: warm
-          BUILD_TIME_LIMIT_MINUTES: 240
-          TARGET_ARCH: ${{ inputs.arch }}
-        run: bash build.sh "$TARGET_ARCH"
-      - name: Save compiler cache
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+            ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-
+            argon-sccache-v1-${{ inputs.arch }}-
+      - name: Start distributed compiler coordinator
+        id: farm
+        uses: xdqi/sccache-dist-action@b936d2b08e8eae69a9f9b44d949328d7706bf333 # v0.0.6
         with:
-          path: .ccache
-          key: ${{ env.CACHE_PREFIX }}-warm-1
-
-  warm-2:
-    name: Warm compiler cache 2/2 (${{ inputs.arch }})
-    needs: warm-1
-    runs-on: ${{ inputs.runner }}
-    timeout-minutes: 360
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          submodules: true
-          persist-credentials: false
-      - name: Free space on disposable GitHub-hosted runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          test "$RUNNER_ENVIRONMENT" = github-hosted
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
-          df -h .
-      - name: Restore compiler cache
-        id: cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .ccache
-          key: ${{ env.CACHE_PREFIX }}-warm-2
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-warm-1
-      - name: Continue warming compiler cache for four hours
-        if: steps.cache.outputs.cache-hit != 'true'
-        env:
-          BUILD_MODE: warm
-          BUILD_TIME_LIMIT_MINUTES: 240
-          TARGET_ARCH: ${{ inputs.arch }}
-        run: bash build.sh "$TARGET_ARCH"
-      - name: Save expanded compiler cache
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .ccache
-          key: ${{ env.CACHE_PREFIX }}-warm-2
-
-  package:
-    name: Link, sign and verify APK (${{ inputs.arch }})
-    needs: warm-2
-    runs-on: ${{ inputs.runner }}
-    timeout-minutes: 360
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          submodules: true
-          persist-credentials: false
-      - name: Free space on disposable GitHub-hosted runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          test "$RUNNER_ENVIRONMENT" = github-hosted
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
-          df -h .
-      - name: Restore warmed compiler cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .ccache
-          key: ${{ env.CACHE_PREFIX }}-warm-2
-          fail-on-cache-miss: true
+          mode: coordinator
+          expected-workers: 12
+          min-workers: 6
+          wait-timeout: 600s
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          slots: 0
+          tags: tag:ci-sccache
+          dist-fallback: true
       - name: Build, sign and verify APK
         env:
-          BUILD_MODE: apk
           SIGNING_MODE: ${{ inputs.signing }}
           TARGET_ARCH: ${{ inputs.arch }}
           TITANIUM_RU_KEYSTORE_BASE64: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEYSTORE_BASE64 || '' }}
           TITANIUM_RU_STORE_PASSWORD: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_STORE_PASSWORD || '' }}
           TITANIUM_RU_KEY_PASSWORD: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_PASSWORD || '' }}
           TITANIUM_RU_KEY_ALIAS: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
-        run: bash build.sh "$TARGET_ARCH"
+        run: |
+          test "${SCCACHE_WORKERS_ONLINE:-0}" -ge 6
+          timeout --signal=INT --kill-after=3m 330m \
+            env BUILD_JOBS="${SCCACHE_J:-48}" bash build.sh "$TARGET_ARCH"
+      - name: Show distributed compiler statistics
+        if: always()
+        run: |
+          sccache --show-stats || true
+          sccache --stop-server || true
       - name: Upload verified APK and provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -146,8 +111,9 @@ jobs:
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
-      - name: Remove superseded warm-up cache
-        if: success()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh cache delete "${CACHE_PREFIX}-warm-1" --repo "$GITHUB_REPOSITORY" || true
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/sccache
+          key: ${{ steps.cache.outputs.cache-primary-key }}

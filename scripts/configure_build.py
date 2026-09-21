@@ -24,8 +24,15 @@ def target_cpu(value: str) -> str:
     )
 
 
-def render_gn_args(arch: str, ccache: bool = False) -> str:
+def render_gn_args(arch: str, ccache: bool = False, compiler_wrapper=None) -> str:
     cpu = target_cpu(arch)
+    if ccache:
+        if compiler_wrapper is not None:
+            raise ValueError("ccache and compiler_wrapper are mutually exclusive")
+        compiler_wrapper = "ccache"
+    if compiler_wrapper not in (None, "ccache", "sccache"):
+        raise ValueError(f"Unsupported compiler wrapper: {compiler_wrapper!r}")
+
     # The pinned V8/Vanadium DrumBrake interpreter supports 64-bit targets only.
     drumbrake = "true" if cpu in ("arm64", "x64") else "false"
     overrides = {
@@ -40,10 +47,10 @@ def render_gn_args(arch: str, ccache: bool = False) -> str:
         )
         if count != 1:
             raise ValueError(f"Expected exactly one {name} assignment in args.gn")
-    if ccache:
+    if compiler_wrapper:
         result, count = re.subn(
             r"(?m)^use_siso\s*=[^\n]*$",
-            'use_siso = false\ncc_wrapper = "ccache"',
+            f'use_siso = false\ncc_wrapper = "{compiler_wrapper}"',
             result,
         )
         if count != 1:
@@ -54,10 +61,20 @@ def render_gn_args(arch: str, ccache: bool = False) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arch", type=target_cpu, default="arm64")
-    parser.add_argument(
+    wrapper = parser.add_mutually_exclusive_group()
+    wrapper.add_argument(
         "--ccache",
-        action="store_true",
+        action="store_const",
+        const="ccache",
+        dest="compiler_wrapper",
         help="Generate a Ninja/ccache configuration for resumable CI builds",
+    )
+    wrapper.add_argument(
+        "--sccache",
+        action="store_const",
+        const="sccache",
+        dest="compiler_wrapper",
+        help="Generate a Ninja/sccache configuration for distributed CI builds",
     )
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--print-cpu", action="store_true")
@@ -66,7 +83,7 @@ def main():
     if args.print_cpu:
         print(args.arch)
         return
-    rendered = render_gn_args(args.arch, ccache=args.ccache)
+    rendered = render_gn_args(args.arch, compiler_wrapper=args.compiler_wrapper)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered)
