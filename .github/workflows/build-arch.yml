@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -63,7 +63,7 @@ jobs:
           mode: worker
           worker-index: ${{ matrix.index }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          slots: 2
+          slots: 3
           tags: tag:ci-sccache
 
   build:
@@ -101,11 +101,11 @@ jobs:
         uses: xdqi/sccache-dist-action@b936d2b08e8eae69a9f9b44d949328d7706bf333 # v0.0.6
         with:
           mode: coordinator
-          expected-workers: 12
+          expected-workers: 17
           min-workers: 6
           wait-timeout: 600s
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          slots: 2
+          slots: 3
           tags: tag:ci-sccache
           dist-fallback: true
       - name: Build, sign and verify APK
@@ -121,12 +121,14 @@ jobs:
           TITANIUM_RU_KEY_ALIAS: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
         run: |
           test "${SCCACHE_WORKERS_ONLINE:-0}" -ge 6
-          timeout --signal=INT --kill-after=3m 240m \
-            env BUILD_JOBS="${SCCACHE_J:-24}" bash build.sh "$TARGET_ARCH"
+          timeout --signal=INT --kill-after=3m 200m \
+            env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
       - name: Show distributed compiler statistics
         if: always()
         run: |
           sccache --show-stats || true
+          du -sh ~/.cache/sccache 2>/dev/null || true
+          df -h .
           sccache --stop-server || true
       - name: Upload verified APK and provenance
         if: steps.build.outcome == 'success'
