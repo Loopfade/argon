@@ -121,7 +121,7 @@ cmake -S "$SCRIPT_DIR/tests" -B "$SCRIPT_DIR/.build/policy-tests" \
 cmake --build "$SCRIPT_DIR/.build/policy-tests" --target scoped_ca_test -j "${BUILD_JOBS:-4}"
 ctest --test-dir "$SCRIPT_DIR/.build/policy-tests" --output-on-failure
 if [[ "$BUILD_MODE" == prepare ]]; then
-  echo 'Chromium source tree is prepared; starting the compiler farm next.'
+  echo 'Chromium source tree is prepared; starting cache-backed compilation next.'
   exit 0
 fi
 fi
@@ -138,12 +138,15 @@ if [[ -n ${SCCACHE_DIR:-} ]]; then
 elif [[ -n ${CCACHE_DIR:-} ]]; then
   export CCACHE_DIR
   export CCACHE_BASEDIR="$PWD"
-  export CCACHE_COMPILERCHECK=content
+  CCACHE_TOOLCHAIN_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["chromium_commit"])' "$SCRIPT_DIR/build-lock.json")
+  export CCACHE_COMPILERCHECK="string:chromium-$CCACHE_TOOLCHAIN_ID"
+  export CCACHE_DEPEND=true
+  export CCACHE_DIRECT=true
   export CCACHE_NOHASHDIR=true
-  export CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime
+  export CCACHE_SLOPPINESS=modules,include_file_mtime,include_file_ctime
   mkdir -p "$CCACHE_DIR"
   ccache --set-config compression=true
-  ccache --set-config compression_level=6
+  ccache --set-config compression_level=3
   ccache --max-size "${CCACHE_MAXSIZE:-7G}"
   configure_args+=(--ccache)
 fi
