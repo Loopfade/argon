@@ -16,8 +16,8 @@ OUT_DIR="out/Argon-${TARGET_CPU}"
 
 BUILD_MODE=${BUILD_MODE:-apk}
 case "$BUILD_MODE" in
-  apk|warm) ;;
-  *) echo 'BUILD_MODE must be apk or warm' >&2; exit 2;;
+  apk|warm|prepare|finish) ;;
+  *) echo 'BUILD_MODE must be apk, warm, prepare, or finish' >&2; exit 2;;
 esac
 BUILD_TIME_LIMIT_MINUTES=${BUILD_TIME_LIMIT_MINUTES:-240}
 if [[ ! "$BUILD_TIME_LIMIT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
@@ -33,17 +33,26 @@ SIGNING_MODE=${SIGNING_MODE:-test}
 case "$SIGNING_MODE" in test|release) ;; *) echo 'SIGNING_MODE must be test or release' >&2; exit 1;; esac
 python3 scripts/preflight.py --arch "$TARGET_CPU"
 python3 -m unittest discover -s tests -v
-if [[ "$BUILD_MODE" == apk && "$SIGNING_MODE" == release ]]; then
+if [[ ( "$BUILD_MODE" == apk || "$BUILD_MODE" == finish ) && "$SIGNING_MODE" == release ]]; then
   : "${TITANIUM_RU_KEYSTORE_BASE64:?Missing release keystore}"
   : "${TITANIUM_RU_STORE_PASSWORD:?Missing release store password}"
   : "${TITANIUM_RU_KEY_PASSWORD:?Missing release key password}"
   : "${TITANIUM_RU_KEY_ALIAS:?Missing release alias}"
 fi
-if [[ -e chromium/src || -e depot_tools ]]; then
+if [[ "$BUILD_MODE" != finish && ( -e chromium/src || -e depot_tools ) ]]; then
   echo 'Use a fresh dedicated checkout: chromium/src or depot_tools already exists.' >&2
   exit 1
 fi
 
+if [[ "$BUILD_MODE" == finish ]]; then
+  if [[ ! -d chromium/src || ! -d depot_tools ]]; then
+    echo 'BUILD_MODE=finish requires a prepared Chromium checkout.' >&2
+    exit 1
+  fi
+  export PATH="$SCRIPT_DIR/depot_tools:$PATH"
+  export DEPOT_TOOLS_UPDATE=0
+  cd chromium/src
+else
 export VERSION
 VERSION=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["chromium_version"])')
 CHROMIUM_REVISION=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["chromium_commit"])')
@@ -107,6 +116,11 @@ cmake -S "$SCRIPT_DIR/tests" -B "$SCRIPT_DIR/.build/policy-tests" \
   -DBORINGSSL_SOURCE_DIR="$PWD/third_party/boringssl/src" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$SCRIPT_DIR/.build/policy-tests" --target scoped_ca_test -j "${BUILD_JOBS:-4}"
 ctest --test-dir "$SCRIPT_DIR/.build/policy-tests" --output-on-failure
+if [[ "$BUILD_MODE" == prepare ]]; then
+  echo 'Chromium source tree is prepared; starting the compiler farm next.'
+  exit 0
+fi
+fi
 
 configure_args=(--arch "$TARGET_CPU" --output "$OUT_DIR/args.gn")
 if [[ -n ${SCCACHE_DIR:-} ]]; then

@@ -63,7 +63,7 @@ jobs:
           mode: worker
           worker-index: ${{ matrix.index }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          slots: 0
+          slots: 2
           tags: tag:ci-sccache
 
   build:
@@ -91,6 +91,11 @@ jobs:
           restore-keys: |
             ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-
             argon-sccache-v1-${{ inputs.arch }}-
+      - name: Prepare Chromium source tree
+        env:
+          BUILD_MODE: prepare
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: bash build.sh "$TARGET_ARCH"
       - name: Start distributed compiler coordinator
         id: farm
         uses: xdqi/sccache-dist-action@b936d2b08e8eae69a9f9b44d949328d7706bf333 # v0.0.6
@@ -100,11 +105,14 @@ jobs:
           min-workers: 6
           wait-timeout: 600s
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          slots: 0
+          slots: 2
           tags: tag:ci-sccache
           dist-fallback: true
       - name: Build, sign and verify APK
+        id: build
+        continue-on-error: true
         env:
+          BUILD_MODE: finish
           SIGNING_MODE: ${{ inputs.signing }}
           TARGET_ARCH: ${{ inputs.arch }}
           TITANIUM_RU_KEYSTORE_BASE64: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEYSTORE_BASE64 || '' }}
@@ -113,14 +121,15 @@ jobs:
           TITANIUM_RU_KEY_ALIAS: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
         run: |
           test "${SCCACHE_WORKERS_ONLINE:-0}" -ge 6
-          timeout --signal=INT --kill-after=3m 330m \
-            env BUILD_JOBS="${SCCACHE_J:-48}" bash build.sh "$TARGET_ARCH"
+          timeout --signal=INT --kill-after=3m 240m \
+            env BUILD_JOBS="${SCCACHE_J:-24}" bash build.sh "$TARGET_ARCH"
       - name: Show distributed compiler statistics
         if: always()
         run: |
           sccache --show-stats || true
           sccache --stop-server || true
       - name: Upload verified APK and provenance
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Argon-${{ inputs.arch }}-${{ github.sha }}
@@ -133,3 +142,6 @@ jobs:
         with:
           path: ~/.cache/sccache
           key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Fail after preserving diagnostics
+        if: always() && steps.build.outcome != 'success'
+        run: exit 1
