@@ -5,6 +5,7 @@ on:
     branches: [experimental/ca-domain-allowlist]
     paths:
       - '.gclient'
+      - 'args.gn'
       - 'build-lock.json'
       - 'build.sh'
       - 'patch.sh'
@@ -13,9 +14,11 @@ on:
       - 'tests/**'
       - 'vanadium'
       - '.github/workflows/build.yml'
+      - '.github/workflows/build-arch.yml'
   pull_request:
     paths:
       - '.gclient'
+      - 'args.gn'
       - 'build-lock.json'
       - 'build.sh'
       - 'patch.sh'
@@ -24,6 +27,7 @@ on:
       - 'tests/**'
       - 'vanadium'
       - '.github/workflows/build.yml'
+      - '.github/workflows/build-arch.yml'
   workflow_dispatch:
     inputs:
       runner:
@@ -38,52 +42,33 @@ on:
         options: [test, release]
         default: test
       arch:
-        description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), x86, or all'
+        description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), or x86'
         required: true
         type: choice
         options: [arm64, arm, x64, x86, all]
         default: arm64
 
 permissions:
+  actions: write
   contents: read
 
 concurrency:
   group: argon-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build and verify ${{ matrix.arch }}
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 360
     strategy:
       fail-fast: false
+      # The repository cache quota is shared. Finish and package one ABI before
+      # warming another so an `all` build cannot evict its own compiler cache.
+      max-parallel: 1
       matrix:
         arch: ${{ fromJSON(github.event_name != 'workflow_dispatch' && '["arm64"]' || (inputs.arch == 'all' && '["arm64","arm","x64","x86"]' || format('["{0}"]', inputs.arch))) }}
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          submodules: true
-          persist-credentials: false
-      - name: Free space on disposable GitHub-hosted runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          test "$RUNNER_ENVIRONMENT" = github-hosted
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
-          df -h .
-      - name: Build, sign and verify APK
-        env:
-          TARGET_ARCH: ${{ matrix.arch }}
-          SIGNING_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
-          TITANIUM_RU_KEYSTORE_BASE64: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_KEYSTORE_BASE64 || '' }}
-          TITANIUM_RU_STORE_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_STORE_PASSWORD || '' }}
-          TITANIUM_RU_KEY_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_PASSWORD || '' }}
-          TITANIUM_RU_KEY_ALIAS: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
-        run: bash build.sh "$TARGET_ARCH"
-      - name: Upload verified APK and provenance
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: Argon-${{ matrix.arch }}-${{ github.sha }}
-          path: artifacts/
-          if-no-files-found: error
-          retention-days: 30
+    uses: ./.github/workflows/build-arch.yml
+    with:
+      arch: ${{ matrix.arch }}
+      runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
+    secrets: inherit

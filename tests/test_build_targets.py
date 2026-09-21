@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -66,11 +67,41 @@ class BuildTargetsTests(unittest.TestCase):
         )
         self.assertEqual(result.strip(), "arm64")
 
+    def test_ccache_mode_uses_ninja_wrapper(self):
+        args = configure_build.render_gn_args("arm64", ccache=True).splitlines()
+        self.assertIn('use_siso = false', args)
+        self.assertIn('cc_wrapper = "ccache"', args)
+        self.assertNotIn('use_siso = true', args)
+
     def test_shell_rejects_invalid_architecture_before_preflight(self):
         result = subprocess.run(["bash", ROOT / "build.sh", "riscv64"],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
         self.assertIn("Unsupported architecture", result.stderr)
+        self.assertNotIn("preflight.py", result.stderr)
+
+    def test_shell_rejects_invalid_build_mode_before_preflight(self):
+        result = subprocess.run(
+            ["bash", ROOT / "build.sh", "arm64"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "BUILD_MODE": "invalid"},
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("BUILD_MODE must be apk or warm", result.stderr)
+        self.assertNotIn("preflight.py", result.stderr)
+
+    def test_shell_requires_cache_directory_for_warm_mode(self):
+        env = {**os.environ, "BUILD_MODE": "warm"}
+        env.pop("CCACHE_DIR", None)
+        result = subprocess.run(
+            ["bash", ROOT / "build.sh", "arm64"],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("CCACHE_DIR is required", result.stderr)
         self.assertNotIn("preflight.py", result.stderr)
 
     def test_legacy_entry_point_selects_arm64(self):
