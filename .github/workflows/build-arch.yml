@@ -102,7 +102,7 @@ jobs:
         with:
           mode: coordinator
           expected-workers: 17
-          min-workers: 6
+          min-workers: 12
           wait-timeout: 600s
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           slots: 3
