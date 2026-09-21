@@ -16,8 +16,8 @@ OUT_DIR="out/Argon-${TARGET_CPU}"
 
 BUILD_MODE=${BUILD_MODE:-apk}
 case "$BUILD_MODE" in
-  apk|warm|prepare|finish) ;;
-  *) echo 'BUILD_MODE must be apk, warm, prepare, or finish' >&2; exit 2;;
+  apk|warm|prepare|checkpoint|finish) ;;
+  *) echo 'BUILD_MODE must be apk, warm, prepare, checkpoint, or finish' >&2; exit 2;;
 esac
 BUILD_TIME_LIMIT_MINUTES=${BUILD_TIME_LIMIT_MINUTES:-240}
 if [[ ! "$BUILD_TIME_LIMIT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
@@ -32,7 +32,7 @@ fi
 SIGNING_MODE=${SIGNING_MODE:-test}
 case "$SIGNING_MODE" in test|release) ;; *) echo 'SIGNING_MODE must be test or release' >&2; exit 1;; esac
 preflight_args=(--arch "$TARGET_CPU")
-if [[ "$BUILD_MODE" == finish ]]; then
+if [[ "$BUILD_MODE" == finish || "$BUILD_MODE" == checkpoint ]]; then
   preflight_args+=(--inputs-only)
 fi
 python3 scripts/preflight.py "${preflight_args[@]}"
@@ -48,9 +48,9 @@ if [[ "$BUILD_MODE" != finish && ( -e chromium/src || -e depot_tools ) ]]; then
   exit 1
 fi
 
-if [[ "$BUILD_MODE" == finish ]]; then
+if [[ "$BUILD_MODE" == finish || "$BUILD_MODE" == checkpoint ]]; then
   if [[ ! -d chromium/src || ! -d depot_tools ]]; then
-    echo 'BUILD_MODE=finish requires a prepared Chromium checkout.' >&2
+    echo "BUILD_MODE=$BUILD_MODE requires a prepared Chromium checkout." >&2
     exit 1
   fi
   export PATH="$SCRIPT_DIR/depot_tools:$PATH"
@@ -149,17 +149,26 @@ elif [[ -n ${CCACHE_DIR:-} ]]; then
 fi
 python3 "$SCRIPT_DIR/scripts/configure_build.py" "${configure_args[@]}"
 gn gen "$OUT_DIR"
-if [[ "$BUILD_MODE" == warm ]]; then
+if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
   echo "Warming compiler cache for up to $BUILD_TIME_LIMIT_MINUTES minutes"
   set +e
   timeout --signal=INT --kill-after=3m "${BUILD_TIME_LIMIT_MINUTES}m" \
     autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" chrome_public_apk
   build_status=$?
   set -e
-  ccache --show-stats
+  if [[ -n ${SCCACHE_DIR:-} ]]; then
+    sccache --show-stats || true
+  else
+    ccache --show-stats
+  fi
   case "$build_status" in
-    0) echo 'Cache warm-up reached the APK target.' ;;
-    124|137) echo 'Cache warm-up time slice completed; the next job will resume from ccache.' ;;
+    0)
+      touch "$SCRIPT_DIR/.build/cache-warm-complete-$TARGET_CPU"
+      echo 'Cache warm-up reached the APK target.'
+      ;;
+    124|137)
+      echo 'Cache warm-up time slice completed; the next slice will resume from the compiler cache.'
+      ;;
     *) exit "$build_status" ;;
   esac
   exit 0
@@ -171,3 +180,4 @@ mapfile -t apks < <(find "$OUT_DIR/apks" -maxdepth 1 -name 'Chrome*.apk' -type f
 python3 "$SCRIPT_DIR/scripts/sign_and_verify.py" --apk "${apks[0]}" \
   --sdk "$PWD/third_party/android_sdk/public" --jdk "$PWD/third_party/jdk/current" \
   --mode "$SIGNING_MODE" --arch "$TARGET_CPU"
+

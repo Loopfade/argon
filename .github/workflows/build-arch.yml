@@ -31,6 +31,9 @@ permissions:
 env:
   SCCACHE_CACHE_PREFIX: argon-sccache-v1-${{ inputs.arch }}
   SCCACHE_CACHE_SIZE: 7G
+  BUILD_JOB_BUDGET_SECONDS: 21600
+  BUILD_FINALIZE_RESERVE_SECONDS: 1800
+  BUILD_CHECKPOINT_MINUTES: 25
 
 jobs:
   farm-config:
@@ -72,6 +75,8 @@ jobs:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 360
     steps:
+      - name: Record job start time
+        run: echo "BUILD_JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           submodules: true
@@ -108,6 +113,151 @@ jobs:
           slots: 3
           tags: tag:ci-sccache
           dist-fallback: true
+      - name: Warm compiler cache (checkpoint 1/5)
+        id: checkpoint_1
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
+          sccache --stop-server || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 1
+        id: save_checkpoint_1
+        if: always() && steps.checkpoint_1.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/sccache
+          key: ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-1
+      - name: Drop cache superseded by checkpoint 1
+        if: steps.save_checkpoint_1.outcome == 'success' && steps.cache.outputs.cache-matched-key != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESTORED_CACHE_KEY: ${{ steps.cache.outputs.cache-matched-key }}
+        run: gh cache delete "$RESTORED_CACHE_KEY" --ref "$GITHUB_REF"
+      - name: Warm compiler cache (checkpoint 2/5)
+        id: checkpoint_2
+        if: steps.checkpoint_1.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
+          sccache --stop-server || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 2
+        id: save_checkpoint_2
+        if: always() && steps.checkpoint_2.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/sccache
+          key: ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-2
+      - name: Drop cache superseded by checkpoint 2
+        if: steps.save_checkpoint_2.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-1" --ref "$GITHUB_REF"
+      - name: Warm compiler cache (checkpoint 3/5)
+        id: checkpoint_3
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
+          sccache --stop-server || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 3
+        id: save_checkpoint_3
+        if: always() && steps.checkpoint_3.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/sccache
+          key: ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-3
+      - name: Drop cache superseded by checkpoint 3
+        if: steps.save_checkpoint_3.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-2" --ref "$GITHUB_REF"
+      - name: Warm compiler cache (checkpoint 4/5)
+        id: checkpoint_4
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
+          sccache --stop-server || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 4
+        id: save_checkpoint_4
+        if: always() && steps.checkpoint_4.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/sccache
+          key: ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-4
+      - name: Drop cache superseded by checkpoint 4
+        if: steps.save_checkpoint_4.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-3" --ref "$GITHUB_REF"
+      - name: Warm compiler cache (checkpoint 5/5)
+        id: checkpoint_5
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
+          sccache --stop-server || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 5
+        id: save_checkpoint_5
+        if: always() && steps.checkpoint_5.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/sccache
+          key: ${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-5
+      - name: Drop cache superseded by checkpoint 5
+        if: steps.save_checkpoint_5.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-4" --ref "$GITHUB_REF"
       - name: Build, sign and verify APK
         id: build
         continue-on-error: true
@@ -121,7 +271,14 @@ jobs:
           TITANIUM_RU_KEY_ALIAS: ${{ inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
         run: |
           test "${SCCACHE_WORKERS_ONLINE:-0}" -ge 6
-          timeout --signal=INT --kill-after=3m 200m \
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - BUILD_FINALIZE_RESERVE_SECONDS - elapsed ))
+          if (( remaining < 60 )); then
+            echo "::error::No build time remains after reserving ${BUILD_FINALIZE_RESERVE_SECONDS}s for cache and artifact upload."
+            exit 1
+          fi
+          echo "Final build time budget: ${remaining}s (elapsed: ${elapsed}s, finalize reserve: ${BUILD_FINALIZE_RESERVE_SECONDS}s)"
+          timeout --signal=INT --kill-after=3m "${remaining}s" \
             env BUILD_JOBS="${SCCACHE_J:-51}" bash build.sh "$TARGET_ARCH"
       - name: Show distributed compiler statistics
         if: always()
@@ -139,11 +296,21 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Save compiler cache
+        id: save_final_cache
         if: always()
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/sccache
           key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Drop checkpoint caches after final save
+        if: steps.save_final_cache.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for checkpoint in 1 2 3 4 5; do
+            gh cache delete "${{ env.SCCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-${checkpoint}" --ref "$GITHUB_REF" || true
+          done
       - name: Fail after preserving diagnostics
         if: always() && steps.build.outcome != 'success'
         run: exit 1
