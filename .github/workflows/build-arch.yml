@@ -17,8 +17,8 @@ on:
         type: string
       continuation:
         required: false
-        type: number
-        default: 0
+        type: string
+        default: '0'
     secrets:
       TITANIUM_RU_KEYSTORE_BASE64:
         required: false

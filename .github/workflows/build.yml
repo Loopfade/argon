@@ -52,8 +52,8 @@ on:
       continuation:
         description: 'Internal automatic continuation counter'
         required: false
-        type: number
-        default: 0
+        type: string
+        default: '0'
 
 permissions:
   actions: write
@@ -80,5 +80,5 @@ jobs:
       image: ghcr.io/loopfade/argon-build@sha256:aeaba6f397ad913a2b0eaa8586525bebe417397d1d0f356b1c7dcb17e113976d
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
       signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
-      continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || 0 }}
+      continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
     secrets: inherit
