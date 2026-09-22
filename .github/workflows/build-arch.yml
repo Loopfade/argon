@@ -15,6 +15,10 @@ on:
       signing:
         required: true
         type: string
+      continuation:
+        required: false
+        type: number
+        default: 0
     secrets:
       TITANIUM_RU_KEYSTORE_BASE64:
         required: false
@@ -35,7 +39,9 @@ env:
   CCACHE_MAXSIZE: 7G
   BUILD_JOB_BUDGET_SECONDS: 21600
   BUILD_FINALIZE_RESERVE_SECONDS: 1800
+  BUILD_FINISH_MINIMUM_SECONDS: 3600
   BUILD_CHECKPOINT_MINUTES: 20
+  AUTO_CONTINUE_MAX: 10
   BUILD_CONTAINER_NAME: argon-build
 
 jobs:
@@ -92,13 +98,26 @@ jobs:
         run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --zero-stats
       - name: Warm local compiler cache (checkpoint 1/20)
         id: checkpoint_1
+        if: hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -126,14 +145,26 @@ jobs:
           done
       - name: Warm local compiler cache (checkpoint 2/20)
         id: checkpoint_2
-        if: steps.checkpoint_1.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -155,14 +186,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-1" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 3/20)
         id: checkpoint_3
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -184,14 +227,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-2" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 4/20)
         id: checkpoint_4
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -213,14 +268,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-3" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 5/20)
         id: checkpoint_5
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -242,14 +309,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-4" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 6/20)
         id: checkpoint_6
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -271,14 +350,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-5" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 7/20)
         id: checkpoint_7
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -300,14 +391,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-6" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 8/20)
         id: checkpoint_8
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -329,14 +432,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-7" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 9/20)
         id: checkpoint_9
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -358,14 +473,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-8" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 10/20)
         id: checkpoint_10
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -387,14 +514,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-9" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 11/20)
         id: checkpoint_11
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -416,14 +555,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-10" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 12/20)
         id: checkpoint_12
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -445,14 +596,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-11" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 13/20)
         id: checkpoint_13
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -474,14 +637,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-12" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 14/20)
         id: checkpoint_14
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -503,14 +678,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-13" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 15/20)
         id: checkpoint_15
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -532,14 +719,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-14" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 16/20)
         id: checkpoint_16
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -561,14 +760,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-15" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 17/20)
         id: checkpoint_17
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -590,14 +801,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-16" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 18/20)
         id: checkpoint_18
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -619,14 +842,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-17" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 19/20)
         id: checkpoint_19
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && steps.checkpoint_18.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && steps.checkpoint_18.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -648,14 +883,26 @@ jobs:
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-18" --ref "$GITHUB_REF"
       - name: Warm local compiler cache (checkpoint 20/20)
         id: checkpoint_20
-        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && steps.checkpoint_18.outputs.complete != 'true' && steps.checkpoint_19.outputs.complete != 'true'
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && steps.checkpoint_18.outputs.complete != 'true' && steps.checkpoint_19.outputs.complete != 'true' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         env:
           BUILD_MODE: checkpoint
           BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
           TARGET_ARCH: ${{ inputs.arch }}
         run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_CHECKPOINT_MINUTES * 60 + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Deferring the next cache slice: ${remaining}s remain, ${required}s are required."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+            echo 'budget_exhausted=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
           docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          echo 'budget_exhausted=false' >> "$GITHUB_OUTPUT"
           if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
             echo 'complete=true' >> "$GITHUB_OUTPUT"
           else
@@ -675,8 +922,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-19" --ref "$GITHUB_REF"
+      - name: Check final-build time budget
+        if: hashFiles(format('.build/cache-warm-complete-{0}', inputs.arch)) != '' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
+        env:
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          elapsed=$(( $(date +%s) - BUILD_JOB_STARTED_AT ))
+          remaining=$(( BUILD_JOB_BUDGET_SECONDS - elapsed ))
+          required=$(( BUILD_FINISH_MINIMUM_SECONDS + BUILD_FINALIZE_RESERVE_SECONDS ))
+          if (( remaining < required )); then
+            echo "::notice::Cache warm-up is complete, but only ${remaining}s remain; continuing on a fresh runner before packaging."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+          fi
       - name: Build, sign and verify APK
         id: build
+        if: hashFiles(format('.build/cache-warm-complete-{0}', inputs.arch)) != '' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) == ''
         continue-on-error: true
         env:
           BUILD_MODE: finish
@@ -729,6 +990,31 @@ jobs:
           for checkpoint in {1..20}; do
             gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-${checkpoint}" --ref "$GITHUB_REF" || true
           done
+      - name: Continue cache warm-up on a fresh runner
+        id: continue_build
+        if: always() && !cancelled() && steps.build.outcome != 'success' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTINUATION_COUNT: ${{ inputs.continuation }}
+          RUNNER_LABEL: ${{ inputs.runner }}
+          SIGNING_MODE: ${{ inputs.signing }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          if (( CONTINUATION_COUNT >= AUTO_CONTINUE_MAX )); then
+            echo "::error::Automatic continuation limit (${AUTO_CONTINUE_MAX}) reached."
+            exit 1
+          fi
+          next=$(( CONTINUATION_COUNT + 1 ))
+          echo "Starting automatic continuation ${next}/${AUTO_CONTINUE_MAX} for ${TARGET_ARCH}."
+          gh workflow run build.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF_NAME" \
+            -f runner="$RUNNER_LABEL" \
+            -f signing="$SIGNING_MODE" \
+            -f arch="$TARGET_ARCH" \
+            -f continuation="$next"
+          echo 'dispatched=true' >> "$GITHUB_OUTPUT"
       - name: Fail after preserving diagnostics
-        if: always() && steps.build.outcome != 'success'
+        if: always() && !cancelled() && steps.build.outcome != 'success' && steps.continue_build.outcome != 'success'
         run: exit 1
