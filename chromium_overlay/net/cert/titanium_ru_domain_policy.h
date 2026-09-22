@@ -81,12 +81,12 @@ inline TitaniumRuDomainValidationResult NormalizeTitaniumRussianRootDomain(
 
   const GURL url(base::StrCat({"https://", candidate, "/"}));
   if (!url.is_valid() || !url.SchemeIs("https") || !url.has_host() ||
-      url.HostIsIPAddress() || !url.port().empty() || url.path_piece() != "/" ||
+      url.HostIsIPAddress() || !url.port().empty() || url.path() != "/" ||
       url.has_query() || url.has_ref()) {
     return TitaniumRuDomainValidationResult::kInvalid;
   }
 
-  const std::string host = url.host();
+  const std::string host(url.host());
   if (host.empty() || host.size() > 253 ||
       !IsValidTitaniumRussianRootDnsHostname(host)) {
     return TitaniumRuDomainValidationResult::kInvalid;
