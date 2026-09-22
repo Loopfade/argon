@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "base/values.h"
-#include "titanium/chromium_src/chrome/browser/android/argon_certificate_domains_jni_headers/ArgonCertificateDomainsSettings_jni.h"
+#include "chrome/android/chrome_jni_headers/ArgonCertificateDomainsSettings_jni.h"
 #include "chrome/browser/net/argon_ca_prefs.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/prefs/pref_service.h"

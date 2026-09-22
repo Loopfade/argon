@@ -42,8 +42,8 @@ class PatchTests(unittest.TestCase):
                 'PrivacySettingsExt.java",',
             ),
             (
-                patch.patch_titanium_chrome_java_srcjar_deps,
-                "chrome_java_ext_full_path_srcjar_deps = [\n]",
+                patch.patch_chrome_android_gn,
+                '  generate_jni("chrome_jni_headers") {\n    sources = [',
             ),
             (
                 patch.patch_titanium_chrome_resources,
@@ -106,21 +106,24 @@ class PatchTests(unittest.TestCase):
         self.assertIn("ArgonCertificateDomainsSettings.java", java)
         self.assertIn("ArgonCertificateDomainsSettings", xml)
 
-    def test_android_settings_jni_is_generated_once_and_shared(self):
-        srcjar_deps = patch.patch_titanium_chrome_java_srcjar_deps(
-            "chrome_java_ext_full_path_srcjar_deps = [\n]"
+    def test_android_settings_jni_uses_single_chrome_target(self):
+        chrome_android_gn = patch.patch_chrome_android_gn(
+            '  generate_jni("chrome_jni_headers") {\n    sources = ['
         )
+        java_source = (
+            "//titanium/chromium_src/chrome/android/java/src/org/chromium/"
+            "chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java"
+        )
+        self.assertEqual(chrome_android_gn.count(java_source), 1)
+        self.assertEqual(
+            chrome_android_gn.count('generate_jni("chrome_jni_headers")'), 1
+        )
+
         cc_deps = patch.patch_titanium_android_cc_deps(
             "android_cc_ext_full_path_deps = [\n]"
         )
-        target = (
-            "//titanium/chromium_src/chrome/browser/android:"
-            "argon_certificate_domains_jni_headers"
-        )
-
-        self.assertEqual(srcjar_deps.count(target), 1)
-        self.assertEqual(cc_deps.count(target), 1)
-        self.assertNotIn("//chrome/android:jni_headers", cc_deps)
+        self.assertEqual(cc_deps.count("//chrome/android:chrome_jni_headers"), 1)
+        self.assertNotIn("argon_certificate_domains_jni_headers", cc_deps)
 
         cc_sources = patch.patch_titanium_android_cc_sources(
             "android_cc_ext_full_path_sources = [\n]"
@@ -134,22 +137,18 @@ class PatchTests(unittest.TestCase):
             cc_sources,
         )
 
-        build_gn = (
+        obsolete_target = (
             ROOT
             / "chromium_overlay/titanium/chromium_src/chrome/browser/android/BUILD.gn"
-        ).read_text()
-        self.assertEqual(
-            build_gn.count('generate_jni("argon_certificate_domains_jni_headers")'),
-            1,
         )
-        self.assertEqual(build_gn.count("ArgonCertificateDomainsSettings.java"), 1)
+        self.assertFalse(obsolete_target.exists())
 
         native_source = (
             ROOT
             / "chromium_overlay/chrome/browser/android/argon_certificate_domains_settings.cc"
         ).read_text()
         self.assertIn(
-            "argon_certificate_domains_jni_headers/"
+            "chrome/android/chrome_jni_headers/"
             "ArgonCertificateDomainsSettings_jni.h",
             native_source,
         )
