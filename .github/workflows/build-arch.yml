@@ -90,7 +90,7 @@ jobs:
           df -h .
       - name: Reset compiler-cache statistics
         run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --zero-stats
-      - name: Warm local compiler cache (checkpoint 1/12)
+      - name: Warm local compiler cache (checkpoint 1/20)
         id: checkpoint_1
         env:
           BUILD_MODE: checkpoint
@@ -112,14 +112,19 @@ jobs:
         with:
           path: ${{ runner.temp }}/ccache
           key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-1
-      - name: Drop cache superseded by checkpoint 1
-        if: steps.save_checkpoint_1.outcome == 'success' && steps.cache.outputs.cache-matched-key != ''
+      - name: Drop stale compiler caches after checkpoint 1
+        if: steps.save_checkpoint_1.outcome == 'success'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          RESTORED_CACHE_KEY: ${{ steps.cache.outputs.cache-matched-key }}
-        run: gh cache delete "$RESTORED_CACHE_KEY" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 2/12)
+          CURRENT_CACHE_KEY: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-1
+        run: |
+          gh cache list --ref "$GITHUB_REF" --limit 100 --json id,key \
+            --jq ".[] | select(.key | startswith(\"${CCACHE_CACHE_PREFIX}-\")) | select(.key != \"${CURRENT_CACHE_KEY}\") | .id" |
+          while read -r cache_id; do
+            [[ -z "$cache_id" ]] || gh cache delete "$cache_id"
+          done
+      - name: Warm local compiler cache (checkpoint 2/20)
         id: checkpoint_2
         if: steps.checkpoint_1.outputs.complete != 'true'
         env:
@@ -148,7 +153,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-1" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 3/12)
+      - name: Warm local compiler cache (checkpoint 3/20)
         id: checkpoint_3
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true'
         env:
@@ -177,7 +182,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-2" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 4/12)
+      - name: Warm local compiler cache (checkpoint 4/20)
         id: checkpoint_4
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true'
         env:
@@ -206,7 +211,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-3" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 5/12)
+      - name: Warm local compiler cache (checkpoint 5/20)
         id: checkpoint_5
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true'
         env:
@@ -235,7 +240,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-4" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 6/12)
+      - name: Warm local compiler cache (checkpoint 6/20)
         id: checkpoint_6
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true'
         env:
@@ -264,7 +269,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-5" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 7/12)
+      - name: Warm local compiler cache (checkpoint 7/20)
         id: checkpoint_7
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true'
         env:
@@ -293,7 +298,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-6" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 8/12)
+      - name: Warm local compiler cache (checkpoint 8/20)
         id: checkpoint_8
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true'
         env:
@@ -322,7 +327,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-7" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 9/12)
+      - name: Warm local compiler cache (checkpoint 9/20)
         id: checkpoint_9
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true'
         env:
@@ -351,7 +356,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-8" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 10/12)
+      - name: Warm local compiler cache (checkpoint 10/20)
         id: checkpoint_10
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true'
         env:
@@ -380,7 +385,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-9" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 11/12)
+      - name: Warm local compiler cache (checkpoint 11/20)
         id: checkpoint_11
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true'
         env:
@@ -409,7 +414,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-10" --ref "$GITHUB_REF"
-      - name: Warm local compiler cache (checkpoint 12/12)
+      - name: Warm local compiler cache (checkpoint 12/20)
         id: checkpoint_12
         if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true'
         env:
@@ -438,6 +443,238 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-11" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 13/20)
+        id: checkpoint_13
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 13
+        id: save_checkpoint_13
+        if: always() && steps.checkpoint_13.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-13
+      - name: Drop cache superseded by checkpoint 13
+        if: steps.save_checkpoint_13.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-12" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 14/20)
+        id: checkpoint_14
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 14
+        id: save_checkpoint_14
+        if: always() && steps.checkpoint_14.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-14
+      - name: Drop cache superseded by checkpoint 14
+        if: steps.save_checkpoint_14.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-13" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 15/20)
+        id: checkpoint_15
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 15
+        id: save_checkpoint_15
+        if: always() && steps.checkpoint_15.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-15
+      - name: Drop cache superseded by checkpoint 15
+        if: steps.save_checkpoint_15.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-14" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 16/20)
+        id: checkpoint_16
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 16
+        id: save_checkpoint_16
+        if: always() && steps.checkpoint_16.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-16
+      - name: Drop cache superseded by checkpoint 16
+        if: steps.save_checkpoint_16.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-15" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 17/20)
+        id: checkpoint_17
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 17
+        id: save_checkpoint_17
+        if: always() && steps.checkpoint_17.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-17
+      - name: Drop cache superseded by checkpoint 17
+        if: steps.save_checkpoint_17.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-16" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 18/20)
+        id: checkpoint_18
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 18
+        id: save_checkpoint_18
+        if: always() && steps.checkpoint_18.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-18
+      - name: Drop cache superseded by checkpoint 18
+        if: steps.save_checkpoint_18.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-17" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 19/20)
+        id: checkpoint_19
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && steps.checkpoint_18.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 19
+        id: save_checkpoint_19
+        if: always() && steps.checkpoint_19.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-19
+      - name: Drop cache superseded by checkpoint 19
+        if: steps.save_checkpoint_19.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-18" --ref "$GITHUB_REF"
+      - name: Warm local compiler cache (checkpoint 20/20)
+        id: checkpoint_20
+        if: steps.checkpoint_1.outputs.complete != 'true' && steps.checkpoint_2.outputs.complete != 'true' && steps.checkpoint_3.outputs.complete != 'true' && steps.checkpoint_4.outputs.complete != 'true' && steps.checkpoint_5.outputs.complete != 'true' && steps.checkpoint_6.outputs.complete != 'true' && steps.checkpoint_7.outputs.complete != 'true' && steps.checkpoint_8.outputs.complete != 'true' && steps.checkpoint_9.outputs.complete != 'true' && steps.checkpoint_10.outputs.complete != 'true' && steps.checkpoint_11.outputs.complete != 'true' && steps.checkpoint_12.outputs.complete != 'true' && steps.checkpoint_13.outputs.complete != 'true' && steps.checkpoint_14.outputs.complete != 'true' && steps.checkpoint_15.outputs.complete != 'true' && steps.checkpoint_16.outputs.complete != 'true' && steps.checkpoint_17.outputs.complete != 'true' && steps.checkpoint_18.outputs.complete != 'true' && steps.checkpoint_19.outputs.complete != 'true'
+        env:
+          BUILD_MODE: checkpoint
+          BUILD_TIME_LIMIT_MINUTES: ${{ env.BUILD_CHECKPOINT_MINUTES }}
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          env BUILD_JOBS="$(nproc)" bash .github/ci/run-in-build-container.sh
+          docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --cleanup || true
+          if [[ -f ".build/cache-warm-complete-${TARGET_ARCH}" ]]; then
+            echo 'complete=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'complete=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save compiler cache checkpoint 20
+        id: save_checkpoint_20
+        if: always() && steps.checkpoint_20.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-20
+      - name: Drop cache superseded by checkpoint 20
+        if: steps.save_checkpoint_20.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-19" --ref "$GITHUB_REF"
       - name: Build, sign and verify APK
         id: build
         continue-on-error: true
@@ -484,12 +721,12 @@ jobs:
           path: ${{ runner.temp }}/ccache
           key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Drop checkpoint caches after final save
-        if: steps.save_final_cache.outcome == 'success'
+        if: always() && steps.save_final_cache.outcome == 'success'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for checkpoint in {1..12}; do
+          for checkpoint in {1..20}; do
             gh cache delete "${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-checkpoint-${checkpoint}" --ref "$GITHUB_REF" || true
           done
       - name: Fail after preserving diagnostics
