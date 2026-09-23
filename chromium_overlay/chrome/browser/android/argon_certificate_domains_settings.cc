@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "base/android/jni_string.h"
 #include "base/values.h"
 #include "chrome/android/chrome_jni_headers/ArgonCertificateDomainsSettings_jni.h"
 #include "chrome/browser/net/argon_ca_prefs.h"
