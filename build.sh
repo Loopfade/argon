@@ -149,12 +149,13 @@ fi
 python3 "$SCRIPT_DIR/scripts/configure_build.py" "${configure_args[@]}"
 gn gen "$OUT_DIR"
 if [[ "$BUILD_MODE" == prepare ]]; then
-  # Compile the injected JNI translation unit while publishing the prepared
-  # image. This catches generated-JNI, Chromium API and GN dependency errors
-  # before a multi-hour cache warm-up starts.
+  # Compile the injected JNI translation unit and Chrome's Java target while
+  # publishing the prepared image. This catches generated-JNI, Java/resources,
+  # Chromium API and GN dependency errors before a multi-hour warm-up starts.
   autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" \
-    obj/chrome/browser/android/android/argon_certificate_domains_settings.o
-  echo 'Chromium source tree and Argon JNI integration are prepared.'
+    obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
+    chrome_java
+  echo 'Chromium source tree and Argon Android integration are prepared.'
   exit 0
 fi
 if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
