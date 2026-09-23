@@ -38,9 +38,35 @@ def normalize(data: bytes, strip_volatile_headers: bool) -> bytes:
     )
 
 
-def download(entry: dict[str, str], opener=urllib.request.urlopen) -> bytes:
+def atomic_write(output: Path, data: bytes) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=output.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(output)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def download(
+    entry: dict[str, str],
+    opener=urllib.request.urlopen,
+    cache_dir: Path | None = None,
+) -> bytes:
     url = entry["url"]
     expected = entry["sha256"]
+    cached = cache_dir / expected if cache_dir is not None else None
+    if cached is not None and cached.is_file():
+        data = cached.read_bytes()
+        if hashlib.sha256(data).hexdigest() == expected:
+            return data
+        cached.unlink()
+
     if not url.startswith("https://"):
         raise ValueError(f"Filter-list URL must use HTTPS: {url}")
     context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
@@ -56,32 +82,37 @@ def download(entry: dict[str, str], opener=urllib.request.urlopen) -> bytes:
             f"Filter-list digest mismatch for {entry['name']}: "
             f"expected {expected}, got {actual}"
         )
+    if cached is not None:
+        atomic_write(cached, data)
     return data
 
 
-def fetch(output: Path, entries: list[dict[str, str]], opener=urllib.request.urlopen) -> None:
+def fetch(
+    output: Path,
+    entries: list[dict[str, str]],
+    opener=urllib.request.urlopen,
+    cache_dir: Path | None = None,
+) -> None:
     # Preserve Vanadium's deterministic URL ordering while refusing partial or
     # changed downloads. The destination is replaced only after every digest passes.
-    payload = b"".join(download(entry, opener) for entry in sorted(entries, key=lambda e: e["url"]))
-    output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(dir=output.parent, delete=False) as stream:
-            temporary = Path(stream.name)
-            stream.write(payload)
-            stream.flush()
-            os.fsync(stream.fileno())
-        temporary.replace(output)
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
+    payload = b"".join(
+        download(entry, opener, cache_dir)
+        for entry in sorted(entries, key=lambda e: e["url"])
+    )
+    atomic_write(output, payload)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
+    cache_default = os.environ.get("ARGON_FILTER_LIST_CACHE_DIR")
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=Path(cache_default) if cache_default else None,
+    )
     args = parser.parse_args()
-    fetch(args.output, load_entries())
+    fetch(args.output, load_entries(), cache_dir=args.cache_dir)
 
 
 if __name__ == "__main__":
