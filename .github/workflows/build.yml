@@ -3,30 +3,16 @@ name: Build Argon
 on:
   push:
     branches: [experimental/ca-domain-allowlist]
+    # Prepared-source changes publish a new immutable image first. The later
+    # digest-pin commit modifies build.yml and starts the APK build exactly once.
     paths:
-      - '.gclient'
-      - 'args.gn'
-      - 'build-lock.json'
-      - 'build.sh'
-      - 'patch.sh'
-      - 'chromium_overlay/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'vanadium'
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
       - '.github/ci/run-in-build-container.sh'
   pull_request:
+    # Prepared-source changes publish a new immutable image first. The later
+    # digest-pin commit modifies build.yml and starts the APK build exactly once.
     paths:
-      - '.gclient'
-      - 'args.gn'
-      - 'build-lock.json'
-      - 'build.sh'
-      - 'patch.sh'
-      - 'chromium_overlay/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'vanadium'
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
       - '.github/ci/run-in-build-container.sh'
