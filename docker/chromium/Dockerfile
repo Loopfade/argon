@@ -44,7 +44,7 @@ USER argon
 RUN python3 /opt/argon-cache/scripts/fetch_pinned_filter_lists.py \
         --output /opt/argon-cache/verified-filter-lists.txt \
         --cache-dir "$ARGON_FILTER_LIST_CACHE_DIR" \
-    && rm -rf /opt/argon-cache
+    && rm -rf /opt/argon-cache/*
 
 LABEL org.opencontainers.image.revision="${ARGON_REVISION}"
 
