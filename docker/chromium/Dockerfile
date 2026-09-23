@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR /opt/argon
 RUN chown argon:argon /opt/argon \
     && install -d -o argon -g argon \
-        /opt/argon-cache/scripts /opt/argon-filter-cache
+        /opt/argon-cache /opt/argon-cache/scripts /opt/argon-filter-cache
 
 # This layer changes only when the downloader or pinned digests change. The
 # normalized payloads are named by SHA-256 and verified again before every use.
