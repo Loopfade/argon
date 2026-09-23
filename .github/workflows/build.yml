@@ -77,7 +77,7 @@ jobs:
     uses: ./.github/workflows/build-arch.yml
     with:
       arch: ${{ matrix.arch }}
-      image: ghcr.io/loopfade/argon-build@sha256:3c5d1d52f9c38cdfa141165de817bdb8e8a8c0dccc69d5e5c3ac5a29c3fa7e79
+      image: ghcr.io/loopfade/argon-build@sha256:f5d5b895ceefaa856f6f6c4262e0dc0afd89860021efd2fceef74a3a04085016
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
       signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
