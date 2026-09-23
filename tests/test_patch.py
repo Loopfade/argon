@@ -152,6 +152,10 @@ class PatchTests(unittest.TestCase):
             "ArgonCertificateDomainsSettings_jni.h",
             native_source,
         )
+        self.assertIn(
+            "\nDEFINE_JNI(ArgonCertificateDomainsSettings)\n",
+            native_source,
+        )
 
     def test_missing_or_duplicate_anchor_fails(self):
         for source in ["", self.profile() + self.profile()]:
