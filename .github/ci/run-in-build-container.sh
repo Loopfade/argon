@@ -27,6 +27,10 @@ if [[ -n ${BUILD_EXEC_TIMEOUT_SECONDS:-} ]]; then
   docker_args+=(--env "BUILD_EXEC_TIMEOUT_SECONDS=$BUILD_EXEC_TIMEOUT_SECONDS")
 fi
 
+# The checkout is bind-mounted at /workspace; ensure build markers can be
+# written back to the runner even when the prepared image removed .build.
+mkdir -p "${GITHUB_WORKSPACE:-$PWD}/.build"
+
 exec docker exec "${docker_args[@]}" "$container" bash -lc '
   set -euo pipefail
   cd /workspace
