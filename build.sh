@@ -120,10 +120,6 @@ cmake -S "$SCRIPT_DIR/tests" -B "$SCRIPT_DIR/.build/policy-tests" \
   -DBORINGSSL_SOURCE_DIR="$PWD/third_party/boringssl/src" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$SCRIPT_DIR/.build/policy-tests" --target scoped_ca_test -j "${BUILD_JOBS:-4}"
 ctest --test-dir "$SCRIPT_DIR/.build/policy-tests" --output-on-failure
-if [[ "$BUILD_MODE" == prepare ]]; then
-  echo 'Chromium source tree is prepared; starting cache-backed compilation next.'
-  exit 0
-fi
 fi
 
 configure_args=(--arch "$TARGET_CPU" --output "$OUT_DIR/args.gn")
@@ -152,6 +148,15 @@ elif [[ -n ${CCACHE_DIR:-} ]]; then
 fi
 python3 "$SCRIPT_DIR/scripts/configure_build.py" "${configure_args[@]}"
 gn gen "$OUT_DIR"
+if [[ "$BUILD_MODE" == prepare ]]; then
+  # Compile the injected JNI translation unit while publishing the prepared
+  # image. This catches generated-JNI, Chromium API and GN dependency errors
+  # before a multi-hour cache warm-up starts.
+  autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" \
+    obj/chrome/browser/android/android/argon_certificate_domains_settings.o
+  echo 'Chromium source tree and Argon JNI integration are prepared.'
+  exit 0
+fi
 if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
   echo "Warming compiler cache for up to $BUILD_TIME_LIMIT_MINUTES minutes"
   set +e
