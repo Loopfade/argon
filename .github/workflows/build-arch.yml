@@ -955,8 +955,17 @@ jobs:
             exit 1
           fi
           echo "Final build time budget: ${remaining}s (elapsed: ${elapsed}s, finalize reserve: ${BUILD_FINALIZE_RESERVE_SECONDS}s)"
+          set +e
           BUILD_EXEC_TIMEOUT_SECONDS="$remaining" BUILD_JOBS="$(nproc)" \
             bash .github/ci/run-in-build-container.sh
+          build_status=$?
+          set -e
+          if (( build_status == 124 || build_status == 137 )); then
+            echo "::notice::Final build exhausted its time budget; continuing on a fresh runner."
+            mkdir -p .build
+            touch ".build/cache-warm-budget-exhausted-${TARGET_ARCH}"
+          fi
+          exit "$build_status"
       - name: Show local compiler-cache statistics
         if: always()
         run: |
@@ -977,6 +986,7 @@ jobs:
       - name: Save compiler cache
         id: save_final_cache
         if: always()
+        continue-on-error: true
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ccache
