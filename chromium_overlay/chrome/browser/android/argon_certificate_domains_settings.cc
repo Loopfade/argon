@@ -115,3 +115,5 @@ static jboolean JNI_ArgonCertificateDomainsSettings_RemoveDomain(
 }
 
 }  // namespace
+
+DEFINE_JNI(ArgonCertificateDomainsSettings)
