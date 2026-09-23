@@ -172,6 +172,7 @@ if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
   fi
   case "$build_status" in
     0)
+      mkdir -p "$SCRIPT_DIR/.build"
       touch "$SCRIPT_DIR/.build/cache-warm-complete-$TARGET_CPU"
       echo 'Cache warm-up reached the APK target.'
       ;;
