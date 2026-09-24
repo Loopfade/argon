@@ -63,7 +63,7 @@ jobs:
       arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
       image: ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
-      # Trusted pushes to main and experimental use the permanent release key.
+      # Trusted pushes to main use the permanent release key.
       # Pull-request builds keep their temporary key, including same-repo PRs.
       signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || (github.event_name == 'push' && 'release' || 'test') }}
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}

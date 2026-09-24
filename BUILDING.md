@@ -164,6 +164,7 @@ build_argon() {
 
   (
     cd "$checkout"
+    export ARGON_FILTER_LIST_CACHE_DIR="$PWD/docker/chromium/filter-cache"
     SIGNING_MODE=release BUILD_JOBS="$BUILD_JOBS" bash build.sh "$arch"
     cp -a artifacts/. "$ARGON_RELEASES/"
   )

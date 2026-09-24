@@ -1,10 +1,5 @@
 # syntax=docker/dockerfile:1.7
 
-# Preserve the verified snapshot of the only filter list with a mutable URL.
-# This is a content source, not just a BuildKit cache hint: even a cold rebuild
-# must not depend on the upstream URL still serving the September 2026 bytes.
-FROM ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee AS filter-seed
-
 FROM ubuntu:24.04
 
 ARG ARGON_REVISION=unknown
@@ -44,9 +39,9 @@ RUN chown argon:argon /opt/argon \
 COPY --chown=argon:argon build-lock.json /opt/argon-cache/build-lock.json
 COPY --chown=argon:argon scripts/fetch_pinned_filter_lists.py \
     /opt/argon-cache/scripts/fetch_pinned_filter_lists.py
-COPY --from=filter-seed --chown=argon:argon \
-    /opt/argon-filter-cache/47de51909886eaf08c3114b18496a98ac372b8cb2349dbba84b0ac02a7b168a6 \
-    /opt/argon-filter-cache/47de51909886eaf08c3114b18496a98ac372b8cb2349dbba84b0ac02a7b168a6
+# Seed the mutable upstream input even when no registry build cache exists.
+# The downloader below verifies the committed bytes against build-lock.json.
+COPY --chown=argon:argon docker/chromium/filter-cache/ /opt/argon-filter-cache/
 
 USER argon
 RUN python3 /opt/argon-cache/scripts/fetch_pinned_filter_lists.py \
