@@ -38,11 +38,6 @@ Push в `main` собирается с постоянной release-подпис
 
 [Исходный README Titanium](README.upstream.md) · [Лицензия Argon](LICENSE) · [Лицензия Ruthenium](licenses/Ruthenium-BSD-3-Clause.txt)
 
-## Участники
-
-- [Loopfade](https://github.com/Loopfade) — развитие проекта, проверка сборок и публикация релизов.
-- **Codex (OpenAI)** — ИИ-помощник: подготовка изменений кода, настройка GitHub Actions, поиск и исправление ошибок.
-
 ## Версия Chromium
 
 `153.0.8010.52` — commit `78e5e45d4bb41035e17ea4da2cc257f496416ac9`.
