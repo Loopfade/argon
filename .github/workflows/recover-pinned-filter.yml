@@ -1,0 +1,54 @@
+name: Recover pinned filter snapshot
+on: workflow_dispatch
+permissions:
+  contents: read
+  packages: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Extract verified snapshot from its small OCI layer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, io, json, os, tarfile, urllib.request
+          from pathlib import Path
+          digest = 'sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee'
+          expected = '47de51909886eaf08c3114b18496a98ac372b8cb2349dbba84b0ac02a7b168a6'
+          auth = base64.b64encode((os.environ['GITHUB_ACTOR'] + ':' + os.environ['GH_TOKEN']).encode()).decode()
+          request = urllib.request.Request('https://ghcr.io/token?service=ghcr.io&scope=repository:loopfade/argon-build:pull', headers={'Authorization': 'Basic ' + auth})
+          with urllib.request.urlopen(request, timeout=60) as response:
+              token = json.load(response)['token']
+          def get(kind, sha):
+              request = urllib.request.Request('https://ghcr.io/v2/loopfade/argon-build/' + kind + '/' + sha,
+                  headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'})
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  data = response.read(32 * 1024 * 1024 + 1)
+              assert len(data) <= 32 * 1024 * 1024, 'Expected only a small metadata/filter layer'
+              assert 'sha256:' + hashlib.sha256(data).hexdigest() == sha
+              return data
+          manifest = json.loads(get('manifests', digest))
+          if 'manifests' in manifest:
+              chosen = next(m for m in manifest['manifests'] if m.get('platform', {}).get('os') == 'linux' and m['platform'].get('architecture') == 'amd64')
+              manifest = json.loads(get('manifests', chosen['digest']))
+          config = json.loads(get('blobs', manifest['config']['digest']))
+          history = [h for h in config['history'] if not h.get('empty_layer', False)]
+          assert len(history) == len(manifest['layers'])
+          candidates = [layer for h, layer in zip(history, manifest['layers']) if 'RUN ' in h.get('created_by', '') and 'fetch_pinned_filter_lists.py' in h['created_by'] and '--cache-dir' in h['created_by']]
+          assert len(candidates) == 1
+          layer = get('blobs', candidates[0]['digest'])
+          with tarfile.open(fileobj=io.BytesIO(layer), mode='r:*') as archive:
+              payload = archive.extractfile('opt/argon-filter-cache/' + expected).read()
+          assert hashlib.sha256(payload).hexdigest() == expected
+          Path('filter-snapshot').mkdir()
+          Path('filter-snapshot/antiadblockfilters.txt').write_bytes(payload)
+          print('Recovered verified snapshot:', len(payload), 'bytes;', expected)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-filter-snapshot
+          path: filter-snapshot/
+          if-no-files-found: error
+          retention-days: 3
