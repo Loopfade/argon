@@ -1,5 +1,7 @@
 # Argon
 
+[![Build Argon](https://github.com/Loopfade/argon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Loopfade/argon/actions/workflows/build.yml)
+
 Argon — Android-браузер на базе [Titanium](https://github.com/jqssun/android-titanium-browser) и Chromium с поддержкой расширений и ограниченным доверием к встроенному российскому корневому УЦ.
 
 ## Реализовано
@@ -35,6 +37,11 @@ Push в `main` собирается с постоянной release-подпис
 Механизм внедрения сертификата через Chromium `AdditionalCertificates` и базовое ограничение доверия доменами `.ru`, `.рф` и `.su` адаптированы из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android) по лицензии BSD-3-Clause.
 
 [Исходный README Titanium](README.upstream.md) · [Лицензия Argon](LICENSE) · [Лицензия Ruthenium](licenses/Ruthenium-BSD-3-Clause.txt)
+
+## Участники
+
+- [Loopfade](https://github.com/Loopfade) — развитие проекта, проверка сборок и публикация релизов.
+- **Codex (OpenAI)** — ИИ-помощник: подготовка изменений кода, настройка GitHub Actions, поиск и исправление ошибок.
 
 ## Версия Chromium
 
