@@ -8,14 +8,14 @@ on:
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
-      - '.github/ci/run-in-build-container.sh'
+      - '.github/ci/**'
   pull_request:
     # Prepared-source changes publish a new immutable image first. The later
     # digest-pin commit modifies build.yml and starts the APK build exactly once.
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
-      - '.github/ci/run-in-build-container.sh'
+      - '.github/ci/**'
   workflow_dispatch:
     inputs:
       runner:
@@ -33,7 +33,7 @@ on:
         description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), or x86'
         required: true
         type: choice
-        options: [arm64, arm, x64, x86, all]
+        options: [arm64, arm, x64, x86]
         default: arm64
       continuation:
         description: 'Internal automatic continuation counter'
@@ -52,17 +52,11 @@ concurrency:
 
 jobs:
   build:
-    name: Build and verify ${{ matrix.arch }}
-    strategy:
-      fail-fast: false
-      # The repository cache quota is shared. Finish and package one ABI before
-      # warming another so an `all` build cannot evict its own compiler cache.
-      max-parallel: 1
-      matrix:
-        arch: ${{ fromJSON(github.event_name != 'workflow_dispatch' && '["arm64"]' || (inputs.arch == 'all' && '["arm64","arm","x64","x86"]' || format('["{0}"]', inputs.arch))) }}
+    name: Build and verify ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
+    # One ABI per run: the compiler-cache quota is shared by the repository.
     uses: ./.github/workflows/build-arch.yml
     with:
-      arch: ${{ matrix.arch }}
+      arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
       image: ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
       signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}

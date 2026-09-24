@@ -9,7 +9,7 @@
 - `scripts/preflight.py` требует минимум 100 GiB свободного места в файловой системе checkout. Практический запас — около 150 GiB для одной сборки.
 - Один вызов `build.sh` собирает одну ABI и требует свежий checkout без `chromium/src` и `depot_tools`.
 - Для всех ABI и всех будущих релизов используйте **один и тот же постоянный release-keystore**. Потеря ключа лишит возможности выпускать обновления с той же подписью.
-- Локальный `build.sh` не принимает `all`; это значение есть только у GitHub Actions.
+- `build.sh` и GitHub Actions собирают по одной ABI; режим `all` не поддерживается.
 
 Если хранить четыре полных checkout одновременно, потребуется как минимум в четыре раза больше места. При ограниченном диске после каждой успешной сборки скопируйте и проверьте `artifacts/`, затем удалите только соответствующий каталог сборки и создайте свежий checkout для следующей ABI.
 
@@ -111,18 +111,18 @@ openssl x509 -noout -fingerprint -sha256 -subject -dates
 
 ## 3. Зафиксируйте исходный commit
 
-Все четыре APK должны быть собраны из одного commit. Один раз сохраните текущий commit `main`:
+Если собираете несколько ABI последовательно, используйте один commit. Один раз сохраните текущий commit `experimental/ca-domain-allowlist`:
 
 ```bash
 export ARGON_REF="$(
-  git ls-remote https://github.com/su8d/argon.git refs/heads/main |
+  git ls-remote https://github.com/Loopfade/argon.git refs/heads/experimental/ca-domain-allowlist |
   awk '{print $1}'
 )"
 test -n "$ARGON_REF"
 printf 'Argon source commit: %s\n' "$ARGON_REF"
 ```
 
-Вместо текущего `main` можно явно задать SHA проверенного релизного commit:
+Вместо текущей experimental-ветки можно явно задать SHA проверенного commit:
 
 ```bash
 export ARGON_REF="<полный commit SHA>"
@@ -154,7 +154,7 @@ build_argon() {
     return 1
   fi
 
-  git clone https://github.com/su8d/argon.git "$checkout"
+  git clone https://github.com/Loopfade/argon.git "$checkout"
   git -C "$checkout" checkout --detach "$ARGON_REF"
   git -C "$checkout" submodule update --init --recursive
 

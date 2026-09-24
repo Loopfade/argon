@@ -21,6 +21,22 @@ def run(argv, **kwargs):
     return subprocess.run([str(x) for x in argv], check=True, **kwargs)
 
 
+def signing_tools(sdk: Path, jdk: Path) -> Path:
+    candidates = sorted(
+        (sdk / "build-tools").glob("*/apksigner"),
+        key=lambda path: tuple(int(n) for n in re.findall(r"\d+", path.parent.name)),
+    )
+    if not candidates:
+        raise SystemExit("Android SDK apksigner not found")
+    build_tools = candidates[-1].parent
+    required = [build_tools / tool for tool in ("apksigner", "zipalign", "aapt2")]
+    required += [jdk / "bin" / tool for tool in ("java", "keytool")]
+    for tool in required:
+        if not tool.is_file() or not os.access(tool, os.X_OK):
+            raise SystemExit(f"Missing or non-executable signing tool: {tool}")
+    return build_tools
+
+
 def verify_apk_abi(apk: Path, expected_abi: str):
     with zipfile.ZipFile(apk) as archive:
         if archive.testzip() is not None:
@@ -35,27 +51,46 @@ def verify_apk_abi(apk: Path, expected_abi: str):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apk", required=True, type=Path)
+    action = parser.add_mutually_exclusive_group(required=True)
+    action.add_argument("--apk", type=Path)
+    action.add_argument("--check-tools", action="store_true")
     parser.add_argument("--sdk", required=True, type=Path)
     parser.add_argument("--jdk", required=True, type=Path)
-    parser.add_argument("--mode", choices=["test", "release"], required=True)
+    parser.add_argument("--mode", choices=["test", "release"])
     parser.add_argument("--arch", type=target_cpu, default="arm64")
     args = parser.parse_args()
+    env = os.environ.copy()
+    env["JAVA_HOME"] = str(args.jdk.resolve())
+    if args.check_tools:
+        build_tools = signing_tools(args.sdk, args.jdk)
+        run([args.jdk / "bin/java", "-version"], env=env)
+        run([args.jdk / "bin/keytool", "-help"], env=env, capture_output=True)
+        run([build_tools / "apksigner", "version"], env=env)
+        run([build_tools / "aapt2", "version"], env=env)
+        with tempfile.TemporaryDirectory(prefix="argon-tools-") as tmp:
+            source, aligned = Path(tmp) / "probe.zip", Path(tmp) / "aligned.zip"
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr("probe", b"Argon signing tools")
+            run([build_tools / "zipalign", "-f", "-P", "16", "4", source, aligned])
+            run([build_tools / "zipalign", "-c", "-P", "16", "4", aligned])
+        print(f"Signing tools verified: {build_tools}")
+        return
+    if args.mode is None:
+        parser.error("--mode is required when signing an APK")
     abi = TARGET_ABIS[args.arch]
     # Reject a wrong or mixed architecture before accessing signing keys.
     verify_apk_abi(args.apk, abi)
     lock = json.loads((ROOT / "build-lock.json").read_text())
-    tools = sorted((args.sdk / "build-tools").glob("*/apksigner"))
-    if not tools:
-        raise SystemExit("Android SDK apksigner not found")
-    build_tools = tools[-1].parent
+    build_tools = signing_tools(args.sdk, args.jdk)
     artifacts = ROOT / "artifacts" / abi
     artifacts.mkdir(parents=True, exist_ok=True)
     name = f'Argon-{lock["chromium_version"]}-{args.mode}-{abi}.apk'
     output = artifacts / name
-    env = os.environ.copy()
-    env["JAVA_HOME"] = str(args.jdk)
+    (ROOT / ".build").mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="argon-sign-", dir=ROOT / ".build") as tmp:
+        # Alignment must happen before apksigner; never modify a signed APK.
+        aligned = Path(tmp) / "aligned.apk"
+        run([build_tools / "zipalign", "-f", "-P", "16", "4", args.apk, aligned])
         key = Path(tmp) / "signing.jks"
         if args.mode == "release":
             for var in ["TITANIUM_RU_KEYSTORE_BASE64", "TITANIUM_RU_STORE_PASSWORD",
@@ -80,7 +115,7 @@ def main():
              "--ks-pass", "env:TITANIUM_RU_STORE_PASSWORD",
              "--key-pass", "env:TITANIUM_RU_KEY_PASSWORD",
              "--ks-key-alias", env["TITANIUM_RU_KEY_ALIAS"],
-             "--out", output, args.apk], env=env)
+             "--out", output, aligned], env=env)
         verification = run([build_tools / "apksigner", "verify", "--verbose",
                             "--print-certs", output], env=env, capture_output=True, text=True)
         (artifacts / "apk-signature.txt").write_text(verification.stdout)

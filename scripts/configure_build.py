@@ -86,7 +86,9 @@ def main():
     rendered = render_gn_args(args.arch, compiler_wrapper=args.compiler_wrapper)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered)
+        # Keep timestamps stable across checkpoints and the final signing pass.
+        if not args.output.exists() or args.output.read_text() != rendered:
+            args.output.write_text(rendered)
     else:
         print(rendered, end="")
 

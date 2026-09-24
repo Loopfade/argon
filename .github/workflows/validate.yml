@@ -19,6 +19,7 @@ jobs:
           python3 -m unittest discover -s tests -v
           bash -n build.sh
           bash -n build-arm64.sh
+          for script in .github/ci/*.sh; do bash -n "$script"; done
       - name: Obtain pinned BoringSSL
         run: |
           revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')

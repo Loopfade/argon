@@ -160,11 +160,17 @@ if [[ "$BUILD_MODE" == prepare ]]; then
 fi
 if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
   echo "Warming compiler cache for up to $BUILD_TIME_LIMIT_MINUTES minutes"
+  build_started_at=$(date +%s)
   set +e
   timeout --signal=INT --kill-after=3m "${BUILD_TIME_LIMIT_MINUTES}m" \
     autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" chrome_public_apk
   build_status=$?
   set -e
+  build_elapsed=$(( $(date +%s) - build_started_at ))
+  if (( build_status == 137 && build_elapsed < BUILD_TIME_LIMIT_MINUTES * 60 )); then
+    echo 'Build killed before its time limit (possible OOM); refusing automatic timeout recovery.' >&2
+    exit "$build_status"
+  fi
   if [[ -n ${SCCACHE_DIR:-} ]]; then
     sccache --show-stats || true
   else
