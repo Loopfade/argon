@@ -2,7 +2,7 @@ name: Build Argon
 
 on:
   push:
-    branches: [main, experimental/ca-domain-allowlist]
+    branches: [main]
     # Prepared-source changes publish a new immutable image first. The later
     # digest-pin commit modifies build.yml and starts the APK build exactly once.
     paths:
