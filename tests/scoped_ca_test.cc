@@ -37,6 +37,19 @@ int main() {
                            "bank.xn--p1ai.example.com", "notru", "bank.rf"}) {
     Expect(!policy->IsPermittedDNSName(host), host);
   }
+
+  std::vector<std::string> dynamic_names = {
+      ".ru", ".xn--p1ai", ".su", "example.com", "service.example.net"};
+  auto dynamic_policy =
+      net::CreateTitaniumRussianRootConstraints(dynamic_names);
+  for (const char* host : {"example.com", "www.example.com",
+                           "service.example.net", "api.service.example.net"}) {
+    Expect(dynamic_policy->IsPermittedDNSName(host), host);
+  }
+  for (const char* host : {"com", "net", "notexample.com",
+                           "example.com.attacker.net", "example.net"}) {
+    Expect(!dynamic_policy->IsPermittedDNSName(host), host);
+  }
   for (const std::array<uint8_t, 4>& ip : {
            std::array<uint8_t, 4>{0, 0, 0, 0}, {127, 0, 0, 1},
            {10, 0, 0, 1}, {192, 0, 2, 1}, {255, 255, 255, 255}}) {

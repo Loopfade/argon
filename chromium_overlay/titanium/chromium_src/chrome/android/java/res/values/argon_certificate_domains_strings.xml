@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_certificates_title">Argon certificates</string>
+    <string name="argon_certificates_summary">Manage domains trusted by the built-in Russian root CA</string>
+    <string name="argon_certificates_description">The built-in Russian root CA is trusted only for the built-in zones and domains you explicitly add. A domain entry also covers its subdomains. Public suffixes and wildcards are not allowed. Changes apply to new certificate checks.</string>
+    <string name="argon_certificates_built_in_domains">Built-in domains</string>
+    <string name="argon_certificates_additional_domains">Additional domains</string>
+    <string name="argon_certificates_no_additional_domains">No additional domains</string>
+    <string name="argon_certificates_add_domain">Add domain</string>
+    <string name="argon_certificates_domain_hint">example.com</string>
+    <string name="argon_certificates_tap_to_remove">Tap to remove</string>
+    <string name="argon_certificates_remove_domain">Remove %1$s?</string>
+    <string name="argon_certificates_remove_domain_message">The built-in Russian root CA will no longer be trusted for this domain or its subdomains.</string>
+    <string name="argon_certificates_error_invalid">Enter a valid DNS domain without a scheme, path, port, IP address, or wildcard.</string>
+    <string name="argon_certificates_error_public_suffix">Public suffixes such as .com, .net, or .org cannot be added.</string>
+    <string name="argon_certificates_error_covered_by_built_in">This domain is already covered by .ru, .рф, or .su.</string>
+    <string name="argon_certificates_error_duplicate">This domain is already in the list.</string>
+    <string name="argon_certificates_error_too_many">The limit of 100 additional domains has been reached.</string>
+</resources>

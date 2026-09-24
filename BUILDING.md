@@ -9,7 +9,7 @@
 - `scripts/preflight.py` требует минимум 100 GiB свободного места в файловой системе checkout. Практический запас — около 150 GiB для одной сборки.
 - Один вызов `build.sh` собирает одну ABI и требует свежий checkout без `chromium/src` и `depot_tools`.
 - Для всех ABI и всех будущих релизов используйте **один и тот же постоянный release-keystore**. Потеря ключа лишит возможности выпускать обновления с той же подписью.
-- Локальный `build.sh` не принимает `all`; это значение есть только у GitHub Actions.
+- `build.sh` и GitHub Actions собирают по одной ABI; режим `all` не поддерживается.
 
 Если хранить четыре полных checkout одновременно, потребуется как минимум в четыре раза больше места. При ограниченном диске после каждой успешной сборки скопируйте и проверьте `artifacts/`, затем удалите только соответствующий каталог сборки и создайте свежий checkout для следующей ABI.
 
@@ -58,13 +58,13 @@ sudo swapon /swapfile
 
 ```bash
 export ARGON_KEY_DIR="$HOME/.local/share/argon-signing"
-export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.jks"
+export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.p12"
 
 install -d -m 700 "$ARGON_KEY_DIR"
 
 keytool -genkeypair \
   -keystore "$ARGON_KEYSTORE" \
-  -storetype JKS \
+  -storetype PKCS12 \
   -alias argon-release \
   -keyalg RSA \
   -keysize 4096 \
@@ -75,20 +75,19 @@ keytool -genkeypair \
 chmod 600 "$ARGON_KEYSTORE"
 ```
 
-`keytool` запросит пароль хранилища и пароль ключа. Сохраните сам JKS и оба пароля в надёжной резервной копии вне репозитория.
+`keytool` запросит один пароль и его повтор для подтверждения. В созданном этой командой PKCS12 пароль приватного ключа совпадает с паролем хранилища. Сохраните файл `.p12` и пароль в надёжной резервной копии вне репозитория. В GitHub Secrets задайте одинаковое значение для `TITANIUM_RU_STORE_PASSWORD` и `TITANIUM_RU_KEY_PASSWORD`.
 
 Перед каждой серией сборок загрузите ключ и пароли в текущий shell:
 
 ```bash
 export ARGON_KEY_DIR="$HOME/.local/share/argon-signing"
-export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.jks"
+export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.p12"
 
 export TITANIUM_RU_KEY_ALIAS="argon-release"
 
-IFS= read -rsp 'Пароль JKS: ' TITANIUM_RU_STORE_PASSWORD
+IFS= read -rsp 'Пароль PKCS12: ' TITANIUM_RU_STORE_PASSWORD
 printf '\n'
-IFS= read -rsp 'Пароль ключа: ' TITANIUM_RU_KEY_PASSWORD
-printf '\n'
+TITANIUM_RU_KEY_PASSWORD="$TITANIUM_RU_STORE_PASSWORD"
 
 TITANIUM_RU_KEYSTORE_BASE64="$(base64 -w0 "$ARGON_KEYSTORE")"
 
@@ -97,32 +96,37 @@ export TITANIUM_RU_KEY_PASSWORD
 export TITANIUM_RU_KEYSTORE_BASE64
 ```
 
-Имена переменных `TITANIUM_RU_*` пока сохранены в коде Argon для совместимости сборочных скриптов. Они не означают, что используется ключ Titanium: подпись определяется содержимым вашего JKS.
+Имена переменных `TITANIUM_RU_*` пока сохранены в коде Argon для совместимости сборочных скриптов. Они не означают, что используется ключ Titanium: подпись определяется содержимым вашего PKCS12-ключа.
 
 Проверьте ключ и запишите его SHA-256 fingerprint:
 
 ```bash
 keytool -exportcert -rfc \
   -keystore "$ARGON_KEYSTORE" \
+  -storetype PKCS12 \
   -storepass:env TITANIUM_RU_STORE_PASSWORD \
   -alias "$TITANIUM_RU_KEY_ALIAS" |
 openssl x509 -noout -fingerprint -sha256 -subject -dates
 ```
 
+В GitHub Actions push в `main` и `experimental/ca-domain-allowlist` запускает режим `release` с постоянным ключом из GitHub Secrets. При ручном запуске `release` выбран по умолчанию; для диагностики можно явно выбрать `test`. Сборки pull request используют временную тестовую подпись без release-секретов. Автоматическое продолжение сохраняет выбранный режим подписи.
+
+Режим `release` проверяет PKCS12, оба пароля, alias и соответствие приватного ключа сертификату до прогрева кэша. Проверка не выводит секреты в лог; временный файл ключа удаляется после проверки. Если секреты отсутствуют или неверны, сборка завершается ошибкой до компиляции; автоматической замены на тестовую подпись нет.
+
 ## 3. Зафиксируйте исходный commit
 
-Все четыре APK должны быть собраны из одного commit. Один раз сохраните текущий commit `main`:
+Если собираете несколько ABI последовательно, используйте один commit. Один раз сохраните текущий commit `main`:
 
 ```bash
 export ARGON_REF="$(
-  git ls-remote https://github.com/su8d/argon.git refs/heads/main |
+  git ls-remote https://github.com/Loopfade/argon.git refs/heads/main |
   awk '{print $1}'
 )"
 test -n "$ARGON_REF"
 printf 'Argon source commit: %s\n' "$ARGON_REF"
 ```
 
-Вместо текущего `main` можно явно задать SHA проверенного релизного commit:
+Вместо текущей ветки можно явно задать SHA проверенного commit:
 
 ```bash
 export ARGON_REF="<полный commit SHA>"
@@ -154,7 +158,7 @@ build_argon() {
     return 1
   fi
 
-  git clone https://github.com/su8d/argon.git "$checkout"
+  git clone https://github.com/Loopfade/argon.git "$checkout"
   git -C "$checkout" checkout --detach "$ARGON_REF"
   git -C "$checkout" submodule update --init --recursive
 
@@ -228,7 +232,7 @@ for abi in arm64-v8a armeabi-v7a x86_64 x86; do
 done
 ```
 
-Все четыре fingerprint должны быть одинаковыми и совпадать с fingerprint JKS из раздела 2. Также можно открыть `apk-signature.txt`: `sign_and_verify.py` уже выполняет `apksigner verify --verbose --print-certs`, проверяет ZIP, zipalign, package ID, имя приложения и единственную ожидаемую ABI.
+Все четыре fingerprint должны быть одинаковыми и совпадать с fingerprint PKCS12-ключа из раздела 2. Также можно открыть `apk-signature.txt`: `sign_and_verify.py` уже выполняет `apksigner verify --verbose --print-certs`, проверяет ZIP, zipalign, package ID, имя приложения и единственную ожидаемую ABI.
 
 После завершения удалите секреты из текущего shell:
 

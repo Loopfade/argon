@@ -18,6 +18,23 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILE = Path("chrome/browser/net/profile_network_context_service.cc")
 VERIFIER = Path("net/cert/cert_verify_proc_builtin.cc")
 GN = Path("net/BUILD.gn")
+CHROME_NET_GN = Path("chrome/browser/net/BUILD.gn")
+CHROME_ANDROID_GN = Path("chrome/android/BUILD.gn")
+TITANIUM_CHROME_JAVA_SOURCES = Path(
+    "titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni"
+)
+TITANIUM_CHROME_RESOURCES = Path(
+    "titanium/chromium_src/chrome/android/chrome_app_java_resources_ext_sources.gni"
+)
+TITANIUM_ANDROID_CC_SOURCES = Path(
+    "titanium/chromium_src/chrome/browser/android/android_cc_ext_sources.gni"
+)
+TITANIUM_ANDROID_CC_DEPS = Path(
+    "titanium/chromium_src/chrome/browser/android/android_cc_ext_deps.gni"
+)
+TITANIUM_PRIVACY_PREFERENCES = Path(
+    "titanium/chromium_src/chrome/android/java/res/xml/privacy_preferences_ext.xml"
+)
 PROFILE_ANCHOR = """  auto additional_certificates =
       cert_verifier::mojom::AdditionalCertificates::New();"""
 PROFILE_BLOCK = """
@@ -27,15 +44,61 @@ PROFILE_BLOCK = """
   russian_root->certificate =
       base::ToVector(base::span(net::kTitaniumRussianRootDer));
   russian_root->permitted_dns_names = {".ru", ".xn--p1ai", ".su"};
+  for (const base::Value& value :
+       prefs->GetList(argon::prefs::kRussianCaAdditionalDomains)) {
+    if (russian_root->permitted_dns_names.size() >=
+        3 + net::kTitaniumRussianRootMaxUserDomains) {
+      break;
+    }
+    if (!value.is_string()) {
+      continue;
+    }
+    std::string normalized_domain;
+    if (net::NormalizeTitaniumRussianRootDomain(value.GetString(),
+                                                 &normalized_domain) ==
+        net::TitaniumRuDomainValidationResult::kValid) {
+      russian_root->permitted_dns_names.push_back(
+          std::move(normalized_domain));
+    }
+  }
   additional_certificates->trust_anchors_with_additional_constraints.push_back(
       std::move(russian_root));
 #endif
   // END TITANIUM_RU_SCOPED_ANCHOR"""
+PROFILE_PREF_REGISTRATION_ANCHOR = (
+    "  registry->RegisterListPref(prefs::kCAHintCertificates);"
+)
+PROFILE_PREF_REGISTRATION_BLOCK = """
+#if BUILDFLAG(IS_ANDROID)
+  // BEGIN ARGON_RU_CA_DOMAIN_PREF_REGISTRATION
+  registry->RegisterListPref(argon::prefs::kRussianCaAdditionalDomains);
+  // END ARGON_RU_CA_DOMAIN_PREF_REGISTRATION
+#endif"""
+PROFILE_PREF_OBSERVER_ANCHOR = """  pref_change_registrar_.Add(prefs::kCAHintCertificates,
+                             schedule_update_cert_policy);"""
+PROFILE_PREF_OBSERVER_BLOCK = """
+#if BUILDFLAG(IS_ANDROID)
+  // BEGIN ARGON_RU_CA_DOMAIN_PREF_OBSERVER
+  pref_change_registrar_.Add(argon::prefs::kRussianCaAdditionalDomains,
+                             schedule_update_cert_policy);
+  // END ARGON_RU_CA_DOMAIN_PREF_OBSERVER
+#endif"""
 VERIFIER_ANCHOR = "    CheckExtraConstraints(path->certs, &path->errors);"
 VERIFIER_BLOCK = """
     // BEGIN TITANIUM_RU_DNS_AND_IP_CONSTRAINTS
 #if BUILDFLAG(IS_ANDROID)
-    CheckTitaniumRussianRootConstraints(path->certs, &path->errors);
+    bssl::Span<const std::string> titanium_permitted_dns_names;
+    for (const auto& cert_with_constraints : *additional_constraints_) {
+      if (cert_with_constraints.certificate &&
+          IsTitaniumRussianRoot(*cert_with_constraints.certificate)) {
+        titanium_permitted_dns_names =
+            bssl::Span<const std::string>(
+                cert_with_constraints.permitted_dns_names);
+        break;
+      }
+    }
+    CheckTitaniumRussianRootConstraints(
+        path->certs, &path->errors, titanium_permitted_dns_names);
 #endif
     // END TITANIUM_RU_DNS_AND_IP_CONSTRAINTS"""
 
@@ -89,10 +152,36 @@ def replace_once(text: str, before: str, after: str) -> str:
 def patch_profile(text: str) -> str:
     if "TITANIUM_RU_SCOPED_ANCHOR" in text and text.count(PROFILE_BLOCK) != 1:
         raise ValueError("Incomplete or modified scoped-anchor patch")
+    for marker, block in [
+        ("ARGON_RU_CA_DOMAIN_PREF_REGISTRATION", PROFILE_PREF_REGISTRATION_BLOCK),
+        ("ARGON_RU_CA_DOMAIN_PREF_OBSERVER", PROFILE_PREF_OBSERVER_BLOCK),
+    ]:
+        if marker in text and text.count(block) != 1:
+            raise ValueError(f"Incomplete or modified profile patch: {marker}")
+    include = '#include "chrome/browser/net/profile_network_context_service.h"'
+    text = replace_once(
+        text,
+        include,
+        include + '\n#include "chrome/browser/net/argon_ca_prefs.h"',
+    )
     include = '#include "net/cert/asn1_util.h"'
-    text = replace_once(text, include,
-                        include + '\n#include "net/cert/titanium_ru_root.h"')
-    return replace_once(text, PROFILE_ANCHOR, PROFILE_ANCHOR + PROFILE_BLOCK)
+    text = replace_once(
+        text,
+        include,
+        include + '\n#include "net/cert/titanium_ru_domain_policy.h"'
+        + '\n#include "net/cert/titanium_ru_root.h"',
+    )
+    text = replace_once(text, PROFILE_ANCHOR, PROFILE_ANCHOR + PROFILE_BLOCK)
+    text = replace_once(
+        text,
+        PROFILE_PREF_REGISTRATION_ANCHOR,
+        PROFILE_PREF_REGISTRATION_ANCHOR + PROFILE_PREF_REGISTRATION_BLOCK,
+    )
+    return replace_once(
+        text,
+        PROFILE_PREF_OBSERVER_ANCHOR,
+        PROFILE_PREF_OBSERVER_ANCHOR + PROFILE_PREF_OBSERVER_BLOCK,
+    )
 
 
 def patch_verifier(text: str) -> str:
@@ -106,8 +195,89 @@ def patch_verifier(text: str) -> str:
 
 def patch_gn(text: str) -> str:
     anchor = '    "cert/cert_verify_proc_builtin.h",'
-    return replace_once(text, anchor, anchor + '\n    "cert/titanium_ru_root.h",'
-                        '\n    "cert/titanium_ru_constraints.h",')
+    text = replace_once(
+        text,
+        anchor,
+        anchor + '\n    "cert/titanium_ru_root.h",'
+        '\n    "cert/titanium_ru_constraints.h",'
+        '\n    "cert/titanium_ru_domain_policy.h",',
+    )
+    test_anchor = '    "cert/cert_verify_proc_builtin_unittest.cc",'
+    return replace_once(
+        text,
+        test_anchor,
+        test_anchor + '\n    "cert/titanium_ru_domain_policy_unittest.cc",',
+    )
+
+
+def patch_chrome_net_gn(text: str) -> str:
+    anchor = '    "profile_network_context_service.h",'
+    return replace_once(
+        text, anchor, anchor + '\n    "argon_ca_prefs.h",'
+    )
+
+
+def patch_chrome_android_gn(text: str) -> str:
+    anchor = '  generate_jni("chrome_jni_headers") {\n    sources = ['
+    addition = (
+        '\n      "//titanium/chromium_src/chrome/android/java/src/org/'
+        'chromium/chrome/browser/privacy/settings/'
+        'ArgonCertificateDomainsSettings.java",'
+    )
+    return replace_once(text, anchor, anchor + addition)
+
+
+def patch_titanium_chrome_java_sources(text: str) -> str:
+    anchor = (
+        '  "java/src/org/chromium/chrome/browser/privacy/settings/'
+        'PrivacySettingsExt.java",'
+    )
+    addition = (
+        '  "java/src/org/chromium/chrome/browser/privacy/settings/'
+        'ArgonCertificateDomainsSettings.java",'
+    )
+    return replace_once(text, anchor, anchor + "\n" + addition)
+
+
+def patch_titanium_chrome_resources(text: str) -> str:
+    anchor = '  "java/res/xml/privacy_preferences_ext.xml",'
+    addition = (
+        '  "java/res/values/argon_certificate_domains_strings.xml",\n'
+        '  "java/res/values-ru/argon_certificate_domains_strings.xml",'
+    )
+    return replace_once(text, anchor, anchor + "\n" + addition)
+
+
+def patch_titanium_android_cc_sources(text: str) -> str:
+    anchor = "android_cc_ext_full_path_sources = ["
+    addition = (
+        '\n  "//chrome/browser/android/'
+        'argon_certificate_domains_settings.cc",'
+    )
+    return replace_once(text, anchor, anchor + addition)
+
+
+def patch_titanium_android_cc_deps(text: str) -> str:
+    anchor = "android_cc_ext_full_path_deps = ["
+    replacement = anchor + """
+  "//base",
+  "//chrome/browser/net",
+  "//chrome/browser/profiles:profile",
+  "//components/prefs",
+  "//net",
+  "//chrome/android:chrome_jni_headers","""
+    return replace_once(text, anchor, replacement)
+
+
+def patch_titanium_privacy_preferences(text: str) -> str:
+    anchor = "</PreferenceScreen>"
+    addition = """    <org.chromium.components.browser_ui.settings.ChromeBasePreference
+        android:key="argon_certificates"
+        android:title="@string/argon_certificates_title"
+        android:summary="@string/argon_certificates_summary"
+        android:fragment="org.chromium.chrome.browser.privacy.settings.ArgonCertificateDomainsSettings" />
+"""
+    return replace_once(text, anchor, addition + anchor)
 
 
 def apply(src: Path, product_name: bool = True) -> None:
@@ -120,8 +290,31 @@ def apply(src: Path, product_name: bool = True) -> None:
         src / PROFILE: patch_profile((src / PROFILE).read_text()),
         src / VERIFIER: patch_verifier((src / VERIFIER).read_text()),
         src / GN: patch_gn((src / GN).read_text()),
+        src / CHROME_NET_GN: patch_chrome_net_gn(
+            (src / CHROME_NET_GN).read_text()
+        ),
+        src / CHROME_ANDROID_GN: patch_chrome_android_gn(
+            (src / CHROME_ANDROID_GN).read_text()
+        ),
+        src / TITANIUM_CHROME_JAVA_SOURCES: patch_titanium_chrome_java_sources(
+            (src / TITANIUM_CHROME_JAVA_SOURCES).read_text()
+        ),
+        src / TITANIUM_CHROME_RESOURCES: patch_titanium_chrome_resources(
+            (src / TITANIUM_CHROME_RESOURCES).read_text()
+        ),
+        src / TITANIUM_ANDROID_CC_SOURCES: patch_titanium_android_cc_sources(
+            (src / TITANIUM_ANDROID_CC_SOURCES).read_text()
+        ),
+        src / TITANIUM_ANDROID_CC_DEPS: patch_titanium_android_cc_deps(
+            (src / TITANIUM_ANDROID_CC_DEPS).read_text()
+        ),
+        src / TITANIUM_PRIVACY_PREFERENCES: patch_titanium_privacy_preferences(
+            (src / TITANIUM_PRIVACY_PREFERENCES).read_text()
+        ),
     }
-    for source in (ROOT / "chromium_overlay").rglob("*.h"):
+    for source in (ROOT / "chromium_overlay").rglob("*"):
+        if not source.is_file():
+            continue
         target = src / source.relative_to(ROOT / "chromium_overlay")
         value = source.read_text()
         if target.exists() and target.read_text() != value:
