@@ -10,6 +10,7 @@ on:
       - '.github/workflows/build-arch.yml'
       - '.github/ci/**'
       - 'scripts/sign_and_verify.py'
+      - 'scripts/VerifyReleaseKey.java'
   pull_request:
     # Prepared-source changes publish a new immutable image first. The later
     # digest-pin commit modifies build.yml and starts the APK build exactly once.
@@ -18,6 +19,7 @@ on:
       - '.github/workflows/build-arch.yml'
       - '.github/ci/**'
       - 'scripts/sign_and_verify.py'
+      - 'scripts/VerifyReleaseKey.java'
   workflow_dispatch:
     inputs:
       runner:

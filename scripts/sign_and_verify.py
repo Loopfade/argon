@@ -2,6 +2,7 @@
 """Sign and verify a single-ABI APK, then write checksums and build metadata."""
 import argparse
 import base64
+import binascii
 import hashlib
 import json
 import os
@@ -49,6 +50,32 @@ def verify_apk_abi(apk: Path, expected_abi: str):
             )
 
 
+def write_release_key(key: Path, env):
+    for name in ("TITANIUM_RU_KEYSTORE_BASE64", "TITANIUM_RU_STORE_PASSWORD",
+                 "TITANIUM_RU_KEY_PASSWORD", "TITANIUM_RU_KEY_ALIAS"):
+        if not env.get(name):
+            raise SystemExit(f"Missing release signing secret: {name}")
+    try:
+        data = base64.b64decode(env["TITANIUM_RU_KEYSTORE_BASE64"], validate=True)
+    except (binascii.Error, ValueError):
+        raise SystemExit("Release keystore must be valid single-line Base64") from None
+    # Restrict permissions when creating the file, before writing any key bytes.
+    descriptor = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as output:
+        output.write(data)
+
+
+def check_release_key(jdk: Path, env):
+    with tempfile.TemporaryDirectory(prefix="argon-key-check-") as tmp:
+        key = Path(tmp) / "signing.p12"
+        write_release_key(key, env)
+        # JDK source-file mode needs no external libraries. Read passwords only
+        # from the environment; never include them in arguments or diagnostics.
+        result = run([jdk / "bin/java", ROOT / "scripts/VerifyReleaseKey.java", key],
+                     env=env, capture_output=True, text=True)
+        print(result.stdout.strip())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     action = parser.add_mutually_exclusive_group(required=True)
@@ -64,7 +91,7 @@ def main():
     # apksigner's launcher invokes `java` by name rather than consulting
     # JAVA_HOME. Prefer the JDK baked into the prepared image over any runner
     # Java installation.
-    env["PATH"] = str(args.jdk / "bin") + os.pathsep + env.get("PATH", "")
+    env["PATH"] = str(args.jdk.resolve() / "bin") + os.pathsep + env.get("PATH", "")
     if args.check_tools:
         build_tools = signing_tools(args.sdk, args.jdk)
         run([args.jdk / "bin/java", "-version"], env=env)
@@ -78,6 +105,12 @@ def main():
             run([build_tools / "zipalign", "-f", "-P", "16", "4", source, aligned])
             run([build_tools / "zipalign", "-c", "-P", "16", "4", aligned])
         print(f"Signing tools verified: {build_tools}")
+        if args.mode == "release":
+            try:
+                check_release_key(args.jdk, env)
+            except subprocess.CalledProcessError:
+                raise SystemExit("Release key check failed before compilation: check PKCS12, "
+                                 "passwords, alias and certificate validity") from None
         return
     if args.mode is None:
         parser.error("--mode is required when signing an APK")
@@ -98,12 +131,7 @@ def main():
         key_type = "PKCS12" if args.mode == "release" else "JKS"
         key = Path(tmp) / ("signing.p12" if args.mode == "release" else "signing.jks")
         if args.mode == "release":
-            for var in ["TITANIUM_RU_KEYSTORE_BASE64", "TITANIUM_RU_STORE_PASSWORD",
-                        "TITANIUM_RU_KEY_PASSWORD", "TITANIUM_RU_KEY_ALIAS"]:
-                if not env.get(var):
-                    raise SystemExit(f"Missing release signing secret: {var}")
-            key.write_bytes(base64.b64decode(env["TITANIUM_RU_KEYSTORE_BASE64"], validate=True))
-            key.chmod(0o600)
+            write_release_key(key, env)
         else:
             # This temporary key is never published or committed to git.
             env["TITANIUM_RU_STORE_PASSWORD"] = "android"

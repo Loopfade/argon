@@ -75,7 +75,7 @@ keytool -genkeypair \
 chmod 600 "$ARGON_KEYSTORE"
 ```
 
-`keytool` запросит пароль хранилища и пароль ключа. Сохраните сам файл PKCS12 и оба пароля в надёжной резервной копии вне репозитория.
+`keytool` запросит один пароль и его повтор для подтверждения. В созданном этой командой PKCS12 пароль приватного ключа совпадает с паролем хранилища. Сохраните файл `.p12` и пароль в надёжной резервной копии вне репозитория. В GitHub Secrets задайте одинаковое значение для `TITANIUM_RU_STORE_PASSWORD` и `TITANIUM_RU_KEY_PASSWORD`.
 
 Перед каждой серией сборок загрузите ключ и пароли в текущий shell:
 
@@ -87,8 +87,7 @@ export TITANIUM_RU_KEY_ALIAS="argon-release"
 
 IFS= read -rsp 'Пароль PKCS12: ' TITANIUM_RU_STORE_PASSWORD
 printf '\n'
-IFS= read -rsp 'Пароль ключа: ' TITANIUM_RU_KEY_PASSWORD
-printf '\n'
+TITANIUM_RU_KEY_PASSWORD="$TITANIUM_RU_STORE_PASSWORD"
 
 TITANIUM_RU_KEYSTORE_BASE64="$(base64 -w0 "$ARGON_KEYSTORE")"
 
@@ -104,10 +103,13 @@ export TITANIUM_RU_KEYSTORE_BASE64
 ```bash
 keytool -exportcert -rfc \
   -keystore "$ARGON_KEYSTORE" \
+  -storetype PKCS12 \
   -storepass:env TITANIUM_RU_STORE_PASSWORD \
   -alias "$TITANIUM_RU_KEY_ALIAS" |
 openssl x509 -noout -fingerprint -sha256 -subject -dates
 ```
+
+В GitHub Actions режим `release` проверяет PKCS12, оба пароля, alias и соответствие приватного ключа сертификату до прогрева кэша. Проверка не выводит секреты в лог; временный файл ключа удаляется после проверки. Обычный push по-прежнему запускает режим `test` без release-секретов.
 
 ## 3. Зафиксируйте исходный commit
 

@@ -110,8 +110,12 @@ jobs:
           fi
           docker exec "$BUILD_CONTAINER_NAME" python3 /workspace/.github/ci/check-prepared-inputs.py \
             --prepared /opt/argon --checkout /workspace
-          docker exec "$BUILD_CONTAINER_NAME" python3 /workspace/scripts/sign_and_verify.py \
-            --check-tools --sdk /opt/argon/chromium/src/third_party/android_sdk/public \
+          docker exec \
+            --env TITANIUM_RU_KEYSTORE_BASE64 --env TITANIUM_RU_STORE_PASSWORD \
+            --env TITANIUM_RU_KEY_PASSWORD --env TITANIUM_RU_KEY_ALIAS \
+            "$BUILD_CONTAINER_NAME" python3 /workspace/scripts/sign_and_verify.py \
+            --check-tools --mode "$SIGNING_MODE" \
+            --sdk /opt/argon/chromium/src/third_party/android_sdk/public \
             --jdk /opt/argon/chromium/src/third_party/jdk/current
       - name: Reset compiler-cache statistics
         run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --zero-stats
