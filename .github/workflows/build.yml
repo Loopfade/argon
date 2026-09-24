@@ -28,11 +28,11 @@ on:
         type: string
         default: ubuntu-latest
       signing:
-        description: 'Test uses a temporary certificate; release requires repository secrets'
+        description: 'Release uses the permanent repository key; test uses a temporary certificate'
         required: true
         type: choice
-        options: [test, release]
-        default: test
+        options: [release, test]
+        default: release
       arch:
         description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), or x86'
         required: true
@@ -63,6 +63,8 @@ jobs:
       arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
       image: ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
-      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
+      # Sign trusted experimental pushes with the permanent release key.
+      # Pull-request builds keep their temporary key, including same-repo PRs.
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || (github.event_name == 'push' && github.ref == 'refs/heads/experimental/ca-domain-allowlist' && 'release' || 'test') }}
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
     secrets: inherit
