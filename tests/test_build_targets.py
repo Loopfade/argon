@@ -181,6 +181,10 @@ class ApkArchitectureTests(unittest.TestCase):
                                  {"java", "keytool", "apksigner", "aapt2", "zipalign"})
                 self.assertFalse(any("-genkeypair" in command or "sign" in command
                                      for command in commands))
+                self.assertEqual(run.call_args_list[2].kwargs["env"]["JAVA_HOME"],
+                                 str((root / "jdk").resolve()))
+                self.assertEqual(run.call_args_list[2].kwargs["env"]["PATH"].split(os.pathsep)[0],
+                                 str(root / "jdk/bin"))
 
     @staticmethod
     def write_apk(path, abis):
@@ -269,6 +273,10 @@ class ApkArchitectureTests(unittest.TestCase):
                 verify_align_index = next(i for i, cmd in enumerate(commands) if "-c" in cmd)
                 self.assertLess(align_index, sign_index)
                 self.assertLess(sign_index, verify_align_index)
+                sign = commands[sign_index]
+                self.assertEqual(sign[sign.index("--ks-type") + 1], "JKS")
+                export = next(cmd for cmd in commands if "-exportcert" in cmd)
+                self.assertEqual(export[export.index("-storetype") + 1], "JKS")
                 directory = root / "artifacts" / abi
                 info = json.loads((directory / "build-info.json").read_text())
                 self.assertEqual(info["abi"], abi)

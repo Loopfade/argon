@@ -58,13 +58,13 @@ sudo swapon /swapfile
 
 ```bash
 export ARGON_KEY_DIR="$HOME/.local/share/argon-signing"
-export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.jks"
+export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.p12"
 
 install -d -m 700 "$ARGON_KEY_DIR"
 
 keytool -genkeypair \
   -keystore "$ARGON_KEYSTORE" \
-  -storetype JKS \
+  -storetype PKCS12 \
   -alias argon-release \
   -keyalg RSA \
   -keysize 4096 \
@@ -75,17 +75,17 @@ keytool -genkeypair \
 chmod 600 "$ARGON_KEYSTORE"
 ```
 
-`keytool` запросит пароль хранилища и пароль ключа. Сохраните сам JKS и оба пароля в надёжной резервной копии вне репозитория.
+`keytool` запросит пароль хранилища и пароль ключа. Сохраните сам файл PKCS12 и оба пароля в надёжной резервной копии вне репозитория.
 
 Перед каждой серией сборок загрузите ключ и пароли в текущий shell:
 
 ```bash
 export ARGON_KEY_DIR="$HOME/.local/share/argon-signing"
-export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.jks"
+export ARGON_KEYSTORE="$ARGON_KEY_DIR/argon-release.p12"
 
 export TITANIUM_RU_KEY_ALIAS="argon-release"
 
-IFS= read -rsp 'Пароль JKS: ' TITANIUM_RU_STORE_PASSWORD
+IFS= read -rsp 'Пароль PKCS12: ' TITANIUM_RU_STORE_PASSWORD
 printf '\n'
 IFS= read -rsp 'Пароль ключа: ' TITANIUM_RU_KEY_PASSWORD
 printf '\n'
@@ -97,7 +97,7 @@ export TITANIUM_RU_KEY_PASSWORD
 export TITANIUM_RU_KEYSTORE_BASE64
 ```
 
-Имена переменных `TITANIUM_RU_*` пока сохранены в коде Argon для совместимости сборочных скриптов. Они не означают, что используется ключ Titanium: подпись определяется содержимым вашего JKS.
+Имена переменных `TITANIUM_RU_*` пока сохранены в коде Argon для совместимости сборочных скриптов. Они не означают, что используется ключ Titanium: подпись определяется содержимым вашего PKCS12-ключа.
 
 Проверьте ключ и запишите его SHA-256 fingerprint:
 
@@ -228,7 +228,7 @@ for abi in arm64-v8a armeabi-v7a x86_64 x86; do
 done
 ```
 
-Все четыре fingerprint должны быть одинаковыми и совпадать с fingerprint JKS из раздела 2. Также можно открыть `apk-signature.txt`: `sign_and_verify.py` уже выполняет `apksigner verify --verbose --print-certs`, проверяет ZIP, zipalign, package ID, имя приложения и единственную ожидаемую ABI.
+Все четыре fingerprint должны быть одинаковыми и совпадать с fingerprint PKCS12-ключа из раздела 2. Также можно открыть `apk-signature.txt`: `sign_and_verify.py` уже выполняет `apksigner verify --verbose --print-certs`, проверяет ZIP, zipalign, package ID, имя приложения и единственную ожидаемую ABI.
 
 После завершения удалите секреты из текущего shell:
 

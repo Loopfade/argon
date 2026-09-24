@@ -61,6 +61,10 @@ def main():
     args = parser.parse_args()
     env = os.environ.copy()
     env["JAVA_HOME"] = str(args.jdk.resolve())
+    # apksigner's launcher invokes `java` by name rather than consulting
+    # JAVA_HOME. Prefer the JDK baked into the prepared image over any runner
+    # Java installation.
+    env["PATH"] = str(args.jdk / "bin") + os.pathsep + env.get("PATH", "")
     if args.check_tools:
         build_tools = signing_tools(args.sdk, args.jdk)
         run([args.jdk / "bin/java", "-version"], env=env)
@@ -91,7 +95,8 @@ def main():
         # Alignment must happen before apksigner; never modify a signed APK.
         aligned = Path(tmp) / "aligned.apk"
         run([build_tools / "zipalign", "-f", "-P", "16", "4", args.apk, aligned])
-        key = Path(tmp) / "signing.jks"
+        key_type = "PKCS12" if args.mode == "release" else "JKS"
+        key = Path(tmp) / ("signing.p12" if args.mode == "release" else "signing.jks")
         if args.mode == "release":
             for var in ["TITANIUM_RU_KEYSTORE_BASE64", "TITANIUM_RU_STORE_PASSWORD",
                         "TITANIUM_RU_KEY_PASSWORD", "TITANIUM_RU_KEY_ALIAS"]:
@@ -112,6 +117,7 @@ def main():
                  "-keysize", "3072", "-validity", "3650", "-dname",
                  "CN=Argon Temporary Test Build"], env=env)
         run([build_tools / "apksigner", "sign", "--ks", key,
+             "--ks-type", key_type,
              "--ks-pass", "env:TITANIUM_RU_STORE_PASSWORD",
              "--key-pass", "env:TITANIUM_RU_KEY_PASSWORD",
              "--ks-key-alias", env["TITANIUM_RU_KEY_ALIAS"],
@@ -120,6 +126,7 @@ def main():
                             "--print-certs", output], env=env, capture_output=True, text=True)
         (artifacts / "apk-signature.txt").write_text(verification.stdout)
         run([args.jdk / "bin/keytool", "-exportcert", "-rfc", "-keystore", key,
+             "-storetype", key_type,
              "-storepass:env", "TITANIUM_RU_STORE_PASSWORD", "-alias",
              env["TITANIUM_RU_KEY_ALIAS"], "-file", artifacts / "signing-certificate.pem"], env=env)
     run([build_tools / "zipalign", "-c", "-P", "16", "4", output])
