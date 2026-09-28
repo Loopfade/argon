@@ -55,7 +55,8 @@ COPY --chown=argon:argon . .
 
 # BUILD_MODE=prepare performs the pinned Chromium/depot_tools checkout, gclient
 # sync, build-dependency installation, hooks, Argon patches and policy tests,
-# but deliberately does not compile an APK or populate ccache.
+# and GN generation. Android JNI/Java compilation runs with the APK targets
+# in the workflow that saves ccache; it must not hold up this indivisible RUN.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     BUILD_MODE=prepare BUILD_JOBS=2 bash build.sh arm64 \

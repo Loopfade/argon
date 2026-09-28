@@ -118,4 +118,6 @@ jobs:
             echo '- Image: `${{ steps.image.outputs.sha_tag }}`'
             echo '- Chromium: `${{ steps.image.outputs.version }}`'
             echo '- Digest: `${{ steps.build.outputs.digest }}`'
+            echo '- Checks: pinned sources, patches, Python tests, C++ policy tests and GN generation.'
+            echo '- Android JNI/Java compilation and APK signing are checked by Build Argon.'
           } >> "$GITHUB_STEP_SUMMARY"
