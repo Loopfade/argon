@@ -67,6 +67,10 @@ jobs:
             echo "version=${version}"
             echo "sha_tag=${image}:sha-${GITHUB_SHA}"
             echo "version_tag=${image}:chromium-${version}"
+            # Branch experiments must not replace the version used by main.
+            if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+              echo "publish_version_tag=${image}:chromium-${version}"
+            fi
             branch=${GITHUB_REF_NAME//\//-}
             echo "branch_tag=${image}:branch-${branch}"
           } >> "$GITHUB_OUTPUT"
@@ -90,7 +94,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.image.outputs.sha_tag }}
-            ${{ steps.image.outputs.version_tag }}
+            ${{ steps.image.outputs.publish_version_tag }}
             ${{ steps.image.outputs.branch_tag }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

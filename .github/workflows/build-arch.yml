@@ -73,12 +73,16 @@ jobs:
           restore-keys: |
             ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-
             argon-ccache-v2-${{ inputs.arch }}-
+      - name: Set up Docker Buildx for image digest resolution
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
       - name: Start prepared Argon build container
         env:
           GHCR_TOKEN: ${{ github.token }}
           PREPARED_IMAGE: ${{ inputs.image }}
         run: |
           echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+          PREPARED_IMAGE=$(python3 .github/ci/resolve-prepared-image.py --image "$PREPARED_IMAGE")
+          echo "Prepared image: $PREPARED_IMAGE"
           docker pull "$PREPARED_IMAGE"
           mkdir -p "$CCACHE_DIR"
           ln -s /opt/argon/chromium chromium

@@ -3,8 +3,7 @@ name: Build Argon
 on:
   push:
     branches: [main]
-    # Prepared-source changes publish a new immutable image first. The later
-    # digest-pin commit modifies build.yml and starts the APK build exactly once.
+    # Runtime changes can reuse a compatible prepared image.
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
@@ -12,14 +11,17 @@ on:
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
   pull_request:
-    # Prepared-source changes publish a new immutable image first. The later
-    # digest-pin commit modifies build.yml and starts the APK build exactly once.
+    # PR builds use a temporary signing key and still verify prepared inputs.
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
       - '.github/ci/**'
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
+  workflow_run:
+    workflows: [Build prepared Chromium image]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       runner:
@@ -52,19 +54,34 @@ permissions:
 
 concurrency:
   group: argon-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: >-
+    ${{ github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_repository.full_name == github.repository &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_sha == github.sha) }}
 
 jobs:
   build:
+    # A workflow_run uses the default branch's current SHA. Do not release a
+    # different revision, or trust a failed/untrusted prepared-image run.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_sha == github.sha)
     name: Build and verify ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
     # One ABI per run: the compiler-cache quota is shared by the repository.
     uses: ./.github/workflows/build-arch.yml
     with:
       arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
-      image: ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee
+      # Resolve the version from build-lock.json to a digest before pulling.
+      # check-prepared-inputs.py also rejects mismatched patches at that version.
+      image: ghcr.io/${{ github.repository_owner }}/argon-build
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
       # Trusted pushes to main use the permanent release key.
       # Pull-request builds keep their temporary key, including same-repo PRs.
-      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || (github.event_name == 'push' && 'release' || 'test') }}
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || ((github.event_name == 'push' || github.event_name == 'workflow_run') && 'release' || 'test') }}
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
     secrets: inherit
