@@ -33,6 +33,7 @@ permissions:
   actions: write
   contents: read
   packages: read
+  pull-requests: read
 
 env:
   CCACHE_CACHE_PREFIX: argon-ccache-v2-${{ inputs.arch }}
@@ -658,38 +659,21 @@ jobs:
         run: python3 .github/ci/prune-compiler-cache.py "$CURRENT_CACHE_KEY"
       - name: Continue cache warm-up on a fresh runner
         id: continue_build
-        if: always() && !cancelled() && steps.build.outcome != 'success' && hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) != ''
+        # The controller reruns this completed run, preserving its SHA and
+        # refs/pull/<n>/merge cache scope. It never builds on the head branch.
+        if: >-
+          always() && !cancelled() && steps.build.outcome != 'success' &&
+          steps.save_final_cache.outcome == 'success' &&
+          hashFiles(format('.build/cache-warm-budget-exhausted-{0}', inputs.arch)) != '' &&
+          (github.event_name != 'pull_request' ||
+           github.event.pull_request.head.repo.full_name == github.repository)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           CONTINUATION_COUNT: ${{ inputs.continuation }}
-          RUNNER_LABEL: ${{ inputs.runner }}
-          SIGNING_MODE: ${{ inputs.signing }}
-          TARGET_ARCH: ${{ inputs.arch }}
-        run: |
-          if [[ ! "$CONTINUATION_COUNT" =~ ^(0|[1-9][0-9]?)$ ]]; then
-            echo '::error::Invalid automatic continuation counter.'
-            exit 1
-          fi
-          if (( CONTINUATION_COUNT >= AUTO_CONTINUE_MAX )); then
-            echo "::error::Automatic continuation limit (${AUTO_CONTINUE_MAX}) reached."
-            exit 1
-          fi
-          branch_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq '.object.sha')
-          if [[ "$branch_sha" != "$GITHUB_SHA" ]]; then
-            echo '::error::Branch changed during this run; refusing to restart a different commit.'
-            exit 1
-          fi
-          next=$(( CONTINUATION_COUNT + 1 ))
-          echo "Starting automatic continuation ${next}/${AUTO_CONTINUE_MAX} for ${TARGET_ARCH}."
-          gh workflow run build.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref "$GITHUB_REF_NAME" \
-            -f runner="$RUNNER_LABEL" \
-            -f signing="$SIGNING_MODE" \
-            -f arch="$TARGET_ARCH" \
-            -f continuation="$next"
-          echo 'dispatched=true' >> "$GITHUB_OUTPUT"
+        run: python3 .github/ci/continue-build.py schedule
       - name: Fail after preserving diagnostics
-        if: always() && !cancelled() && steps.build.outcome != 'success' && steps.continue_build.outcome != 'success'
+        # A queued continuation is not a verified APK. Leave the job failed
+        # so the controller can rerun it after this attempt finishes cleanup.
+        if: always() && !cancelled() && steps.build.outcome != 'success'
         run: exit 1
