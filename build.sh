@@ -149,21 +149,26 @@ fi
 python3 "$SCRIPT_DIR/scripts/configure_build.py" "${configure_args[@]}"
 gn gen "$OUT_DIR"
 if [[ "$BUILD_MODE" == prepare ]]; then
-  # Compile the injected JNI translation unit and Chrome's Java target while
-  # publishing the prepared image. This catches generated-JNI, Java/resources,
-  # Chromium API and GN dependency errors before a multi-hour warm-up starts.
-  autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" \
-    obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
-    chrome_java
-  echo 'Chromium source tree and Argon Android integration are prepared.'
+  # Publish the sources after patches, policy tests and GN generation. A
+  # Docker RUN cannot checkpoint a partially compiled tree on a hosted-job
+  # timeout; Android compilation belongs in the resumable APK workflow below.
+  echo 'Chromium sources are prepared; Android compilation is checked by the APK build.'
   exit 0
 fi
+# Keep the injected JNI and Java targets explicit in every APK build mode.
+# Their failures must prevent a successful APK build and signing, even if a
+# future Chromium dependency change removes either from chrome_public_apk.
+android_targets=(
+  obj/chrome/browser/android/android/argon_certificate_domains_settings.o
+  chrome_java
+  chrome_public_apk
+)
 if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
   echo "Warming compiler cache for up to $BUILD_TIME_LIMIT_MINUTES minutes"
   build_started_at=$(date +%s)
   set +e
   timeout --signal=INT --kill-after=3m "${BUILD_TIME_LIMIT_MINUTES}m" \
-    autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" chrome_public_apk
+    autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" "${android_targets[@]}"
   build_status=$?
   set -e
   build_elapsed=$(( $(date +%s) - build_started_at ))
@@ -190,7 +195,7 @@ if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
   exit 0
 fi
 
-autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" chrome_public_apk
+autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" "${android_targets[@]}"
 mapfile -t apks < <(find "$OUT_DIR/apks" -maxdepth 1 -name 'Chrome*.apk' -type f)
 [[ ${#apks[@]} == 1 ]] || { echo "Expected one $TARGET_CPU APK" >&2; exit 1; }
 python3 "$SCRIPT_DIR/scripts/sign_and_verify.py" --apk "${apks[0]}" \

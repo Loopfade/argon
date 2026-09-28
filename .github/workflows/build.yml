@@ -3,8 +3,7 @@ name: Build Argon
 on:
   push:
     branches: [main]
-    # Prepared-source changes publish a new immutable image first. The later
-    # digest-pin commit modifies build.yml and starts the APK build exactly once.
+    # Runtime changes can reuse a compatible prepared image.
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
@@ -12,14 +11,17 @@ on:
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
   pull_request:
-    # Prepared-source changes publish a new immutable image first. The later
-    # digest-pin commit modifies build.yml and starts the APK build exactly once.
+    # PR builds use a temporary signing key and still verify prepared inputs.
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
       - '.github/ci/**'
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
+  workflow_run:
+    workflows: [Build prepared Chromium image]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       runner:
@@ -44,27 +46,82 @@ on:
         required: false
         type: string
         default: '0'
+      resume_run:
+        description: 'Internal run to resume after it finishes (no new build)'
+        required: false
+        type: string
+        default: ''
+      resume_attempt:
+        description: 'Internal expected attempt of the run to resume'
+        required: false
+        type: string
+        default: ''
+      resume_sha:
+        description: 'Internal exact checkout SHA of the run to resume'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   actions: write
   contents: read
   packages: read
+  pull-requests: read
 
 concurrency:
-  group: argon-${{ github.ref }}
-  cancel-in-progress: true
+  # A controller must not cancel the build it is waiting to rerun.
+  group: ${{ inputs.resume_run != '' && format('argon-resume-{0}', inputs.resume_run) || format('argon-{0}', github.ref) }}
+  cancel-in-progress: >-
+    ${{ inputs.resume_run == '' && (github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_repository.full_name == github.repository &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_sha == github.sha)) }}
 
 jobs:
   build:
+    # A workflow_run uses the default branch's current SHA. Do not release a
+    # different revision, or trust a failed/untrusted prepared-image run.
+    if: >-
+      inputs.resume_run == '' &&
+      (github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_sha == github.sha))
     name: Build and verify ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
     # One ABI per run: the compiler-cache quota is shared by the repository.
     uses: ./.github/workflows/build-arch.yml
     with:
       arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
-      image: ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee
+      # Resolve the version from build-lock.json to a digest before pulling.
+      # check-prepared-inputs.py also rejects mismatched patches at that version.
+      image: ghcr.io/${{ github.repository_owner }}/argon-build
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
       # Trusted pushes to main use the permanent release key.
       # Pull-request builds keep their temporary key, including same-repo PRs.
-      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || (github.event_name == 'push' && 'release' || 'test') }}
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || ((github.event_name == 'push' || github.event_name == 'workflow_run') && 'release' || 'test') }}
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
     secrets: inherit
+
+  resume:
+    if: github.event_name == 'workflow_dispatch' && inputs.resume_run != ''
+    name: Resume the original build run
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Wait for cleanup and rerun the original failed job
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESUME_RUN: ${{ inputs.resume_run }}
+          RESUME_ATTEMPT: ${{ inputs.resume_attempt }}
+          RESUME_SHA: ${{ inputs.resume_sha }}
+          AUTO_CONTINUE_MAX: '10'
+        run: python3 .github/ci/continue-build.py resume
