@@ -31,4 +31,4 @@ Argon — Android-браузер на базе [Titanium](https://github.com/jqs
 
 ## Версия Chromium
 
-`153.0.8010.52` — commit `78e5e45d4bb41035e17ea4da2cc257f496416ac9`.
+`154.0.8037.57` — commit `73c14f6228d7cd537c855007e8f88678969cc0eb`.

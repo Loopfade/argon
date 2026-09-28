@@ -1,11 +1,11 @@
 {
-  "titanium_commit": "97a21b7a98e4446142a39bd38190023ebb34cd74",
+  "titanium_commit": "5c93149e4ca2f8fb659cf7e9fce7ee5e66cbf905",
   "ruthenium_reference_commit": "6264df31e89f4f372bcccbeb976e699735007476",
-  "vanadium_commit": "2aaf9dfc919e620564409f94beedaedca5301e81",
-  "chromium_version": "153.0.8010.52",
-  "chromium_commit": "78e5e45d4bb41035e17ea4da2cc257f496416ac9",
-  "boringssl_commit": "defe5810ee8be430bcdeccf46a199bec0e93abdb",
-  "depot_tools_commit": "0306e4682b4ac35287c726fa35a983157a625902",
+  "vanadium_commit": "83085d1694c4de653eac382fa2be6d008f193bce",
+  "chromium_version": "154.0.8037.57",
+  "chromium_commit": "73c14f6228d7cd537c855007e8f88678969cc0eb",
+  "boringssl_commit": "ac39ea6853833c1f18fd23614091d11855e71752",
+  "depot_tools_commit": "c101dcbe0489c455fce7c2247bfee19680b116c3",
   "extension_url": "https://github.com/jqssun/android-titanium-extension/releases/download/v0.0.1/titanium.crx",
   "extension_sha256": "9374d141153c7d2f5218ac9b96d0bc290818f19a0c5df774728a04664d397974",
   "filter_lists": [
