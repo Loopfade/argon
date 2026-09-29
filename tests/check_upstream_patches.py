@@ -89,8 +89,8 @@ def main():
         if not re.fullmatch(r"[0-9a-f]{40}", lock[key]):
             raise ValueError(f"Invalid commit pin: {key}")
     chromium = "https://raw.githubusercontent.com/chromium/chromium/" + lock["chromium_commit"]
-    urls = {str(path): f"{chromium}/{path}" for path in BASE_PATHS}
-    urls[str(DIALOG_PATH)] = f"{chromium}/{DIALOG_PATH}"
+    upstream_paths = (*BASE_PATHS, DIALOG_PATH)
+    urls = {str(path): f"{chromium}/{path}" for path in upstream_paths}
     urls.update({"chrome/VERSION": chromium + "/chrome/VERSION", "DEPS": chromium + "/DEPS",
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
@@ -98,16 +98,15 @@ def main():
         values = dict(zip(urls, executor.map(download, urls.values())))
     verify_pins(lock, values["chrome/VERSION"], values["DEPS"],
                 json.loads(values["titanium-tree"]))
-    verify_extension_install_dialog(values[str(DIALOG_PATH)])
 
     with tempfile.TemporaryDirectory(prefix="argon-upstream-") as temporary:
         src = Path(temporary)
-        for path in BASE_PATHS:
+        for path in upstream_paths:
             target = src / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(values[str(path)])
         subprocess.run(["git", "init", "-q", str(src)], check=True)
-        paths = (*BASE_PATHS, *EXTENSION_PATHS)
+        paths = (*BASE_PATHS, *EXTENSION_PATHS, DIALOG_PATH)
         includes = [f"--include={path}" for path in paths]
         count = 0
         for source in sorted((ROOT / "vanadium/patches").glob("*.patch")):
@@ -124,6 +123,9 @@ def main():
             if result.returncode:
                 raise ValueError(f"{source.name}: {result.stderr}")
             count += 1
+        # Validate the dialog after Vanadium patches, matching build.sh ordering:
+        # Chromium checkout -> Vanadium patches -> Argon patch.sh.
+        verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         patch.apply(src, product_name=False)
         before = {path: path.read_bytes() for path in src.rglob("*")
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
