@@ -12,9 +12,17 @@ from apply_scoped_ca import ROOT, load_root, root_header
 from configure_build import TARGET_ABIS, render_gn_args, target_cpu
 
 
+def validate_release_revision(lock: dict) -> int:
+    revision = lock.get("argon_revision")
+    if type(revision) is not int or revision < 1:
+        raise ValueError("argon_revision must be a positive integer")
+    return revision
+
+
 def validate_inputs(arch: str = "arm64") -> dict:
     cpu = target_cpu(arch)
     lock = json.loads((ROOT / "build-lock.json").read_text())
+    validate_release_revision(lock)
     filter_lists = lock.get("filter_lists")
     if not isinstance(filter_lists, list) or not filter_lists:
         raise ValueError("Filter lists are not pinned")
