@@ -11,34 +11,19 @@ on:
         description: 'Successful Build Argon workflow run ID'
         required: true
         type: string
-        default: '36526029956'
       artifact_name:
         description: 'Artifact name from the successful build'
         required: true
         type: string
-        default: 'Argon-arm64-dfad680f891d36c4563c53af38263db87e91caff'
-      tag:
-        description: 'Release tag'
-        required: true
-        type: string
-        default: 'v154.0.8037.57-argon.1'
-      target_sha:
-        description: 'Commit used for the verified build'
-        required: true
-        type: string
-        default: 'dfad680f891d36c4563c53af38263db87e91caff'
-      title:
-        description: 'Release title'
-        required: true
-        type: string
-        default: 'Argon 154.0.8037.57 (arm64-v8a)'
 
 permissions:
   actions: read
   contents: write
 
 concurrency:
-  group: publish-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_sha }}
+  # Releases and tags are repository-global mutable resources. Serialize every
+  # publisher run so manual and automatic publications cannot race each other.
+  group: publish-release
   cancel-in-progress: false
 
 jobs:
@@ -66,13 +51,12 @@ jobs:
       - name: Verify release provenance and select public assets
         id: release
         env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           AUTO_SHA: ${{ github.event.workflow_run.head_sha }}
           AUTO_RUN_ID: ${{ github.event.workflow_run.id }}
-          MANUAL_SHA: ${{ inputs.target_sha }}
           MANUAL_RUN_ID: ${{ inputs.run_id }}
-          MANUAL_TAG: ${{ inputs.tag }}
-          MANUAL_TITLE: ${{ inputs.title }}
         run: |
           set -euo pipefail
           mkdir public-assets
@@ -85,17 +69,51 @@ jobs:
 
           apk="${apks[0]}"
           checksum="$apk.sha256"
+          metadata=release-assets/build-info.json
           required=(
             "$apk"
             "$checksum"
+            "$metadata"
             "release-assets/Chromium-LICENSE.txt"
             "release-assets/Ruthenium-LICENSE.txt"
             "release-assets/Titanium-LICENSE.txt"
           )
           for asset in "${required[@]}"; do
-            test -f "$asset" || { echo "Missing required release asset: $asset" >&2; exit 1; }
-            cp "$asset" public-assets/
+            test -f "$asset" || { echo "Missing required release artifact: $asset" >&2; exit 1; }
           done
+
+          source_sha=$(jq -er '.source_commit' "$metadata")
+          version=$(jq -er '.inputs.chromium_version' "$metadata")
+          release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$metadata")
+          abi=$(jq -er '.abi' "$metadata")
+          signing_mode=$(jq -er '.signing_mode' "$metadata")
+          metadata_digest=$(jq -er '.apk_sha256' "$metadata")
+          actual_digest=$(sha256sum "$apk" | awk '{print $1}')
+
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Invalid source commit in build-info.json: $source_sha" >&2
+            exit 1
+          }
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Invalid Chromium version in build-info.json: $version" >&2
+            exit 1
+          }
+          [[ "$release_revision" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Invalid Argon release revision in build-info.json: $release_revision" >&2
+            exit 1
+          }
+          [[ "$abi" == arm64-v8a ]] || { echo "Unexpected ABI: $abi" >&2; exit 1; }
+          [[ "$signing_mode" == release ]] || { echo "Artifact is not release-signed." >&2; exit 1; }
+          [[ "$metadata_digest" == "$actual_digest" ]] || {
+            echo "APK digest does not match build-info.json." >&2
+            exit 1
+          }
+
+          expected_apk="Argon-${version}-release-arm64-v8a.apk"
+          [[ "$(basename "$apk")" == "$expected_apk" ]] || {
+            echo "APK filename does not match build metadata: $(basename "$apk")" >&2
+            exit 1
+          }
 
           (
             cd release-assets
@@ -103,61 +121,106 @@ jobs:
           )
 
           if [[ "$EVENT_NAME" == workflow_run ]]; then
-            metadata=release-assets/build-info.json
-            test -f "$metadata" || { echo "Missing build-info.json for provenance verification." >&2; exit 1; }
-
-            source_sha=$(jq -er '.source_commit' "$metadata")
-            version=$(jq -er '.inputs.chromium_version' "$metadata")
-            abi=$(jq -er '.abi' "$metadata")
-            signing_mode=$(jq -er '.signing_mode' "$metadata")
-            metadata_digest=$(jq -er '.apk_sha256' "$metadata")
-            actual_digest=$(sha256sum "$apk" | awk '{print $1}')
-
             [[ "$source_sha" == "$AUTO_SHA" ]] || {
               echo "Artifact source SHA $source_sha does not match triggering run SHA $AUTO_SHA." >&2
               exit 1
             }
-            [[ "$abi" == arm64-v8a ]] || { echo "Unexpected ABI: $abi" >&2; exit 1; }
-            [[ "$signing_mode" == release ]] || { echo "Artifact is not release-signed." >&2; exit 1; }
-            [[ "$metadata_digest" == "$actual_digest" ]] || {
-              echo "APK digest does not match build-info.json." >&2
+            current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+            if [[ "$source_sha" != "$current_main" ]]; then
+              echo "::notice::Skipping stale Build Argon run $AUTO_RUN_ID: $source_sha is no longer main ($current_main)."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            source_run="$AUTO_RUN_ID"
+          else
+            run_json=$(gh api "repos/$GH_REPO/actions/runs/$MANUAL_RUN_ID")
+            run_repo=$(jq -er '.repository.full_name' <<<"$run_json")
+            run_name=$(jq -er '.name' <<<"$run_json")
+            run_event=$(jq -er '.event' <<<"$run_json")
+            run_conclusion=$(jq -er '.conclusion' <<<"$run_json")
+            run_head_branch=$(jq -er '.head_branch' <<<"$run_json")
+            run_head_sha=$(jq -er '.head_sha' <<<"$run_json")
+
+            [[ "$run_repo" == "$GH_REPO" ]] || {
+              echo "Run $MANUAL_RUN_ID belongs to $run_repo, not $GH_REPO." >&2
               exit 1
             }
-
-            target_sha="$AUTO_SHA"
-            source_run="$AUTO_RUN_ID"
-            tag="v${version}-argon.1"
-            title="Argon ${version} (arm64-v8a)"
-          else
-            target_sha="$MANUAL_SHA"
+            [[ "$run_name" == "Build Argon" ]] || {
+              echo "Run $MANUAL_RUN_ID is not a Build Argon workflow run." >&2
+              exit 1
+            }
+            [[ "$run_conclusion" == success ]] || {
+              echo "Run $MANUAL_RUN_ID did not complete successfully." >&2
+              exit 1
+            }
+            [[ "$run_head_branch" == main ]] || {
+              echo "Run $MANUAL_RUN_ID was built from $run_head_branch, not main." >&2
+              exit 1
+            }
+            [[ "$run_head_sha" == "$source_sha" ]] || {
+              echo "Artifact source SHA $source_sha does not match run SHA $run_head_sha." >&2
+              exit 1
+            }
+            case "$run_event" in
+              push|workflow_run|workflow_dispatch) ;;
+              *)
+                echo "Run $MANUAL_RUN_ID has unsupported event $run_event." >&2
+                exit 1
+                ;;
+            esac
             source_run="$MANUAL_RUN_ID"
-            tag="$MANUAL_TAG"
-            title="$MANUAL_TITLE"
-            version=$(basename "$apk" | sed -E 's/^Argon-(.+)-release-arm64-v8a\.apk$/\1/')
           fi
 
+          for asset in             "$apk"             "$checksum"             release-assets/Chromium-LICENSE.txt             release-assets/Ruthenium-LICENSE.txt             release-assets/Titanium-LICENSE.txt
+          do
+            cp "$asset" public-assets/
+          done
+
+          target_sha="$source_sha"
+          tag="v${version}-argon.${release_revision}"
+          title="Argon ${version} (arm64-v8a)"
+
           {
+            echo "publish=true"
             echo "target_sha=$target_sha"
             echo "source_run=$source_run"
             echo "tag=$tag"
             echo "title=$title"
             echo "version=$version"
+            echo "release_revision=$release_revision"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Replace old release and publish verified assets
+      - name: Publish immutable verified release
+        if: steps.release.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_TARGET: ${{ steps.release.outputs.target_sha }}
           RELEASE_TITLE: ${{ steps.release.outputs.title }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_REVISION: ${{ steps.release.outputs.release_revision }}
           SOURCE_RUN: ${{ steps.release.outputs.source_run }}
         run: |
           set -euo pipefail
 
+          # Close the race between provenance verification and release creation.
+          if [[ "$EVENT_NAME" == workflow_run ]]; then
+            current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+            if [[ "$RELEASE_TARGET" != "$current_main" ]]; then
+              echo "::notice::Skipping stale release: $RELEASE_TARGET is no longer main ($current_main)."
+              exit 0
+            fi
+          fi
+
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release delete "$RELEASE_TAG" --yes --cleanup-tag
+            echo "Release $RELEASE_TAG already exists; refusing to replace an immutable release." >&2
+            exit 1
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists; refusing to move an immutable release tag." >&2
+            exit 1
           fi
 
           mapfile -d '' assets < <(find public-assets -type f -print0 | sort -z)
@@ -169,6 +232,6 @@ jobs:
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$RELEASE_TARGET" \
             --title "$RELEASE_TITLE" \
-            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, arm64-v8a, signed with the repository release key."
+            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, Argon revision $RELEASE_REVISION, arm64-v8a, signed with the repository release key."
 
           gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
