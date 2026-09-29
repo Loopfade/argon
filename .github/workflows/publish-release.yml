@@ -40,6 +40,10 @@ jobs:
     name: Publish verified arm64 release
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
       - name: Download verified build artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -125,12 +129,6 @@ jobs:
               echo "Artifact source SHA $source_sha does not match triggering run SHA $AUTO_SHA." >&2
               exit 1
             }
-            current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
-            if [[ "$source_sha" != "$current_main" ]]; then
-              echo "::notice::Skipping stale Build Argon run $AUTO_RUN_ID: $source_sha is no longer main ($current_main)."
-              echo "publish=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
             source_run="$AUTO_RUN_ID"
           else
             run_json=$(gh api "repos/$GH_REPO/actions/runs/$MANUAL_RUN_ID")
@@ -171,6 +169,25 @@ jobs:
             source_run="$MANUAL_RUN_ID"
           fi
 
+          # A long build may finish after documentation-only commits land on
+          # main. Those commits do not invalidate the verified APK. Any code,
+          # CI, or other repository change does, and manual recovery follows
+          # the same rule so GITHUB_TOKEN never targets an unrelated old tree.
+          current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$source_sha" != "$current_main" ]]; then
+            compare_json=$(gh api "repos/$GH_REPO/compare/$source_sha...$current_main")
+            if ! python3 scripts/release_policy.py check-drift <<<"$compare_json"; then
+              if [[ "$EVENT_NAME" == workflow_run ]]; then
+                echo "::notice::Skipping stale Build Argon run $source_run: main contains non-documentation changes after $source_sha."
+                echo "publish=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Manual publication is only allowed from current main or across documentation-only drift." >&2
+              exit 1
+            fi
+            echo "::notice::Allowing publication across documentation-only main drift: $source_sha -> $current_main."
+          fi
+
           for asset in             "$apk"             "$checksum"             release-assets/Chromium-LICENSE.txt             release-assets/Ruthenium-LICENSE.txt             release-assets/Titanium-LICENSE.txt
           do
             cp "$asset" public-assets/
@@ -206,21 +223,17 @@ jobs:
           set -euo pipefail
 
           # Close the race between provenance verification and release creation.
-          if [[ "$EVENT_NAME" == workflow_run ]]; then
-            current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
-            if [[ "$RELEASE_TARGET" != "$current_main" ]]; then
-              echo "::notice::Skipping stale release: $RELEASE_TARGET is no longer main ($current_main)."
-              exit 0
+          current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$RELEASE_TARGET" != "$current_main" ]]; then
+            compare_json=$(gh api "repos/$GH_REPO/compare/$RELEASE_TARGET...$current_main")
+            if ! python3 scripts/release_policy.py check-drift <<<"$compare_json"; then
+              if [[ "$EVENT_NAME" == workflow_run ]]; then
+                echo "::notice::Skipping stale release: main changed beyond documentation after $RELEASE_TARGET."
+                exit 0
+              fi
+              echo "Manual publication became stale before release creation." >&2
+              exit 1
             fi
-          fi
-
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; refusing to replace an immutable release." >&2
-            exit 1
-          fi
-          if gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Tag $RELEASE_TAG already exists; refusing to move an immutable release tag." >&2
-            exit 1
           fi
 
           mapfile -d '' assets < <(find public-assets -type f -print0 | sort -z)
@@ -229,9 +242,37 @@ jobs:
             exit 1
           fi
 
-          gh release create "$RELEASE_TAG" "${assets[@]}" \
-            --target "$RELEASE_TARGET" \
-            --title "$RELEASE_TITLE" \
-            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, Argon revision $RELEASE_REVISION, arm64-v8a, signed with the repository release key."
+          release_json=$(mktemp)
+          if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json" 2>/dev/null; then
+            python3 scripts/release_policy.py verify-release \
+              --release-json "$release_json" \
+              --target-sha "$RELEASE_TARGET" \
+              --assets public-assets
+            release_url=$(jq -er '.html_url' "$release_json")
+            echo "::notice::Release $RELEASE_TAG already exists with the exact verified target and assets; treating this run as successful."
+            printf '%s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
-          gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
+          tag_json=$(mktemp)
+          tag_exists=false
+          if gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" >"$tag_json" 2>/dev/null; then
+            python3 scripts/release_policy.py verify-tag \
+              --tag-json "$tag_json" \
+              --target-sha "$RELEASE_TARGET"
+            tag_exists=true
+          fi
+
+          notes="Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, Argon revision $RELEASE_REVISION, arm64-v8a, signed with the repository release key."
+          if [[ "$tag_exists" == true ]]; then
+            release_url=$(gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --title "$RELEASE_TITLE" \
+              --notes "$notes")
+          else
+            release_url=$(gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --target "$RELEASE_TARGET" \
+              --title "$RELEASE_TITLE" \
+              --notes "$notes")
+          fi
+
+          printf '%s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
