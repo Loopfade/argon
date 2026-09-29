@@ -1,33 +1,37 @@
 name: Publish release from verified artifact
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-release.yml'
   workflow_dispatch:
     inputs:
       run_id:
         description: 'Successful Build Argon workflow run ID'
         required: true
         type: string
-        default: '35977630228'
+        default: '36526029956'
       artifact_name:
         description: 'Artifact name from the successful build'
         required: true
         type: string
-        default: 'Argon-arm64-07b6989f7679ecf786c3b94295d15d6b3486ca36'
+        default: 'Argon-arm64-dfad680f891d36c4563c53af38263db87e91caff'
       tag:
         description: 'Release tag'
         required: true
         type: string
-        default: 'v153.0.8010.52-argon.1'
+        default: 'v154.0.8037.57-argon.1'
       target_sha:
         description: 'Commit used for the verified build'
         required: true
         type: string
-        default: '07b6989f7679ecf786c3b94295d15d6b3486ca36'
+        default: 'dfad680f891d36c4563c53af38263db87e91caff'
       title:
         description: 'Release title'
         required: true
         type: string
-        default: 'Argon 153.0.8010.52 (arm64-v8a)'
+        default: 'Argon 154.0.8037.57 (arm64-v8a)'
 
 permissions:
   actions: read
@@ -38,7 +42,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  cleanup:
+    if: github.event_name == 'push'
+    name: Remove non-user-facing release assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep only APK, checksum and licenses
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: v154.0.8037.57-argon.1
+        run: |
+          set -euo pipefail
+          for asset in \
+            apk-signature.txt \
+            Argon-154.0.8037.57-release-arm64-v8a.apk.idsig \
+            build-info.json \
+            signing-certificate.pem
+          do
+            if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "$asset"; then
+              gh release delete-asset "$RELEASE_TAG" "$asset" --yes
+            fi
+          done
+
   publish:
+    if: github.event_name == 'workflow_dispatch'
     name: Publish verified arm64 release
     runs-on: ubuntu-latest
     steps:
@@ -50,9 +78,34 @@ jobs:
           github-token: ${{ github.token }}
           path: release-assets
 
+      - name: Select public release assets
+        run: |
+          set -euo pipefail
+          mkdir public-assets
+
+          mapfile -t apks < <(find release-assets -maxdepth 1 -type f -name 'Argon-*-release-arm64-v8a.apk' | sort)
+          if (( ${#apks[@]} != 1 )); then
+            echo "Expected exactly one release arm64 APK, found ${#apks[@]}." >&2
+            exit 1
+          fi
+
+          apk="${apks[0]}"
+          required=(
+            "$apk"
+            "$apk.sha256"
+            "release-assets/Chromium-LICENSE.txt"
+            "release-assets/Ruthenium-LICENSE.txt"
+            "release-assets/Titanium-LICENSE.txt"
+          )
+          for asset in "${required[@]}"; do
+            test -f "$asset" || { echo "Missing required release asset: $asset" >&2; exit 1; }
+            cp "$asset" public-assets/
+          done
+
       - name: Replace old release and publish verified assets
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_TARGET: ${{ inputs.target_sha }}
           RELEASE_TITLE: ${{ inputs.title }}
@@ -64,15 +117,15 @@ jobs:
             gh release delete "$RELEASE_TAG" --yes --cleanup-tag
           fi
 
-          mapfile -d '' assets < <(find release-assets -type f -print0 | sort -z)
-          if (( ${#assets[@]} == 0 )); then
-            echo "No release assets were downloaded." >&2
+          mapfile -d '' assets < <(find public-assets -type f -print0 | sort -z)
+          if (( ${#assets[@]} != 5 )); then
+            echo "Expected exactly five public release assets, found ${#assets[@]}." >&2
             exit 1
           fi
 
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$RELEASE_TARGET" \
             --title "$RELEASE_TITLE" \
-            --notes "First Argon release. Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)."
+            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium 154.0.8037.57, arm64-v8a, signed with the repository release key."
 
           gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
