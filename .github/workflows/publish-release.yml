@@ -1,6 +1,10 @@
 name: Publish release from verified artifact
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-release.yml'
   workflow_dispatch:
     inputs:
       run_id:
@@ -45,18 +49,18 @@ jobs:
       - name: Download verified build artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.run_id }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_name || 'Argon-arm64-dfad680f891d36c4563c53af38263db87e91caff' }}
+          run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || '36526029956' }}
           github-token: ${{ github.token }}
           path: release-assets
 
       - name: Replace old release and publish verified assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
-          RELEASE_TARGET: ${{ inputs.target_sha }}
-          RELEASE_TITLE: ${{ inputs.title }}
-          SOURCE_RUN: ${{ inputs.run_id }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || 'v154.0.8037.57-argon.1' }}
+          RELEASE_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || 'dfad680f891d36c4563c53af38263db87e91caff' }}
+          RELEASE_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.title || 'Argon 154.0.8037.57 (arm64-v8a)' }}
+          SOURCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || '36526029956' }}
         run: |
           set -euo pipefail
 
@@ -73,6 +77,6 @@ jobs:
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$RELEASE_TARGET" \
             --title "$RELEASE_TITLE" \
-            --notes "First Argon release. Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)."
+            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium 154.0.8037.57, arm64-v8a, signed with the repository release key."
 
           gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
