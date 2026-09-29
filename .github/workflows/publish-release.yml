@@ -1,10 +1,6 @@
 name: Publish release from verified artifact
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/publish-release.yml'
   workflow_dispatch:
     inputs:
       run_id:
@@ -42,31 +38,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  cleanup:
-    if: github.event_name == 'push'
-    name: Remove non-user-facing release assets
-    runs-on: ubuntu-latest
-    steps:
-      - name: Keep only APK, checksum and licenses
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: v154.0.8037.57-argon.1
-        run: |
-          set -euo pipefail
-          for asset in \
-            apk-signature.txt \
-            Argon-154.0.8037.57-release-arm64-v8a.apk.idsig \
-            build-info.json \
-            signing-certificate.pem
-          do
-            if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "$asset"; then
-              gh release delete-asset "$RELEASE_TAG" "$asset" --yes
-            fi
-          done
-
   publish:
-    if: github.event_name == 'workflow_dispatch'
     name: Publish verified arm64 release
     runs-on: ubuntu-latest
     steps:
