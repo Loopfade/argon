@@ -7,27 +7,27 @@ on:
         description: 'Successful Build Argon workflow run ID'
         required: true
         type: string
-        default: '36526029956'
+        default: '35977630228'
       artifact_name:
         description: 'Artifact name from the successful build'
         required: true
         type: string
-        default: 'Argon-arm64-dfad680f891d36c4563c53af38263db87e91caff'
+        default: 'Argon-arm64-07b6989f7679ecf786c3b94295d15d6b3486ca36'
       tag:
         description: 'Release tag'
         required: true
         type: string
-        default: 'v154.0.8037.57-argon.1'
+        default: 'v153.0.8010.52-argon.1'
       target_sha:
         description: 'Commit used for the verified build'
         required: true
         type: string
-        default: 'dfad680f891d36c4563c53af38263db87e91caff'
+        default: '07b6989f7679ecf786c3b94295d15d6b3486ca36'
       title:
         description: 'Release title'
         required: true
         type: string
-        default: 'Argon 154.0.8037.57 (arm64-v8a)'
+        default: 'Argon 153.0.8010.52 (arm64-v8a)'
 
 permissions:
   actions: read
@@ -53,7 +53,6 @@ jobs:
       - name: Replace old release and publish verified assets
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_TARGET: ${{ inputs.target_sha }}
           RELEASE_TITLE: ${{ inputs.title }}
@@ -74,6 +73,6 @@ jobs:
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$RELEASE_TARGET" \
             --title "$RELEASE_TITLE" \
-            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium 154.0.8037.57, arm64-v8a, signed with the repository release key."
+            --notes "First Argon release. Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)."
 
           gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
