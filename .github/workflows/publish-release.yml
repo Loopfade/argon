@@ -1,33 +1,37 @@
 name: Publish release from verified artifact
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-release.yml'
   workflow_dispatch:
     inputs:
       run_id:
         description: 'Successful Build Argon workflow run ID'
         required: true
         type: string
-        default: '35977630228'
+        default: '36526029956'
       artifact_name:
         description: 'Artifact name from the successful build'
         required: true
         type: string
-        default: 'Argon-arm64-07b6989f7679ecf786c3b94295d15d6b3486ca36'
+        default: 'Argon-arm64-dfad680f891d36c4563c53af38263db87e91caff'
       tag:
         description: 'Release tag'
         required: true
         type: string
-        default: 'v153.0.8010.52-argon.1'
+        default: 'v154.0.8037.57-argon.1'
       target_sha:
         description: 'Commit used for the verified build'
         required: true
         type: string
-        default: '07b6989f7679ecf786c3b94295d15d6b3486ca36'
+        default: 'dfad680f891d36c4563c53af38263db87e91caff'
       title:
         description: 'Release title'
         required: true
         type: string
-        default: 'Argon 153.0.8010.52 (arm64-v8a)'
+        default: 'Argon 154.0.8037.57 (arm64-v8a)'
 
 permissions:
   actions: read
@@ -45,18 +49,19 @@ jobs:
       - name: Download verified build artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: ${{ inputs.artifact_name }}
-          run-id: ${{ inputs.run_id }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_name || 'Argon-arm64-dfad680f891d36c4563c53af38263db87e91caff' }}
+          run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || '36526029956' }}
           github-token: ${{ github.token }}
           path: release-assets
 
       - name: Replace old release and publish verified assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
-          RELEASE_TARGET: ${{ inputs.target_sha }}
-          RELEASE_TITLE: ${{ inputs.title }}
-          SOURCE_RUN: ${{ inputs.run_id }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || 'v154.0.8037.57-argon.1' }}
+          RELEASE_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || 'dfad680f891d36c4563c53af38263db87e91caff' }}
+          RELEASE_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.title || 'Argon 154.0.8037.57 (arm64-v8a)' }}
+          SOURCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || '36526029956' }}
         run: |
           set -euo pipefail
 
@@ -73,6 +78,6 @@ jobs:
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --target "$RELEASE_TARGET" \
             --title "$RELEASE_TITLE" \
-            --notes "First Argon release. Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)."
+            --notes "Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium 154.0.8037.57, arm64-v8a, signed with the repository release key."
 
           gh release view "$RELEASE_TAG" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
