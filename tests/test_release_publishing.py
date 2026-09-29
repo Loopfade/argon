@@ -48,7 +48,7 @@ class ReleasePublishingTests(unittest.TestCase):
     def test_manual_publish_is_bound_to_successful_main_build_run(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
         self.assertIn('repos/$GH_REPO/actions/runs/$MANUAL_RUN_ID', workflow)
-        self.assertIn('run_name=$(jq -er '.name' <<<"$run_json")', workflow)
+        self.assertIn("""run_name=$(jq -er '.name' <<<"$run_json")""", workflow)
         self.assertIn('[[ "$run_name" == "Build Argon" ]]', workflow)
         self.assertIn('[[ "$run_conclusion" == success ]]', workflow)
         self.assertIn('[[ "$run_head_branch" == main ]]', workflow)
