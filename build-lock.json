@@ -26,5 +26,6 @@
       "sha256": "cda05ecc82902c795c5c9568a251a097024a5eaae26e2bcde7eb820dcce41c8b"
     }
   ],
-  "application_id": "app.titaniumru.browser"
+  "application_id": "app.titaniumru.browser",
+  "argon_revision": 2
 }
