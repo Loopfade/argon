@@ -177,6 +177,23 @@ class PatchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             patch.patch_verifier(bad)
 
+    def test_m154_extension_install_dialog_patch_is_retired_and_guarded(self):
+        script = (ROOT / "patch.sh").read_text()
+
+        self.assertNotIn(
+            "DCHECK(view_android);/{/GetParentWebContents/!d",
+            script,
+        )
+        self.assertNotIn(
+            "view_android->GetWindowAndroid();|show_params->GetParentWindow();",
+            script,
+        )
+        self.assertIn("DIALOG_SOURCE_SHA256_BEFORE", script)
+        self.assertIn(
+            "extension install dialog source changed unexpectedly",
+            script,
+        )
+
     def test_root_header_has_reviewed_bytes(self):
         self.assertEqual(
             (ROOT / "chromium_overlay/net/cert/titanium_ru_root.h").read_text(),

@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Chromium M154 already handles extension-install dialogs through
+# ExtensionInstallPromptShowParams::GetParentWindow(). Keep this upstream file
+# byte-for-byte unchanged: the retired range-based sed patch truncated it when
+# its old end anchor disappeared.
+DIALOG_SOURCE=chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc
+DIALOG_SOURCE_SHA256_BEFORE=$(sha256sum "$DIALOG_SOURCE" | awk '{print $1}')
+
 mkdir -p chrome/android/java/res_titanium_base
 cp $SCRIPT_DIR/res/drawable/themed_app_icon.xml chrome/android/java/res_titanium_base/drawable/themed_app_icon.xml
 for icon in $(find chrome/android/java/res_titanium_base -type f -name '*.png'); do convert $icon -fill navy -tint 36 $icon && $SCRIPT_DIR/res/icon.sh $icon; done
@@ -111,8 +118,7 @@ sed -i 's|public static boolean shouldOpenIncognitoAsWindow() {|public static bo
 sed -i 's|host_contents_->SetColorProviderSource(NoOpColorProviderSource::Get());|&\nhost_contents_->SetPrimaryPageImportance(content::ChildProcessImportance::IMPORTANT, content::ChildProcessImportance::NORMAL);|' extensions/browser/extension_host.cc
 
 # ext: settings
-sed -i '/content::WebContents\* web_contents = show_params->GetParentWebContents();/,/DCHECK(view_android);/{/GetParentWebContents/!d}' chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc
-sed -i 's|view_android->GetWindowAndroid();|show_params->GetParentWindow();|' chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc
+# Chromium M154+ already contains the parent-window fix; do not patch this file.
 sed -i 's|"platforms": \["win", "mac"\]|"platforms": ["win", "mac", "desktop_android"]|' chrome/common/extensions/api/_manifest_features.json
 
 # ext: dialog
@@ -160,5 +166,10 @@ if (content::WebContents::HasLiveWebContentsForBrowserContext(profile)) { return
 # crbug.com/444024982: api 31
 sed -i 's/|| mSupportedProfileType == SupportedProfileType.REGULAR) {/|| mSupportedProfileType == SupportedProfileType.REGULAR || mSupportedProfileType == SupportedProfileType.MIXED) {/' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 sed -i 's/|| mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD) {/|| mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD || mSupportedProfileType == SupportedProfileType.MIXED) {/' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+
+if [[ "$(sha256sum "$DIALOG_SOURCE" | awk '{print $1}')" != "$DIALOG_SOURCE_SHA256_BEFORE" ]]; then
+    echo "error: extension install dialog source changed unexpectedly; refusing to continue" >&2
+    exit 1
+fi
 
 export PATCHED=1
