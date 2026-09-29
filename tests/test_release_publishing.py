@@ -39,8 +39,7 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertNotIn("      title:\n", workflow)
         self.assertIn("metadata=release-assets/build-info.json", workflow)
         self.assertIn(
-            'release_revision=$(jq -er '.inputs.argon_revision '
-            '| select(type == "number")' "$metadata")',
+            """release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$metadata")""",
             workflow,
         )
         self.assertIn('tag="v${version}-argon.${release_revision}"', workflow)
