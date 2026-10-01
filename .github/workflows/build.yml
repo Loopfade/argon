@@ -104,17 +104,109 @@ jobs:
             gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel" >/dev/null || true
           done
 
-  build:
+
+  gate:
     needs: supersede
-    # A workflow_run uses the default branch's current SHA. Do not release a
-    # different revision, or trust a failed/untrusted prepared-image run.
-    if: >-
-      inputs.resume_run == '' &&
-      (github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_repository.full_name == github.repository &&
-       github.event.workflow_run.head_branch == 'main' &&
-       github.event.workflow_run.head_sha == github.sha))
+    if: inputs.resume_run == ''
+    name: Require latest compatible prepared image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.image.outputs.build }}
+    steps:
+      - name: Gate APK build on prepared image
+        id: image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          CURRENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TRIGGER_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          TRIGGER_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          allow() {
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$1"
+          }
+
+          defer() {
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$1"
+            # A deferred run must not look successful to the release publisher.
+            gh api --method POST "repos/$GH_REPO/actions/runs/$CURRENT_RUN_ID/cancel" >/dev/null || true
+            exit 0
+          }
+
+          image_input() {
+            case "$1" in
+              .github/workflows/build-chromium-image.yml|              .gclient|.dockerignore|build-lock.json|build.sh|common.sh|patch.sh|args.gn|              chromium_overlay/*|certificates/*|extensions/*|res/*|              scripts/apply_scoped_ca.py|scripts/fetch_pinned_extension.py|              scripts/fetch_pinned_filter_lists.py|scripts/preflight.py|              scripts/configure_build.py|tests/CMakeLists.txt|tests/scoped_ca_test.cc|              vanadium|docker/chromium/*)
+                return 0
+                ;;
+            esac
+            return 1
+          }
+
+          image_inputs_changed() {
+            local base="$1" head="$2" compare status path
+            [[ "$base" == "$head" ]] && return 1
+
+            compare=$(gh api "repos/$GH_REPO/compare/$base...$head")
+            status=$(jq -r '.status' <<<"$compare")
+            case "$status" in
+              identical) return 1 ;;
+              ahead) ;;
+              *) return 0 ;;
+            esac
+
+            while IFS= read -r path; do
+              if image_input "$path"; then
+                echo "Prepared-image input changed: $path"
+                return 0
+              fi
+            done < <(jq -r '.files[]?.filename' <<<"$compare")
+            return 1
+          }
+
+          # Pull requests intentionally use the latest successful main image;
+          # check-prepared-inputs.py still rejects incompatible source inputs.
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            allow "PR will verify the latest successful prepared image against the PR checkout."
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == workflow_run ]]; then
+            if [[ "$TRIGGER_CONCLUSION" != success || "$TRIGGER_REPO" != "$GH_REPO" || "$TRIGGER_BRANCH" != main ]]; then
+              defer "Prepared-image workflow was not a trusted successful main build."
+            fi
+          fi
+
+          active_image_runs=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&per_page=20"             --jq '[.workflow_runs[] | select(.status != "completed")] | length')
+          if (( active_image_runs > 0 )); then
+            defer "A newer prepared-image build is still active; defer APK until it completes."
+          fi
+
+          latest_image_sha=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&status=success&per_page=1"             --jq '.workflow_runs[0].head_sha // empty')
+          if [[ -z "$latest_image_sha" ]]; then
+            defer "No successful prepared-image build exists for main."
+          fi
+
+          if image_inputs_changed "$latest_image_sha" "$CURRENT_SHA"; then
+            defer "Latest successful prepared image ($latest_image_sha) is incompatible with current main ($CURRENT_SHA)."
+          fi
+
+          allow "Latest successful prepared image ($latest_image_sha) is compatible with current main."
+
+  build:
+    needs: [supersede, gate]
+    # The gate requires the newest successful compatible prepared image.
+    # If an image rebuild is active or required, this run cancels itself and the
+    # image workflow's completion event starts the APK build instead.
+    if: inputs.resume_run == '' && needs.gate.outputs.build == 'true'
     name: Build and verify ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
     # One ABI per run: the compiler-cache quota is shared by the repository.
     uses: ./.github/workflows/build-arch.yml
