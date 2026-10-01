@@ -15,6 +15,30 @@ from configure_build import TARGET_ABIS, render_gn_args, target_cpu
 def validate_inputs(arch: str = "arm64") -> dict:
     cpu = target_cpu(arch)
     lock = json.loads((ROOT / "build-lock.json").read_text())
+    filter_lists = lock.get("filter_lists")
+    if not isinstance(filter_lists, list) or not filter_lists:
+        raise ValueError("Filter lists are not pinned")
+    names = set()
+    for entry in filter_lists:
+        required = {"name", "url", "sha256"}
+        if not required.issubset(entry) or not set(entry).issubset(
+            required | {"strip_volatile_headers"}
+        ):
+            raise ValueError(
+                "Each filter-list pin must contain name, url and sha256 only, "
+                "with optional strip_volatile_headers"
+            )
+        if entry["name"] in names:
+            raise ValueError(f'Duplicate filter-list pin: {entry["name"]}')
+        names.add(entry["name"])
+        if not entry["url"].startswith("https://"):
+            raise ValueError(f'Filter-list URL must use HTTPS: {entry["url"]}')
+        if re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]) is None:
+            raise ValueError(f'Invalid filter-list SHA-256: {entry["name"]}')
+        if not isinstance(entry.get("strip_volatile_headers", False), bool):
+            raise ValueError(
+                f'Invalid strip_volatile_headers flag: {entry["name"]}'
+            )
     actual = subprocess.check_output(
         ["git", "-C", str(ROOT / "vanadium"), "rev-parse", "HEAD"], text=True
     ).strip()
