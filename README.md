@@ -1,102 +1,78 @@
-# Titanium Browser for Android
+# Titanium RU для Android (arm64)
 
-[![Stars](https://img.shields.io/github/stars/jqssun/android-titanium-browser?label=Stars&logo=GitHub)](https://github.com/jqssun/android-titanium-browser)
-[![GitHub](https://img.shields.io/github/downloads/jqssun/android-titanium-browser/total?label=GitHub&logo=GitHub)](https://github.com/jqssun/android-titanium-browser/releases)
-[![license](https://img.shields.io/badge/License-GPLv2-blue.svg)](https://github.com/jqssun/android-titanium-browser/blob/main/LICENSE)
-[![build](https://img.shields.io/github/actions/workflow/status/jqssun/android-titanium-browser/build.yml)](https://github.com/jqssun/android-titanium-browser/actions/workflows/build.yml)
-[![release](https://img.shields.io/github/v/release/jqssun/android-titanium-browser)](https://github.com/jqssun/android-titanium-browser/releases)
+Форк [Titanium](https://github.com/jqssun/android-titanium-browser) с российским корневым УЦ, ограниченным доменами `.ru`, `.рф` (`.xn--p1ai`) и `.su`. Поддержка расширений Titanium, включая Manifest V2, сохранена.
 
-A secure and fully open-source, Chromium-based web browser with support for extensions, based on [Vanadium](https://github.com/GrapheneOS/Vanadium) by [GrapheneOS](https://github.com/GrapheneOS). This project was formerly known as [Helium Browser for Android](https://github.com/jqssun/android-helium-browser) but was later renamed to avoid branding confusion. To maintain a fast and native experience for everyone, advanced features are modularized into [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension).
+**Статус: исходники и сценарий сборки подготовлены; полный APK пока не собран.**
+Локально прошли 32 проверки политики на закреплённом BoringSSL, 6 Python-тестов и проверка применения патча к исходникам Chromium после соответствующих патчей Vanadium. Это не заменяет сборку всего браузера и испытания на Android.
 
-For the latest builds, see [**Releases**](https://github.com/jqssun/android-titanium-browser/releases/latest). You can also update between GitHub and Google Play releases seamlessly.
+## Что изменено
 
-[<img height="48" alt="Get it on Google Play" src="https://jqssun.github.io/images/badges/google-play-store.svg">](https://play.google.com/store/apps/details?id=io.github.jqssun.helium)
-[<img height="48" alt="Get it on GitHub" src="https://jqssun.github.io/images/badges/github.svg">](https://github.com/jqssun/android-titanium-browser/releases/latest)
+- Корневой Russian Trusted Root CA взят из [Ruthenium](https://github.com/rutheniumteam/ruthenium-android); его DER SHA-256 закреплён: `d26d2d0231b7c39f92cc738512ba54103519e4405d68b5bd703e9788ca8ecf31`.
+- УЦ добавляется через `trust_anchors_with_additional_constraints`. Системное хранилище Android не изменяется.
+- Разрешены только имена ниже трёх DNS-зон. Голые TLD и имена вроде `bank.ru.example.com` не разрешены.
+- Все DNS-имена сертификата должны укладываться в ограничение. Сертификат одновременно на `bank.ru` и `example.com` отклоняется даже при открытии `bank.ru`.
+- Дополнительная проверка каждой кандидатной цепочки запрещает **все IPv4/IPv6 SAN**, в том числе `0.0.0.0`, `::`, а также смешанные DNS/IP-сертификаты под этим корнем. Используется ограниченный тип IP с пустым списком разрешённых сетей, без исключений для отдельных адресов.
+- Имя хоста, подписи, срок действия, обычная политика отзыва и другие проверки Chromium продолжают работать. Подпись корневым УЦ не превращается в обход TLS-ошибок.
+- Та же дополнительная проверка применяется, если идентичный закреплённый корневой сертификат уже установлен в системе. Другие корни не изменяются.
+- Российский промежуточный УЦ не объявлен самостоятельным корнем доверия: сервер должен отдавать промежуточную цепочку.
+- Имя приложения — **Titanium RU**, package — `app.titaniumru.browser`. Оно может устанавливаться рядом с оригинальным Titanium.
+- Только `arm64-v8a`; версии Chromium, Vanadium, BoringSSL, depot_tools и предустановленного расширения зафиксированы в `build-lock.json`. Автоматического перехода на новые версии УЦ или движка нет.
 
-<img alt="Titanium Browser for Android" src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" />
+## Расширения
 
-## Usage
+В браузере доступны `chrome://extensions`, установка из Chrome Web Store и загрузка распакованных расширений. Включение расширения в инкогнито требует обычного разрешения пользователя. Код этих возможностей унаследован от Titanium и пока не проверен на собранном APK этого форка. Подробности — в [README исходного проекта](README.upstream.md).
 
-### Installing Extensions
+## Сборка APK в GitHub Actions
 
-For Chrome extensions, navigate to [Chrome Web Store](https://chromewebstore.google.com/), enable **Desktop site** using the menu button <kbd>⋮</kbd> in the top right corner, and proceed as normal.
+1. Разместите этот код в своём форке GitHub, сохранив submodule `vanadium`.
+2. Откройте **Actions → Build Titanium RU arm64 → Run workflow**.
+3. `runner=ubuntu-latest` запускает сборку на обычном GitHub runner; перед сборкой освобождается место только на одноразовой машине GitHub. Если оставшегося места или лимита времени недостаточно, используйте метку своего Linux x64 runner.
+4. `signing=test` создаёт устанавливаемый APK с временной подписью. `signing=release` использует постоянный ключ из secrets.
+5. Только после успешной сборки, проверки подписи, package, имени, ABI, ZIP и выравнивания APK появится в artifact `Titanium-RU-arm64-<commit>` вместе с SHA-256, открытым сертификатом подписи, лицензиями и `build-info.json`.
 
-For [Opera Add-ons](https://addons.opera.com/), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/), or other marketplaces, targeted User Agent modifications may be required. See [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension) for instructions.
+Сценарий требует как минимум **100 GiB свободного места**. Для своей машины разумно выделить 150–200 GiB и 32 GiB RAM; нужен Ubuntu/Linux x64 с `sudo` для установки сборочных зависимостей. Требования Chromium: https://chromium.googlesource.com/chromium/src/+/main/docs/android_build_instructions.md . Полная сборка может занять несколько часов и расходует минуты GitHub Actions. Успех на стандартном runner пока не проверен.
 
-You can also load an unpacked extension manually by navigating to the **Manage extensions** page or [`chrome://extensions`](chrome://extensions). Enable **Developer mode**, select **Load unpacked**, and choose the folder containing the extension in the Storage Access Framework (SAF) picker. Manifest V2 (MV2) extensions are supported. It may take a moment for the extension to load.
+Сборка из нового локального checkout:
 
-### Using Extensions
-
-To run an extension in Incognito (OTR) mode, go to **Manage extensions**, find the extension you want to use in Incognito mode, select **Details**, and turn on **Allow in Incognito**.
-
-For advanced features including external download manager support, enhanced dark mode, and additional privacy options, you can use [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension).
-
-### Debug URLs
-
-To view and access the debug URLs, use [`chrome://chrome-urls`](chrome://chrome-urls). For **Experiments**, use [`chrome://flags`](chrome://flags).
-
-### WebRTC IP Policy
-
-The option is available by using the menu button <kbd>⋮</kbd> in the top right corner, then selecting **Settings**, **Privacy and security**. If you experience issues with WebRTC due to IPs being shielded by default (e.g. [Discord Voice](https://discord.com/blog/how-discord-handles-two-and-half-million-concurrent-voice-users-using-webrtc)), try changing it to **Default public interface only**, or **Default**.
-
-## Implementation
-
-> [!WARNING]
-> [Titanium Browser for Android](#titanium-browser-for-android) only attempts to improve security and privacy where possible. For better protection on Android, you should instead use [GrapheneOS](https://grapheneos.org) with [Vanadium](https://vanadium.app), which additionally integrates patches into Android System WebView and provides significant kernel and memory management hardening on the OS level.
-
-```mermaid
----
-config:
-  layout: dagre
----
-flowchart TD
- subgraph s1["Additional Patches"]
-        n5["Feature Overrides"]
-        n6["UI Overrides"]
-        n7["Manifest V2 + Secure Off Store Install Support"]
-        n8["Miscellaneous Fixes + Improvements"]
-  end
- subgraph s2["Vanadium"]
-        n9["Generic Patches<small><br>patches/*.patch</small>"]
-        n10["Subprojects Patches<small><br>subprojects_patches/**/*.patch</small>"]
-  end
- subgraph s3["Titanium Browser for Android"]
-        n11["GN Build Configuration<small><br>args.gn</small>"]
-        n12["Signed Release"]
-  end
-    n1["Chromium"] --> s1 & s2
-    n5 --> n6
-    n6 --> n7
-    n7 --> n8
-    s1 --> s3
-    s2 --> s3
-    n11 --> n12
-    n5@{ shape: subproc}
-    n6@{ shape: subproc}
-    n7@{ shape: subproc}
-    n8@{ shape: subproc}
-    n9@{ shape: subproc}
-    n10@{ shape: subproc}
-    n11@{ shape: subproc}
-    n12@{ shape: subproc}
-    n1@{ shape: rounded}
-    classDef Aqua stroke-width:1px, stroke-dasharray:none, stroke:#46EDC8, fill:#DEFFF8, color:#378E7A
-    style n5 stroke:#FF6D00
-    style n7 stroke:#FF6D00
+```sh
+git submodule update --init
+SIGNING_MODE=test bash build-arm64.sh
 ```
 
-## Building
+Повторный запуск в частично собранном дереве намеренно останавливается. Используйте новый рабочий checkout. Скрипт не удаляет существующий Chromium checkout автоматически и не меняет закреплённый submodule Vanadium.
 
-All releases are built using [Actions](https://github.com/jqssun/android-titanium-browser/actions). Current releases can also be attested using [GitHub CLI](https://github.com/cli/cli).
+## Подпись для постоянных обновлений
 
-```shell
-gh attestation verify *.apk -R jqssun/android-titanium-browser
+Для `signing=release` нужны repository secrets:
+
+| Secret | Значение |
+|---|---|
+| `TITANIUM_RU_KEYSTORE_BASE64` | JKS, закодированный в base64 |
+| `TITANIUM_RU_STORE_PASSWORD` | Пароль хранилища |
+| `TITANIUM_RU_KEY_PASSWORD` | Пароль ключа |
+| `TITANIUM_RU_KEY_ALIAS` | Alias ключа |
+
+Закрытый ключ не помещается в git или build artifacts. Режим `test` каждый раз генерирует новый временный ключ: следующий такой APK не обновит установленную предыдущую тестовую сборку; удаление старого приложения стирает его данные. Для постоянного использования нужен сохранённый release-ключ.
+
+## Проверки
+
+```sh
+python3 scripts/preflight.py --inputs-only
+python3 -m unittest discover -s tests -v
+cmake -S tests -B .build/policy-tests -DBORINGSSL_SOURCE_DIR=/path/to/pinned/boringssl -DCMAKE_BUILD_TYPE=Release
+cmake --build .build/policy-tests --target scoped_ca_test -j 4
+ctest --test-dir .build/policy-tests --output-on-failure
 ```
 
-This repository provides the build script to compile on the latest Ubuntu, and may also work with other Linux distributions.
+Workflow `Validate scoped Russian CA` выполняет эти проверки на обычном GitHub runner. Проверки C++ вызывают производственную реализацию ограничения через настоящий BoringSSL, а не повторяют её алгоритм на другом языке.
 
-To build these releases yourself via CI (e.g. GitHub Actions), fork this repository. Supply your `base64` encoded `keystore.jks` and `local.properties` (containing `keyAlias`, `keyPassword` and `storePassword`) to [**Repository secrets**](https://github.com/jqssun/android-titanium-browser/blob/main/.github/workflows/build.yml#L49-L50) under **Settings** > **Secrets and variables** > **Actions**. To generate a release, go to **Actions**, select **Build**, and select **Run workflow**. Under **Runner**, you can either use a GitHub-hosted runner by entering `ubuntu-latest`, or `self-hosted` for your own hardware.
+После получения APK необходимо проверить на Android: запуск приложения, страницу с российской цепочкой в разрешённой зоне, обычные HTTPS-сайты, установку и работу расширения, инкогнито и поведение при неверных сертификатах. Эти испытания пока не выполнены.
 
-## Credits
+## Источники и лицензии
 
-This project would not have been possible without the huge community contributions from [Vanadium](https://github.com/GrapheneOS/Vanadium), and without the privacy-focused, open-source approach shared by various other Chromium projects. All credit goes to the original authors and contributors. This project started around the same time as [Helium Browser for Linux](https://github.com/imputnet/helium-linux) but it is not affiliated with the desktop Helium project.
+База Titanium: `1c05bb4cb552b54bbcfc29ee6f208be4d8129b36`.
+Vanadium: `9919fca315ddb291441122f7c694bd1cb74be33e`.
+Chromium: `153.0.8010.47`, `73934a44f61e6b3878d1943064c141a5a820f5f7`.
+Ruthenium как образец интеграции УЦ: `6264df31e89f4f372bcccbeb976e699735007476`.
+
+Лицензия Titanium сохранена в `LICENSE`, лицензия заимствованной интеграции Ruthenium — в `licenses/Ruthenium-BSD-3-Clause.txt`. Уведомления Chromium и зависимостей остаются в исходниках и `chrome://credits`. Форк не является официальной сборкой Titanium или Ruthenium.

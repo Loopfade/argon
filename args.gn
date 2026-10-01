@@ -1,11 +1,14 @@
-chrome_public_manifest_package = "io.github.jqssun.helium"
+chrome_public_manifest_package = "app.titaniumru.browser"
 is_desktop_android = true
 target_os = "android"
-target_cpu = "arm"
+target_cpu = "arm64"
 is_component_build = false
 is_debug = false
 is_official_build = true
-symbol_level = 1
+symbol_level = 0
+blink_symbol_level = 0
+v8_symbol_level = 0
+generate_about_credits = true
 disable_fieldtrial_testing_config = true
 ffmpeg_branding = "Chrome"
 proprietary_codecs = true
