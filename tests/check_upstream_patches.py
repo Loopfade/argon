@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Check Argon's CA/JNI patch anchors against the pinned upstream sources.
+"""Check Argon's patches against the pinned upstream sources.
 
-This small integration check downloads only the Chromium files changed by the
-CA patch, applies the relevant Vanadium patches, and applies Argon's overlay
-twice. It does not replace GN, Java/C++ compilation, or Android smoke tests.
+This small integration check downloads the Chromium files needed to validate
+the CA/JNI overlay and the M154 extension-install dialog regression, applies
+the relevant Vanadium patches, and applies Argon's overlay twice. It does not
+replace GN, Java/C++ compilation, or Android smoke tests.
 """
 import concurrent.futures
 import json
@@ -26,6 +27,10 @@ EXTENSION_PATHS = (
     patch.TITANIUM_PRIVACY_PREFERENCES,
 )
 
+DIALOG_PATH = Path(
+    "chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc"
+)
+
 
 def download(url):
     with urllib.request.urlopen(url, timeout=60) as response:
@@ -46,6 +51,38 @@ def verify_pins(lock, version_text, deps_text, titanium_tree):
         raise ValueError("Vanadium pin does not match the Titanium commit")
 
 
+def verify_extension_install_dialog(source):
+    lines = source.splitlines()
+    parent_window = (
+        "  ui::WindowAndroid* window_android = show_params->GetParentWindow();"
+    )
+    web_contents = (
+        "  content::WebContents* web_contents = "
+        "show_params->GetParentWebContents();"
+    )
+    if parent_window not in lines:
+        raise ValueError("Pinned Chromium no longer contains the reviewed M154 dialog fix")
+    try:
+        old_range_start = lines.index(web_contents)
+    except ValueError as exc:
+        raise ValueError("Pinned Chromium dialog source moved the old patch anchor") from exc
+    if any("DCHECK(view_android);" in line for line in lines[old_range_start:]):
+        raise ValueError("Pinned Chromium unexpectedly restored the retired end anchor")
+
+    # Regression proof: on Chromium 154 the obsolete sed range starts on line
+    # 57 and never finds its old end anchor, so it deletes lines 58..203.
+    if len(lines) != 203 or old_range_start + 1 != 57:
+        raise ValueError(
+            "Pinned dialog source changed; review the retired M154 patch regression"
+        )
+
+    script = (ROOT / "patch.sh").read_text()
+    if "DCHECK(view_android);/{/GetParentWebContents/!d" in script:
+        raise ValueError("Obsolete truncating extension-dialog patch was reintroduced")
+    if "DIALOG_SOURCE_SHA256_BEFORE" not in script:
+        raise ValueError("Extension-dialog integrity guard is missing from patch.sh")
+
+
 def main():
     lock = json.loads((ROOT / "build-lock.json").read_text())
     for key in ("chromium_commit", "boringssl_commit", "titanium_commit", "vanadium_commit"):
@@ -53,6 +90,7 @@ def main():
             raise ValueError(f"Invalid commit pin: {key}")
     chromium = "https://raw.githubusercontent.com/chromium/chromium/" + lock["chromium_commit"]
     urls = {str(path): f"{chromium}/{path}" for path in BASE_PATHS}
+    urls[str(DIALOG_PATH)] = f"{chromium}/{DIALOG_PATH}"
     urls.update({"chrome/VERSION": chromium + "/chrome/VERSION", "DEPS": chromium + "/DEPS",
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
@@ -60,6 +98,7 @@ def main():
         values = dict(zip(urls, executor.map(download, urls.values())))
     verify_pins(lock, values["chrome/VERSION"], values["DEPS"],
                 json.loads(values["titanium-tree"]))
+    verify_extension_install_dialog(values[str(DIALOG_PATH)])
 
     with tempfile.TemporaryDirectory(prefix="argon-upstream-") as temporary:
         src = Path(temporary)
