@@ -51,11 +51,11 @@ def main():
     build_tools = tools[-1].parent
     artifacts = ROOT / "artifacts" / abi
     artifacts.mkdir(parents=True, exist_ok=True)
-    name = f'Titanium-RU-{lock["chromium_version"]}-{args.mode}-{abi}.apk'
+    name = f'Argon-{lock["chromium_version"]}-{args.mode}-{abi}.apk'
     output = artifacts / name
     env = os.environ.copy()
     env["JAVA_HOME"] = str(args.jdk)
-    with tempfile.TemporaryDirectory(prefix="titanium-ru-sign-", dir=ROOT / ".build") as tmp:
+    with tempfile.TemporaryDirectory(prefix="argon-sign-", dir=ROOT / ".build") as tmp:
         key = Path(tmp) / "signing.jks"
         if args.mode == "release":
             for var in ["TITANIUM_RU_KEYSTORE_BASE64", "TITANIUM_RU_STORE_PASSWORD",
@@ -68,14 +68,14 @@ def main():
             # This temporary key is never published or committed to git.
             env["TITANIUM_RU_STORE_PASSWORD"] = "android"
             env["TITANIUM_RU_KEY_PASSWORD"] = "android"
-            env["TITANIUM_RU_KEY_ALIAS"] = "titanium-ru-test"
+            env["TITANIUM_RU_KEY_ALIAS"] = "argon-test"
             run([args.jdk / "bin/keytool", "-genkeypair", "-noprompt",
                  "-keystore", key, "-storetype", "JKS",
                  "-storepass:env", "TITANIUM_RU_STORE_PASSWORD",
                  "-keypass:env", "TITANIUM_RU_KEY_PASSWORD",
                  "-alias", env["TITANIUM_RU_KEY_ALIAS"], "-keyalg", "RSA",
                  "-keysize", "3072", "-validity", "3650", "-dname",
-                 "CN=Titanium RU Temporary Test Build"], env=env)
+                 "CN=Argon Temporary Test Build"], env=env)
         run([build_tools / "apksigner", "sign", "--ks", key,
              "--ks-pass", "env:TITANIUM_RU_STORE_PASSWORD",
              "--key-pass", "env:TITANIUM_RU_KEY_PASSWORD",
@@ -91,7 +91,7 @@ def main():
     badging = run([build_tools / "aapt2", "dump", "badging", output], capture_output=True, text=True).stdout
     if not re.search(r"^package: name='" + re.escape(lock["application_id"]) + "'", badging, re.M):
         raise SystemExit("APK application ID mismatch")
-    if "application-label:'Titanium RU'" not in badging:
+    if "application-label:'Argon'" not in badging:
         raise SystemExit("APK application label mismatch")
     verify_apk_abi(output, abi)
     digest = hashlib.sha256(output.read_bytes()).hexdigest()

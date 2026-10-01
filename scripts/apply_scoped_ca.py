@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add the pinned Russian CA and fail-closed DNS/IP constraints to Titanium.
+"""Apply Argon branding and the pinned Russian CA with DNS/IP constraints.
 
 The AdditionalCertificates integration is adapted from Ruthenium's
 scripts/patch_chromium.py; see licenses/Ruthenium-BSD-3-Clause.txt.
@@ -131,7 +131,7 @@ def apply(src: Path, product_name: bool = True) -> None:
     if product_name:
         channel = src / "chrome/android/java/res_titanium_base/values/channel_constants.xml"
         text = channel.read_text()
-        text = replace_once(text, '>Titanium</string>', '>Titanium RU</string>')
+        text = replace_once(text, '>Titanium</string>', '>Argon</string>')
         writes[channel] = text
     for target, value in writes.items():
         target.parent.mkdir(parents=True, exist_ok=True)

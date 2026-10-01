@@ -1,4 +1,4 @@
-A secure and fully open-source, Chromium-based web browser with support for extensions. Manifest V2 (MV2) extensions are supported. To maintain a fast and native experience for everyone, advanced features are modularized into Titanium Extension for Android.
+Argon is an open-source Chromium-based browser for Android with support for extensions, including Manifest V2. It is based on Titanium, with Russian CA trust restricted to .ru, .рф and .su.
 
 Installing Extensions
 - For Chrome extensions, open the Chrome Web Store, enable "Desktop site" from the menu, and proceed as normal.
@@ -17,4 +17,4 @@ WebRTC IP Policy
 
 Titanium Extension for Android is available at https://github.com/jqssun/android-titanium-extension
 
-Titanium Browser for Android is under the GPL-2.0 license at https://github.com/jqssun/android-titanium-browser
+Based on Titanium Browser for Android (GPL-2.0): https://github.com/jqssun/android-titanium-browser

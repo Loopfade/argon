@@ -145,7 +145,7 @@ class ApkArchitectureTests(unittest.TestCase):
                     Path(argv[argv.index("-file") + 1]).write_text("certificate fixture")
                 return subprocess.CompletedProcess(argv, 0, stdout=(
                     "package: name='app.titaniumru.browser'\n"
-                    "application-label:'Titanium RU'\n"
+                    "application-label:'Argon'\n"
                 ))
 
             snapshots = {}
