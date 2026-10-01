@@ -74,6 +74,21 @@ class FilterListTests(unittest.TestCase):
 
         self.assertEqual(fetch_pinned_filter_lists.download(entry, opener), stable)
 
+    def test_committed_mutable_filter_is_verified_and_works_offline(self):
+        entries = json.loads((ROOT / "build-lock.json").read_text())["filter_lists"]
+        entry = next(item for item in entries if item["name"] == "antiadblockfilters.txt")
+        cache_dir = ROOT / "docker/chromium/filter-cache"
+        payload = (cache_dir / entry["sha256"]).read_bytes()
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), entry["sha256"])
+
+        def fail_if_called(*_args, **_kwargs):
+            raise AssertionError("the pinned mutable input must work without upstream")
+
+        self.assertEqual(
+            fetch_pinned_filter_lists.download(entry, fail_if_called, cache_dir),
+            payload,
+        )
+
     def test_fetch_verifies_and_concatenates_in_url_order(self):
         entries, payloads = self.entries()
 

@@ -39,6 +39,9 @@ RUN chown argon:argon /opt/argon \
 COPY --chown=argon:argon build-lock.json /opt/argon-cache/build-lock.json
 COPY --chown=argon:argon scripts/fetch_pinned_filter_lists.py \
     /opt/argon-cache/scripts/fetch_pinned_filter_lists.py
+# Seed the mutable upstream input even when no registry build cache exists.
+# The downloader below verifies the committed bytes against build-lock.json.
+COPY --chown=argon:argon docker/chromium/filter-cache/ /opt/argon-filter-cache/
 
 USER argon
 RUN python3 /opt/argon-cache/scripts/fetch_pinned_filter_lists.py \
