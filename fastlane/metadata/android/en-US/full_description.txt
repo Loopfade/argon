@@ -19,4 +19,4 @@ Titanium Extension for Android is available at https://github.com/jqssun/android
 
 Based on Titanium Browser for Android (GPL-2.0): https://github.com/jqssun/android-titanium-browser
 Certificate integration and base DNS constraints adapted from Ruthenium for Android (BSD-3-Clause): https://github.com/rutheniumteam/ruthenium-android
-Ruthenium license notice: https://github.com/su8d/argon/blob/main/licenses/Ruthenium-BSD-3-Clause.txt
+Ruthenium license notice: https://github.com/Loopfade/argon/blob/main/licenses/Ruthenium-BSD-3-Clause.txt

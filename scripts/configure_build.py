@@ -24,14 +24,8 @@ def target_cpu(value: str) -> str:
     )
 
 
-def render_gn_args(arch: str, ccache: bool = False, compiler_wrapper=None) -> str:
+def render_gn_args(arch: str, ccache: bool = False) -> str:
     cpu = target_cpu(arch)
-    if ccache:
-        if compiler_wrapper is not None:
-            raise ValueError("ccache and compiler_wrapper are mutually exclusive")
-        compiler_wrapper = "ccache"
-    if compiler_wrapper not in (None, "ccache", "sccache"):
-        raise ValueError(f"Unsupported compiler wrapper: {compiler_wrapper!r}")
 
     # The pinned V8/Vanadium DrumBrake interpreter supports 64-bit targets only.
     drumbrake = "true" if cpu in ("arm64", "x64") else "false"
@@ -47,10 +41,10 @@ def render_gn_args(arch: str, ccache: bool = False, compiler_wrapper=None) -> st
         )
         if count != 1:
             raise ValueError(f"Expected exactly one {name} assignment in args.gn")
-    if compiler_wrapper:
+    if ccache:
         result, count = re.subn(
             r"(?m)^use_siso\s*=[^\n]*$",
-            f'use_siso = false\ncc_wrapper = "{compiler_wrapper}"',
+            'use_siso = false\ncc_wrapper = "ccache"',
             result,
         )
         if count != 1:
@@ -61,20 +55,10 @@ def render_gn_args(arch: str, ccache: bool = False, compiler_wrapper=None) -> st
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arch", type=target_cpu, default="arm64")
-    wrapper = parser.add_mutually_exclusive_group()
-    wrapper.add_argument(
+    parser.add_argument(
         "--ccache",
-        action="store_const",
-        const="ccache",
-        dest="compiler_wrapper",
+        action="store_true",
         help="Generate a Ninja/ccache configuration for resumable CI builds",
-    )
-    wrapper.add_argument(
-        "--sccache",
-        action="store_const",
-        const="sccache",
-        dest="compiler_wrapper",
-        help="Generate a Ninja/sccache configuration for distributed CI builds",
     )
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--print-cpu", action="store_true")
@@ -83,7 +67,7 @@ def main():
     if args.print_cpu:
         print(args.arch)
         return
-    rendered = render_gn_args(args.arch, compiler_wrapper=args.compiler_wrapper)
+    rendered = render_gn_args(args.arch, ccache=args.ccache)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         # Keep timestamps stable across checkpoints and the final signing pass.

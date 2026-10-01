@@ -40,7 +40,6 @@ fi''')
                    "CCACHE_DIR": str(root / "cache"), "SIGNING_MODE": "test",
                    "CLOCK_MARKER": str(root / "clock"), "SIMULATED_STATUS": str(status),
                    "SIMULATED_ELAPSED": str(elapsed)}
-            env.pop("SCCACHE_DIR", None)
             result = subprocess.run(["bash", root / "build.sh", "arm64"], env=env,
                                     text=True, capture_output=True)
             return result, (root / ".build/cache-warm-complete-arm64").exists()

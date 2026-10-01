@@ -16,16 +16,16 @@ OUT_DIR="out/Argon-${TARGET_CPU}"
 
 BUILD_MODE=${BUILD_MODE:-apk}
 case "$BUILD_MODE" in
-  apk|warm|prepare|checkpoint|finish) ;;
-  *) echo 'BUILD_MODE must be apk, warm, prepare, checkpoint, or finish' >&2; exit 2;;
+  apk|prepare|checkpoint|finish) ;;
+  *) echo 'BUILD_MODE must be apk, prepare, checkpoint, or finish' >&2; exit 2;;
 esac
 BUILD_TIME_LIMIT_MINUTES=${BUILD_TIME_LIMIT_MINUTES:-240}
 if [[ ! "$BUILD_TIME_LIMIT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
   echo 'BUILD_TIME_LIMIT_MINUTES must be a positive integer' >&2
   exit 2
 fi
-if [[ "$BUILD_MODE" == warm && -z ${CCACHE_DIR:-} && -z ${SCCACHE_DIR:-} ]]; then
-  echo 'CCACHE_DIR or SCCACHE_DIR is required when BUILD_MODE=warm' >&2
+if [[ "$BUILD_MODE" == checkpoint && -z ${CCACHE_DIR:-} ]]; then
+  echo 'CCACHE_DIR is required when BUILD_MODE=checkpoint' >&2
   exit 2
 fi
 
@@ -123,15 +123,7 @@ ctest --test-dir "$SCRIPT_DIR/.build/policy-tests" --output-on-failure
 fi
 
 configure_args=(--arch "$TARGET_CPU" --output "$OUT_DIR/args.gn")
-if [[ -n ${SCCACHE_DIR:-} ]]; then
-  command -v sccache >/dev/null || {
-    echo 'SCCACHE_DIR is set but sccache is not available' >&2
-    exit 1
-  }
-  export SCCACHE_DIR
-  mkdir -p "$SCCACHE_DIR"
-  configure_args+=(--sccache)
-elif [[ -n ${CCACHE_DIR:-} ]]; then
+if [[ -n ${CCACHE_DIR:-} ]]; then
   export CCACHE_DIR
   export CCACHE_BASEDIR="$PWD"
   CCACHE_TOOLCHAIN_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["chromium_commit"])' "$SCRIPT_DIR/build-lock.json")
@@ -163,7 +155,7 @@ android_targets=(
   chrome_java
   chrome_public_apk
 )
-if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
+if [[ "$BUILD_MODE" == checkpoint ]]; then
   echo "Warming compiler cache for up to $BUILD_TIME_LIMIT_MINUTES minutes"
   build_started_at=$(date +%s)
   set +e
@@ -176,11 +168,7 @@ if [[ "$BUILD_MODE" == warm || "$BUILD_MODE" == checkpoint ]]; then
     echo 'Build killed before its time limit (possible OOM); refusing automatic timeout recovery.' >&2
     exit "$build_status"
   fi
-  if [[ -n ${SCCACHE_DIR:-} ]]; then
-    sccache --show-stats || true
-  else
-    ccache --show-stats
-  fi
+  ccache --show-stats
   case "$build_status" in
     0)
       mkdir -p "$SCRIPT_DIR/.build"

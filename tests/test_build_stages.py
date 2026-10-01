@@ -61,9 +61,8 @@ touch "$2/apks/ChromePublic.apk"''')
                    "STAGE_LOG": str(root / "stages"), "FIXTURE_ROOT": str(root),
                    "COMPILER_ARGS": str(root / "compiler"),
                    "COMPILER_STATUS": str(compiler_status)}
-            for name in ("CCACHE_DIR", "SCCACHE_DIR"):
-                env.pop(name, None)
-            if mode in ("warm", "checkpoint"):
+            env.pop("CCACHE_DIR", None)
+            if mode == "checkpoint":
                 env["CCACHE_DIR"] = str(root / "cache")
             result = subprocess.run(["bash", root / "build.sh", "arm64"], env=env,
                                     capture_output=True, text=True)
@@ -81,13 +80,11 @@ touch "$2/apks/ChromePublic.apk"''')
         self.assertIsNone(compiler)
         self.assertFalse(any("sign_and_verify.py" in line for line in stages))
 
-    def test_cache_modes_explicitly_compile_java_jni_and_apk(self):
-        for mode in ("warm", "checkpoint"):
-            with self.subTest(mode=mode):
-                result, stages, compiler = self.run_build(mode)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(compiler[-3:], ANDROID_TARGETS)
-                self.assertFalse(any("sign_and_verify.py" in line for line in stages))
+    def test_checkpoint_explicitly_compiles_java_jni_and_apk(self):
+        result, stages, compiler = self.run_build("checkpoint")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(compiler[-3:], ANDROID_TARGETS)
+        self.assertFalse(any("sign_and_verify.py" in line for line in stages))
 
     @unittest.skipUnless(Path("/dev/fd").exists(),
                          "The build's Bash process substitution requires /dev/fd")
@@ -100,7 +97,7 @@ touch "$2/apks/ChromePublic.apk"''')
                 self.assertTrue(any("sign_and_verify.py" in line for line in stages))
 
     def test_android_compiler_failure_prevents_signing_in_every_apk_mode(self):
-        for mode in ("apk", "warm", "checkpoint", "finish"):
+        for mode in ("apk", "checkpoint", "finish"):
             with self.subTest(mode=mode):
                 result, stages, compiler = self.run_build(mode, compiler_status=1)
                 self.assertEqual(result.returncode, 1, result.stderr)
