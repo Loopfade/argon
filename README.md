@@ -1,8 +1,7 @@
 # Argon
 
 [![Build Argon](https://github.com/Loopfade/argon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Loopfade/argon/actions/workflows/build.yml)
-[![GitHub stars](https://img.shields.io/github/stars/Loopfade/argon?style=flat&logo=github&label=%D0%97%D0%B2%D1%91%D0%B7%D0%B4%D1%8B)](https://github.com/Loopfade/argon/stargazers)
-[![Downloads](https://img.shields.io/github/downloads/Loopfade/argon/total?style=flat&logo=github&label=%D0%A1%D0%BA%D0%B0%D1%87%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F)](https://github.com/Loopfade/argon/releases)
+[![Version](https://img.shields.io/github/v/release/Loopfade/argon?display_name=tag&style=flat&logo=github&label=%D0%92%D0%B5%D1%80%D1%81%D0%B8%D1%8F)](https://github.com/Loopfade/argon/releases/latest)
 
 Argon — Android-браузер на базе [Titanium](https://github.com/jqssun/android-titanium-browser) и Chromium с поддержкой расширений и ограниченным доверием к встроенному российскому корневому УЦ.
 
