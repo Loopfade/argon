@@ -1,79 +1,87 @@
-name: Build
+name: Build Argon
 
 on:
+  push:
+    branches: [main]
+    # Runtime changes can reuse a compatible prepared image.
+    paths:
+      - '.github/workflows/build.yml'
+      - '.github/workflows/build-arch.yml'
+      - '.github/ci/**'
+      - 'scripts/sign_and_verify.py'
+      - 'scripts/VerifyReleaseKey.java'
+  pull_request:
+    # PR builds use a temporary signing key and still verify prepared inputs.
+    paths:
+      - '.github/workflows/build.yml'
+      - '.github/workflows/build-arch.yml'
+      - '.github/ci/**'
+      - 'scripts/sign_and_verify.py'
+      - 'scripts/VerifyReleaseKey.java'
+  workflow_run:
+    workflows: [Build prepared Chromium image]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       runner:
-        description: 'Runner'
+        description: 'Linux x64 runner label (at least 100 GiB free disk)'
         required: true
         type: string
-        default: 'self-hosted' # ubuntu-latest
-  schedule:
-    - cron: '0 0 */16 * *'
+        default: ubuntu-latest
+      signing:
+        description: 'Release uses the permanent repository key; test uses a temporary certificate'
+        required: true
+        type: choice
+        options: [release, test]
+        default: release
+      arch:
+        description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), or x86'
+        required: true
+        type: choice
+        options: [arm64, arm, x64, x86]
+        default: arm64
+      continuation:
+        description: 'Internal automatic continuation counter'
+        required: false
+        type: string
+        default: '0'
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  actions: write
+  contents: read
+  packages: read
+
+concurrency:
+  group: argon-${{ github.ref }}
+  cancel-in-progress: >-
+    ${{ github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_repository.full_name == github.repository &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_sha == github.sha) }}
 
 jobs:
   build:
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'self-hosted' }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          submodules: true
-      
-      - name: Update 
-        run: |
-          cd vanadium
-          git fetch --tags
-          git checkout $(git tag | sort -V | tail -n1)
-          cd ..
-          git add vanadium
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          if ! git diff --staged --quiet; then
-            git commit -am "update"
-            git push
-          fi
-
-      - name: Set ENV
-        run: | 
-          chmod +x *.sh
-          echo "unix_time=$(date +%s)" >> $GITHUB_ENV
-    
-      - name: Build
-        env:
-            DEBIAN_FRONTEND: noninteractive
-            LOCAL_TEST_JKS: ${{ secrets.LOCAL_TEST_JKS }}
-            STORE_TEST_JKS: ${{ secrets.STORE_TEST_JKS }}
-        run: |
-          ./build.sh
-
-      - name: Set
-        run: |
-          export VERSION=$(find chromium/src/out/release -name '*arm64-v8a.apk' | sed 's/.*\///;s/\-arm64-v8a.apk$//')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          mv $(find chromium/src/out/release -name '*arm64-v8a.aab') $VERSION-${{ env.unix_time }}-arm64-v8a.aab
-          mv $(find chromium/src/out/release -name '*arm64-v8a.apk') $VERSION-${{ env.unix_time }}-arm64-v8a.apk
-          mv $(find chromium/src/out/release -name '*armeabi-v7a.apk') $VERSION-${{ env.unix_time }}-armeabi-v7a.apk
-
-      - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: v${{ env.VERSION }}
-          tag_name: v${{ env.VERSION }}
-          files: |
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.aab
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.apk
-            ${{ env.VERSION }}-${{ env.unix_time }}-armeabi-v7a.apk
-
-      - name: Attest
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-path: |
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.aab
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.apk
-            ${{ env.VERSION }}-${{ env.unix_time }}-armeabi-v7a.apk
+    # A workflow_run uses the default branch's current SHA. Do not release a
+    # different revision, or trust a failed/untrusted prepared-image run.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_sha == github.sha)
+    name: Build and verify ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
+    # One ABI per run: the compiler-cache quota is shared by the repository.
+    uses: ./.github/workflows/build-arch.yml
+    with:
+      arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
+      # Resolve the version from build-lock.json to a digest before pulling.
+      # check-prepared-inputs.py also rejects mismatched patches at that version.
+      image: ghcr.io/${{ github.repository_owner }}/argon-build
+      runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
+      # Trusted pushes to main use the permanent release key.
+      # Pull-request builds keep their temporary key, including same-repo PRs.
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || ((github.event_name == 'push' || github.event_name == 'workflow_run') && 'release' || 'test') }}
+      continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
+    secrets: inherit

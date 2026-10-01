@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_certificates_title">Сертификаты Argon</string>
+    <string name="argon_certificates_summary">Домены, для которых разрешён встроенный российский корневой УЦ</string>
+    <string name="argon_certificates_description">Встроенный российский корневой УЦ считается доверенным только для встроенных зон и явно добавленных доменов. Запись домена также разрешает его поддомены. Публичные суффиксы и подстановочные знаки запрещены. Изменения применяются к новым проверкам сертификатов.</string>
+    <string name="argon_certificates_built_in_domains">Встроенные домены</string>
+    <string name="argon_certificates_additional_domains">Дополнительные домены</string>
+    <string name="argon_certificates_no_additional_domains">Дополнительных доменов нет</string>
+    <string name="argon_certificates_add_domain">Добавить домен</string>
+    <string name="argon_certificates_domain_hint">example.com</string>
+    <string name="argon_certificates_tap_to_remove">Нажмите, чтобы удалить</string>
+    <string name="argon_certificates_remove_domain">Удалить %1$s?</string>
+    <string name="argon_certificates_remove_domain_message">Встроенный российский корневой УЦ перестанет считаться доверенным для этого домена и его поддоменов.</string>
+    <string name="argon_certificates_error_invalid">Введите корректный DNS-домен без схемы, пути, порта, IP-адреса и подстановочных знаков.</string>
+    <string name="argon_certificates_error_public_suffix">Нельзя добавлять публичные суффиксы, например .com, .net или .org.</string>
+    <string name="argon_certificates_error_covered_by_built_in">Этот домен уже покрыт зонами .ru, .рф или .su.</string>
+    <string name="argon_certificates_error_duplicate">Этот домен уже есть в списке.</string>
+    <string name="argon_certificates_error_too_many">Достигнут лимит в 100 дополнительных доменов.</string>
+</resources>
