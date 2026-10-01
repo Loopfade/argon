@@ -85,6 +85,43 @@ class FilterListTests(unittest.TestCase):
             fetch_pinned_filter_lists.fetch(output, entries, opener)
             self.assertEqual(output.read_bytes(), b"firstsecond")
 
+    def test_download_reuses_sha_named_cache(self):
+        entries, payloads = self.entries()
+        entry = entries[0]
+        payload = payloads[entry["url"]]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp)
+            (cache_dir / entry["sha256"]).write_bytes(payload)
+
+            def fail_if_called(*_args, **_kwargs):
+                raise AssertionError("verified cache hit must not access the network")
+
+            self.assertEqual(
+                fetch_pinned_filter_lists.download(
+                    entry, fail_if_called, cache_dir
+                ),
+                payload,
+            )
+
+    def test_corrupt_cache_is_replaced_after_verified_download(self):
+        entries, payloads = self.entries()
+        entry = entries[0]
+        payload = payloads[entry["url"]]
+
+        def opener(request, **_kwargs):
+            return FakeResponse(payloads[request.full_url])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp)
+            cached = cache_dir / entry["sha256"]
+            cached.write_bytes(b"corrupt")
+            self.assertEqual(
+                fetch_pinned_filter_lists.download(entry, opener, cache_dir),
+                payload,
+            )
+            self.assertEqual(cached.read_bytes(), payload)
+
     def test_digest_mismatch_does_not_replace_existing_output(self):
         entries, payloads = self.entries()
         entries[0]["sha256"] = "0" * 64

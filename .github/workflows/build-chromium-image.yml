@@ -5,16 +5,28 @@ on:
     branches: [experimental/ca-domain-allowlist]
     paths:
       - '.gclient'
+      - '.dockerignore'
       - 'build-lock.json'
       - 'build.sh'
       - 'common.sh'
       - 'patch.sh'
+      - 'args.gn'
       - 'chromium_overlay/**'
-      - 'scripts/**'
-      - 'tests/**'
+      - 'certificates/**'
+      - 'extensions/**'
+      - 'res/**'
+      # Runtime signing and Python test changes do not alter prepared sources.
+      - 'scripts/apply_scoped_ca.py'
+      - 'scripts/fetch_pinned_extension.py'
+      - 'scripts/fetch_pinned_filter_lists.py'
+      - 'scripts/preflight.py'
+      - 'scripts/configure_build.py'
+      - 'tests/CMakeLists.txt'
+      - 'tests/scoped_ca_test.cc'
       - 'vanadium'
       - 'docker/chromium/**'
-      - '.github/workflows/build-chromium-image.yml'
+  # Exercise workflow-only publishing changes explicitly with workflow_dispatch
+  # instead of rebuilding Chromium on every edit.
   workflow_dispatch:
 
 permissions:
