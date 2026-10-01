@@ -1,6 +1,29 @@
 name: Build Argon
 
 on:
+  push:
+    branches: [experimental/ca-domain-allowlist]
+    paths:
+      - '.gclient'
+      - 'build-lock.json'
+      - 'build.sh'
+      - 'patch.sh'
+      - 'chromium_overlay/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'vanadium'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - '.gclient'
+      - 'build-lock.json'
+      - 'build.sh'
+      - 'patch.sh'
+      - 'chromium_overlay/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'vanadium'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
     inputs:
       runner:
@@ -30,15 +53,15 @@ concurrency:
 
 jobs:
   build:
-    name: Build ${{ matrix.arch }}
-    runs-on: ${{ inputs.runner }}
+    name: Build and verify ${{ matrix.arch }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
-        arch: ${{ fromJSON(inputs.arch == 'all' && '["arm64","arm","x64","x86"]' || format('["{0}"]', inputs.arch)) }}
+        arch: ${{ fromJSON(github.event_name != 'workflow_dispatch' && '["arm64"]' || (inputs.arch == 'all' && '["arm64","arm","x64","x86"]' || format('["{0}"]', inputs.arch))) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           submodules: true
           persist-credentials: false
@@ -51,14 +74,14 @@ jobs:
       - name: Build, sign and verify APK
         env:
           TARGET_ARCH: ${{ matrix.arch }}
-          SIGNING_MODE: ${{ inputs.signing }}
-          TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
-          TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
-          TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
-          TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
+          SIGNING_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
+          TITANIUM_RU_KEYSTORE_BASE64: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_KEYSTORE_BASE64 || '' }}
+          TITANIUM_RU_STORE_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_STORE_PASSWORD || '' }}
+          TITANIUM_RU_KEY_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_PASSWORD || '' }}
+          TITANIUM_RU_KEY_ALIAS: ${{ github.event_name == 'workflow_dispatch' && inputs.signing == 'release' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
         run: bash build.sh "$TARGET_ARCH"
       - name: Upload verified APK and provenance
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Argon-${{ matrix.arch }}-${{ github.sha }}
           path: artifacts/

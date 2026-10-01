@@ -95,7 +95,9 @@ ctest --test-dir "$SCRIPT_DIR/.build/policy-tests" --output-on-failure
 
 python3 "$SCRIPT_DIR/scripts/configure_build.py" --arch "$TARGET_CPU" --output "$OUT_DIR/args.gn"
 gn gen "$OUT_DIR"
-autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" chrome_public_apk
+# Compile the production Chromium gtest target as an integration gate. It is an
+# Android binary in this build and is executed separately on a device/emulator.
+autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" net_unittests chrome_public_apk
 mapfile -t apks < <(find "$OUT_DIR/apks" -maxdepth 1 -name 'Chrome*.apk' -type f)
 [[ ${#apks[@]} == 1 ]] || { echo "Expected one $TARGET_CPU APK" >&2; exit 1; }
 python3 "$SCRIPT_DIR/scripts/sign_and_verify.py" --apk "${apks[0]}" \

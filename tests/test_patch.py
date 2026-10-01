@@ -11,17 +11,148 @@ spec.loader.exec_module(patch)
 
 class PatchTests(unittest.TestCase):
     def profile(self):
-        return '#include "net/cert/asn1_util.h"\nvoid f() {\n' + patch.PROFILE_ANCHOR + '\n}\n'
+        return (
+            '#include "chrome/browser/net/profile_network_context_service.h"\n'
+            '#include "net/cert/asn1_util.h"\n'
+            'void observe() {\n'
+            + patch.PROFILE_PREF_OBSERVER_ANCHOR
+            + '\n}\nvoid register_prefs() {\n'
+            + patch.PROFILE_PREF_REGISTRATION_ANCHOR
+            + '\n}\nvoid policy() {\n'
+            + patch.PROFILE_ANCHOR
+            + '\n}\n'
+        )
 
     def test_idempotent(self):
         for transform, source in [
             (patch.patch_profile, self.profile()),
             (patch.patch_verifier, '#include "net/cert/time_conversions.h"\n' + patch.VERIFIER_ANCHOR),
-            (patch.patch_gn, '    "cert/cert_verify_proc_builtin.h",'),
+            (
+                patch.patch_gn,
+                '    "cert/cert_verify_proc_builtin.h",\n'
+                '    "cert/cert_verify_proc_builtin_unittest.cc",',
+            ),
+            (
+                patch.patch_chrome_net_gn,
+                '    "profile_network_context_service.h",',
+            ),
+            (
+                patch.patch_titanium_chrome_java_sources,
+                '  "java/src/org/chromium/chrome/browser/privacy/settings/'
+                'PrivacySettingsExt.java",',
+            ),
+            (
+                patch.patch_titanium_chrome_java_srcjar_deps,
+                "chrome_java_ext_full_path_srcjar_deps = [\n]",
+            ),
+            (
+                patch.patch_titanium_chrome_resources,
+                '  "java/res/xml/privacy_preferences_ext.xml",',
+            ),
+            (
+                patch.patch_titanium_android_cc_sources,
+                "android_cc_ext_full_path_sources = [\n]",
+            ),
+            (
+                patch.patch_titanium_android_cc_deps,
+                "android_cc_ext_full_path_deps = [\n]",
+            ),
+            (
+                patch.patch_titanium_privacy_preferences,
+                "<PreferenceScreen>\n</PreferenceScreen>",
+            ),
         ]:
             with self.subTest(transform=transform.__name__):
                 value = transform(source)
                 self.assertEqual(value, transform(value))
+
+    def test_profile_patch_avoids_unsafe_pointer_arithmetic(self):
+        value = patch.patch_profile(self.profile())
+
+        self.assertIn(
+            "base::ToVector(base::span(net::kTitaniumRussianRootDer))",
+            value,
+        )
+        self.assertNotIn(
+            "kTitaniumRussianRootDer + sizeof",
+            value,
+        )
+
+    def test_profile_patch_registers_observes_and_reads_list_pref(self):
+        value = patch.patch_profile(self.profile())
+
+        self.assertIn("RegisterListPref(argon::prefs::kRussianCaAdditionalDomains)", value)
+        self.assertIn("pref_change_registrar_.Add(argon::prefs::kRussianCaAdditionalDomains", value)
+        self.assertIn("prefs->GetList(argon::prefs::kRussianCaAdditionalDomains)", value)
+
+    def test_verifier_uses_per_instance_dynamic_constraints(self):
+        value = patch.patch_verifier(
+            '#include "net/cert/time_conversions.h"\n' + patch.VERIFIER_ANCHOR
+        )
+
+        self.assertIn("*additional_constraints_", value)
+        self.assertIn("titanium_permitted_dns_names", value)
+        self.assertIn("IsTitaniumRussianRoot", value)
+
+    def test_android_settings_integration_is_scoped_to_titanium_extensions(self):
+        java = patch.patch_titanium_chrome_java_sources(
+            '  "java/src/org/chromium/chrome/browser/privacy/settings/'
+            'PrivacySettingsExt.java",'
+        )
+        xml = patch.patch_titanium_privacy_preferences(
+            "<PreferenceScreen>\n</PreferenceScreen>"
+        )
+
+        self.assertIn("ArgonCertificateDomainsSettings.java", java)
+        self.assertIn("ArgonCertificateDomainsSettings", xml)
+
+    def test_android_settings_jni_is_generated_once_and_shared(self):
+        srcjar_deps = patch.patch_titanium_chrome_java_srcjar_deps(
+            "chrome_java_ext_full_path_srcjar_deps = [\n]"
+        )
+        cc_deps = patch.patch_titanium_android_cc_deps(
+            "android_cc_ext_full_path_deps = [\n]"
+        )
+        target = (
+            "//titanium/chromium_src/chrome/browser/android:"
+            "argon_certificate_domains_jni_headers"
+        )
+
+        self.assertEqual(srcjar_deps.count(target), 1)
+        self.assertEqual(cc_deps.count(target), 1)
+        self.assertNotIn("//chrome/android:jni_headers", cc_deps)
+
+        cc_sources = patch.patch_titanium_android_cc_sources(
+            "android_cc_ext_full_path_sources = [\n]"
+        )
+        self.assertIn(
+            '"//chrome/browser/android/argon_certificate_domains_settings.cc"',
+            cc_sources,
+        )
+        self.assertNotIn(
+            '"argon_certificate_domains_settings.cc"',
+            cc_sources,
+        )
+
+        build_gn = (
+            ROOT
+            / "chromium_overlay/titanium/chromium_src/chrome/browser/android/BUILD.gn"
+        ).read_text()
+        self.assertEqual(
+            build_gn.count('generate_jni("argon_certificate_domains_jni_headers")'),
+            1,
+        )
+        self.assertEqual(build_gn.count("ArgonCertificateDomainsSettings.java"), 1)
+
+        native_source = (
+            ROOT
+            / "chromium_overlay/chrome/browser/android/argon_certificate_domains_settings.cc"
+        ).read_text()
+        self.assertIn(
+            "argon_certificate_domains_jni_headers/"
+            "ArgonCertificateDomainsSettings_jni.h",
+            native_source,
+        )
 
     def test_missing_or_duplicate_anchor_fails(self):
         for source in ["", self.profile() + self.profile()]:
@@ -36,7 +167,10 @@ class PatchTests(unittest.TestCase):
     def test_modified_ip_guard_cannot_be_accepted_as_already_patched(self):
         source = '#include "net/cert/time_conversions.h"\n' + patch.VERIFIER_ANCHOR
         bad = patch.patch_verifier(source).replace(
-            '    CheckTitaniumRussianRootConstraints(path->certs, &path->errors);', '')
+            '    CheckTitaniumRussianRootConstraints(\n'
+            '        path->certs, &path->errors, titanium_permitted_dns_names);',
+            '',
+        )
         with self.assertRaises(ValueError):
             patch.patch_verifier(bad)
 
