@@ -43,6 +43,16 @@ class FilterListTests(unittest.TestCase):
             self.assertTrue(entry["url"].startswith("https://"))
             self.assertRegex(entry["sha256"], r"^[0-9a-f]{64}$")
 
+        by_name = {entry["name"]: entry for entry in entries}
+        self.assertEqual(
+            by_name["easylist.txt"]["url"],
+            "https://raw.githubusercontent.com/easylist/easylist/d3c6eba30eda4cf1526f7a0aaa8984e6b8def292/easylist.txt",
+        )
+        self.assertEqual(
+            by_name["easyprivacy.txt"]["url"],
+            "https://raw.githubusercontent.com/easylist/easylist/d3c6eba30eda4cf1526f7a0aaa8984e6b8def292/easyprivacy.txt",
+        )
+
     def test_volatile_adblock_metadata_is_removed_before_hashing(self):
         stable = b"[Adblock Plus 2.0]\n||example.test^\n"
         downloaded = (

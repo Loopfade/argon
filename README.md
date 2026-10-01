@@ -37,7 +37,7 @@ Argon пока сознательно сохраняет package ID `app.titaniu
 
 ## Сборка и проверка
 
-Сборка доступна [локально на Debian](BUILDING.md) или через **Actions → Build Argon → Run workflow**. Изменения интеграции Chromium в experimental автоматически запускают test-signed `arm64` build; ручное значение `arch=all` собирает все архитектуры. Локально `build.sh` собирает по одной ABI. Для каждой сборки требуется не менее 100 GiB свободного места.
+Сборка доступна [локально на Debian](BUILDING.md) или через **Actions → Build Argon → Run workflow**. Изменения интеграции Chromium в experimental автоматически запускают test-signed `arm64` build; ручное значение `arch=all` собирает все архитектуры. Локально `build.sh` собирает по одной ABI. Для каждой сборки требуется не менее 100 GiB свободного места. GitHub-сборка использует временную ферму из 12 `sccache-dist` воркеров; для неё требуется секрет репозитория `TS_OAUTH_SECRET` от Tailscale OAuth-клиента с `auth_keys` write scope и тегом `tag:ci-sccache`. Воркеры являются ephemeral и удаляются из tailnet после завершения координатора.
 
 Подробные сценарии проверки описаны в [VALIDATION.md](VALIDATION.md).
 
