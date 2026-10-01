@@ -1,0 +1,179 @@
+import argparse
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import configure_build
+import sign_and_verify
+
+
+class BuildTargetsTests(unittest.TestCase):
+    def test_cpu_and_abi_names_generate_matching_args(self):
+        for cpu, abi, drumbrake in [
+            ("arm64", "arm64-v8a", "true"),
+            ("arm", "armeabi-v7a", "false"),
+            ("x64", "x86_64", "true"),
+            ("x86", "x86", "false"),
+        ]:
+            for name in (cpu, abi):
+                with self.subTest(arch=name):
+                    self.assertEqual(configure_build.target_cpu(name), cpu)
+                    self.assertEqual(configure_build.TARGET_ABIS[cpu], abi)
+                    args = configure_build.render_gn_args(name).splitlines()
+                    self.assertIn(f'target_cpu = "{cpu}"', args)
+                    self.assertIn(f'v8_enable_drumbrake = {drumbrake}', args)
+                    self.assertIn(f'v8_drumbrake_bounds_checks = {drumbrake}', args)
+                    self.assertIn('enable_android_secondary_abi = false', args)
+                    self.assertIn('is_desktop_android = true', args)
+                    self.assertIn('chrome_public_manifest_package = "app.titaniumru.browser"', args)
+
+    def test_unsupported_architectures_are_rejected(self):
+        for arch in ["riscv64", "mips", "armeabi", "all", "", "../arm64"]:
+            with self.subTest(arch=arch), self.assertRaises(argparse.ArgumentTypeError):
+                configure_build.render_gn_args(arch)
+
+    def test_missing_or_duplicate_template_assignments_are_rejected(self):
+        template = (ROOT / "args.gn").read_text()
+        for name in ["target_cpu", "v8_enable_drumbrake", "v8_drumbrake_bounds_checks"]:
+            line = next(line for line in template.splitlines() if line.startswith(name + " ="))
+            for malformed in [template.replace(line, ""), template + line + "\n"]:
+                with self.subTest(name=name), patch.object(Path, "read_text", return_value=malformed):
+                    with self.assertRaisesRegex(ValueError, name):
+                        configure_build.render_gn_args("x86")
+
+    def test_cli_writes_separate_outputs_and_preserves_template(self):
+        template = (ROOT / "args.gn").read_bytes()
+        with tempfile.TemporaryDirectory() as tmp:
+            for cpu in ["arm64", "arm", "x64", "x86"]:
+                output = Path(tmp) / cpu / "args.gn"
+                subprocess.run([sys.executable, ROOT / "scripts/configure_build.py",
+                                "--arch", cpu, "--output", output], check=True)
+                self.assertIn(f'target_cpu = "{cpu}"', output.read_text())
+            self.assertEqual(len(list(Path(tmp).glob("*/args.gn"))), 4)
+        self.assertEqual((ROOT / "args.gn").read_bytes(), template)
+
+    def test_default_remains_arm64(self):
+        result = subprocess.check_output(
+            [sys.executable, ROOT / "scripts/configure_build.py", "--print-cpu"], text=True
+        )
+        self.assertEqual(result.strip(), "arm64")
+
+    def test_shell_rejects_invalid_architecture_before_preflight(self):
+        result = subprocess.run(["bash", ROOT / "build.sh", "riscv64"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Unsupported architecture", result.stderr)
+        self.assertNotIn("preflight.py", result.stderr)
+
+    def test_legacy_entry_point_selects_arm64(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            shutil.copy(ROOT / "build-arm64.sh", directory)
+            (directory / "build.sh").write_text('printf "%s\\n" "$@"\n')
+            result = subprocess.check_output(["bash", directory / "build-arm64.sh"], text=True)
+            self.assertEqual(result.strip(), "arm64")
+
+
+class ApkArchitectureTests(unittest.TestCase):
+    @staticmethod
+    def write_apk(path, abis):
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("AndroidManifest.xml", "fixture")
+            for abi in abis:
+                archive.writestr(f"lib/{abi}/libchrome.so", b"fixture")
+
+    def test_apk_must_contain_exactly_the_selected_abi(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "input.apk"
+            for expected in ["arm64-v8a", "armeabi-v7a", "x86_64", "x86"]:
+                with self.subTest(expected=expected):
+                    self.write_apk(apk, [expected])
+                    sign_and_verify.verify_apk_abi(apk, expected)
+                other = "x86" if expected != "x86" else "arm64-v8a"
+                for actual in [[], [other], [expected, other]]:
+                    with self.subTest(expected=expected, actual=actual):
+                        self.write_apk(apk, actual)
+                        with self.assertRaisesRegex(SystemExit, "Unexpected APK native ABIs"):
+                            sign_and_verify.verify_apk_abi(apk, expected)
+
+    def test_signing_rejects_wrong_abi_before_using_tools(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "input.apk"
+            self.write_apk(apk, ["arm64-v8a"])
+            argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", tmp,
+                    "--jdk", tmp, "--mode", "test", "--arch", "x86_64"]
+            with patch.object(sys, "argv", argv), patch.object(sign_and_verify, "run") as run:
+                with self.assertRaisesRegex(SystemExit, "expected x86_64"):
+                    sign_and_verify.main()
+                run.assert_not_called()
+
+    def test_corrupt_zip_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "input.apk"
+            self.write_apk(apk, ["arm64-v8a"])
+            apk.write_bytes(apk.read_bytes().replace(b"fixture", b"corrupt", 1))
+            with self.assertRaisesRegex(SystemExit, "ZIP integrity failure"):
+                sign_and_verify.verify_apk_abi(apk, "arm64-v8a")
+
+    def test_signing_keeps_metadata_checksums_and_certificates_per_abi(self):
+        # SDK/JDK commands are simulated here; this does not verify a real APK signature.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".build").mkdir()
+            (root / "sdk/build-tools/1").mkdir(parents=True)
+            (root / "sdk/build-tools/1/apksigner").touch()
+            for relative in ["build-lock.json", "certificates/ministry-ca-lock.json",
+                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt"]:
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(ROOT / relative, destination)
+            (root / "chromium/src").mkdir(parents=True)
+            (root / "chromium/src/LICENSE").write_text("Chromium license fixture")
+
+            def fake_run(argv, **kwargs):
+                if "sign" in argv:
+                    shutil.copy(argv[-1], argv[argv.index("--out") + 1])
+                if "-exportcert" in argv:
+                    Path(argv[argv.index("-file") + 1]).write_text("certificate fixture")
+                return subprocess.CompletedProcess(argv, 0, stdout=(
+                    "package: name='app.titaniumru.browser'\n"
+                    "application-label:'Titanium RU'\n"
+                ))
+
+            snapshots = {}
+            for cpu, abi in configure_build.TARGET_ABIS.items():
+                apk = root / "input.apk"
+                self.write_apk(apk, [abi])
+                argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", str(root / "sdk"),
+                        "--jdk", str(root / "jdk"), "--mode", "test", "--arch", abi]
+                with patch.object(sign_and_verify, "ROOT", root), patch.object(sys, "argv", argv), \
+                     patch.object(sign_and_verify, "run", side_effect=fake_run), \
+                     patch.object(sign_and_verify.subprocess, "check_output", return_value="source-sha\n"):
+                    sign_and_verify.main()
+                directory = root / "artifacts" / abi
+                info = json.loads((directory / "build-info.json").read_text())
+                self.assertEqual(info["abi"], abi)
+                self.assertEqual(info["target_cpu"], cpu)
+                self.assertEqual(info["device_smoke_test"], "not run")
+                output = next(directory.glob("*.apk"))
+                self.assertTrue(output.name.endswith(f"-test-{abi}.apk"))
+                self.assertEqual((directory / (output.name + ".sha256")).read_text(),
+                                 f'{info["apk_sha256"]}  {output.name}\n')
+                for name in ["apk-signature.txt", "signing-certificate.pem", "Titanium-LICENSE.txt",
+                             "Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt"]:
+                    self.assertTrue((directory / name).is_file(), name)
+                for previous, data in snapshots.items():
+                    self.assertEqual(previous.read_bytes(), data)
+                snapshots.update({path: path.read_bytes() for path in directory.iterdir()})
+
+
+if __name__ == "__main__":
+    unittest.main()

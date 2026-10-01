@@ -1,7 +1,10 @@
 chrome_public_manifest_package = "app.titaniumru.browser"
 is_desktop_android = true
 target_os = "android"
+# Default template; scripts/configure_build.py selects the requested CPU and V8 flags.
 target_cpu = "arm64"
+# Produce one ABI per APK, including official 64-bit builds.
+enable_android_secondary_abi = false
 is_component_build = false
 is_debug = false
 is_official_build = true
@@ -37,5 +40,5 @@ enable_dav1d_decoder = true
 include_both_v8_snapshots = false
 include_both_v8_snapshots_android_secondary_abi = false
 v8_enable_drumbrake = true
-v8_drumbrake_bounds_checks = true 
+v8_drumbrake_bounds_checks = true
 generate_linker_map = true
