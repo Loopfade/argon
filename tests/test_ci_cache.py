@@ -1,5 +1,6 @@
 """Regression tests for safe remote cache replacement and prepared inputs."""
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,29 +51,36 @@ class CacheReplacementTests(unittest.TestCase):
     def invoke(self, response=None, error=None):
         environment = {"CCACHE_CACHE_PREFIX": self.prefix, "GITHUB_REF": self.ref,
                        "GITHUB_REPOSITORY": "Loopfade/argon"}
+        output = io.StringIO()
         with patch.dict(os.environ, environment), \
              patch.object(sys, "argv", ["prune", self.entry(2)["key"]]), \
              patch.object(cache.subprocess, "check_output", return_value=response,
                           side_effect=error), \
-             patch.object(cache.subprocess, "run") as delete:
+             patch.object(cache.subprocess, "run") as delete, \
+             redirect_stdout(output):
             if error:
                 with self.assertRaises(subprocess.CalledProcessError):
                     cache.main()
             else:
                 cache.main()
-            return delete.call_args_list
+            return delete.call_args_list, output.getvalue()
 
     def test_api_failure_never_deletes_a_snapshot(self):
-        self.assertEqual(self.invoke(error=subprocess.CalledProcessError(1, "gh api")), [])
+        calls, output = self.invoke(error=subprocess.CalledProcessError(1, "gh api"))
+        self.assertEqual(calls, [])
+        self.assertEqual(output, "")
 
     def test_upload_warning_with_no_remote_replacement_never_deletes(self):
         response = json.dumps([{"actions_caches": [self.entry(1)]}])
-        self.assertEqual(self.invoke(response), [])
+        calls, output = self.invoke(response)
+        self.assertEqual(calls, [])
+        self.assertIn("::warning::Replacement cache is not confirmed", output)
 
     def test_paginated_replacement_is_confirmed_before_deletion_by_id(self):
         response = json.dumps([{"actions_caches": [self.entry(1)]},
                                {"actions_caches": [self.entry(2), self.entry(3)]}])
-        calls = self.invoke(response)
+        calls, output = self.invoke(response)
+        self.assertIn("Verified argon-ccache-v2-arm64-2", output)
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0].args[0],
                          ["gh", "cache", "delete", "1", "--repo", "Loopfade/argon"])
