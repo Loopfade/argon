@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths:
+      # Changes to the image workflow itself must exercise the updated runner
+      # and Docker Actions before the new configuration is considered verified.
+      - '.github/workflows/build-chromium-image.yml'
       - '.gclient'
       - '.dockerignore'
       - 'build-lock.json'
