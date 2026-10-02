@@ -1,4 +1,4 @@
-"""Version upgrades must resolve their own prepared image before an APK build."""
+"""Consumers resolve the single moving main prepared image to an immutable digest."""
 import importlib.util
 import json
 from pathlib import Path
@@ -16,33 +16,33 @@ spec.loader.exec_module(resolver)
 
 class PreparedImageResolutionTests(unittest.TestCase):
     repository = "ghcr.io/loopfade/argon-build"
+    tag = repository + ":branch-main"
     digest = "sha256:" + "a" * 64
 
-    def test_upgrade_resolves_the_locked_version_and_returns_only_a_digest(self):
-        for version in ["153.0.8010.52", "154.0.8037.57"]:
-            with self.subTest(version=version), patch.object(
+    def test_repository_or_branch_tag_resolves_to_digest(self):
+        for image in [self.repository.upper(), self.tag.upper()]:
+            with self.subTest(image=image), patch.object(
                 resolver.subprocess, "check_output",
                 return_value=json.dumps({"digest": self.digest}),
             ) as inspect:
-                image = resolver.resolve(self.repository.upper(), version)
-                self.assertEqual(image, f"{self.repository}@{self.digest}")
+                resolved = resolver.resolve(image)
+                self.assertEqual(resolved, f"{self.repository}@{self.digest}")
                 inspect.assert_called_once_with(
-                    ["docker", "buildx", "imagetools", "inspect",
-                     f"{self.repository}:chromium-{version}",
+                    ["docker", "buildx", "imagetools", "inspect", self.tag,
                      "--format", "{{json .Manifest}}"], text=True,
                 )
 
     def test_explicit_immutable_image_does_not_need_registry_resolution(self):
         image = f"{self.repository}@{self.digest}"
         with patch.object(resolver.subprocess, "check_output") as inspect:
-            self.assertEqual(resolver.resolve(image, "154.0.8037.57"), image)
+            self.assertEqual(resolver.resolve(image), image)
             inspect.assert_not_called()
 
-    def test_missing_m154_image_never_falls_back_to_m153(self):
+    def test_missing_branch_main_does_not_fall_back(self):
         with patch.object(resolver.subprocess, "check_output", side_effect=
                           subprocess.CalledProcessError(1, "docker")) as inspect:
             with self.assertRaises(subprocess.CalledProcessError):
-                resolver.resolve(self.repository, "154.0.8037.57")
+                resolver.resolve(self.repository)
             self.assertEqual(inspect.call_count, 1)
 
     def test_invalid_manifest_digests_are_rejected(self):
@@ -51,19 +51,18 @@ class PreparedImageResolutionTests(unittest.TestCase):
             with self.subTest(manifest=manifest), patch.object(
                 resolver.subprocess, "check_output", return_value=json.dumps(manifest)
             ), self.assertRaises(ValueError):
-                resolver.resolve(self.repository, "154.0.8037.57")
+                resolver.resolve(self.repository)
 
-    def test_mutable_overrides_and_invalid_versions_are_rejected_before_docker(self):
-        for image, version in [
-            (self.repository + ":latest", "154.0.8037.57"),
-            (self.repository + "@sha256:123", "154.0.8037.57"),
-            (self.repository, "154.0.8037.57\nextra=1"),
-            ("--help", "154.0.8037.57"),
+    def test_unsupported_mutable_refs_are_rejected_before_docker(self):
+        for image in [
+            self.repository + ":latest",
+            self.repository + "@sha256:123",
+            "--help",
         ]:
-            with self.subTest(image=image, version=version), patch.object(
+            with self.subTest(image=image), patch.object(
                 resolver.subprocess, "check_output"
             ) as inspect, self.assertRaises(ValueError):
-                resolver.resolve(image, version)
+                resolver.resolve(image)
             inspect.assert_not_called()
 
 
