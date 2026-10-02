@@ -37,14 +37,15 @@ Workflow `.github/workflows/validate.yml` запускается на push, pull
 
 ## Полная M154-сборка
 
-Контрольная сборка после сжатия истории успешно прошла 2026-10-01:
+Текущий релиз `v154.0.8037.57-argon.2` собран и проверен 2026-10-01:
 
-- prepared Chromium image — GitHub Actions run `36816737929`;
-- release-signed arm64 APK — GitHub Actions run `36816738462`;
+- release-signed arm64 APK — GitHub Actions run
+  [`36852923075`](https://github.com/Loopfade/argon/actions/runs/36852923075);
 - шаг `Build, sign and verify APK` завершился успешно;
-- artifact с APK и provenance был загружен успешно.
+- artifact с APK и provenance сохранён для текущего релиза.
 
-Для этой M154-сборки `ccache` показал:
+В более ранней контрольной M154-сборке 2026-10-01 `ccache` показал
+следующие значения; её Actions run и artifact удалены при очистке истории:
 
 - 47 317 cacheable calls;
 - 47 316 hits;
