@@ -117,7 +117,9 @@ jobs:
 
           # This repository is user-owned. Emit one JSON object per package
           # version so all pages can be processed as a single jq stream.
-          gh api --paginate             "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100"             --jq '.[]' > "$versions"
+          gh api --paginate \
+            "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100" \
+            --jq '.[]' > "$versions"
 
           keep_id=$(
             jq -s -r --arg tag "$KEEP_TAG" '
@@ -134,12 +136,16 @@ jobs:
           while IFS= read -r version_id; do
             [[ -z "$version_id" ]] && continue
             echo "Deleting superseded GHCR package version ${version_id}"
-            gh api --method DELETE               "/users/${OWNER}/packages/container/${PACKAGE}/versions/${version_id}"
+            gh api --method DELETE \
+              "/users/${OWNER}/packages/container/${PACKAGE}/versions/${version_id}"
           done < <(
-            jq -s -r --argjson keep "$keep_id"               '.[] | select(.id != $keep) | .id' "$versions"
+            jq -s -r --argjson keep "$keep_id" \
+              '.[] | select(.id != $keep) | .id' "$versions"
           )
 
-          remaining=$(gh api             "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100"             --jq 'length')
+          remaining=$(gh api \
+            "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100" \
+            --jq 'length')
           if [[ "$remaining" != 1 ]]; then
             echo "::error::Expected exactly one GHCR package version, found ${remaining}."
             exit 1
