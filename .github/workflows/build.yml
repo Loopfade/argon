@@ -212,10 +212,10 @@ jobs:
     uses: ./.github/workflows/build-arch.yml
     with:
       arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
-      # Resolve the latest successfully published image for the locked Chromium
-      # version to an immutable digest before pulling. check-prepared-inputs.py
-      # rejects it if prepared source inputs no longer match this checkout.
-      image: ghcr.io/${{ github.repository_owner }}/argon-build
+      # Resolve the single latest successful main image to an immutable digest
+      # before pulling. check-prepared-inputs.py rejects it if prepared source
+      # inputs no longer match this checkout.
+      image: ghcr.io/${{ github.repository_owner }}/argon-build:branch-main
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-24.04' }}
       # Trusted pushes to main use the permanent release key.
       # Pull-request builds keep their temporary key, including same-repo PRs.
