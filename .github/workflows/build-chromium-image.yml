@@ -42,6 +42,9 @@ concurrency:
 
 jobs:
   image:
+    # The package is a single moving main image. Manual dispatches from other
+    # refs must never replace the image consumed by main/PR builds.
+    if: github.ref == 'refs/heads/main'
     name: Prepare Chromium and publish OCI image
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -58,7 +61,7 @@ jobs:
             /opt/swift
           df -h .
 
-      - name: Select image tags
+      - name: Select image tag
         id: image
         shell: bash
         run: |
@@ -66,16 +69,8 @@ jobs:
           version=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["chromium_version"])')
           image="ghcr.io/${owner}/argon-build"
           {
-            echo "name=${image}"
+            echo "tag=${image}:branch-main"
             echo "version=${version}"
-            echo "sha_tag=${image}:sha-${GITHUB_SHA}"
-            echo "version_tag=${image}:chromium-${version}"
-            # Branch experiments must not replace the version used by main.
-            if [[ "$GITHUB_REF" == refs/heads/main ]]; then
-              echo "publish_version_tag=${image}:chromium-${version}"
-            fi
-            branch=${GITHUB_REF_NAME//\//-}
-            echo "branch_tag=${image}:branch-${branch}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
@@ -95,29 +90,67 @@ jobs:
           context: .
           file: docker/chromium/Dockerfile
           push: true
-          tags: |
-            ${{ steps.image.outputs.sha_tag }}
-            ${{ steps.image.outputs.publish_version_tag }}
-            ${{ steps.image.outputs.branch_tag }}
+          tags: ${{ steps.image.outputs.tag }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.image.outputs.version }}
           build-args: |
             ARGON_REVISION=${{ github.sha }}
-          # Reuse the current branch cache, falling back to the Chromium version
-          # cache for the first build of a new branch.
-          cache-from: |
-            type=registry,ref=${{ steps.image.outputs.branch_tag }}
-            type=registry,ref=${{ steps.image.outputs.version_tag }}
+          # A single-platform image without attestations is one GHCR package
+          # version, so retention can safely delete every superseded version.
+          provenance: false
+          sbom: false
+          cache-from: type=registry,ref=${{ steps.image.outputs.tag }}
           cache-to: type=inline
+
+      - name: Keep only the latest successful image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: argon-build
+          KEEP_TAG: branch-main
+        shell: bash
+        run: |
+          set -euo pipefail
+          versions="$RUNNER_TEMP/argon-package-versions.jsonl"
+
+          # This repository is user-owned. Emit one JSON object per package
+          # version so all pages can be processed as a single jq stream.
+          gh api --paginate             "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100"             --jq '.[]' > "$versions"
+
+          keep_id=$(
+            jq -s -r --arg tag "$KEEP_TAG" '
+              map(select((.metadata.container.tags // []) | index($tag)))
+              | first
+              | .id // empty
+            ' "$versions"
+          )
+          if [[ -z "$keep_id" ]]; then
+            echo "::error::Published tag ${KEEP_TAG} was not found in GHCR."
+            exit 1
+          fi
+
+          while IFS= read -r version_id; do
+            [[ -z "$version_id" ]] && continue
+            echo "Deleting superseded GHCR package version ${version_id}"
+            gh api --method DELETE               "/users/${OWNER}/packages/container/${PACKAGE}/versions/${version_id}"
+          done < <(
+            jq -s -r --argjson keep "$keep_id"               '.[] | select(.id != $keep) | .id' "$versions"
+          )
+
+          remaining=$(gh api             "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100"             --jq 'length')
+          if [[ "$remaining" != 1 ]]; then
+            echo "::error::Expected exactly one GHCR package version, found ${remaining}."
+            exit 1
+          fi
 
       - name: Publish summary
         run: |
           {
             echo '## Prepared Chromium image'
             echo
-            echo '- Image: `${{ steps.image.outputs.sha_tag }}`'
+            echo '- Image: `${{ steps.image.outputs.tag }}`'
             echo '- Chromium: `${{ steps.image.outputs.version }}`'
             echo '- Digest: `${{ steps.build.outputs.digest }}`'
             echo '- Checks: pinned sources, patches, Python tests, C++ policy tests and GN generation.'
