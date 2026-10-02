@@ -9,7 +9,8 @@ The upstream URL changes in place. On 2026-09-24 this exact snapshot was recover
 from `ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee`,
 the image used for the verified release APK. Only its small filter-cache layer
 was downloaded; both OCI digests and the filter's locked SHA-256 were checked.
-Recovery run: https://github.com/Loopfade/argon/actions/runs/35977048663.
+The recovery run has been removed during Actions history cleanup. The checked
+snapshot is preserved in [commit `0b2d2f7`](https://github.com/Loopfade/argon/blob/0b2d2f765a8f334c52d688284b1da3590056c708/docker/chromium/filter-cache/47de51909886eaf08c3114b18496a98ac372b8cb2349dbba84b0ac02a7b168a6).
 
 Commit the matching normalized snapshot here when changing this mutable input's
 pin. Do not replace the expected digest with the latest network response just

@@ -105,12 +105,11 @@ jobs:
             org.opencontainers.image.version=${{ steps.image.outputs.version }}
           build-args: |
             ARGON_REVISION=${{ github.sha }}
-          # A new branch tag has no cache until its first successful publish.
-          # Keep an immutable fallback to the verified prepared image.
+          # Reuse the current branch cache, falling back to the Chromium version
+          # cache for the first build of a new branch.
           cache-from: |
             type=registry,ref=${{ steps.image.outputs.branch_tag }}
             type=registry,ref=${{ steps.image.outputs.version_tag }}
-            type=registry,ref=ghcr.io/loopfade/argon-build@sha256:d8b7a4be25204388cbf3259635fed3f4d9eb94c240e09a37e3515b2ab3385cee
           cache-to: type=inline
 
       - name: Publish summary
