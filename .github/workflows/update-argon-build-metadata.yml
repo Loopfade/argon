@@ -80,15 +80,17 @@ jobs:
           [[ -n "$description" ]]
           [[ ${#description} -le 512 ]]
 
-          current=$(crane config "$image:branch-main" | jq -r '.config.Labels["org.opencontainers.image.description"] // ""')
-          if [[ "$current" == "$description" ]]; then
-            echo "GHCR description is already current."
+          current_label=$(crane config "$image:branch-main" | jq -r '.config.Labels["org.opencontainers.image.description"] // ""')
+          current_annotation=$(crane manifest "$image:branch-main" | jq -r '.annotations["org.opencontainers.image.description"] // ""')
+          if [[ "$current_label" == "$description" && "$current_annotation" == "$description" ]]; then
+            echo "GHCR description label and manifest annotation are already current."
             exit 0
           fi
 
           digest=$(crane digest "$image:branch-main")
           crane mutate "$image@$digest" \
             --label "org.opencontainers.image.description=$description" \
+            --annotation "org.opencontainers.image.description=$description" \
             --tag "$image:branch-main"
 
       - name: Remove superseded package versions when no build is using them
