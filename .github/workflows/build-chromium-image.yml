@@ -95,6 +95,7 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.image.outputs.version }}
+            org.opencontainers.image.description=Prepared Chromium build environment used by Argon CI to build, sign, and verify Android APKs. Tracks the latest successful main build.
           build-args: |
             ARGON_REVISION=${{ github.sha }}
           # A single-platform image without attestations is one GHCR package
