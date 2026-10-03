@@ -21,7 +21,7 @@ permissions:
 # already in progress. Ordinary metadata updates wait instead of cancelling it.
 concurrency:
   group: argon-chromium-image-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[cancel-image-build]') }}
+  cancel-in-progress: true
 
 jobs:
   metadata:
