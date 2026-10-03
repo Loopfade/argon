@@ -70,24 +70,26 @@ jobs:
       - name: Reconcile image description without rebuilding layers
         if: steps.safe.outputs.apply == 'true'
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/argon-build
+          OWNER: ${{ github.repository_owner }}
         shell: bash
         run: |
           set -euo pipefail
+          owner=${OWNER,,}
+          image="ghcr.io/${owner}/argon-build"
           description=$(tr -d '\r\n' < .github/package-metadata/argon-build-description.txt)
           [[ -n "$description" ]]
           [[ ${#description} -le 512 ]]
 
-          current=$(crane config "$IMAGE:branch-main" | jq -r '.config.Labels["org.opencontainers.image.description"] // ""')
+          current=$(crane config "$image:branch-main" | jq -r '.config.Labels["org.opencontainers.image.description"] // ""')
           if [[ "$current" == "$description" ]]; then
             echo "GHCR description is already current."
             exit 0
           fi
 
-          digest=$(crane digest "$IMAGE:branch-main")
-          crane mutate "$IMAGE@$digest" \
+          digest=$(crane digest "$image:branch-main")
+          crane mutate "$image@$digest" \
             --label "org.opencontainers.image.description=$description" \
-            --tag "$IMAGE:branch-main"
+            --tag "$image:branch-main"
 
       - name: Remove superseded package versions when no build is using them
         if: steps.safe.outputs.apply == 'true'
