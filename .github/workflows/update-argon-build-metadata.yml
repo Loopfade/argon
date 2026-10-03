@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/ci/argon-build-description.txt'
+      - '.github/package-metadata/argon-build-description.txt'
       - '.github/workflows/update-argon-build-metadata.yml'
   workflow_run:
-    workflows: [Build Argon]
+    workflows: [Build prepared Chromium image, Build Argon]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -17,10 +17,8 @@ permissions:
   contents: read
   packages: write
 
-# The migration commit uses a marker to replace the accidental Chromium rebuild
-# already in progress. Ordinary metadata updates wait instead of cancelling it.
 concurrency:
-  group: argon-chromium-image-${{ github.ref }}
+  group: argon-build-metadata
   cancel-in-progress: true
 
 jobs:
@@ -35,26 +33,7 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Wait for prepared-image publication to stop
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          for _ in {1..60}; do
-            active=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&per_page=20" \
-              --jq '[.workflow_runs[] | select(.status != "completed")] | length')
-            if (( active == 0 )); then
-              exit 0
-            fi
-            echo "Waiting for $active prepared-image run(s) to stop..."
-            sleep 5
-          done
-          echo "::error::Prepared-image workflow did not stop in time."
-          exit 1
-
-      - name: Defer while an Argon build is active
+      - name: Check whether image publication is active
         id: safe
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,11 +41,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          active=$(gh api "repos/$GH_REPO/actions/workflows/build.yml/runs?branch=main&per_page=50" \
+          active=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&per_page=20" \
             --jq '[.workflow_runs[] | select(.status != "completed")] | length')
           if (( active > 0 )); then
             echo "apply=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Argon build is active; metadata update will be retried after Build Argon completes."
+            echo "::notice::Prepared-image publication is active; metadata will be reconciled when it completes."
           else
             echo "apply=true" >> "$GITHUB_OUTPUT"
           fi
@@ -88,21 +67,19 @@ jobs:
           GOBIN="$RUNNER_TEMP/bin" go install github.com/google/go-containerregistry/cmd/crane@v0.22.1
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
-      - name: Update image description without rebuilding layers
+      - name: Reconcile image description without rebuilding layers
         if: steps.safe.outputs.apply == 'true'
-        id: mutate
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/argon-build
         shell: bash
         run: |
           set -euo pipefail
-          description=$(tr -d '\r\n' < .github/ci/argon-build-description.txt)
+          description=$(tr -d '\r\n' < .github/package-metadata/argon-build-description.txt)
           [[ -n "$description" ]]
           [[ ${#description} -le 512 ]]
 
           current=$(crane config "$IMAGE:branch-main" | jq -r '.config.Labels["org.opencontainers.image.description"] // ""')
           if [[ "$current" == "$description" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "GHCR description is already current."
             exit 0
           fi
@@ -111,18 +88,26 @@ jobs:
           crane mutate "$IMAGE@$digest" \
             --label "org.opencontainers.image.description=$description" \
             --tag "$IMAGE:branch-main"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Keep only the current package version
-        if: steps.safe.outputs.apply == 'true' && steps.mutate.outputs.changed == 'true'
+      - name: Remove superseded package versions when no build is using them
+        if: steps.safe.outputs.apply == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           OWNER: ${{ github.repository_owner }}
           PACKAGE: argon-build
           KEEP_TAG: branch-main
         shell: bash
         run: |
           set -euo pipefail
+
+          active_builds=$(gh api "repos/$GH_REPO/actions/workflows/build.yml/runs?per_page=100" \
+            --jq '[.workflow_runs[] | select(.status != "completed")] | length')
+          if (( active_builds > 0 )); then
+            echo "::notice::$active_builds Argon build(s) still active; keeping superseded image digests until the last build completes."
+            exit 0
+          fi
+
           versions="$RUNNER_TEMP/argon-package-versions.jsonl"
           gh api --paginate \
             "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100" \
@@ -139,6 +124,7 @@ jobs:
 
           while IFS= read -r version_id; do
             [[ -z "$version_id" ]] && continue
+            echo "Deleting superseded GHCR package version $version_id"
             gh api --method DELETE \
               "/users/${OWNER}/packages/container/${PACKAGE}/versions/${version_id}"
           done < <(
