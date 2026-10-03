@@ -51,18 +51,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh api --paginate "repos/$GH_REPO/actions/caches?per_page=100" \
-            --jq '.actions_caches[].ref' |
-          sort -u |
-          while read -r ref; do
-            [[ "$ref" =~ ^refs/pull/([0-9]+)/merge$ ]] || continue
-            pr_number="${BASH_REMATCH[1]}"
-            state=$(gh api "repos/$GH_REPO/pulls/$pr_number" --jq '.state')
-            if [[ "$state" == closed ]]; then
-              encoded_ref=$(jq -rn --arg value "$ref" '$value | @uri')
-              echo "Deleting caches for closed PR #$pr_number ($ref)"
-              gh api --method DELETE "repos/$GH_REPO/actions/caches?ref=$encoded_ref"
-            fi
+          gh api --paginate "repos/$GH_REPO/pulls?state=closed&per_page=100" \
+            --jq '.[].number' |
+          sort -nu |
+          while read -r pr_number; do
+            [[ "$pr_number" =~ ^[0-9]+$ ]] || continue
+            ref="refs/pull/$pr_number/merge"
+            encoded_ref=$(jq -rn --arg value "$ref" '$value | @uri')
+            echo "Deleting caches for closed PR #$pr_number ($ref)"
+            gh api --method DELETE "repos/$GH_REPO/actions/caches?ref=$encoded_ref" >/dev/null || true
           done
 
   validate:
