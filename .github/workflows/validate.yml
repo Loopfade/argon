@@ -5,13 +5,15 @@ on:
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 permissions:
+  actions: write
   contents: read
+  pull-requests: read
 jobs:
   cleanup:
-    name: Cancel Build Argon runs for closed PRs
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.base.ref == 'main'
+    name: Clean closed PR builds and caches
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Cancel stale pull-request builds
         env:
@@ -38,6 +40,28 @@ jobs:
             if (( open_prs == 0 )); then
               echo "Cancelling stale PR Build Argon run $run_id ($head_owner:$head_branch)"
               gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel" >/dev/null || true
+            fi
+          done
+
+      - name: Delete caches belonging to closed pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api --paginate "repos/$GH_REPO/actions/caches?per_page=100" \
+            --jq '.actions_caches[].ref' |
+          sort -u |
+          while read -r ref; do
+            [[ "$ref" =~ ^refs/pull/([0-9]+)/merge$ ]] || continue
+            pr_number="${BASH_REMATCH[1]}"
+            state=$(gh api "repos/$GH_REPO/pulls/$pr_number" --jq '.state')
+            if [[ "$state" == closed ]]; then
+              encoded_ref=$(jq -rn --arg value "$ref" '$value | @uri')
+              echo "Deleting caches for closed PR #$pr_number ($ref)"
+              gh api --method DELETE "repos/$GH_REPO/actions/caches?ref=$encoded_ref"
             fi
           done
 
