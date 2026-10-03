@@ -104,6 +104,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.image.outputs.version }}
             org.opencontainers.image.description=${{ steps.image.outputs.description }}
+          annotations: |
+            org.opencontainers.image.description=${{ steps.image.outputs.description }}
           build-args: |
             ARGON_REVISION=${{ github.sha }}
           # A single-platform image without attestations is one GHCR package
