@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/ci/argon-build-description.txt'
+      - '.github/package-metadata/argon-build-description.txt'
       - '.github/workflows/update-argon-build-metadata.yml'
   workflow_run:
     workflows: [Build prepared Chromium image, Build Argon]
@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          description=$(tr -d '\r\n' < .github/ci/argon-build-description.txt)
+          description=$(tr -d '\r\n' < .github/package-metadata/argon-build-description.txt)
           [[ -n "$description" ]]
           [[ ${#description} -le 512 ]]
 
