@@ -51,15 +51,51 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh api --paginate "repos/$GH_REPO/pulls?state=closed&per_page=100" \
-            --jq '.[].number' |
-          sort -nu |
-          while read -r pr_number; do
-            [[ "$pr_number" =~ ^[0-9]+$ ]] || continue
-            ref="refs/pull/$pr_number/merge"
-            encoded_ref=$(jq -rn --arg value "$ref" '$value | @uri')
-            echo "Deleting caches for closed PR #$pr_number ($ref)"
-            gh api --method DELETE "repos/$GH_REPO/actions/caches?ref=$encoded_ref" >/dev/null || true
+          gh api --paginate "repos/$GH_REPO/actions/caches?per_page=100" \
+            --jq '.actions_caches[] | [.id, .ref] | @tsv' |
+          while IFS=
+  validate:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Validate patches and pinned inputs
+        run: |
+          for arch in arm64 arm x64 x86; do
+            python3 scripts/preflight.py --inputs-only --arch "$arch"
+            python3 scripts/configure_build.py --arch "$arch" --output ".build/args/$arch/args.gn"
+          done
+          python3 -m unittest discover -s tests -v
+          bash -n build.sh
+          bash -n build-arm64.sh
+          for script in .github/ci/*.sh; do bash -n "$script"; done
+      - name: Check CA and JNI patches against pinned upstream sources
+        run: python3 tests/check_upstream_patches.py
+      - name: Obtain pinned BoringSSL
+        run: |
+          revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')
+          git init .build/boringssl
+          git -C .build/boringssl remote add origin https://github.com/google/boringssl.git
+          git -C .build/boringssl fetch --depth=1 origin "$revision"
+          git -C .build/boringssl checkout --detach "$revision"
+      - name: Test production DNS and IP constraints
+        run: |
+          cmake -S tests -B .build/policy-tests -DBORINGSSL_SOURCE_DIR="$PWD/.build/boringssl" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/policy-tests --target scoped_ca_test -j 4
+          ctest --test-dir .build/policy-tests --output-on-failure
+\t' read -r cache_id ref; do
+            [[ "$cache_id" =~ ^[0-9]+$ ]] || continue
+            [[ "$ref" =~ ^refs/pull/([0-9]+)/merge$ ]] || continue
+
+            pr_number="${BASH_REMATCH[1]}"
+            state=$(gh api "repos/$GH_REPO/pulls/$pr_number" --jq '.state')
+            if [[ "$state" == closed ]]; then
+              echo "Deleting cache $cache_id for closed PR #$pr_number ($ref)"
+              gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id" >/dev/null
+            fi
           done
 
   validate:
