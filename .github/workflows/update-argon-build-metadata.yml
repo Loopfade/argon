@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: argon-build-metadata
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'workflow_run' }}
 
 jobs:
   metadata:
