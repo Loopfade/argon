@@ -72,7 +72,7 @@ jobs:
           owner=${GITHUB_REPOSITORY_OWNER,,}
           version=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["chromium_version"])')
           image="ghcr.io/${owner}/argon-build"
-          description=$(tr -d '\r\n' < .github/ci/argon-build-description.txt)
+          description=$(tr -d '\r\n' < .github/package-metadata/argon-build-description.txt)
           [[ -n "$description" ]]
           [[ ${#description} -le 512 ]]
           {
