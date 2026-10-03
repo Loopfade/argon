@@ -1,9 +1,78 @@
 name: Validate scoped Russian CA
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  cleanup:
+    name: Cancel Build Argon runs for closed PRs
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Cancel stale pull-request builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api --paginate "repos/$GH_REPO/actions/workflows/build.yml/runs?per_page=100" \
+            --jq '.workflow_runs[]
+              | select(.event == "pull_request" and .status != "completed")
+              | [.id, .head_branch, (.head_repository.owner.login // "")]
+              | @tsv' |
+          while IFS=
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Validate patches and pinned inputs
+        run: |
+          for arch in arm64 arm x64 x86; do
+            python3 scripts/preflight.py --inputs-only --arch "$arch"
+            python3 scripts/configure_build.py --arch "$arch" --output ".build/args/$arch/args.gn"
+          done
+          python3 -m unittest discover -s tests -v
+          bash -n build.sh
+          bash -n build-arm64.sh
+          for script in .github/ci/*.sh; do bash -n "$script"; done
+      - name: Check CA and JNI patches against pinned upstream sources
+        run: python3 tests/check_upstream_patches.py
+      - name: Obtain pinned BoringSSL
+        run: |
+          revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')
+          git init .build/boringssl
+          git -C .build/boringssl remote add origin https://github.com/google/boringssl.git
+          git -C .build/boringssl fetch --depth=1 origin "$revision"
+          git -C .build/boringssl checkout --detach "$revision"
+      - name: Test production DNS and IP constraints
+        run: |
+          cmake -S tests -B .build/policy-tests -DBORINGSSL_SOURCE_DIR="$PWD/.build/boringssl" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/policy-tests --target scoped_ca_test -j 4
+          ctest --test-dir .build/policy-tests --output-on-failure
+\t' read -r run_id head_branch head_owner; do
+            [[ -n "$run_id" && -n "$head_branch" && -n "$head_owner" ]] || continue
+
+            open_prs=$(gh api --method GET "repos/$GH_REPO/pulls" \
+              -f state=open \
+              -f "head=$head_owner:$head_branch" \
+              -f per_page=1 \
+              --jq 'length')
+
+            if (( open_prs == 0 )); then
+              echo "Cancelling stale PR Build Argon run $run_id ($head_owner:$head_branch)"
+              gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel" >/dev/null || true
+            fi
+          done
+
   validate:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
