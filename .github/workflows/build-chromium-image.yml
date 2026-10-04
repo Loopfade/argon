@@ -29,11 +29,6 @@ on:
       - 'tests/scoped_ca_test.cc'
       - 'vanadium'
       - 'docker/chromium/**'
-  workflow_run:
-    workflows: [Build Argon]
-    types: [completed]
-    branches: [main]
-
   # Exercise workflow-only publishing changes explicitly with workflow_dispatch.
   workflow_dispatch:
 
@@ -185,8 +180,7 @@ jobs:
     needs: image
     name: Update GHCR description without rebuilding Chromium
     if: >-
-      always() &&
-      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+      always()
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
