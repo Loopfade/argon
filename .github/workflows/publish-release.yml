@@ -241,7 +241,7 @@ jobs:
             echo "publish=true"
             echo "target_sha=$source_sha"
             echo "source_run=$source_run"
-            echo "tag=v${version}-argon.${release_revision}"
+            echo "tag=v${version}-${release_revision}"
             echo "title=Argon ${version}"
             echo "version=$version"
             echo "release_revision=$release_revision"
@@ -291,6 +291,27 @@ jobs:
             "Titanium-LICENSE.txt"
           )
           arm_assets=("$arm_apk" "$arm_apk.sha256")
+
+          release_notes=$(cat <<EOF
+## English
+
+Built and verified from `main` by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
+
+- Chromium: $RELEASE_VERSION
+- Release revision: $RELEASE_REVISION
+- Architectures: `arm64-v8a` and `armeabi-v7a`
+- Signing: repository release key
+
+## Русский
+
+Собрано и проверено из ветки `main` в [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
+
+- Chromium: $RELEASE_VERSION
+- Ревизия релиза: $RELEASE_REVISION
+- Архитектуры: `arm64-v8a` и `armeabi-v7a`
+- Подпись: релизный ключ репозитория
+EOF
+          )
 
           release_json=$(mktemp)
           if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json" 2>/dev/null; then
@@ -356,18 +377,11 @@ jobs:
               exit 1
             fi
 
+            gh release edit "$RELEASE_TAG" \
+              --title "$RELEASE_TITLE" \
+              --notes "$release_notes"
             release_json=$(mktemp)
             gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json"
-            body=$(jq -r '.body // ""' "$release_json")
-            dual_note="Architectures: arm64-v8a and armeabi-v7a. Verified dual-ARM build: [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)."
-            if ! grep -Fq 'armeabi-v7a' <<<"$body"; then
-              if [[ -n "$body" ]]; then
-                body="${body}"$'\n\n'"${dual_note}"
-              else
-                body="$dual_note"
-              fi
-            fi
-            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$body"
             release_url=$(jq -er '.html_url' "$release_json")
             printf '%s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -382,16 +396,15 @@ jobs:
             tag_exists=true
           fi
 
-          notes="Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, Argon revision $RELEASE_REVISION, architectures arm64-v8a and armeabi-v7a, signed with the repository release key."
           if [[ "$tag_exists" == true ]]; then
             release_url=$(gh release create "$RELEASE_TAG" "${assets[@]}" \
               --title "$RELEASE_TITLE" \
-              --notes "$notes")
+              --notes "$release_notes")
           else
             release_url=$(gh release create "$RELEASE_TAG" "${assets[@]}" \
               --target "$RELEASE_TARGET" \
               --title "$RELEASE_TITLE" \
-              --notes "$notes")
+              --notes "$release_notes")
           fi
 
           printf '%s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
