@@ -28,6 +28,43 @@ class Armv7WorkflowTests(unittest.TestCase):
         self.assertNotIn("actions/workflows/build.yml", workflow)
         self.assertIn("--abi armeabi-v7a", workflow)
         self.assertIn("Argon-arm-${{ github.sha }}", workflow)
+        self.assertIn("check-release-payload-drift", workflow)
+
+    def test_existing_arm64_release_allows_ci_only_drift(self):
+        compare = {
+            "status": "ahead",
+            "files": [
+                {"filename": ".github/workflows/build-armv7.yml"},
+                {"filename": ".github/workflows/publish-release.yml"},
+                {"filename": ".github/ci/resolve-prepared-image.py"},
+                {"filename": "scripts/release_policy.py"},
+                {"filename": "tests/test_armv7_workflow.py"},
+                {"filename": "VALIDATION.md"},
+                {"filename": "docker/chromium/filter-cache/README.md"},
+            ],
+        }
+        self.assertEqual(release_policy.unsafe_release_payload_drift(compare), [])
+
+    def test_existing_arm64_release_rejects_payload_drift(self):
+        for path in (
+            "build-lock.json",
+            "args.gn",
+            "build.sh",
+            "patch.sh",
+            "chromium_overlay/chrome/foo.cc",
+            "certificates/ministry-ca-lock.json",
+            "extensions/manifest.json",
+            "res/values/strings.xml",
+            "vanadium",
+            "scripts/configure_build.py",
+            "scripts/sign_and_verify.py",
+            "docker/chromium/Dockerfile",
+        ):
+            with self.subTest(path=path):
+                compare = {"status": "ahead", "files": [{"filename": path}]}
+                self.assertEqual(
+                    release_policy.unsafe_release_payload_drift(compare), [path]
+                )
 
     def test_armv7_artifact_locator_uses_abi_specific_payload(self):
         with tempfile.TemporaryDirectory() as tmp:
