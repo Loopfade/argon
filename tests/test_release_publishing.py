@@ -186,6 +186,13 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("Allowing publication across documentation-only main drift", workflow)
         self.assertIn("Skipping stale release", workflow)
 
+    def test_prepared_image_workflow_does_not_loop_back_from_build_argon(self):
+        image_workflow = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
+        trigger = image_workflow.split("\npermissions:", 1)[0]
+        self.assertNotIn("workflow_run:", trigger)
+        build_workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        self.assertIn("workflows: [Build prepared Chromium image]", build_workflow)
+
     def test_release_policy_changes_trigger_a_fresh_dual_arm_build(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertGreaterEqual(
