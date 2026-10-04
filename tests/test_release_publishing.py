@@ -163,7 +163,8 @@ class ReleasePublishingTests(unittest.TestCase):
             """release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm64_metadata")""",
             workflow,
         )
-        self.assertIn('echo "tag=v${version}-argon.${release_revision}"', workflow)
+        self.assertIn('echo "tag=v${version}-${release_revision}"', workflow)
+        self.assertNotIn("-argon.", workflow)
         self.assertIn('echo "target_sha=$source_sha"', workflow)
         self.assertIn('[[ "$source_sha" == "$arm_source_sha" ]] || {', workflow)
 
@@ -198,7 +199,10 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("Expected exactly seven public release assets", workflow)
         self.assertIn("release-arm64-v8a.apk", workflow)
         self.assertIn("release-armeabi-v7a.apk", workflow)
-        self.assertIn("Architectures: arm64-v8a and armeabi-v7a", workflow)
+        self.assertIn("## English", workflow)
+        self.assertIn("## Русский", workflow)
+        self.assertIn("Architectures:", workflow)
+        self.assertIn("Архитектуры:", workflow)
 
     def test_dialog_validation_runs_after_vanadium_patch_application(self):
         checker = (ROOT / "tests/check_upstream_patches.py").read_text()
