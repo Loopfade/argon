@@ -293,24 +293,24 @@ jobs:
           arm_assets=("$arm_apk" "$arm_apk.sha256")
 
           release_notes=$(cat <<EOF
-## English
-
-Built and verified from \`main\` by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
-
-- Chromium: $RELEASE_VERSION
-- Release revision: $RELEASE_REVISION
-- Architectures: \`arm64-v8a\` and \`armeabi-v7a\`
-- Signing: repository release key
-
-## Русский
-
-Собрано и проверено из ветки \`main\` в [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
-
-- Chromium: $RELEASE_VERSION
-- Ревизия релиза: $RELEASE_REVISION
-- Архитектуры: \`arm64-v8a\` и \`armeabi-v7a\`
-- Подпись: релизный ключ репозитория
-EOF
+          ## English
+          
+          Built and verified from \`main\` by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
+          
+          - Chromium: $RELEASE_VERSION
+          - Release revision: $RELEASE_REVISION
+          - Architectures: \`arm64-v8a\` and \`armeabi-v7a\`
+          - Signing: repository release key
+          
+          ## Русский
+          
+          Собрано и проверено из ветки \`main\` в [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
+          
+          - Chromium: $RELEASE_VERSION
+          - Ревизия релиза: $RELEASE_REVISION
+          - Архитектуры: \`arm64-v8a\` и \`armeabi-v7a\`
+          - Подпись: релизный ключ репозитория
+          EOF
           )
 
           release_json=$(mktemp)
