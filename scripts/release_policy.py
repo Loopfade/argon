@@ -14,7 +14,9 @@ DOCUMENTATION_FILES = {
 }
 DOCUMENTATION_PREFIXES = ("docs/",)
 GITHUB_COMPARE_FILE_LIMIT = 300
-RELEASE_APK_GLOB = "Argon-*-release-arm64-v8a.apk"
+DEFAULT_RELEASE_ABI = "arm64-v8a"
+ARMV7_RELEASE_ABI = "armeabi-v7a"
+RELEASE_APK_GLOB = f"Argon-*-release-{DEFAULT_RELEASE_ABI}.apk"
 RELEASE_LICENSES = (
     "Chromium-LICENSE.txt",
     "Ruthenium-LICENSE.txt",
@@ -53,18 +55,16 @@ def unsafe_main_drift(compare: dict) -> list[str]:
     return [path for path in paths if not is_documentation_path(path)]
 
 
-def locate_release_artifact(root: Path) -> dict[str, Path]:
-    """Locate exactly one verified arm64 release payload below an artifact root.
-
-    actions/upload-artifact preserves uploaded directory layout, so release
-    files may live in a nested ABI directory such as arm64-v8a/.
-    """
-    candidates = sorted(
-        path for path in root.rglob(RELEASE_APK_GLOB) if path.is_file()
-    )
+def locate_release_artifact(
+    root: Path, abi: str = DEFAULT_RELEASE_ABI
+) -> dict[str, Path]:
+    """Locate exactly one verified release payload for one Android ABI."""
+    pattern = f"Argon-*-release-{abi}.apk"
+    candidates = sorted(path for path in root.rglob(pattern) if path.is_file())
     if len(candidates) != 1:
+        label = "arm64" if abi == DEFAULT_RELEASE_ABI else abi
         raise ValueError(
-            f"expected exactly one release arm64 APK, found {len(candidates)}"
+            f"expected exactly one release {label} APK, found {len(candidates)}"
         )
 
     apk = candidates[0]
@@ -94,7 +94,9 @@ def _file_digests(directory: Path) -> dict[str, str]:
     }
 
 
-def verify_existing_release(release: dict, target_sha: str, assets: Path) -> None:
+def verify_existing_release(
+    release: dict, target_sha: str, assets: Path, allow_armv7: bool = False
+) -> None:
     if release.get("draft"):
         raise ValueError("existing release is still a draft")
     if release.get("target_commitish") != target_sha:
@@ -115,8 +117,27 @@ def verify_existing_release(release: dict, target_sha: str, assets: Path) -> Non
             raise ValueError("invalid or duplicate release asset metadata")
         actual[name] = digest
 
-    if set(actual) != set(expected):
-        raise ValueError("existing release asset names do not match the verified asset set")
+    actual_names = set(actual)
+    expected_names = set(expected)
+    if not expected_names.issubset(actual_names):
+        raise ValueError("existing release is missing verified assets")
+
+    extras = actual_names - expected_names
+    if extras:
+        if not allow_armv7:
+            raise ValueError("existing release asset names do not match the verified asset set")
+        arm64_apks = [
+            name for name in expected_names if name.endswith("-release-arm64-v8a.apk")
+        ]
+        if len(arm64_apks) != 1:
+            raise ValueError("cannot derive optional armv7 release asset names")
+        armv7_apk = arm64_apks[0].replace(
+            "-release-arm64-v8a.apk", "-release-armeabi-v7a.apk"
+        )
+        allowed_extras = {armv7_apk, f"{armv7_apk}.sha256"}
+        if extras != allowed_extras:
+            raise ValueError("existing release has unexpected additional assets")
+
     for name, digest in expected.items():
         if actual[name] != digest:
             raise ValueError(f"existing release asset digest mismatch: {name}")
@@ -142,11 +163,17 @@ def main() -> None:
 
     locate = subparsers.add_parser("locate-artifact")
     locate.add_argument("--root", required=True, type=Path)
+    locate.add_argument(
+        "--abi",
+        choices=[DEFAULT_RELEASE_ABI, ARMV7_RELEASE_ABI],
+        default=DEFAULT_RELEASE_ABI,
+    )
 
     release = subparsers.add_parser("verify-release")
     release.add_argument("--release-json", required=True)
     release.add_argument("--target-sha", required=True)
     release.add_argument("--assets", required=True, type=Path)
+    release.add_argument("--allow-armv7", action="store_true")
 
     tag = subparsers.add_parser("verify-tag")
     tag.add_argument("--tag-json", required=True)
@@ -159,11 +186,14 @@ def main() -> None:
             if unsafe:
                 raise ValueError("non-documentation or unbounded main drift: " + ", ".join(unsafe))
         elif args.command == "locate-artifact":
-            selected = locate_release_artifact(args.root)
+            selected = locate_release_artifact(args.root, args.abi)
             print(json.dumps({name: str(path) for name, path in selected.items()}))
         elif args.command == "verify-release":
             verify_existing_release(
-                _load_json(args.release_json), args.target_sha, args.assets
+                _load_json(args.release_json),
+                args.target_sha,
+                args.assets,
+                allow_armv7=args.allow_armv7,
             )
         else:
             verify_tag_ref(_load_json(args.tag_json), args.target_sha)
