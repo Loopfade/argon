@@ -237,11 +237,11 @@ jobs:
           armv7_note=$(cat <<EOF
 ### English
 
-Additional architecture: `armeabi-v7a`, built and verified from `main` by [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
+Additional architecture: \`armeabi-v7a\`, built and verified from \`main\` by [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
 
 ### Русский
 
-Дополнительная архитектура: `armeabi-v7a`, собрана и проверена из ветки `main` в [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
+Дополнительная архитектура: \`armeabi-v7a\`, собрана и проверена из ветки \`main\` в [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
 EOF
           )
           if ! grep -Fq 'armeabi-v7a' <<<"$body"; then
