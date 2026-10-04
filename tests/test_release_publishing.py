@@ -155,7 +155,8 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertNotIn("      tag:\n", workflow)
         self.assertNotIn("      target_sha:\n", workflow)
         self.assertNotIn("      title:\n", workflow)
-        self.assertIn("release_policy.py locate-artifact --root release-assets", workflow)
+        self.assertIn("--abi arm64-v8a", workflow)
+        self.assertIn("--abi armeabi-v7a", workflow)
         self.assertIn("arm64_metadata=$(jq -er '.metadata'", workflow)
         self.assertIn("arm_metadata=$(jq -er '.metadata'", workflow)
         self.assertIn(
@@ -164,7 +165,7 @@ class ReleasePublishingTests(unittest.TestCase):
         )
         self.assertIn('echo "tag=v${version}-argon.${release_revision}"', workflow)
         self.assertIn('echo "target_sha=$source_sha"', workflow)
-        self.assertIn('[[ "$source_sha" == "$arm_source_sha" ]] ', workflow.replace("|| {", " "))
+        self.assertIn('[[ "$source_sha" == "$arm_source_sha" ]] || {', workflow)
 
     def test_manual_publish_is_bound_to_successful_main_build_run(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
