@@ -7,7 +7,9 @@ on:
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
+      - '.github/workflows/publish-release.yml'
       - '.github/ci/**'
+      - 'scripts/release_policy.py'
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
   pull_request:
@@ -15,7 +17,9 @@ on:
     paths:
       - '.github/workflows/build.yml'
       - '.github/workflows/build-arch.yml'
+      - '.github/workflows/publish-release.yml'
       - '.github/ci/**'
+      - 'scripts/release_policy.py'
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
   workflow_run:
