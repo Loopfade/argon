@@ -179,11 +179,11 @@ jobs:
           release_target=$(jq -er '.target_commitish' "$release_json")
           if [[ "$release_target" != "$RELEASE_SOURCE_SHA" ]]; then
             compare_json=$(gh api "repos/$GH_REPO/compare/$release_target...$RELEASE_SOURCE_SHA")
-            if ! python3 scripts/release_policy.py check-drift <<<"$compare_json"; then
-              echo "Existing arm64 release targets $release_target, but armv7 was built from $RELEASE_SOURCE_SHA." >&2
+            if ! python3 scripts/release_policy.py check-release-payload-drift <<<"$compare_json"; then
+              echo "Existing arm64 release targets $release_target, and APK-affecting inputs changed before armv7 was built from $RELEASE_SOURCE_SHA." >&2
               exit 1
             fi
-            echo "::notice::Existing release target differs only by documentation drift."
+            echo "::notice::Existing release target differs only by non-payload repository changes."
           fi
 
           arm64_apk="Argon-${RELEASE_VERSION}-release-arm64-v8a.apk"
