@@ -94,9 +94,11 @@ class ReleasePublishingTests(unittest.TestCase):
 
     def test_release_workflow_uses_recursive_artifact_locator(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
-        self.assertIn("release_policy.py locate-artifact --root release-assets", workflow)
+        self.assertIn("--abi arm64-v8a", workflow)
+        self.assertIn("--abi armeabi-v7a", workflow)
         self.assertNotIn("find release-assets -maxdepth 1", workflow)
-        self.assertIn('cd "$asset_dir"', workflow)
+        self.assertIn('cd "$arm64_dir"', workflow)
+        self.assertIn('cd "$arm_dir"', workflow)
 
     def test_exact_existing_release_is_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -143,9 +145,9 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("group: publish-release", workflow)
         self.assertNotIn("gh release delete", workflow)
         self.assertNotIn("gh release view", workflow)
-        self.assertIn("verify-release", workflow)
+        self.assertIn("check-release-payload-drift", workflow)
         self.assertIn("verify-tag", workflow)
-        self.assertIn("treating this run as successful", workflow)
+        self.assertIn("The exact armv7 assets are already attached", workflow)
         self.assertIn('release_url=$(gh release create', workflow)
 
     def test_release_identity_is_derived_from_verified_metadata(self):
@@ -154,13 +156,15 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertNotIn("      target_sha:\n", workflow)
         self.assertNotIn("      title:\n", workflow)
         self.assertIn("release_policy.py locate-artifact --root release-assets", workflow)
-        self.assertIn("metadata=$(jq -er '.metadata' <<<\"$selection\")", workflow)
+        self.assertIn("arm64_metadata=$(jq -er '.metadata'", workflow)
+        self.assertIn("arm_metadata=$(jq -er '.metadata'", workflow)
         self.assertIn(
-            """release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$metadata")""",
+            """release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm64_metadata")""",
             workflow,
         )
-        self.assertIn('tag="v${version}-argon.${release_revision}"', workflow)
-        self.assertIn('target_sha="$source_sha"', workflow)
+        self.assertIn('echo "tag=v${version}-argon.${release_revision}"', workflow)
+        self.assertIn('echo "target_sha=$source_sha"', workflow)
+        self.assertIn('[[ "$source_sha" == "$arm_source_sha" ]] ', workflow.replace("|| {", " "))
 
     def test_manual_publish_is_bound_to_successful_main_build_run(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
@@ -179,6 +183,21 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertGreaterEqual(workflow.count("scripts/release_policy.py check-drift"), 2)
         self.assertIn("Allowing publication across documentation-only main drift", workflow)
         self.assertIn("Skipping stale release", workflow)
+
+    def test_primary_build_runs_both_arm_architectures_in_parallel(self):
+        workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        self.assertIn("fail-fast: false", workflow)
+        self.assertIn("arch: [arm64, arm]", workflow)
+        self.assertIn("matrix.arch", workflow)
+        self.assertNotIn("One ABI per run", workflow)
+
+    def test_release_contains_both_arm_apks_and_checksums(self):
+        workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
+        self.assertIn("pattern: Argon-*", workflow)
+        self.assertIn("Expected exactly seven public release assets", workflow)
+        self.assertIn("release-arm64-v8a.apk", workflow)
+        self.assertIn("release-armeabi-v7a.apk", workflow)
+        self.assertIn("Architectures: arm64-v8a and armeabi-v7a", workflow)
 
     def test_dialog_validation_runs_after_vanadium_patch_application(self):
         checker = (ROOT / "tests/check_upstream_patches.py").read_text()
