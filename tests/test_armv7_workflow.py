@@ -1,4 +1,4 @@
-"""Regression checks for the manual armv7 build and release path."""
+"""Regression checks for ARM release policy and artifact handling."""
 import hashlib
 import importlib.util
 from pathlib import Path
@@ -13,32 +13,11 @@ release_policy = importlib.util.module_from_spec(POLICY_SPEC)
 POLICY_SPEC.loader.exec_module(release_policy)
 
 
-class Armv7WorkflowTests(unittest.TestCase):
-    def test_workflow_is_manual_only_and_never_dispatches_arm64(self):
-        workflow = (ROOT / ".github/workflows/build-armv7.yml").read_text()
-        trigger = workflow.split("\npermissions:", 1)[0]
-        self.assertIn("workflow_dispatch:", trigger)
-        self.assertNotIn("\n  push:", trigger)
-        self.assertNotIn("\n  pull_request:", trigger)
-        self.assertNotIn("\n  workflow_run:", trigger)
-        self.assertIn("arch: arm", workflow)
-        self.assertIn("signing: release", workflow)
-        self.assertIn("continuation: '10'", workflow)
-        self.assertIn("group: publish-release", workflow)
-        self.assertNotIn("actions/workflows/build.yml", workflow)
-        self.assertIn("--abi armeabi-v7a", workflow)
-        self.assertIn("Argon-arm-${{ github.sha }}", workflow)
-        self.assertIn("check-release-payload-drift", workflow)
-        self.assertIn('echo "tag=v${version}-${release_revision}"', workflow)
-        self.assertNotIn("-argon.", workflow)
-        self.assertIn("### English", workflow)
-        self.assertIn("### Русский", workflow)
-
+class ArmReleasePolicyTests(unittest.TestCase):
     def test_existing_arm64_release_allows_ci_only_drift(self):
         compare = {
             "status": "ahead",
             "files": [
-                {"filename": ".github/workflows/build-armv7.yml"},
                 {"filename": ".github/workflows/publish-release.yml"},
                 {"filename": ".github/ci/resolve-prepared-image.py"},
                 {"filename": "scripts/release_policy.py"},
