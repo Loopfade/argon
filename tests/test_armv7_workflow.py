@@ -29,6 +29,10 @@ class Armv7WorkflowTests(unittest.TestCase):
         self.assertIn("--abi armeabi-v7a", workflow)
         self.assertIn("Argon-arm-${{ github.sha }}", workflow)
         self.assertIn("check-release-payload-drift", workflow)
+        self.assertIn('echo "tag=v${version}-${release_revision}"', workflow)
+        self.assertNotIn("-argon.", workflow)
+        self.assertIn("### English", workflow)
+        self.assertIn("### Русский", workflow)
 
     def test_existing_arm64_release_allows_ci_only_drift(self):
         compare = {
