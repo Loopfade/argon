@@ -22,6 +22,30 @@ RELEASE_LICENSES = (
     "Ruthenium-LICENSE.txt",
     "Titanium-LICENSE.txt",
 )
+RELEASE_PAYLOAD_FILES = {
+    ".gclient",
+    "args.gn",
+    "build-lock.json",
+    "build.sh",
+    "common.sh",
+    "patch.sh",
+    "vanadium",
+    "docker/chromium/Dockerfile",
+    "scripts/VerifyReleaseKey.java",
+    "scripts/apply_scoped_ca.py",
+    "scripts/configure_build.py",
+    "scripts/fetch_pinned_extension.py",
+    "scripts/fetch_pinned_filter_lists.py",
+    "scripts/preflight.py",
+    "scripts/sign_and_verify.py",
+}
+RELEASE_PAYLOAD_PREFIXES = (
+    "certificates/",
+    "chromium_overlay/",
+    "extensions/",
+    "res/",
+    "vanadium/",
+)
 
 
 def is_documentation_path(path: str) -> bool:
@@ -53,6 +77,32 @@ def unsafe_main_drift(compare: dict) -> list[str]:
             return ["<invalid-file-entry>"]
         paths.append(item["filename"])
     return [path for path in paths if not is_documentation_path(path)]
+
+
+def is_release_payload_path(path: str) -> bool:
+    return path in RELEASE_PAYLOAD_FILES or path.startswith(RELEASE_PAYLOAD_PREFIXES)
+
+
+def unsafe_release_payload_drift(compare: dict) -> list[str]:
+    """Return changes that can alter an APK payload or its signing identity."""
+    status = compare.get("status")
+    if status == "identical":
+        return []
+    if status != "ahead":
+        return [f"<compare-status:{status}>"]
+
+    files = compare.get("files")
+    if not isinstance(files, list):
+        return ["<missing-files>"]
+    if len(files) >= GITHUB_COMPARE_FILE_LIMIT:
+        return ["<compare-file-limit>"]
+
+    paths = []
+    for item in files:
+        if not isinstance(item, dict) or not isinstance(item.get("filename"), str):
+            return ["<invalid-file-entry>"]
+        paths.append(item["filename"])
+    return [path for path in paths if is_release_payload_path(path)]
 
 
 def locate_release_artifact(
@@ -160,6 +210,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("check-drift")
+    subparsers.add_parser("check-release-payload-drift")
 
     locate = subparsers.add_parser("locate-artifact")
     locate.add_argument("--root", required=True, type=Path)
@@ -185,6 +236,10 @@ def main() -> None:
             unsafe = unsafe_main_drift(_load_json(None))
             if unsafe:
                 raise ValueError("non-documentation or unbounded main drift: " + ", ".join(unsafe))
+        elif args.command == "check-release-payload-drift":
+            unsafe = unsafe_release_payload_drift(_load_json(None))
+            if unsafe:
+                raise ValueError("release-payload drift: " + ", ".join(unsafe))
         elif args.command == "locate-artifact":
             selected = locate_release_artifact(args.root, args.abi)
             print(json.dumps({name: str(path) for name, path in selected.items()}))
