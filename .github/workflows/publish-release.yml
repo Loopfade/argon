@@ -37,7 +37,7 @@ jobs:
        github.event.workflow_run.head_branch == 'main' &&
        (github.event.workflow_run.event == 'workflow_run' ||
         github.event.workflow_run.event == 'push'))
-    name: Publish verified arm64 release
+    name: Publish verified release
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -183,7 +183,7 @@ jobs:
 
           target_sha="$source_sha"
           tag="v${version}-argon.${release_revision}"
-          title="Argon ${version} (arm64-v8a)"
+          title="Argon ${version}"
 
           {
             echo "publish=true"
@@ -235,7 +235,8 @@ jobs:
             python3 scripts/release_policy.py verify-release \
               --release-json "$release_json" \
               --target-sha "$RELEASE_TARGET" \
-              --assets public-assets
+              --assets public-assets \
+              --allow-armv7
             release_url=$(jq -er '.html_url' "$release_json")
             echo "::notice::Release $RELEASE_TAG already exists with the exact verified target and assets; treating this run as successful."
             printf '%s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
