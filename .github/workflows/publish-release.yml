@@ -1,4 +1,4 @@
-name: Publish release from verified artifact
+name: Publish release from verified artifacts
 
 on:
   workflow_run:
@@ -8,11 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Successful Build Argon workflow run ID'
-        required: true
-        type: string
-      artifact_name:
-        description: 'Artifact name from the successful build'
+        description: 'Successful dual-ARM Build Argon workflow run ID'
         required: true
         type: string
 
@@ -37,22 +33,22 @@ jobs:
        github.event.workflow_run.head_branch == 'main' &&
        (github.event.workflow_run.event == 'workflow_run' ||
         github.event.workflow_run.event == 'push'))
-    name: Publish verified release
+    name: Publish verified dual-ARM release
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
 
-      - name: Download verified build artifact
+      - name: Download both verified build artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_name || format('Argon-arm64-{0}', github.event.workflow_run.head_sha) }}
+          pattern: Argon-*
           run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
           github-token: ${{ github.token }}
           path: release-assets
 
-      - name: Verify release provenance and select public assets
+      - name: Verify dual-architecture provenance and select public assets
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,52 +61,118 @@ jobs:
           set -euo pipefail
           mkdir public-assets
 
-          selection=$(python3 scripts/release_policy.py locate-artifact --root release-assets)
-          apk=$(jq -er '.apk' <<<"$selection")
-          checksum=$(jq -er '.checksum' <<<"$selection")
-          metadata=$(jq -er '.metadata' <<<"$selection")
-          asset_dir=$(jq -er '.asset_dir' <<<"$selection")
-          chromium_license=$(jq -er '.chromium_license' <<<"$selection")
-          ruthenium_license=$(jq -er '.ruthenium_license' <<<"$selection")
-          titanium_license=$(jq -er '.titanium_license' <<<"$selection")
+          arm64_selection=$(python3 scripts/release_policy.py locate-artifact \
+            --root release-assets --abi arm64-v8a)
+          arm_selection=$(python3 scripts/release_policy.py locate-artifact \
+            --root release-assets --abi armeabi-v7a)
 
-          source_sha=$(jq -er '.source_commit' "$metadata")
-          version=$(jq -er '.inputs.chromium_version' "$metadata")
-          release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$metadata")
-          abi=$(jq -er '.abi' "$metadata")
-          signing_mode=$(jq -er '.signing_mode' "$metadata")
-          metadata_digest=$(jq -er '.apk_sha256' "$metadata")
-          actual_digest=$(sha256sum "$apk" | awk '{print $1}')
+          arm64_apk=$(jq -er '.apk' <<<"$arm64_selection")
+          arm64_checksum=$(jq -er '.checksum' <<<"$arm64_selection")
+          arm64_metadata=$(jq -er '.metadata' <<<"$arm64_selection")
+          arm64_dir=$(jq -er '.asset_dir' <<<"$arm64_selection")
+          arm64_chromium_license=$(jq -er '.chromium_license' <<<"$arm64_selection")
+          arm64_ruthenium_license=$(jq -er '.ruthenium_license' <<<"$arm64_selection")
+          arm64_titanium_license=$(jq -er '.titanium_license' <<<"$arm64_selection")
+
+          arm_apk=$(jq -er '.apk' <<<"$arm_selection")
+          arm_checksum=$(jq -er '.checksum' <<<"$arm_selection")
+          arm_metadata=$(jq -er '.metadata' <<<"$arm_selection")
+          arm_dir=$(jq -er '.asset_dir' <<<"$arm_selection")
+          arm_chromium_license=$(jq -er '.chromium_license' <<<"$arm_selection")
+          arm_ruthenium_license=$(jq -er '.ruthenium_license' <<<"$arm_selection")
+          arm_titanium_license=$(jq -er '.titanium_license' <<<"$arm_selection")
+
+          source_sha=$(jq -er '.source_commit' "$arm64_metadata")
+          arm_source_sha=$(jq -er '.source_commit' "$arm_metadata")
+          version=$(jq -er '.inputs.chromium_version' "$arm64_metadata")
+          arm_version=$(jq -er '.inputs.chromium_version' "$arm_metadata")
+          release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm64_metadata")
+          arm_release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm_metadata")
 
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || {
-            echo "Invalid source commit in build-info.json: $source_sha" >&2
+            echo "Invalid source commit in arm64 build-info.json: $source_sha" >&2
+            exit 1
+          }
+          [[ "$source_sha" == "$arm_source_sha" ]] || {
+            echo "Architecture artifacts were built from different commits." >&2
             exit 1
           }
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "Invalid Chromium version in build-info.json: $version" >&2
             exit 1
           }
+          [[ "$version" == "$arm_version" ]] || {
+            echo "Architecture artifacts use different Chromium versions." >&2
+            exit 1
+          }
           [[ "$release_revision" =~ ^[1-9][0-9]*$ ]] || {
             echo "Invalid Argon release revision in build-info.json: $release_revision" >&2
             exit 1
           }
-          [[ "$abi" == arm64-v8a ]] || { echo "Unexpected ABI: $abi" >&2; exit 1; }
-          [[ "$signing_mode" == release ]] || { echo "Artifact is not release-signed." >&2; exit 1; }
-          [[ "$metadata_digest" == "$actual_digest" ]] || {
-            echo "APK digest does not match build-info.json." >&2
+          [[ "$release_revision" == "$arm_release_revision" ]] || {
+            echo "Architecture artifacts use different Argon revisions." >&2
             exit 1
           }
 
-          expected_apk="Argon-${version}-release-arm64-v8a.apk"
-          [[ "$(basename "$apk")" == "$expected_apk" ]] || {
-            echo "APK filename does not match build metadata: $(basename "$apk")" >&2
+          [[ "$(jq -er '.abi' "$arm64_metadata")" == arm64-v8a ]] || {
+            echo "Unexpected arm64 ABI." >&2
+            exit 1
+          }
+          [[ "$(jq -er '.target_cpu' "$arm64_metadata")" == arm64 ]] || {
+            echo "Unexpected arm64 target CPU." >&2
+            exit 1
+          }
+          [[ "$(jq -er '.abi' "$arm_metadata")" == armeabi-v7a ]] || {
+            echo "Unexpected arm ABI." >&2
+            exit 1
+          }
+          [[ "$(jq -er '.target_cpu' "$arm_metadata")" == arm ]] || {
+            echo "Unexpected arm target CPU." >&2
+            exit 1
+          }
+          [[ "$(jq -er '.signing_mode' "$arm64_metadata")" == release ]] || {
+            echo "arm64 artifact is not release-signed." >&2
+            exit 1
+          }
+          [[ "$(jq -er '.signing_mode' "$arm_metadata")" == release ]] || {
+            echo "arm artifact is not release-signed." >&2
+            exit 1
+          }
+
+          arm64_metadata_digest=$(jq -er '.apk_sha256' "$arm64_metadata")
+          arm_metadata_digest=$(jq -er '.apk_sha256' "$arm_metadata")
+          [[ "$arm64_metadata_digest" == "$(sha256sum "$arm64_apk" | awk '{print $1}')" ]] || {
+            echo "arm64 APK digest does not match build-info.json." >&2
+            exit 1
+          }
+          [[ "$arm_metadata_digest" == "$(sha256sum "$arm_apk" | awk '{print $1}')" ]] || {
+            echo "arm APK digest does not match build-info.json." >&2
+            exit 1
+          }
+
+          [[ "$(basename "$arm64_apk")" == "Argon-${version}-release-arm64-v8a.apk" ]] || {
+            echo "arm64 APK filename does not match build metadata." >&2
+            exit 1
+          }
+          [[ "$(basename "$arm_apk")" == "Argon-${version}-release-armeabi-v7a.apk" ]] || {
+            echo "arm APK filename does not match build metadata." >&2
             exit 1
           }
 
           (
-            cd "$asset_dir"
-            sha256sum -c "$(basename "$checksum")"
+            cd "$arm64_dir"
+            sha256sum -c "$(basename "$arm64_checksum")"
           )
+          (
+            cd "$arm_dir"
+            sha256sum -c "$(basename "$arm_checksum")"
+          )
+
+          # The two builds must carry the same source-license payload. Publish
+          # one copy of each license alongside both APK/checksum pairs.
+          cmp "$arm64_chromium_license" "$arm_chromium_license"
+          cmp "$arm64_ruthenium_license" "$arm_ruthenium_license"
+          cmp "$arm64_titanium_license" "$arm_titanium_license"
 
           if [[ "$EVENT_NAME" == workflow_run ]]; then
             [[ "$source_sha" == "$AUTO_SHA" ]] || {
@@ -157,10 +219,6 @@ jobs:
             source_run="$MANUAL_RUN_ID"
           fi
 
-          # A long build may finish after documentation-only commits land on
-          # main. Those commits do not invalidate the verified APK. Any code,
-          # CI, or other repository change does, and manual recovery follows
-          # the same rule so GITHUB_TOKEN never targets an unrelated old tree.
           current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
           if [[ "$source_sha" != "$current_main" ]]; then
             compare_json=$(gh api "repos/$GH_REPO/compare/$source_sha...$current_main")
@@ -176,26 +234,20 @@ jobs:
             echo "::notice::Allowing publication across documentation-only main drift: $source_sha -> $current_main."
           fi
 
-          for asset in             "$apk"             "$checksum"             "$chromium_license"             "$ruthenium_license"             "$titanium_license"
-          do
-            cp "$asset" public-assets/
-          done
-
-          target_sha="$source_sha"
-          tag="v${version}-argon.${release_revision}"
-          title="Argon ${version}"
+          cp "$arm64_apk" "$arm64_checksum" "$arm_apk" "$arm_checksum" public-assets/
+          cp "$arm64_chromium_license" "$arm64_ruthenium_license" "$arm64_titanium_license" public-assets/
 
           {
             echo "publish=true"
-            echo "target_sha=$target_sha"
+            echo "target_sha=$source_sha"
             echo "source_run=$source_run"
-            echo "tag=$tag"
-            echo "title=$title"
+            echo "tag=v${version}-argon.${release_revision}"
+            echo "title=Argon ${version}"
             echo "version=$version"
             echo "release_revision=$release_revision"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Publish immutable verified release
+      - name: Publish immutable verified dual-ARM release
         if: steps.release.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -210,7 +262,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Close the race between provenance verification and release creation.
           current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
           if [[ "$RELEASE_TARGET" != "$current_main" ]]; then
             compare_json=$(gh api "repos/$GH_REPO/compare/$RELEASE_TARGET...$current_main")
@@ -225,20 +276,99 @@ jobs:
           fi
 
           mapfile -d '' assets < <(find public-assets -type f -print0 | sort -z)
-          if (( ${#assets[@]} != 5 )); then
-            echo "Expected exactly five public release assets, found ${#assets[@]}." >&2
+          if (( ${#assets[@]} != 7 )); then
+            echo "Expected exactly seven public release assets, found ${#assets[@]}." >&2
             exit 1
           fi
 
+          arm64_apk="Argon-${RELEASE_VERSION}-release-arm64-v8a.apk"
+          arm_apk="Argon-${RELEASE_VERSION}-release-armeabi-v7a.apk"
+          base_assets=(
+            "$arm64_apk"
+            "$arm64_apk.sha256"
+            "Chromium-LICENSE.txt"
+            "Ruthenium-LICENSE.txt"
+            "Titanium-LICENSE.txt"
+          )
+          arm_assets=("$arm_apk" "$arm_apk.sha256")
+
           release_json=$(mktemp)
           if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json" 2>/dev/null; then
-            python3 scripts/release_policy.py verify-release \
-              --release-json "$release_json" \
-              --target-sha "$RELEASE_TARGET" \
-              --assets public-assets \
-              --allow-armv7
+            [[ "$(jq -r '.draft' "$release_json")" == false ]] || {
+              echo "Existing release is still a draft." >&2
+              exit 1
+            }
+
+            release_target=$(jq -er '.target_commitish' "$release_json")
+            if [[ "$release_target" != "$RELEASE_TARGET" ]]; then
+              compare_json=$(gh api "repos/$GH_REPO/compare/$release_target...$RELEASE_TARGET")
+              if ! python3 scripts/release_policy.py check-release-payload-drift <<<"$compare_json"; then
+                echo "Existing release target differs across APK-affecting changes." >&2
+                exit 1
+              fi
+              echo "::notice::Reusing existing release across non-payload repository drift."
+            fi
+
+            allowed_asset() {
+              local candidate="$1" name
+              for name in "${base_assets[@]}" "${arm_assets[@]}"; do
+                [[ "$candidate" == "$name" ]] && return 0
+              done
+              return 1
+            }
+
+            while IFS= read -r name; do
+              if ! allowed_asset "$name"; then
+                echo "::error::Existing release has unexpected asset: $name"
+                exit 1
+              fi
+            done < <(jq -r '.assets[].name' "$release_json")
+
+            for name in "${base_assets[@]}"; do
+              if ! jq -e --arg name "$name" '[.assets[].name] | index($name) != null' "$release_json" >/dev/null; then
+                echo "::error::Existing release is missing required arm64 asset: $name"
+                exit 1
+              fi
+            done
+
+            existing_arm=0
+            for name in "${arm_assets[@]}"; do
+              asset_json=$(jq -c --arg name "$name" '.assets[] | select(.name == $name)' "$release_json" | head -n1)
+              if [[ -n "$asset_json" ]]; then
+                existing_arm=$((existing_arm + 1))
+                expected_digest="sha256:$(sha256sum "public-assets/$name" | awk '{print $1}')"
+                actual_digest=$(jq -er '.digest' <<<"$asset_json")
+                [[ "$actual_digest" == "$expected_digest" ]] || {
+                  echo "::error::Existing release asset digest mismatch: $name"
+                  exit 1
+                }
+              fi
+            done
+
+            if (( existing_arm == 0 )); then
+              gh release upload "$RELEASE_TAG" \
+                "public-assets/$arm_apk" \
+                "public-assets/$arm_apk.sha256"
+            elif (( existing_arm == ${#arm_assets[@]} )); then
+              echo "::notice::The exact armv7 assets are already attached to $RELEASE_TAG."
+            else
+              echo "::error::Existing release contains an incomplete armv7 asset pair."
+              exit 1
+            fi
+
+            release_json=$(mktemp)
+            gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json"
+            body=$(jq -r '.body // ""' "$release_json")
+            dual_note="Architectures: arm64-v8a and armeabi-v7a. Verified dual-ARM build: [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)."
+            if ! grep -Fq 'armeabi-v7a' <<<"$body"; then
+              if [[ -n "$body" ]]; then
+                body="${body}"$'\n\n'"${dual_note}"
+              else
+                body="$dual_note"
+              fi
+            fi
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$body"
             release_url=$(jq -er '.html_url' "$release_json")
-            echo "::notice::Release $RELEASE_TAG already exists with the exact verified target and assets; treating this run as successful."
             printf '%s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -252,7 +382,7 @@ jobs:
             tag_exists=true
           fi
 
-          notes="Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, Argon revision $RELEASE_REVISION, arm64-v8a, signed with the repository release key."
+          notes="Built and verified from main by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN). Chromium $RELEASE_VERSION, Argon revision $RELEASE_REVISION, architectures arm64-v8a and armeabi-v7a, signed with the repository release key."
           if [[ "$tag_exists" == true ]]; then
             release_url=$(gh release create "$RELEASE_TAG" "${assets[@]}" \
               --title "$RELEASE_TITLE" \

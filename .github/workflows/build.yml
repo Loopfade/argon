@@ -35,12 +35,6 @@ on:
         type: choice
         options: [release, test]
         default: release
-      arch:
-        description: 'CPU: arm64 (arm64-v8a), arm (armeabi-v7a), x64 (x86_64), or x86'
-        required: true
-        type: choice
-        options: [arm64, arm, x64, x86]
-        default: arm64
       continuation:
         description: 'Internal automatic continuation counter'
         required: false
@@ -204,17 +198,19 @@ jobs:
   build:
     needs: [supersede, gate]
     # The gate requires the newest successful compatible prepared image.
-    # If an image rebuild is active or required, this run cancels itself and the
-    # image workflow's completion event starts the APK build instead.
+    # Both Android ARM ABIs run concurrently and keep architecture-scoped
+    # compiler caches through build-arch.yml.
     if: inputs.resume_run == '' && needs.gate.outputs.build == 'true'
-    name: Build and verify ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
-    # One ABI per run: the compiler-cache quota is shared by the repository.
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, arm]
+    name: Build and verify ${{ matrix.arch }}
     uses: ./.github/workflows/build-arch.yml
     with:
-      arch: ${{ github.event_name == 'workflow_dispatch' && inputs.arch || 'arm64' }}
-      # Resolve the single latest successful main image to an immutable digest
-      # before pulling. check-prepared-inputs.py rejects it if prepared source
-      # inputs no longer match this checkout.
+      arch: ${{ matrix.arch }}
+      # Both architectures reuse the same prepared source/toolchain image.
+      # build-arch.yml resolves it to an immutable digest before pulling.
       image: ghcr.io/${{ github.repository_owner }}/argon-build:branch-main
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-24.04' }}
       # Trusted pushes to main use the permanent release key.
