@@ -140,7 +140,7 @@ jobs:
           cp "$apk" "$checksum" public-assets/
 
           {
-            echo "tag=v${version}-argon.${release_revision}"
+            echo "tag=v${version}-${release_revision}"
             echo "version=$version"
             echo "source_sha=$source_sha"
           } >> "$GITHUB_OUTPUT"
@@ -234,7 +234,16 @@ jobs:
           release_json=$(mktemp)
           gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json"
           body=$(jq -r '.body // ""' "$release_json")
-          armv7_note="Additional architecture: armeabi-v7a, built and verified from main by [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+          armv7_note=$(cat <<EOF
+          ### English
+          
+          Additional architecture: \`armeabi-v7a\`, built and verified from \`main\` by [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
+          
+          ### Русский
+          
+          Дополнительная архитектура: \`armeabi-v7a\`, собрана и проверена из ветки \`main\` в [Build Argon armv7 run #$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).
+          EOF
+          )
           if ! grep -Fq 'armeabi-v7a' <<<"$body"; then
             if [[ -n "$body" ]]; then
               body="${body}"$'\n\n'"${armv7_note}"
