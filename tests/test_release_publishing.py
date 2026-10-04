@@ -186,6 +186,13 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("Allowing publication across documentation-only main drift", workflow)
         self.assertIn("Skipping stale release", workflow)
 
+    def test_release_policy_changes_trigger_a_fresh_dual_arm_build(self):
+        workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        self.assertGreaterEqual(
+            workflow.count("'.github/workflows/publish-release.yml'"), 2
+        )
+        self.assertGreaterEqual(workflow.count("'scripts/release_policy.py'"), 2)
+
     def test_primary_build_runs_both_arm_architectures_in_parallel(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertIn("fail-fast: false", workflow)
