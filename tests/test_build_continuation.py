@@ -50,10 +50,9 @@ class ContinuationTests(unittest.TestCase):
     def test_pr_schedules_controller_with_original_merge_sha_and_run_id(self):
         with patch.object(continuation, "api", side_effect=self.api):
             continuation.schedule(self.env)
-        self.assertEqual(self.writes, [("actions/workflows/build.yml/dispatches", {
+        self.assertEqual(self.writes, [("actions/workflows/continue-build.yml/dispatches", {
             "ref": self.run["head_branch"], "inputs": {
-                "resume_run": "123", "resume_attempt": "3", "resume_sha": self.merge,
-                "signing": "test"}})])
+                "resume_run": "123", "resume_attempt": "3", "resume_sha": self.merge}})])
 
     def test_controller_reruns_original_pr_instead_of_dispatching_branch_build(self):
         with patch.object(continuation, "api", side_effect=self.api):

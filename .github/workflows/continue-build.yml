@@ -1,0 +1,45 @@
+name: Continue Argon build
+run-name: Resume Build Argon #${{ inputs.resume_run }} attempt ${{ inputs.resume_attempt }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      resume_run:
+        description: 'Original Build Argon run ID'
+        required: true
+        type: string
+      resume_attempt:
+        description: 'Expected attempt of the original Build Argon run'
+        required: true
+        type: string
+      resume_sha:
+        description: 'Exact checkout SHA of the original Build Argon run'
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ format('argon-resume-{0}', inputs.resume_run) }}
+  cancel-in-progress: false
+
+jobs:
+  resume:
+    name: Resume original Build Argon run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Wait for cleanup and rerun the original failed job
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESUME_RUN: ${{ inputs.resume_run }}
+          RESUME_ATTEMPT: ${{ inputs.resume_attempt }}
+          RESUME_SHA: ${{ inputs.resume_sha }}
+          AUTO_CONTINUE_MAX: '10'
+        run: python3 .github/ci/continue-build.py resume

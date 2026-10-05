@@ -9,6 +9,7 @@ import time
 from urllib.parse import quote
 
 WORKFLOW = ".github/workflows/build.yml"
+CONTROLLER_WORKFLOW = ".github/workflows/continue-build.yml"
 
 
 def api(repository, path, payload=None):
@@ -64,10 +65,10 @@ def schedule(env):
     check_revision(run, repository, env["GITHUB_SHA"])
     # Dispatch only a small controller on the head branch. The actual build
     # is rerun with the original event/ref/SHA and can read the PR cache.
-    api(repository, "actions/workflows/build.yml/dispatches", {
+    api(repository, "actions/workflows/continue-build.yml/dispatches", {
         "ref": run["head_branch"],
         "inputs": {"resume_run": str(run_id), "resume_attempt": str(attempt),
-                   "resume_sha": env["GITHUB_SHA"], "signing": "test"},
+                   "resume_sha": env["GITHUB_SHA"]},
     })
     print(f"Queued continuation {count + 1} for run {run_id}, attempt {attempt}")
 
