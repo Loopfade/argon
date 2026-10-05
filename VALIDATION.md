@@ -1,97 +1,138 @@
-# Проверка Argon
+# CI-проверки Argon
 
-Этот документ описывает **текущую** проверку Argon. Исторические журналы M153,
-экспериментальные ветки и одноразовые CI-процедуры намеренно не дублируются:
-удалённые архивные ветки и Actions runs больше не служат источником этих журналов.
+Этот документ описывает текущую CI-схему Argon: проверку исходников и патчей,
+подготовку Chromium, сборку двух Android ARM-архитектур и публикацию релиза.
+Исторические Actions runs и локальная сборка здесь не документируются.
 
 ## Закреплённые входы
 
-Актуальные значения задаются в `build-lock.json`:
+Актуальные версии и commit SHA задаются в `build-lock.json`:
 
 - Chromium: `154.0.8037.57`, commit
   `73c14f6228d7cd537c855007e8f88678969cc0eb`;
 - Titanium: `5c93149e4ca2f8fb659cf7e9fce7ee5e66cbf905`;
 - Vanadium: `83085d1694c4de653eac382fa2be6d008f193bce`;
-- BoringSSL: `ac39ea6853833c1f18fd23614091d11855e71752`.
+- BoringSSL: `ac39ea6853833c1f18fd23614091d11855e71752`;
+- release revision: `2`.
 
-`scripts/preflight.py` проверяет согласованность этих входов, gitlink Vanadium,
-версии Chromium, сертификата, filter-list pins и GN-конфигурации для каждой ABI.
+`scripts/preflight.py` проверяет согласованность pins, Vanadium gitlink,
+версии Chromium, сертификата, filter-list pins и GN-конфигурации.
 
-## Что проверяет Validate scoped Russian CA
+## Validate scoped Russian CA
 
-Workflow `.github/workflows/validate.yml` запускается на push, pull request и
-вручную. Он:
+Workflow `.github/workflows/validate.yml` запускается на push, pull request
+и вручную. Он:
 
-1. Выполняет preflight и генерирует GN args для `arm64`, `arm`, `x64` и
-   `x86`.
-2. Запускает весь Python unittest suite.
-3. Проверяет shell-синтаксис `build.sh`, compatibility entrypoint
-   `build-arm64.sh` и CI shell helpers.
-4. Применяет CA/JNI overlay к закреплённым upstream-исходникам через
-   `tests/check_upstream_patches.py`.
-5. Загружает закреплённый BoringSSL, собирает `scoped_ca_test` и запускает
-   CTest для production DNS/IP constraints.
+1. Выполняет preflight и генерирует GN args для `arm64`, `arm`, `x64`
+   и `x86`.
+2. Запускает Python unittest suite.
+3. Проверяет shell-синтаксис build/CI scripts.
+4. Проверяет применение CA/JNI overlay к закреплённым upstream-исходникам.
+5. Собирает и запускает `scoped_ca_test` с закреплённым BoringSSL для
+   production DNS/IP constraints.
 
-Эта проверка подтверждает корректность pins, патчей и тестовой логики, но не
-заменяет полную сборку Chromium/APK.
+Эта стадия проверяет конфигурацию, патчи и policy tests, но сама по себе
+не является полной сборкой APK. `x64` и `x86` здесь проверяются только
+на уровне конфигурации/preflight и не входят в текущий release pipeline.
 
-## Полная M154-сборка
+## Подготовленный Chromium image
 
-Текущий релиз `v154.0.8037.57-argon.2` собран и проверен 2026-10-01:
+Workflow `.github/workflows/build-chromium-image.yml` запускается, когда
+изменяются входы подготовленного Chromium: pins, patches, overlays,
+extensions, ресурсы, GN/build scripts и связанные файлы.
 
-- release-signed arm64 APK — GitHub Actions run
-  [`36852923075`](https://github.com/Loopfade/argon/actions/runs/36852923075);
-- шаг `Build, sign and verify APK` завершился успешно;
-- artifact с APK и provenance сохранён для текущего релиза.
+Он подготавливает закреплённые Chromium sources/toolchain и публикует общий
+OCI image в GHCR. Один и тот же prepared image затем используется обеими
+ARM-сборками. Между `Build prepared Chromium image` и `Build Argon`
+настроена только односторонняя зависимость, чтобы workflows не образовывали
+цикл.
 
-В более ранней контрольной M154-сборке 2026-10-01 `ccache` показал
-следующие значения; её Actions run и artifact удалены при очистке истории:
+## Build Argon: две архитектуры
 
-- 47 317 cacheable calls;
-- 47 316 hits;
-- 1 miss;
-- лимит 7.0 GB был заполнен; фактический каталог на runner занимал около
-  6.6 GB.
+Основной workflow `.github/workflows/build.yml` запускает matrix с:
 
-CI сохраняет прогресс компиляции через **до 20 checkpoint-этапов**. Этапы
-останавливаются раньше, если APK-цель уже достигнута или необходимо оставить
-временной резерв для финальной сборки и подписи.
+- `arm64` → Android ABI `arm64-v8a`;
+- `arm` → Android ABI `armeabi-v7a`.
 
-## Release provenance
+Обе jobs используют reusable workflow
+`.github/workflows/build-arch.yml`, один prepared Chromium image и
+выполняются независимо с `fail-fast: false`.
 
-Publisher принимает только проверенный artifact из доверенного `Build Argon`
-run на `main`. Перед публикацией он сверяет source SHA, ABI, режим подписи,
-checksum и допустимый drift текущего `main`.
+Compiler cache разделён по архитектурам:
 
-После контрольной M154-сборки publisher корректно отказался создавать новый
-релиз, когда `main` уже содержал последующее недокументальное изменение CI.
-Это подтверждает работу stale-build guard.
+- `argon-ccache-v2-arm64-*`;
+- `argon-ccache-v2-arm-*`.
 
-Текущий опубликованный релиз `v154.0.8037.57-argon.2` получен из проверенной
-сборки [`36852923075`](https://github.com/Loopfade/argon/actions/runs/36852923075)
-на commit `41154d58e8df1a0671e917ca5c0f5b13093ceb02`.
+Это исключает смешивание объектов ARM64 и ARMv7. На доверенных сборках
+`main` используется release key; pull request builds используют временную
+test-подпись.
 
-Существующий тег `v154.0.8037.57-argon.1` остаётся привязан к исходному
-release commit и не должен переставляться.
+Каждая job собирает, подписывает и проверяет APK, после чего загружает
+artifact с APK, checksum, provenance и лицензиями.
 
-## Что ещё не подтверждается автоматически
+## Checkpoints и автоматическое продолжение
 
-Полный CI сейчас не доказывает:
+Длительная компиляция разбита на checkpoint-этапы с сохранением
+architecture-specific `ccache`. Если job исчерпала выделенный build-time
+budget, continuation-controller после завершения run вызывает GitHub
+`rerun-failed-jobs`.
 
-- полноценную сборку `arm`, `x64` и `x86` для каждого изменения;
-- установку и запуск APK на реальном Android-устройстве;
-- UI-поведение настроек сертификатов и расширений;
-- end-to-end TLS-сценарии на устройстве;
-- публикацию через магазин приложений.
+Поэтому уже успешная архитектура повторно не собирается:
 
-Для release-кандидата эти проверки выполняются отдельно по необходимости.
-Локальная release-сборка всех ABI описана в [BUILDING.md](BUILDING.md).
+`arm64 ✅ + arm ❌ → retry только arm`.
 
-## Критерий безопасного изменения build pipeline
+Если failed обе архитектуры, повторяются обе failed jobs. Автоматическое
+продолжение предназначено для исчерпания временного бюджета; реальная ошибка
+сборки, ранний OOM/SIGKILL или отмена не маскируются автоматическим retry.
 
-Перед слиянием изменения должно пройти `Validate scoped Russian CA`.
-Если затронуты подготовленные Chromium inputs, `build.sh`, `patch.sh`,
-`chromium_overlay/**`, `docker/chromium/**`, extensions или pins, необходимо
-также дождаться успешных `Build prepared Chromium image` и `Build Argon`.
+## Публикация релиза
 
-Изменения только документации не требуют пересборки APK.
+`.github/workflows/publish-release.yml` запускается только после завершения
+`Build Argon`. Автоматическая публикация выполняется лишь для успешного
+доверенного run на `main`.
+
+Publisher скачивает **оба** artifacts из одного `Build Argon` run и
+проверяет:
+
+- одинаковые source SHA, Chromium version и release revision;
+- `arm64-v8a` / `arm64` для первой сборки;
+- `armeabi-v7a` / `arm` для второй;
+- release signing;
+- SHA-256 APK и checksum files;
+- ожидаемые имена APK;
+- идентичность Chromium, Ruthenium и Titanium license payload между
+  архитектурами.
+
+Публичный релиз содержит семь assets: два APK, две SHA-256 checksum и три
+license files. Tag имеет формат `v<chromium_version>-<release_revision>`.
+Release notes формируются на английском и русском языках.
+
+Если хотя бы одна архитектура не завершилась успешно, весь `Build Argon`
+не считается успешным и автоматический publisher релиз не создаёт.
+
+## Что CI не подтверждает автоматически
+
+CI не заменяет проверки на реальном Android-устройстве. Отдельно при
+необходимости проверяются:
+
+- установка и запуск APK;
+- UI настроек сертификатов и расширений;
+- end-to-end TLS-сценарии;
+- публикация через магазин приложений.
+
+Также текущий release pipeline не собирает `x86_64` и `x86`: публичные
+APK выпускаются только для `arm64-v8a` и `armeabi-v7a`.
+
+## Когда запускается пересборка
+
+Изменения prepared Chromium inputs запускают
+`Build prepared Chromium image`, после успешного завершения которого
+запускается `Build Argon`.
+
+Изменения runtime CI, signing/release logic и основного build workflow,
+включённые в `paths` `.github/workflows/build.yml`, запускают
+`Build Argon` напрямую и используют последний совместимый prepared image.
+
+Изменения только документации, включая `README.md` и `VALIDATION.md`,
+не запускают APK или prepared-image rebuild. Для них выполняется только
+`Validate scoped Russian CA`.
