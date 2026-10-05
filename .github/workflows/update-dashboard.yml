@@ -29,8 +29,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          releases=$(gh api "repos/$GH_REPO/releases?per_page=10" |
-            jq '[.[] | select(.draft == false and .published_at != null)][0:3]
+          releases=$(gh api "repos/$GH_REPO/releases?per_page=20" |
+            jq '[.[] | select(.draft == false and .published_at != null)][0:20]
               | map({
                   html_url, tag_name, name, published_at, target_commitish, body,
                   assets: [.assets[]? | {name, size, browser_download_url}]
@@ -83,6 +83,9 @@ jobs:
               --argjson release "$clean_release" \
               '{run:$run,jobs:$jobs,artifacts:$artifacts,release:$release}')
             builds=$(jq --argjson build "$build" '. + [$build]' <<<"$builds")
+            if (( $(jq 'length' <<<"$builds") >= 3 )); then
+              break
+            fi
           done < <(jq -c '.[]' <<<"$releases")
 
           runs=$(jq '[.[].run]' <<<"$builds")
