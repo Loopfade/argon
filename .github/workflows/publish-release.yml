@@ -321,33 +321,7 @@ jobs:
           arm_assets=("$arm_apk" "$arm_apk.sha256")
 
           release_notes=$(cat <<EOF
-          ## English
-          
-          ### Download
-          
-          Choose the APK for your device:
-          
-          - **\`arm64-v8a\`** — recommended for most current Android devices
-          - **\`armeabi-v7a\`** — for older 32-bit ARM devices
-          
-          SHA-256 checksum files are provided alongside both APKs for integrity verification.
-          
-          ### Build information
-          
-          - Chromium: \`$RELEASE_VERSION\`
-          - Argon release revision: \`$RELEASE_REVISION\`
-          - Architectures: \`arm64-v8a\`, \`armeabi-v7a\`
-          - Signing: repository release key
-          - Source: \`main\`
-          - Build: [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)
-          
-          Both APKs were built from the same source revision and automatically verified before publication.
-          
-          ---
-          
-          ## Русский
-          
-          ### Скачать
+          ## Скачать
           
           Выберите APK для своего устройства:
           
@@ -356,7 +330,7 @@ jobs:
           
           Для обоих APK опубликованы файлы SHA-256, позволяющие проверить целостность загруженного файла.
           
-          ### Информация о сборке
+          ## Информация о сборке
           
           - Chromium: \`$RELEASE_VERSION\`
           - Ревизия Argon: \`$RELEASE_REVISION\`
