@@ -87,9 +87,13 @@ budget, continuation-controller после завершения run вызыва
 
 ## Публикация релиза
 
-`.github/workflows/publish-release.yml` запускается только после завершения
-`Build Argon`. Автоматическая публикация выполняется лишь для успешного
-доверенного run на `main`.
+После успешного завершения обеих matrix jobs `Build Argon` вызывает
+`.github/workflows/publish-release.yml` как reusable workflow внутри того же
+run. Поэтому failed/timeout attempts и continuation не создают отдельные
+publisher runs. Автоматическая публикация выполняется только для доверенного
+`main` build, у которого обе архитектуры уже успешно загрузили verified
+artifacts. Для повторной публикации готового успешного run остаётся ручной
+`workflow_dispatch`.
 
 Publisher скачивает **оба** artifacts из одного `Build Argon` run и
 проверяет:

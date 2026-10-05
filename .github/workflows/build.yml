@@ -223,6 +223,25 @@ jobs:
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
     secrets: inherit
 
+  publish:
+    needs: build
+    if: >-
+      needs.build.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main'))
+    name: Publish verified dual-ARM release
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      run_id: ${{ github.run_id }}
+      source_sha: ${{ github.sha }}
+
   resume:
     if: github.event_name == 'workflow_dispatch' && inputs.resume_run != ''
     name: Resume the original build run

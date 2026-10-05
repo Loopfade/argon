@@ -193,6 +193,24 @@ class ReleasePublishingTests(unittest.TestCase):
         build_workflow = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertIn("workflows: [Build prepared Chromium image]", build_workflow)
 
+    def test_publish_is_reusable_and_only_runs_after_successful_dual_arm_build(self):
+        publisher = (ROOT / ".github/workflows/publish-release.yml").read_text()
+        trigger = publisher.split("\npermissions:", 1)[0]
+        self.assertIn("workflow_call:", trigger)
+        self.assertIn("workflow_dispatch:", trigger)
+        self.assertNotIn("workflow_run:", trigger)
+
+        build = (ROOT / ".github/workflows/build.yml").read_text()
+        self.assertIn("needs.build.result == 'success'", build)
+        self.assertIn("uses: ./.github/workflows/publish-release.yml", build)
+        self.assertIn("run_id: ${{ github.run_id }}", build)
+        self.assertIn("source_sha: ${{ github.sha }}", build)
+        self.assertIn("contents: write", build)
+
+        self.assertIn('[[ "$SOURCE_RUN_ID" == "$GITHUB_RUN_ID" ]]', publisher)
+        self.assertIn('[[ "$EVENT_NAME" != workflow_dispatch ]]', publisher)
+        self.assertIn("push|workflow_run) ;;", publisher)
+
     def test_release_policy_changes_trigger_a_fresh_dual_arm_build(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertGreaterEqual(
