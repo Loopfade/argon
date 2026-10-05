@@ -323,21 +323,49 @@ jobs:
           release_notes=$(cat <<EOF
           ## English
           
-          Built and verified from \`main\` by [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
+          ### Download
           
-          - Chromium: $RELEASE_VERSION
-          - Release revision: $RELEASE_REVISION
-          - Architectures: \`arm64-v8a\` and \`armeabi-v7a\`
+          Choose the APK for your device:
+          
+          - **\`arm64-v8a\`** — recommended for most current Android devices
+          - **\`armeabi-v7a\`** — for older 32-bit ARM devices
+          
+          SHA-256 checksum files are provided alongside both APKs for integrity verification.
+          
+          ### Build information
+          
+          - Chromium: \`$RELEASE_VERSION\`
+          - Argon release revision: \`$RELEASE_REVISION\`
+          - Architectures: \`arm64-v8a\`, \`armeabi-v7a\`
           - Signing: repository release key
+          - Source: \`main\`
+          - Build: [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)
+          
+          Both APKs were built from the same source revision and automatically verified before publication.
+          
+          ---
           
           ## Русский
           
-          Собрано и проверено из ветки \`main\` в [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN).
+          ### Скачать
           
-          - Chromium: $RELEASE_VERSION
-          - Ревизия релиза: $RELEASE_REVISION
-          - Архитектуры: \`arm64-v8a\` и \`armeabi-v7a\`
+          Выберите APK для своего устройства:
+          
+          - **\`arm64-v8a\`** — рекомендуется для большинства современных Android-устройств
+          - **\`armeabi-v7a\`** — для старых 32-битных ARM-устройств
+          
+          Для обоих APK опубликованы файлы SHA-256, позволяющие проверить целостность загруженного файла.
+          
+          ### Информация о сборке
+          
+          - Chromium: \`$RELEASE_VERSION\`
+          - Ревизия Argon: \`$RELEASE_REVISION\`
+          - Архитектуры: \`arm64-v8a\`, \`armeabi-v7a\`
           - Подпись: релизный ключ репозитория
+          - Исходная ветка: \`main\`
+          - Сборка: [Build Argon run #$SOURCE_RUN](https://github.com/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN)
+          
+          Оба APK собраны из одной и той же ревизии исходного кода и автоматически проверены перед публикацией.
           EOF
           )
 

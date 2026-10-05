@@ -232,7 +232,13 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("release-arm64-v8a.apk", workflow)
         self.assertIn("release-armeabi-v7a.apk", workflow)
         self.assertIn("## English", workflow)
+        self.assertIn("### Download", workflow)
+        self.assertIn("### Build information", workflow)
         self.assertIn("## Русский", workflow)
+        self.assertIn("### Скачать", workflow)
+        self.assertIn("### Информация о сборке", workflow)
+        self.assertIn("Choose the APK for your device:", workflow)
+        self.assertIn("Выберите APK для своего устройства:", workflow)
         self.assertIn("Architectures:", workflow)
         self.assertIn("Архитектуры:", workflow)
 
