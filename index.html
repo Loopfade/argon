@@ -120,6 +120,12 @@
       align-items:center;padding:14px 16px;border-top:1px solid var(--border)
     }
     .run:first-child{border-top:0}
+    .history button.run{
+      width:100%;border-left:0;border-right:0;border-bottom:0;border-radius:0;
+      background:transparent;color:inherit;text-align:left
+    }
+    .history button.run:hover{background:var(--panel2)}
+    .history button.run.selected{background:var(--panel2);box-shadow:inset 3px 0 var(--blue)}
     .run-num{font-weight:800;font-size:16px}
     .run-kind,.run-time{color:var(--muted)}
     .run-sha{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -175,12 +181,6 @@
 </header>
 
 <main class="wrap">
-  <h2 class="section-title">Build timeline</h2>
-  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
-
-  <h2 class="section-title">Architecture details</h2>
-  <section class="architecture-grid" id="architectures"></section>
-
   <div class="grid">
     <div>
       <h2 class="section-title">Recent builds</h2>
@@ -210,6 +210,14 @@
       </section>
     </div>
   </div>
+
+
+  <h2 class="section-title" id="timeline-title">Build timeline</h2>
+  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
+
+  <h2 class="section-title" id="architecture-title">Architecture details</h2>
+  <section class="architecture-grid" id="architectures"></section>
+
 
   <div class="note" id="notice">
     This page only reads public GitHub API data. It cannot start, rerun or cancel builds.
@@ -513,10 +521,26 @@
       renderArchitecture("armeabi-v7a",parts.arm);
   }
 
-  function renderHistory(runs) {
-    $("history").innerHTML = runs.map(run => {
+  function selectedBuild() {
+    if (!model || !model.builds || !model.builds.length) return null;
+    return model.builds.find(build => String(build.run.id) === String(model.selectedRunId)) ||
+      model.builds[0];
+  }
+
+  function selectBuild(runId) {
+    if (!model || !model.builds.some(build => String(build.run.id) === String(runId))) return;
+    model.selectedRunId=String(runId);
+    renderModel();
+  }
+
+  function renderHistory(builds) {
+    const visible=(builds || []).slice(0,3);
+    $("history").innerHTML = visible.map(build => {
+      const run=build.run;
       const s=state(run);
-      return '<a class="run" href="' + esc(run.html_url) + '">' +
+      const selected=String(run.id) === String(model.selectedRunId);
+      return '<button type="button" class="run' + (selected ? ' selected' : '') +
+        '" data-run-id="' + esc(run.id) + '">' +
         '<div class="run-num">#' + esc(run.run_number) + '</div>' +
         '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' +
           esc(run.head_branch || "") + '</div></div>' +
@@ -524,8 +548,12 @@
         '<div class="run-time">' + esc(timeAgo(run.updated_at || run.created_at)) + '</div>' +
         '<div class="run-duration">' + esc(formatDuration(durationMs(run))) + '</div>' +
         '<div class="run-status ' + statusTextClass(run) + '">' + esc(s.label) + '</div>' +
-      '</a>';
+      '</button>';
     }).join("") || '<div class="run">No Build Argon runs found.</div>';
+
+    $("history").querySelectorAll("[data-run-id]").forEach(row => {
+      row.addEventListener("click", () => selectBuild(row.dataset.runId));
+    });
   }
 
   function renderRelease(release) {
@@ -547,10 +575,10 @@
     const box=$("artifacts-card");
     const list=artifacts && artifacts.artifacts ? artifacts.artifacts : [];
     if (!list.length) {
-      box.innerHTML='<h3>Latest run artifacts</h3><div class="meta">No artifacts available yet.</div>';
+      box.innerHTML='<h3>Build #' + esc(run.run_number) + ' artifacts</h3><div class="meta">No artifacts available yet.</div>';
       return;
     }
-    box.innerHTML='<h3>Latest run artifacts</h3><ul class="artifacts">' +
+    box.innerHTML='<h3>Build #' + esc(run.run_number) + ' artifacts</h3><ul class="artifacts">' +
       list.map(a => '<li>' + esc(a.name) + '<span class="artifact-size">' +
         esc(formatBytes(a.size_in_bytes)) + '</span></li>').join("") +
       '</ul><p><a href="' + esc(run.html_url) + '">Open run to download</a></p>';
@@ -558,12 +586,16 @@
 
   function renderModel() {
     if (!model) return;
-    const latest=model.latest, jobs=model.jobs;
-    renderTimeline(latest,jobs);
+    const build=selectedBuild();
+    if (!build) return;
+    const run=build.run, jobs=build.jobs || [];
+    $("timeline-title").textContent="Build #" + run.run_number + " timeline";
+    $("architecture-title").textContent="Architecture details · #" + run.run_number;
+    renderHistory(model.builds);
+    renderTimeline(run,jobs);
     renderArchitectures(jobs);
-    renderHistory(model.runs);
     renderRelease(model.release);
-    renderArtifacts(model.artifacts,latest);
+    renderArtifacts({artifacts:build.artifacts || []},run);
   }
 
   async function loadDashboard() {
@@ -573,15 +605,24 @@
     $("notice").classList.remove("error");
     try {
       const snapshot=await requestSnapshot();
-      const runs=snapshot.runs || [];
-      const latest=snapshot.latest || runs[0];
-      if (!latest) throw new Error("No Build Argon runs in dashboard snapshot.");
+      let builds=Array.isArray(snapshot.builds) ? snapshot.builds.slice(0,3) : [];
+      if (!builds.length) {
+        const runs=snapshot.runs || [];
+        const latest=snapshot.latest || runs[0];
+        if (latest) builds=[{
+          run:latest,
+          jobs:snapshot.jobs || [],
+          artifacts:snapshot.artifacts || []
+        }];
+      }
+      if (!builds.length) throw new Error("No Build Argon runs in dashboard snapshot.");
 
+      const previous=model && model.selectedRunId;
+      const selected=previous && builds.some(build => String(build.run.id) === String(previous))
+        ? String(previous) : String(builds[0].run.id);
       model={
-        latest:latest,
-        runs:runs,
-        jobs:snapshot.jobs || [],
-        artifacts:{artifacts:snapshot.artifacts || []},
+        builds:builds,
+        selectedRunId:selected,
         release:snapshot.release || null
       };
       renderModel();
@@ -605,7 +646,8 @@
   loadDashboard();
   setInterval(loadDashboard,60*1000);
   setInterval(() => {
-    if (model && model.latest && model.latest.status !== "completed") renderModel();
+    const build=selectedBuild();
+    if (build && build.run.status !== "completed") renderModel();
   },1000);
 })();
 </script>
