@@ -497,7 +497,7 @@
     const restore=stepByName(job,"Restore compiler cache");
     const steps=visibleSteps(job);
 
-    return '<details class="arch" open>' +
+    return '<details class="arch">' +
       '<summary><div class="arch-title"><span class="dot" style="background:var(--' +
         (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
         ')"></span>' + esc(name) + '</div>' +
