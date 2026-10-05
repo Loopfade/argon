@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T19:30:56.501Z",
+  "generated_at": "2026-10-05T20:18:59.096Z",
   "latest": {
     "id": 37342098819,
     "run_number": 98,
@@ -30,49 +30,6 @@
       "run_attempt": 1
     }
   ],
-  "release": {
-    "html_url": "https://github.com/Loopfade/argon/releases/tag/v154.0.8037.57-2",
-    "tag_name": "v154.0.8037.57-2",
-    "name": "Argon 154.0.8037.57",
-    "published_at": "2026-10-05T19:03:36Z",
-    "assets": [
-      {
-        "name": "Argon-154.0.8037.57-release-arm64-v8a.apk",
-        "size": 326711821,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-arm64-v8a.apk"
-      },
-      {
-        "name": "Argon-154.0.8037.57-release-arm64-v8a.apk.sha256",
-        "size": 108,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-arm64-v8a.apk.sha256"
-      },
-      {
-        "name": "Argon-154.0.8037.57-release-armeabi-v7a.apk",
-        "size": 197146078,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-armeabi-v7a.apk"
-      },
-      {
-        "name": "Argon-154.0.8037.57-release-armeabi-v7a.apk.sha256",
-        "size": 110,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-armeabi-v7a.apk.sha256"
-      },
-      {
-        "name": "Chromium-LICENSE.txt",
-        "size": 1536,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Chromium-LICENSE.txt"
-      },
-      {
-        "name": "Ruthenium-LICENSE.txt",
-        "size": 1509,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Ruthenium-LICENSE.txt"
-      },
-      {
-        "name": "Titanium-LICENSE.txt",
-        "size": 18091,
-        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Titanium-LICENSE.txt"
-      }
-    ]
-  },
   "builds": [
     {
       "run": {
@@ -1547,7 +1504,93 @@
           "created_at": "2026-10-05T18:34:47Z",
           "expires_at": "2026-11-04T18:34:38Z"
         }
-      ]
+      ],
+      "release": {
+        "html_url": "https://github.com/Loopfade/argon/releases/tag/v154.0.8037.57-2",
+        "tag_name": "v154.0.8037.57-2",
+        "name": "Argon 154.0.8037.57",
+        "published_at": "2026-10-05T19:03:36Z",
+        "assets": [
+          {
+            "name": "Argon-154.0.8037.57-release-arm64-v8a.apk",
+            "size": 326711821,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-arm64-v8a.apk"
+          },
+          {
+            "name": "Argon-154.0.8037.57-release-arm64-v8a.apk.sha256",
+            "size": 108,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-arm64-v8a.apk.sha256"
+          },
+          {
+            "name": "Argon-154.0.8037.57-release-armeabi-v7a.apk",
+            "size": 197146078,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-armeabi-v7a.apk"
+          },
+          {
+            "name": "Argon-154.0.8037.57-release-armeabi-v7a.apk.sha256",
+            "size": 110,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-armeabi-v7a.apk.sha256"
+          },
+          {
+            "name": "Chromium-LICENSE.txt",
+            "size": 1536,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Chromium-LICENSE.txt"
+          },
+          {
+            "name": "Ruthenium-LICENSE.txt",
+            "size": 1509,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Ruthenium-LICENSE.txt"
+          },
+          {
+            "name": "Titanium-LICENSE.txt",
+            "size": 18091,
+            "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Titanium-LICENSE.txt"
+          }
+        ]
+      }
     }
-  ]
+  ],
+  "release": {
+    "html_url": "https://github.com/Loopfade/argon/releases/tag/v154.0.8037.57-2",
+    "tag_name": "v154.0.8037.57-2",
+    "name": "Argon 154.0.8037.57",
+    "published_at": "2026-10-05T19:03:36Z",
+    "assets": [
+      {
+        "name": "Argon-154.0.8037.57-release-arm64-v8a.apk",
+        "size": 326711821,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-arm64-v8a.apk"
+      },
+      {
+        "name": "Argon-154.0.8037.57-release-arm64-v8a.apk.sha256",
+        "size": 108,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-arm64-v8a.apk.sha256"
+      },
+      {
+        "name": "Argon-154.0.8037.57-release-armeabi-v7a.apk",
+        "size": 197146078,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-armeabi-v7a.apk"
+      },
+      {
+        "name": "Argon-154.0.8037.57-release-armeabi-v7a.apk.sha256",
+        "size": 110,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Argon-154.0.8037.57-release-armeabi-v7a.apk.sha256"
+      },
+      {
+        "name": "Chromium-LICENSE.txt",
+        "size": 1536,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Chromium-LICENSE.txt"
+      },
+      {
+        "name": "Ruthenium-LICENSE.txt",
+        "size": 1509,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Ruthenium-LICENSE.txt"
+      },
+      {
+        "name": "Titanium-LICENSE.txt",
+        "size": 18091,
+        "browser_download_url": "https://github.com/Loopfade/argon/releases/download/v154.0.8037.57-2/Titanium-LICENSE.txt"
+      }
+    ]
+  }
 }
