@@ -168,16 +168,18 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn('echo "target_sha=$source_sha"', workflow)
         self.assertIn('[[ "$source_sha" == "$arm_source_sha" ]] || {', workflow)
 
-    def test_manual_publish_is_bound_to_successful_main_build_run(self):
+    def test_manual_build_publish_is_bound_to_current_main_run(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
-        self.assertIn('repos/$GH_REPO/actions/runs/$MANUAL_RUN_ID', workflow)
+        self.assertNotIn("MANUAL_RUN_ID", workflow)
+        self.assertIn('[[ "$SOURCE_RUN_ID" == "$GITHUB_RUN_ID" ]]', workflow)
+        self.assertIn('[[ "$source_sha" == "$AUTO_SOURCE_SHA" ]]', workflow)
         self.assertIn("""run_name=$(jq -er '.name' <<<"$run_json")""", workflow)
-        self.assertIn('[[ "$run_name" == "Build Argon" ]]', workflow)
-        self.assertIn('[[ "$run_conclusion" == success ]]', workflow)
-        self.assertIn('[[ "$run_head_branch" == main ]]', workflow)
-        self.assertIn('[[ "$run_head_sha" == "$source_sha" ]]', workflow)
-        self.assertIn("push|workflow_run|workflow_dispatch", workflow)
-        self.assertIn("Manual publication is only allowed from current main or across documentation-only drift.", workflow)
+        self.assertIn('[[ "$run_event" == workflow_dispatch ]]', workflow)
+        self.assertIn('"$run_name" == "Build Argon"', workflow)
+        self.assertIn('"$run_head_branch" == main', workflow)
+        self.assertIn('"$run_head_sha" == "$source_sha"', workflow)
+        self.assertNotIn('[[ "$run_conclusion" == success ]]', workflow)
+        self.assertIn("Skipping stale manual Build Argon run", workflow)
 
     def test_release_rechecks_main_drift_before_creation(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
@@ -193,23 +195,26 @@ class ReleasePublishingTests(unittest.TestCase):
         build_workflow = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertIn("workflows: [Build prepared Chromium image]", build_workflow)
 
-    def test_publish_is_reusable_and_only_runs_after_successful_dual_arm_build(self):
+    def test_publish_is_reusable_and_only_runs_for_manual_release_build(self):
         publisher = (ROOT / ".github/workflows/publish-release.yml").read_text()
         trigger = publisher.split("\npermissions:", 1)[0]
         self.assertIn("workflow_call:", trigger)
-        self.assertIn("workflow_dispatch:", trigger)
+        self.assertNotIn("workflow_dispatch:", trigger)
         self.assertNotIn("workflow_run:", trigger)
 
         build = (ROOT / ".github/workflows/build.yml").read_text()
         self.assertIn("needs.build.result == 'success'", build)
+        self.assertIn("github.event_name == 'workflow_dispatch'", build)
+        self.assertIn("inputs.signing == 'release'", build)
         self.assertIn("uses: ./.github/workflows/publish-release.yml", build)
         self.assertIn("run_id: ${{ github.run_id }}", build)
         self.assertIn("source_sha: ${{ github.sha }}", build)
         self.assertIn("contents: write", build)
 
         self.assertIn('[[ "$SOURCE_RUN_ID" == "$GITHUB_RUN_ID" ]]', publisher)
-        self.assertIn('[[ "$EVENT_NAME" != workflow_dispatch ]]', publisher)
-        self.assertIn("push|workflow_run) ;;", publisher)
+        self.assertIn('[[ "$EVENT_NAME" == workflow_dispatch ]]', publisher)
+        self.assertIn('[[ "$run_event" == workflow_dispatch ]]', publisher)
+        self.assertNotIn("push|workflow_run) ;;", publisher)
 
     def test_release_policy_changes_trigger_a_fresh_dual_arm_build(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()

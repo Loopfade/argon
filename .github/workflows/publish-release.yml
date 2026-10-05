@@ -4,24 +4,13 @@ on:
   workflow_call:
     inputs:
       run_id:
-        description: 'Current successful dual-ARM Build Argon workflow run ID'
+        description: 'Current manual dual-ARM Build Argon workflow run ID'
         required: true
         type: string
       source_sha:
-        description: 'Exact Build Argon source SHA for in-run automatic publication'
+        description: 'Exact source SHA of the manual Build Argon run'
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
-      run_id:
-        description: 'Successful dual-ARM Build Argon workflow run ID'
-        required: true
-        type: string
-      source_sha:
-        description: 'Reserved for automatic in-run publication; leave empty'
-        required: false
-        type: string
-        default: ''
 
 permissions:
   actions: read
@@ -175,89 +164,48 @@ jobs:
           cmp "$arm64_ruthenium_license" "$arm_ruthenium_license"
           cmp "$arm64_titanium_license" "$arm_titanium_license"
 
-          if [[ "$EVENT_NAME" != workflow_dispatch ]]; then
-            [[ -n "$AUTO_SOURCE_SHA" ]] || {
-              echo "Automatic publication requires an exact Build Argon source SHA." >&2
-              exit 1
-            }
-            [[ "$SOURCE_RUN_ID" == "$GITHUB_RUN_ID" ]] || {
-              echo "Automatic publication must use the current Build Argon run." >&2
-              exit 1
-            }
-            [[ "$source_sha" == "$AUTO_SOURCE_SHA" ]] || {
-              echo "Artifact source SHA $source_sha does not match Build Argon SHA $AUTO_SOURCE_SHA." >&2
-              exit 1
-            }
-            run_json=$(gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN_ID")
-            run_repo=$(jq -er '.repository.full_name' <<<"$run_json")
-            run_name=$(jq -er '.name' <<<"$run_json")
-            run_event=$(jq -er '.event' <<<"$run_json")
-            run_head_branch=$(jq -er '.head_branch' <<<"$run_json")
-            run_head_sha=$(jq -er '.head_sha' <<<"$run_json")
-            [[ "$run_repo" == "$GH_REPO" && "$run_name" == "Build Argon" &&
-               "$run_head_branch" == main && "$run_head_sha" == "$source_sha" ]] || {
-              echo "Automatic publication source does not match this trusted main Build Argon run." >&2
-              exit 1
-            }
-            case "$run_event" in
-              push|workflow_run) ;;
-              *)
-                echo "Automatic publication is not allowed for Build Argon event $run_event." >&2
-                exit 1
-                ;;
-            esac
-            source_run="$SOURCE_RUN_ID"
-          else
-            MANUAL_RUN_ID="$SOURCE_RUN_ID"
-            run_json=$(gh api "repos/$GH_REPO/actions/runs/$MANUAL_RUN_ID")
-            run_repo=$(jq -er '.repository.full_name' <<<"$run_json")
-            run_name=$(jq -er '.name' <<<"$run_json")
-            run_event=$(jq -er '.event' <<<"$run_json")
-            run_conclusion=$(jq -er '.conclusion' <<<"$run_json")
-            run_head_branch=$(jq -er '.head_branch' <<<"$run_json")
-            run_head_sha=$(jq -er '.head_sha' <<<"$run_json")
+          [[ "$EVENT_NAME" == workflow_dispatch ]] || {
+            echo "Release publication is only allowed from a manually dispatched Build Argon run." >&2
+            exit 1
+          }
+          [[ -n "$AUTO_SOURCE_SHA" ]] || {
+            echo "Manual Build Argon publication requires an exact source SHA." >&2
+            exit 1
+          }
+          [[ "$SOURCE_RUN_ID" == "$GITHUB_RUN_ID" ]] || {
+            echo "Publication must use the current manual Build Argon run." >&2
+            exit 1
+          }
+          [[ "$source_sha" == "$AUTO_SOURCE_SHA" ]] || {
+            echo "Artifact source SHA $source_sha does not match Build Argon SHA $AUTO_SOURCE_SHA." >&2
+            exit 1
+          }
 
-            [[ "$run_repo" == "$GH_REPO" ]] || {
-              echo "Run $MANUAL_RUN_ID belongs to $run_repo, not $GH_REPO." >&2
-              exit 1
-            }
-            [[ "$run_name" == "Build Argon" ]] || {
-              echo "Run $MANUAL_RUN_ID is not a Build Argon workflow run." >&2
-              exit 1
-            }
-            [[ "$run_conclusion" == success ]] || {
-              echo "Run $MANUAL_RUN_ID did not complete successfully." >&2
-              exit 1
-            }
-            [[ "$run_head_branch" == main ]] || {
-              echo "Run $MANUAL_RUN_ID was built from $run_head_branch, not main." >&2
-              exit 1
-            }
-            [[ "$run_head_sha" == "$source_sha" ]] || {
-              echo "Artifact source SHA $source_sha does not match run SHA $run_head_sha." >&2
-              exit 1
-            }
-            case "$run_event" in
-              push|workflow_run|workflow_dispatch) ;;
-              *)
-                echo "Run $MANUAL_RUN_ID has unsupported event $run_event." >&2
-                exit 1
-                ;;
-            esac
-            source_run="$MANUAL_RUN_ID"
-          fi
+          run_json=$(gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN_ID")
+          run_repo=$(jq -er '.repository.full_name' <<<"$run_json")
+          run_name=$(jq -er '.name' <<<"$run_json")
+          run_event=$(jq -er '.event' <<<"$run_json")
+          run_head_branch=$(jq -er '.head_branch' <<<"$run_json")
+          run_head_sha=$(jq -er '.head_sha' <<<"$run_json")
+
+          [[ "$run_repo" == "$GH_REPO" && "$run_name" == "Build Argon" &&
+             "$run_head_branch" == main && "$run_head_sha" == "$source_sha" ]] || {
+            echo "Publication source does not match this trusted main Build Argon run." >&2
+            exit 1
+          }
+          [[ "$run_event" == workflow_dispatch ]] || {
+            echo "Publication is not allowed for Build Argon event $run_event." >&2
+            exit 1
+          }
+          source_run="$SOURCE_RUN_ID"
 
           current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
           if [[ "$source_sha" != "$current_main" ]]; then
             compare_json=$(gh api "repos/$GH_REPO/compare/$source_sha...$current_main")
             if ! python3 scripts/release_policy.py check-drift <<<"$compare_json"; then
-              if [[ "$EVENT_NAME" != workflow_dispatch ]]; then
-                echo "::notice::Skipping stale Build Argon run $source_run: main contains non-documentation changes after $source_sha."
-                echo "publish=false" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "Manual publication is only allowed from current main or across documentation-only drift." >&2
-              exit 1
+              echo "::notice::Skipping stale manual Build Argon run $source_run: main contains non-documentation changes after $source_sha."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
             echo "::notice::Allowing publication across documentation-only main drift: $source_sha -> $current_main."
           fi
@@ -294,12 +242,8 @@ jobs:
           if [[ "$RELEASE_TARGET" != "$current_main" ]]; then
             compare_json=$(gh api "repos/$GH_REPO/compare/$RELEASE_TARGET...$current_main")
             if ! python3 scripts/release_policy.py check-drift <<<"$compare_json"; then
-              if [[ "$EVENT_NAME" != workflow_dispatch ]]; then
-                echo "::notice::Skipping stale release: main changed beyond documentation after $RELEASE_TARGET."
-                exit 0
-              fi
-              echo "Manual publication became stale before release creation." >&2
-              exit 1
+              echo "::notice::Skipping stale release: main changed beyond documentation after $RELEASE_TARGET."
+              exit 0
             fi
           fi
 
