@@ -249,7 +249,7 @@
     const gate = find(j => j.name === "Require latest compatible prepared image");
     const arm64 = find(j => j.name.includes("Build and verify arm64"));
     const arm = find(j => j.name.includes("Build and verify arm /"));
-    const publish = find(j => j.name === "Publish verified dual-ARM release");
+    const publish = find(j => j.name.includes("Publish verified dual-ARM release"));
     const verification = deriveVerification(arm64, arm);
 
     const stages = [
