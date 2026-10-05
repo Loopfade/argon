@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Argon CI Dashboard</title>
+  <style>
+    :root {
+      --bg:#0d1117; --panel:#161b22; --panel2:#21262d; --border:#30363d;
+      --text:#f0f6fc; --muted:#8b949e; --green:#3fb950; --yellow:#d29922;
+      --red:#f85149; --blue:#58a6ff; --purple:#bc8cff;
+    }
+    * { box-sizing:border-box; }
+    html { background:var(--bg); }
+    body {
+      margin:0; color:var(--text); background:var(--bg);
+      font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    }
+    a { color:var(--blue); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .wrap { max-width:1240px; margin:0 auto; padding:0 20px 48px; }
+    header {
+      position:sticky; top:0; z-index:10; background:rgba(22,27,34,.96);
+      backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
+    }
+    .head {
+      max-width:1240px; margin:0 auto; padding:16px 20px; display:flex;
+      align-items:center; gap:16px; justify-content:space-between;
+    }
+    .brand { display:flex; align-items:baseline; gap:12px; min-width:0; }
+    .brand strong { font-size:22px; letter-spacing:.02em; }
+    .brand span { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .actions { display:flex; gap:8px; }
+    button,.button {
+      appearance:none; border:1px solid var(--border); background:var(--panel2);
+      color:var(--text); border-radius:8px; padding:8px 12px; font-weight:600;
+      cursor:pointer; text-decoration:none;
+    }
+    button:hover,.button:hover { border-color:#6e7681; text-decoration:none; }
+    .hero {
+      margin:24px 0 20px; padding:22px; border:1px solid var(--border);
+      background:var(--panel); border-radius:14px;
+    }
+    .hero-top { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; }
+    .hero h1 { margin:0 0 4px; font-size:30px; }
+    .meta { color:var(--muted); }
+    .pill {
+      display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border);
+      border-radius:999px; padding:8px 12px; font-weight:700; white-space:nowrap;
+    }
+    .dot { width:10px; height:10px; border-radius:50%; background:var(--muted); }
+    .status-success .dot { background:var(--green); }
+    .status-failure .dot { background:var(--red); }
+    .status-progress .dot { background:var(--yellow); }
+    .status-queued .dot { background:var(--blue); }
+    .status-cancelled .dot,.status-skipped .dot { background:var(--muted); }
+    .section-title { margin:26px 0 12px; font-size:20px; }
+    .pipeline { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+    .stage,.card {
+      border:1px solid var(--border); background:var(--panel); border-radius:12px; padding:16px;
+    }
+    .stage-name { display:flex; gap:10px; align-items:center; font-weight:700; min-height:42px; }
+    .stage-status { margin-top:18px; font-weight:700; }
+    .stage-detail { margin-top:6px; color:var(--muted); font-size:12px; min-height:36px; }
+    .grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,1fr); gap:16px; align-items:start; }
+    .history { overflow:hidden; padding:0; }
+    .run {
+      display:grid; grid-template-columns:70px 1.3fr .8fr 1fr auto; gap:12px;
+      align-items:center; padding:14px 16px; border-top:1px solid var(--border);
+    }
+    .run:first-child { border-top:0; }
+    .run-num { font-weight:800; font-size:16px; }
+    .run-kind,.run-time { color:var(--muted); }
+    .run-sha { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .run-status { font-weight:700; }
+    .side-stack { display:grid; gap:16px; }
+    .card h3 { margin:0 0 14px; font-size:17px; }
+    .kv { display:grid; grid-template-columns:1fr auto; gap:8px 12px; margin-top:8px; }
+    .kv .k { color:var(--muted); }
+    .artifacts { margin:8px 0 0; padding-left:18px; }
+    .note {
+      margin-top:20px; color:var(--muted); padding:12px 14px;
+      border:1px solid var(--border); border-radius:10px; background:var(--panel);
+    }
+    .error { border-color:rgba(248,81,73,.55); color:#ffb4ad; }
+    .skeleton { color:var(--muted); }
+    footer { margin-top:24px; color:var(--muted); font-size:12px; text-align:center; }
+    @media (max-width:900px) {
+      .pipeline { grid-template-columns:1fr 1fr; }
+      .grid { grid-template-columns:1fr; }
+      .run { grid-template-columns:62px 1fr auto; }
+      .run-sha,.run-time { display:none; }
+    }
+    @media (max-width:560px) {
+      .head { align-items:flex-start; }
+      .brand { display:block; }
+      .brand span { display:block; margin-top:2px; }
+      .actions .button { display:none; }
+      .hero-top { display:block; }
+      .hero .pill { margin-top:14px; }
+      .pipeline { grid-template-columns:1fr; }
+      .hero h1 { font-size:25px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div class="brand">
+      <strong>ARGON CI</strong>
+      <span>GitHub Actions dashboard</span>
+    </div>
+    <div class="actions">
+      <a class="button" href="https://github.com/Loopfade/argon/actions/workflows/build.yml">GitHub Actions</a>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="hero-top">
+      <div>
+        <h1 id="run-title">Loading latest Build Argon…</h1>
+        <div class="meta" id="run-meta">Reading public GitHub Actions data</div>
+      </div>
+      <div class="pill status-queued" id="run-pill"><span class="dot"></span><span>LOADING</span></div>
+    </div>
+  </section>
+
+  <h2 class="section-title">Pipeline</h2>
+  <section class="pipeline" id="pipeline"></section>
+
+  <div class="grid">
+    <div>
+      <h2 class="section-title">Recent builds</h2>
+      <section class="card history" id="history"><div class="run skeleton">Loading…</div></section>
+    </div>
+
+    <div class="side-stack">
+      <div>
+        <h2 class="section-title">Release</h2>
+        <section class="card" id="release-card">
+          <h3>Latest published release</h3>
+          <div class="skeleton">Loading…</div>
+        </section>
+      </div>
+      <section class="card" id="artifacts-card">
+        <h3>Latest run artifacts</h3>
+        <div class="skeleton">Loading…</div>
+      </section>
+      <section class="card">
+        <h3>Dashboard</h3>
+        <div class="kv">
+          <div class="k">Mode</div><div>Read-only</div>
+          <div class="k">Backend</div><div>GitHub Actions</div>
+          <div class="k">Refresh</div><div>10 minutes</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="note" id="notice">
+    This page only reads public GitHub API data. It cannot start, rerun or cancel builds.
+  </div>
+  <footer>Loopfade/argon · static GitHub Pages dashboard</footer>
+</main>
+
+<script>
+(() => {
+  const REPO = "Loopfade/argon";
+  const API = "https://api.github.com/repos/" + REPO;
+  const RUNS_URL = API + "/actions/workflows/build.yml/runs?branch=main&per_page=12";
+
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+
+  function state(item) {
+    if (!item) return { key:"queued", label:"WAITING" };
+    if (item.status !== "completed") {
+      return item.status === "in_progress"
+        ? { key:"progress", label:"IN PROGRESS" }
+        : { key:"queued", label:String(item.status || "queued").toUpperCase() };
+    }
+    const conclusion = item.conclusion || "completed";
+    const map = {
+      success:["success","SUCCESS"],
+      failure:["failure","FAILED"],
+      cancelled:["cancelled","CANCELLED"],
+      skipped:["skipped","SKIPPED"],
+      neutral:["cancelled","NEUTRAL"],
+      timed_out:["failure","TIMED OUT"],
+      action_required:["failure","ACTION REQUIRED"]
+    };
+    const [key,label] = map[conclusion] || ["cancelled", conclusion.toUpperCase()];
+    return { key, label };
+  }
+
+  function timeAgo(value) {
+    if (!value) return "—";
+    const seconds = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
+    if (seconds < 60) return Math.floor(seconds) + "s ago";
+    if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+    if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+    return Math.floor(seconds / 86400) + "d ago";
+  }
+
+  function eventLabel(event) {
+    if (event === "workflow_dispatch") return "Manual release";
+    if (event === "push") return "Push validation";
+    if (event === "workflow_run") return "Prepared-image follow-up";
+    if (event === "pull_request") return "Pull request";
+    return event || "Unknown";
+  }
+
+  async function request(url, optional=false) {
+    const response = await fetch(url, {
+      headers: { "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" },
+      cache:"no-store"
+    });
+    if (optional && response.status === 404) return null;
+    if (!response.ok) throw new Error("GitHub API " + response.status + " for " + url);
+    return response.json();
+  }
+
+  function renderPill(target, item) {
+    const s = state(item);
+    target.className = "pill status-" + s.key;
+    target.innerHTML = '<span class="dot"></span><span>' + esc(s.label) + '</span>';
+  }
+
+  function deriveVerification(arm64, arm) {
+    if (!arm64 || !arm) return null;
+    const items = [arm64, arm];
+    if (items.some(x => x.status === "completed" && x.conclusion === "failure"))
+      return { status:"completed", conclusion:"failure" };
+    if (items.every(x => x.status === "completed" && x.conclusion === "success"))
+      return { status:"completed", conclusion:"success" };
+    if (items.some(x => x.status === "in_progress"))
+      return { status:"queued", conclusion:null };
+    return { status:"queued", conclusion:null };
+  }
+
+  function renderPipeline(jobs) {
+    const find = predicate => jobs.find(predicate);
+    const gate = find(j => j.name === "Require latest compatible prepared image");
+    const arm64 = find(j => j.name.includes("Build and verify arm64"));
+    const arm = find(j => j.name.includes("Build and verify arm /"));
+    const publish = find(j => j.name === "Publish verified dual-ARM release");
+    const verification = deriveVerification(arm64, arm);
+
+    const stages = [
+      ["Prepared image", gate, "Compatibility gate"],
+      ["arm64-v8a", arm64, "Build, sign and verify APK"],
+      ["armeabi-v7a", arm, "Build, sign and verify APK"],
+      ["Verification", verification, "Both ABI jobs must succeed"],
+      ["Publish", publish, "Automatic for manual release build"]
+    ];
+
+    $("pipeline").innerHTML = stages.map(([name,item,detail]) => {
+      const s = state(item);
+      return '<article class="stage">' +
+        '<div class="stage-name"><span class="dot" style="background:var(--' +
+          (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
+          ')"></span><span>' + esc(name) + '</span></div>' +
+        '<div class="stage-status status-' + esc(s.key) + '">' + esc(s.label) + '</div>' +
+        '<div class="stage-detail">' + esc(detail) + '</div>' +
+      '</article>';
+    }).join("");
+  }
+
+  function renderHistory(runs) {
+    $("history").innerHTML = runs.map(run => {
+      const s = state(run);
+      const url = run.html_url;
+      return '<a class="run" href="' + esc(url) + '">' +
+        '<div class="run-num">#' + esc(run.run_number) + '</div>' +
+        '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' + esc(run.head_branch || "") + '</div></div>' +
+        '<div class="run-sha">' + esc((run.head_sha || "").slice(0,7)) + '</div>' +
+        '<div class="run-time">' + esc(timeAgo(run.updated_at || run.created_at)) + '</div>' +
+        '<div class="run-status status-' + esc(s.key) + '">' + esc(s.label) + '</div>' +
+      '</a>';
+    }).join("") || '<div class="run">No Build Argon runs found.</div>';
+  }
+
+  function renderRelease(release) {
+    const box = $("release-card");
+    if (!release) {
+      box.innerHTML = '<h3>Latest published release</h3><div class="meta">No published release yet.</div>';
+      return;
+    }
+    box.innerHTML = '<h3><a href="' + esc(release.html_url) + '">' + esc(release.name || release.tag_name) + '</a></h3>' +
+      '<div class="kv">' +
+        '<div class="k">Tag</div><div>' + esc(release.tag_name) + '</div>' +
+        '<div class="k">Published</div><div>' + esc(timeAgo(release.published_at)) + '</div>' +
+        '<div class="k">Assets</div><div>' + esc((release.assets || []).length) + '</div>' +
+      '</div>';
+  }
+
+  function renderArtifacts(artifacts, run) {
+    const box = $("artifacts-card");
+    const list = artifacts && artifacts.artifacts ? artifacts.artifacts : [];
+    if (!list.length) {
+      box.innerHTML = '<h3>Latest run artifacts</h3><div class="meta">No artifacts available yet.</div>';
+      return;
+    }
+    box.innerHTML = '<h3>Latest run artifacts</h3><ul class="artifacts">' +
+      list.map(a => '<li>' + esc(a.name) + '</li>').join("") +
+      '</ul><p><a href="' + esc(run.html_url) + '">Open run to download</a></p>';
+  }
+
+  async function loadDashboard() {
+    const refresh = $("refresh");
+    refresh.disabled = true;
+    refresh.textContent = "Refreshing…";
+    $("notice").classList.remove("error");
+
+    try {
+      const runsData = await request(RUNS_URL);
+      const runs = runsData.workflow_runs || [];
+      const latest = runs[0];
+
+      if (!latest) throw new Error("No Build Argon runs found.");
+
+      const [jobsData, artifactsData, release] = await Promise.all([
+        request(API + "/actions/runs/" + latest.id + "/jobs?filter=latest&per_page=100"),
+        request(API + "/actions/runs/" + latest.id + "/artifacts?per_page=100"),
+        request(API + "/releases/latest", true)
+      ]);
+
+      $("run-title").innerHTML = '<a href="' + esc(latest.html_url) + '">Build Argon #' + esc(latest.run_number) + '</a>';
+      $("run-meta").textContent =
+        eventLabel(latest.event) + "  •  " + (latest.head_sha || "").slice(0,7) +
+        "  •  " + (latest.head_branch || "—") + "  •  " + timeAgo(latest.created_at);
+      renderPill($("run-pill"), latest);
+      renderPipeline(jobsData.jobs || []);
+      renderHistory(runs);
+      renderRelease(release);
+      renderArtifacts(artifactsData, latest);
+
+      $("notice").textContent =
+        "Read-only dashboard. Data comes directly from the public GitHub API; this page cannot start, rerun or cancel builds.";
+    } catch (error) {
+      console.error(error);
+      $("notice").classList.add("error");
+      $("notice").textContent =
+        "Could not refresh GitHub data: " + error.message +
+        ". Public API requests are rate-limited; try again later or open GitHub Actions.";
+    } finally {
+      refresh.disabled = false;
+      refresh.textContent = "Refresh";
+    }
+  }
+
+  $("refresh").addEventListener("click", loadDashboard);
+  loadDashboard();
+  setInterval(loadDashboard, 10 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
