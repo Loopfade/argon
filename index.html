@@ -175,20 +175,6 @@
 </header>
 
 <main class="wrap">
-  <section class="hero">
-    <div class="hero-top">
-      <div>
-        <h1 id="run-title">Loading latest Build Argon…</h1>
-        <div class="meta" id="run-meta">Reading public GitHub Actions data</div>
-      </div>
-      <div class="pill status-queued" id="run-pill"><span class="dot"></span><span>LOADING</span></div>
-    </div>
-    <div class="metrics" id="metrics"></div>
-  </section>
-
-  <h2 class="section-title">Pipeline</h2>
-  <section class="pipeline" id="pipeline"></section>
-
   <h2 class="section-title">Build timeline</h2>
   <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
 
@@ -573,14 +559,6 @@
   function renderModel() {
     if (!model) return;
     const latest=model.latest, jobs=model.jobs;
-    $("run-title").innerHTML='<a href="' + esc(latest.html_url) + '">Build Argon #' +
-      esc(latest.run_number) + '</a>';
-    $("run-meta").textContent =
-      eventLabel(latest.event) + "  •  " + (latest.head_sha || "").slice(0,7) +
-      "  •  " + (latest.head_branch || "—") + "  •  started " + timeAgo(latest.run_started_at || latest.created_at);
-    renderPill($("run-pill"),latest);
-    renderMetrics(latest,jobs);
-    renderPipeline(latest,jobs);
     renderTimeline(latest,jobs);
     renderArchitectures(jobs);
     renderHistory(model.runs);
