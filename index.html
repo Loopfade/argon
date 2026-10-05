@@ -543,7 +543,7 @@
         '" data-run-id="' + esc(run.id) + '">' +
         '<div class="run-num">#' + esc(run.run_number) + '</div>' +
         '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' +
-          esc(run.head_branch || "") + '</div></div>' +
+          esc((build.release && build.release.tag_name) || run.head_branch || "") + '</div></div>' +
         '<div class="run-sha">' + esc((run.head_sha || "").slice(0,7)) + '</div>' +
         '<div class="run-time">' + esc(timeAgo(run.updated_at || run.created_at)) + '</div>' +
         '<div class="run-duration">' + esc(formatDuration(durationMs(run))) + '</div>' +
@@ -594,7 +594,7 @@
     renderHistory(model.builds);
     renderTimeline(run,jobs);
     renderArchitectures(jobs);
-    renderRelease(model.release);
+    renderRelease(build.release || model.release);
     renderArtifacts({artifacts:build.artifacts || []},run);
   }
 
