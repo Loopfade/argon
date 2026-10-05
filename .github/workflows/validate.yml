@@ -2,8 +2,12 @@ name: Validate scoped Russian CA
 on:
   push:
     branches-ignore: [gh-pages]
+    paths-ignore:
+      - '.github/workflows/update-dashboard.yml'
   pull_request:
     types: [opened, synchronize, reopened, closed]
+    paths-ignore:
+      - '.github/workflows/update-dashboard.yml'
   workflow_dispatch:
 permissions:
   actions: write
