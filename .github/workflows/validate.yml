@@ -1,6 +1,7 @@
 name: Validate scoped Russian CA
 on:
   push:
+    branches-ignore: [gh-pages]
   pull_request:
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
