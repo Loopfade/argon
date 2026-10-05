@@ -190,7 +190,8 @@ jobs:
 
           latest_image_sha=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&status=success&per_page=1"             --jq '.workflow_runs[0].head_sha // empty')
           if [[ -z "$latest_image_sha" ]]; then
-            defer "No successful prepared-image build exists for main."
+            allow "No successful prepared-image run remains in Actions history; verify the GHCR image directly."
+            exit 0
           fi
 
           if image_inputs_changed "$latest_image_sha" "$CURRENT_SHA"; then

@@ -53,6 +53,15 @@ class PreparedImageResolutionTests(unittest.TestCase):
             ), self.assertRaises(ValueError):
                 resolver.resolve(self.repository)
 
+    def test_missing_actions_history_falls_back_to_image_self_verification(self):
+        workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        self.assertIn(
+            "No successful prepared-image run remains in Actions history; verify the GHCR image directly.",
+            workflow,
+        )
+        self.assertNotIn("No successful prepared-image build exists for main.", workflow)
+        self.assertIn("check-prepared-inputs.py", (ROOT / ".github/workflows/build-arch.yml").read_text())
+
     def test_unsupported_mutable_refs_are_rejected_before_docker(self):
         for image in [
             self.repository + ":latest",
