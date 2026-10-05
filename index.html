@@ -187,20 +187,33 @@
       <section class="card history" id="history"><div class="run skeleton">Loading…</div></section>
     </div>
 
-    <div class="side-stack">
-      <div>
-        <h2 class="section-title">Release</h2>
-        <section class="card" id="release-card">
-          <h3>Latest published release</h3>
-          <div class="skeleton">Loading…</div>
-        </section>
-      </div>
+    <div>
+      <h2 class="section-title">Artifacts</h2>
       <section class="card" id="artifacts-card">
         <h3>Latest run artifacts</h3>
         <div class="skeleton">Loading…</div>
       </section>
+    </div>
+  </div>
+
+  <h2 class="section-title" id="timeline-title">Build timeline</h2>
+  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
+
+  <h2 class="section-title" id="architecture-title">Architecture details</h2>
+  <section class="architecture-grid" id="architectures"></section>
+
+  <div class="grid">
+    <div>
+      <h2 class="section-title">Release</h2>
+      <section class="card" id="release-card">
+        <h3>Latest published release</h3>
+        <div class="skeleton">Loading…</div>
+      </section>
+    </div>
+
+    <div>
+      <h2 class="section-title">Dashboard</h2>
       <section class="card">
-        <h3>Dashboard</h3>
         <div class="kv">
           <div class="k">Mode</div><div>Read-only</div>
           <div class="k">Source</div><div>Published releases</div>
@@ -210,14 +223,6 @@
       </section>
     </div>
   </div>
-
-
-  <h2 class="section-title" id="timeline-title">Build timeline</h2>
-  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
-
-  <h2 class="section-title" id="architecture-title">Architecture details</h2>
-  <section class="architecture-grid" id="architectures"></section>
-
 
   <div class="note" id="notice">
     This page only reads public GitHub API data. It cannot start, rerun or cancel builds.
