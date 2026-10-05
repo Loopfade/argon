@@ -1,0 +1,129 @@
+name: Update Argon dashboard snapshot
+
+on:
+  workflow_run:
+    workflows: [Build Argon]
+    types: [requested, in_progress, completed]
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: argon-dashboard-snapshot
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Refresh GitHub Pages dashboard data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Build authenticated dashboard snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          runs_all=$(gh api "repos/$GH_REPO/actions/runs?branch=main&per_page=50")
+          runs=$(jq '[
+              .workflow_runs[]
+              | select(.name == "Build Argon")
+            ][0:12]
+            | map({
+                id, run_number, event, status, conclusion,
+                head_branch, head_sha, html_url,
+                created_at, updated_at, run_started_at, run_attempt
+              })' <<<"$runs_all")
+
+          latest=$(jq '.[0] // null' <<<"$runs")
+          latest_id=$(jq -r '.id // empty' <<<"$latest")
+          latest_status=$(jq -r '.status // empty' <<<"$latest")
+
+          # Scheduled refreshes are useful only while a build is active.
+          # workflow_run events still publish start/completion snapshots.
+          if [[ "$EVENT_NAME" == schedule && "$latest_status" == completed ]]; then
+            echo "No active Build Argon run; scheduled snapshot update is unnecessary."
+            exit 0
+          fi
+
+          if [[ -n "$latest_id" ]]; then
+            jobs=$(gh api "repos/$GH_REPO/actions/runs/$latest_id/jobs?filter=latest&per_page=100" |
+              jq '[.jobs[] | {
+                id, name, status, conclusion, html_url, started_at, completed_at,
+                steps: [.steps[]? | {
+                  name, status, conclusion, number, started_at, completed_at
+                }]
+              }]')
+            artifacts=$(gh api "repos/$GH_REPO/actions/runs/$latest_id/artifacts?per_page=100" |
+              jq '[.artifacts[] | {
+                id, name, size_in_bytes, expired, created_at, expires_at
+              }]')
+          else
+            jobs='[]'
+            artifacts='[]'
+          fi
+
+          release=$(gh api "repos/$GH_REPO/releases?per_page=1" |
+            jq '.[0] // null
+              | if . == null then null else {
+                  html_url, tag_name, name, published_at,
+                  assets: [.assets[]? | {name, size, browser_download_url}]
+                } end')
+
+          jq -n \
+            --arg generated_at "$(date -u +%FT%TZ)" \
+            --argjson latest "$latest" \
+            --argjson runs "$runs" \
+            --argjson jobs "$jobs" \
+            --argjson artifacts "$artifacts" \
+            --argjson release "$release" \
+            '{
+              generated_at: $generated_at,
+              latest: $latest,
+              runs: $runs,
+              jobs: $jobs,
+              artifacts: $artifacts,
+              release: $release
+            }' > dashboard-data.json
+
+      - name: Publish snapshot to gh-pages
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The previous step exits successfully without a file when a
+          # scheduled refresh is unnecessary.
+          [[ -f dashboard-data.json ]] || exit 0
+
+          api_path="repos/$GH_REPO/contents/dashboard-data.json"
+          current=$(gh api "$api_path?ref=gh-pages" 2>/dev/null || true)
+          sha=$(jq -r '.sha // empty' <<<"$current")
+          content=$(base64 -w0 dashboard-data.json)
+
+          if [[ -n "$sha" ]]; then
+            payload=$(jq -n \
+              --arg message "pages: refresh Argon dashboard data" \
+              --arg content "$content" \
+              --arg sha "$sha" \
+              --arg branch "gh-pages" \
+              '{message:$message,content:$content,sha:$sha,branch:$branch}')
+          else
+            payload=$(jq -n \
+              --arg message "pages: initialize Argon dashboard data" \
+              --arg content "$content" \
+              --arg branch "gh-pages" \
+              '{message:$message,content:$content,branch:$branch}')
+          fi
+
+          gh api --method PUT "$api_path" --input - <<<"$payload" >/dev/null
