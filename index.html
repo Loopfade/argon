@@ -470,9 +470,9 @@
 
     job.steps.forEach(step => {
       if (hidden(step.name)) return;
-      const match=step.name.match(/^(?:Warm local compiler cache|Save compiler cache checkpoint|Drop cache superseded by checkpoint) (\d+)(?:\/\d+)?$/);
+      const match=step.name.match(/^(?:Warm local compiler cache \(checkpoint (\d+)\/\d+\)|Save compiler cache checkpoint (\d+)|Drop cache superseded by checkpoint (\d+))$/);
       if (step.conclusion === "skipped" && match) {
-        const n=Number(match[1]);
+        const n=Number(match[1] || match[2] || match[3]);
         if (skippedStart == null) skippedStart=n;
         skippedEnd=n;
         return;
