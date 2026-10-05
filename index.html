@@ -6,132 +6,157 @@
   <meta name="color-scheme" content="dark">
   <title>Argon CI Dashboard</title>
   <style>
-    :root {
-      --bg:#0d1117; --panel:#161b22; --panel2:#21262d; --border:#30363d;
-      --text:#f0f6fc; --muted:#8b949e; --green:#3fb950; --yellow:#d29922;
-      --red:#f85149; --blue:#58a6ff; --purple:#bc8cff;
+    :root{
+      --bg:#0d1117;--panel:#161b22;--panel2:#21262d;--border:#30363d;
+      --text:#f0f6fc;--muted:#8b949e;--green:#3fb950;--yellow:#d29922;
+      --red:#f85149;--blue:#58a6ff;--purple:#bc8cff;
     }
-    * { box-sizing:border-box; }
-    html { background:var(--bg); }
-    body {
-      margin:0; color:var(--text); background:var(--bg);
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{
+      margin:0;color:var(--text);background:var(--bg);
       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
     }
-    a { color:var(--blue); text-decoration:none; }
-    a:hover { text-decoration:underline; }
-    .wrap { max-width:1240px; margin:0 auto; padding:0 20px 48px; }
-    header {
-      position:sticky; top:0; z-index:10; background:rgba(22,27,34,.96);
-      backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
+    a{color:var(--blue);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:1280px;margin:0 auto;padding:0 20px 48px}
+    header{
+      position:sticky;top:0;z-index:10;background:rgba(22,27,34,.96);
+      backdrop-filter:blur(12px);border-bottom:1px solid var(--border)
     }
-    .head {
-      max-width:1240px; margin:0 auto; padding:16px 20px; display:flex;
-      align-items:center; gap:16px; justify-content:space-between;
+    .head{
+      max-width:1280px;margin:0 auto;padding:16px 20px;display:flex;
+      align-items:center;gap:16px;justify-content:space-between
     }
-    .brand { display:flex; align-items:baseline; gap:12px; min-width:0; }
-    .brand strong { font-size:22px; letter-spacing:.02em; }
-    .brand span { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .actions { display:flex; gap:8px; }
-    button,.button {
-      appearance:none; border:1px solid var(--border); background:var(--panel2);
-      color:var(--text); border-radius:8px; padding:8px 12px; font-weight:600;
-      cursor:pointer; text-decoration:none;
+    .brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+    .brand strong{font-size:22px;letter-spacing:.02em}
+    .brand span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .actions{display:flex;gap:8px}
+    button,.button{
+      appearance:none;border:1px solid var(--border);background:var(--panel2);
+      color:var(--text);border-radius:8px;padding:8px 12px;font-weight:600;
+      cursor:pointer;text-decoration:none
     }
-    button:hover,.button:hover { border-color:#6e7681; text-decoration:none; }
-    .hero {
-      margin:24px 0 20px; padding:22px; border:1px solid var(--border);
-      background:var(--panel); border-radius:14px;
+    button:hover,.button:hover{border-color:#6e7681;text-decoration:none}
+    button:disabled{opacity:.6;cursor:default}
+    .hero{
+      margin:24px 0 20px;padding:22px;border:1px solid var(--border);
+      background:var(--panel);border-radius:14px
     }
-    .hero-top { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; }
-    .hero h1 { margin:0 0 4px; font-size:30px; }
-    .meta { color:var(--muted); }
-    .pill {
-      display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border);
-      border-radius:999px; padding:8px 12px; font-weight:700; white-space:nowrap;
+    .hero-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+    .hero h1{margin:0 0 4px;font-size:30px}
+    .meta{color:var(--muted)}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);
+      border-radius:999px;padding:8px 12px;font-weight:700;white-space:nowrap
     }
-    .dot { width:10px; height:10px; border-radius:50%; background:var(--muted); }
-    .status-success .dot { background:var(--green); }
-    .status-failure .dot { background:var(--red); }
-    .status-progress .dot { background:var(--yellow); }
-    .status-queued .dot { background:var(--blue); }
-    .status-cancelled .dot,.status-skipped .dot { background:var(--muted); }
-    .section-title { margin:26px 0 12px; font-size:20px; }
-    .pipeline { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
-    .stage,.card {
-      border:1px solid var(--border); background:var(--panel); border-radius:12px; padding:16px;
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block}
+    .status-success .dot{background:var(--green)}
+    .status-failure .dot{background:var(--red)}
+    .status-progress .dot{background:var(--yellow)}
+    .status-queued .dot{background:var(--blue)}
+    .status-cancelled .dot,.status-skipped .dot{background:var(--muted)}
+    .metrics{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:20px
     }
-    .stage-name { display:flex; gap:10px; align-items:center; font-weight:700; min-height:42px; }
-    .stage-status { margin-top:18px; font-weight:700; }
-    .stage-detail { margin-top:6px; color:var(--muted); font-size:12px; min-height:36px; }
-    .stage-duration { margin-top:10px; font:700 15px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
-    .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:14px 0 0; }
-    .metric { border:1px solid var(--border); background:var(--panel2); border-radius:10px; padding:12px 14px; }
-    .metric .label { color:var(--muted); font-size:12px; }
-    .metric .value { margin-top:4px; font-size:18px; font-weight:800; }
-    .timeline { margin-top:14px; border:1px solid var(--border); background:var(--panel); border-radius:12px; padding:16px; }
-    .timeline-row { display:grid; grid-template-columns:130px 1fr 90px; gap:12px; align-items:center; margin:9px 0; }
-    .timeline-label { font-weight:700; }
-    .timeline-track { position:relative; height:12px; border-radius:999px; background:var(--panel2); overflow:hidden; }
-    .timeline-bar { position:absolute; top:0; bottom:0; border-radius:999px; background:var(--blue); min-width:3px; }
-    .timeline-row.critical .timeline-bar { background:var(--yellow); }
-    .timeline-time { text-align:right; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); }
-    .details { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
-    details.job-detail { border:1px solid var(--border); background:var(--panel); border-radius:12px; overflow:hidden; }
-    details.job-detail summary { cursor:pointer; padding:14px 16px; font-weight:800; list-style:none; display:flex; justify-content:space-between; gap:16px; }
-    details.job-detail summary::-webkit-details-marker { display:none; }
-    .steps { border-top:1px solid var(--border); }
-    .step-row { display:grid; grid-template-columns:26px 1fr auto; gap:10px; align-items:center; padding:9px 14px; border-top:1px solid rgba(48,54,61,.55); }
-    .step-row:first-child { border-top:0; }
-    .step-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .step-time { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); }
-    .step-icon { font-weight:900; }
-    .step-icon.success { color:var(--green); }
-    .step-icon.failure { color:var(--red); }
-    .step-icon.skipped { color:var(--muted); }
-    .grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,1fr); gap:16px; align-items:start; }
-    .history { overflow:hidden; padding:0; }
-    .run {
-      display:grid; grid-template-columns:70px 1.3fr .8fr 1fr auto; gap:12px;
-      align-items:center; padding:14px 16px; border-top:1px solid var(--border);
+    .metric{
+      padding:12px 14px;border:1px solid var(--border);background:var(--bg);border-radius:10px
     }
-    .run:first-child { border-top:0; }
-    .run-num { font-weight:800; font-size:16px; }
-    .run-kind,.run-time { color:var(--muted); }
-    .run-sha { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
-    .run-status { font-weight:700; }
-    .side-stack { display:grid; gap:16px; }
-    .card h3 { margin:0 0 14px; font-size:17px; }
-    .kv { display:grid; grid-template-columns:1fr auto; gap:8px 12px; margin-top:8px; }
-    .kv .k { color:var(--muted); }
-    .artifacts { margin:8px 0 0; padding-left:18px; }
-    .note {
-      margin-top:20px; color:var(--muted); padding:12px 14px;
-      border:1px solid var(--border); border-radius:10px; background:var(--panel);
+    .metric-label{color:var(--muted);font-size:12px}
+    .metric-value{font-weight:800;font-size:18px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .section-title{margin:26px 0 12px;font-size:20px}
+    .pipeline{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .stage,.card{
+      border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:16px
     }
-    .error { border-color:rgba(248,81,73,.55); color:#ffb4ad; }
-    .skeleton { color:var(--muted); }
-    footer { margin-top:24px; color:var(--muted); font-size:12px; text-align:center; }
-    @media (max-width:900px) {
-      .pipeline { grid-template-columns:1fr 1fr; }
-      .metrics { grid-template-columns:1fr 1fr; }
-      .details { grid-template-columns:1fr; }
-      .timeline-row { grid-template-columns:110px 1fr 80px; }
-      .grid { grid-template-columns:1fr; }
-      .run { grid-template-columns:62px 1fr auto; }
-      .run-sha,.run-time { display:none; }
+    .stage-name{display:flex;gap:10px;align-items:center;font-weight:700;min-height:42px}
+    .stage-status{margin-top:12px;font-weight:800}
+    .stage-detail{margin-top:5px;color:var(--muted);font-size:12px;min-height:36px}
+    .stage-time{font-size:20px;font-weight:800;margin-top:10px}
+    .timeline{
+      border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:16px
     }
-    @media (max-width:560px) {
-      .head { align-items:flex-start; }
-      .brand { display:block; }
-      .brand span { display:block; margin-top:2px; }
-      .actions .button { display:none; }
-      .hero-top { display:block; }
-      .hero .pill { margin-top:14px; }
-      .pipeline { grid-template-columns:1fr; }
-      .metrics { grid-template-columns:1fr; }
-      .timeline-row { grid-template-columns:1fr; gap:5px; }
-      .timeline-time { text-align:left; }
-      .hero h1 { font-size:25px; }
+    .timeline-row{
+      display:grid;grid-template-columns:150px minmax(0,1fr) 90px;gap:12px;align-items:center;
+      min-height:44px;border-top:1px solid rgba(48,54,61,.55)
+    }
+    .timeline-row:first-child{border-top:0}
+    .timeline-label{font-weight:700}
+    .timeline-time{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+    .track{position:relative;height:18px;background:var(--bg);border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    .bar{position:absolute;top:0;bottom:0;min-width:3px;border-radius:999px;background:var(--blue)}
+    .bar.success{background:var(--green)}
+    .bar.progress{background:var(--yellow)}
+    .bar.failure{background:var(--red)}
+    .architecture-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    details.arch{
+      border:1px solid var(--border);background:var(--panel);border-radius:12px;overflow:hidden
+    }
+    details.arch summary{
+      list-style:none;cursor:pointer;padding:16px;display:flex;gap:12px;align-items:center;
+      justify-content:space-between
+    }
+    details.arch summary::-webkit-details-marker{display:none}
+    .arch-title{display:flex;gap:10px;align-items:center;font-weight:800;font-size:16px}
+    .arch-summary{display:flex;gap:16px;align-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
+    .arch-body{border-top:1px solid var(--border);padding:0 16px 14px}
+    .arch-metrics{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+    .mini{
+      padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--muted)
+    }
+    .mini strong{color:var(--text)}
+    .step{
+      display:grid;grid-template-columns:minmax(0,1fr) 90px 90px;gap:10px;
+      padding:8px 0;border-top:1px solid rgba(48,54,61,.55);align-items:center
+    }
+    .step:first-child{border-top:0}
+    .step-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .step-status{font-size:12px;font-weight:800}
+    .step-time{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+    .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:16px;align-items:start}
+    .history{overflow:hidden;padding:0}
+    .run{
+      display:grid;grid-template-columns:70px 1.2fr .7fr 100px 110px auto;gap:12px;
+      align-items:center;padding:14px 16px;border-top:1px solid var(--border)
+    }
+    .run:first-child{border-top:0}
+    .run-num{font-weight:800;font-size:16px}
+    .run-kind,.run-time{color:var(--muted)}
+    .run-sha{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .run-duration{font-variant-numeric:tabular-nums;font-weight:700}
+    .run-status{font-weight:700}
+    .side-stack{display:grid;gap:16px}
+    .card h3{margin:0 0 14px;font-size:17px}
+    .kv{display:grid;grid-template-columns:1fr auto;gap:8px 12px;margin-top:8px}
+    .kv .k{color:var(--muted)}
+    .artifacts{margin:8px 0 0;padding-left:18px}
+    .artifact-size{color:var(--muted);margin-left:5px}
+    .note{
+      margin-top:20px;color:var(--muted);padding:12px 14px;
+      border:1px solid var(--border);border-radius:10px;background:var(--panel)
+    }
+    .error{border-color:rgba(248,81,73,.55);color:#ffb4ad}
+    .skeleton{color:var(--muted)}
+    .success-text{color:var(--green)}.failure-text{color:var(--red)}
+    .progress-text{color:var(--yellow)}.muted-text{color:var(--muted)}
+    footer{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
+    @media(max-width:1000px){
+      .metrics,.pipeline{grid-template-columns:1fr 1fr}
+      .architecture-grid,.grid{grid-template-columns:1fr}
+      .run{grid-template-columns:62px 1fr 90px auto}
+      .run-sha,.run-time{display:none}
+    }
+    @media(max-width:620px){
+      .head{align-items:flex-start}.brand{display:block}.brand span{display:block;margin-top:2px}
+      .actions .button{display:none}.hero-top{display:block}.hero .pill{margin-top:14px}
+      .metrics,.pipeline{grid-template-columns:1fr}.hero h1{font-size:25px}
+      .timeline-row{grid-template-columns:105px minmax(0,1fr);gap:8px}
+      .timeline-time{grid-column:2;text-align:left;margin-top:-8px;padding-bottom:6px}
+      .architecture-grid{grid-template-columns:1fr}
+      .arch-summary{display:block;text-align:right}
+      .step{grid-template-columns:minmax(0,1fr) 72px}
+      .step-status{display:none}
+      .run{grid-template-columns:55px 1fr auto}.run-duration{display:none}
     }
   </style>
 </head>
@@ -158,13 +183,17 @@
       </div>
       <div class="pill status-queued" id="run-pill"><span class="dot"></span><span>LOADING</span></div>
     </div>
+    <div class="metrics" id="metrics"></div>
   </section>
 
   <h2 class="section-title">Pipeline</h2>
   <section class="pipeline" id="pipeline"></section>
-  <section class="metrics" id="metrics"></section>
-  <section class="timeline" id="timeline"></section>
-  <section class="details" id="job-details"></section>
+
+  <h2 class="section-title">Build timeline</h2>
+  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
+
+  <h2 class="section-title">Architecture details</h2>
+  <section class="architecture-grid" id="architectures"></section>
 
   <div class="grid">
     <div>
@@ -189,7 +218,8 @@
         <div class="kv">
           <div class="k">Mode</div><div>Read-only</div>
           <div class="k">Backend</div><div>GitHub Actions</div>
-          <div class="k">Refresh</div><div>10 minutes</div>
+          <div class="k">API refresh</div><div>10 minutes</div>
+          <div class="k">Elapsed timer</div><div>Live</div>
         </div>
       </section>
     </div>
@@ -206,11 +236,54 @@
   const REPO = "Loopfade/argon";
   const API = "https://api.github.com/repos/" + REPO;
   const RUNS_URL = API + "/actions/workflows/build.yml/runs?branch=main&per_page=12";
+  let model = null;
 
   const $ = id => document.getElementById(id);
-  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({
+  const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[c]));
+
+  function ms(value) {
+    if (!value) return null;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function endTime(item) {
+    return ms(item && (item.completed_at || item.updated_at)) ||
+      ((item && item.status !== "completed") ? Date.now() : null);
+  }
+
+  function startTime(item) {
+    return ms(item && (item.started_at || item.run_started_at || item.created_at));
+  }
+
+  function durationMs(item) {
+    const start = startTime(item);
+    const end = endTime(item);
+    if (start == null || end == null) return null;
+    return Math.max(0, end - start);
+  }
+
+  function formatDuration(value) {
+    if (value == null || !Number.isFinite(value)) return "—";
+    let seconds = Math.max(0, Math.round(value / 1000));
+    const hours = Math.floor(seconds / 3600);
+    seconds -= hours * 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds -= minutes * 60;
+    if (hours) return hours + "h " + String(minutes).padStart(2,"0") + "m " + String(seconds).padStart(2,"0") + "s";
+    if (minutes) return minutes + "m " + String(seconds).padStart(2,"0") + "s";
+    return seconds + "s";
+  }
+
+  function formatBytes(bytes) {
+    const value = Number(bytes || 0);
+    if (!value) return "0 B";
+    const units = ["B","KiB","MiB","GiB"];
+    const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
+    return (value / Math.pow(1024,index)).toFixed(index < 2 ? 0 : 1) + " " + units[index];
+  }
 
   function state(item) {
     if (!item) return { key:"queued", label:"WAITING" };
@@ -229,33 +302,16 @@
       timed_out:["failure","TIMED OUT"],
       action_required:["failure","ACTION REQUIRED"]
     };
-    const [key,label] = map[conclusion] || ["cancelled", conclusion.toUpperCase()];
-    return { key, label };
+    const pair = map[conclusion] || ["cancelled", conclusion.toUpperCase()];
+    return { key:pair[0], label:pair[1] };
   }
 
-  function durationMs(item) {
-    if (!item || !item.started_at) return null;
-    const end = item.completed_at ? new Date(item.completed_at).getTime() : Date.now();
-    return Math.max(0, end - new Date(item.started_at).getTime());
-  }
-
-  function formatDuration(ms) {
-    if (ms == null || !Number.isFinite(ms)) return "—";
-    const total = Math.max(0, Math.round(ms / 1000));
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = total % 60;
-    if (h) return h + "h " + String(m).padStart(2,"0") + "m " + String(s).padStart(2,"0") + "s";
-    if (m) return m + "m " + String(s).padStart(2,"0") + "s";
-    return s + "s";
-  }
-
-  function runDuration(run) {
-    if (!run) return null;
-    const start = run.run_started_at || run.created_at;
-    if (!start) return null;
-    const end = run.status === "completed" ? (run.updated_at || run.created_at) : new Date().toISOString();
-    return Math.max(0, new Date(end).getTime() - new Date(start).getTime());
+  function statusTextClass(item) {
+    const s = state(item).key;
+    if (s === "success") return "success-text";
+    if (s === "failure") return "failure-text";
+    if (s === "progress") return "progress-text";
+    return "muted-text";
   }
 
   function timeAgo(value) {
@@ -275,7 +331,7 @@
     return event || "Unknown";
   }
 
-  async function request(url, optional=false) {
+  async function request(url, optional) {
     const response = await fetch(url, {
       headers: { "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" },
       cache:"no-store"
@@ -285,165 +341,220 @@
     return response.json();
   }
 
+  function findJobs(jobs) {
+    const find = predicate => jobs.find(predicate);
+    return {
+      gate: find(j => j.name === "Require latest compatible prepared image"),
+      arm64: find(j => j.name.includes("Build and verify arm64")),
+      arm: find(j => j.name.includes("Build and verify arm /")),
+      publish: find(j => j.name.includes("Publish verified dual-ARM release"))
+    };
+  }
+
   function renderPill(target, item) {
     const s = state(item);
     target.className = "pill status-" + s.key;
     target.innerHTML = '<span class="dot"></span><span>' + esc(s.label) + '</span>';
   }
 
-  function deriveVerification(arm64, arm) {
-    if (!arm64 || !arm) return null;
-    const items = [arm64, arm];
-    if (items.some(x => x.status === "completed" && x.conclusion === "failure"))
-      return { status:"completed", conclusion:"failure" };
-    if (items.every(x => x.status === "completed" && x.conclusion === "success"))
-      return { status:"completed", conclusion:"success" };
-    if (items.some(x => x.status === "in_progress"))
-      return { status:"queued", conclusion:null };
-    return { status:"queued", conclusion:null };
+  function jobDuration(job) {
+    return formatDuration(durationMs(job));
   }
 
-  function importantSteps(job) {
-    if (!job || !Array.isArray(job.steps)) return [];
-    const rows = [];
-    let skippedWarm = 0;
-    for (const step of job.steps) {
-      const name = step.name || "";
-      const isNoise = name === "Set up job" || name === "Complete job" ||
-        name.startsWith("Post Run actions/checkout") || name.startsWith("Post Set up Docker");
-      if (isNoise) continue;
-      if (step.conclusion === "skipped" &&
-          (name.startsWith("Warm local compiler cache") ||
-           name.startsWith("Save compiler cache checkpoint") ||
-           name.startsWith("Drop cache superseded"))) {
-        skippedWarm++;
-        continue;
-      }
-      rows.push(step);
-    }
-    if (skippedWarm) rows.push({
-      name: skippedWarm + " skipped cache checkpoint steps",
-      status:"completed", conclusion:"skipped", started_at:null, completed_at:null
-    });
-    return rows;
+  function criticalPath(parts) {
+    const candidates = [
+      ["arm64-v8a", parts.arm64],
+      ["armeabi-v7a", parts.arm]
+    ].filter(x => x[1] && durationMs(x[1]) != null);
+    if (!candidates.length) return "—";
+    candidates.sort((a,b) => durationMs(b[1]) - durationMs(a[1]));
+    return candidates[0][0];
   }
 
-  function renderJobDetails(arm64, arm) {
-    const jobs = [["arm64-v8a",arm64],["armeabi-v7a",arm]];
-    $("job-details").innerHTML = jobs.map(([label,job]) => {
-      if (!job) return "";
-      const s = state(job);
-      const steps = importantSteps(job).map(step => {
-        const ss = state(step);
-        const icon = ss.key === "success" ? "✓" : ss.key === "failure" ? "✕" : ss.key === "skipped" ? "–" : "•";
-        return '<div class="step-row">' +
-          '<div class="step-icon ' + esc(ss.key) + '">' + icon + '</div>' +
-          '<div class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</div>' +
-          '<div class="step-time">' + esc(formatDuration(durationMs(step))) + '</div>' +
-        '</div>';
-      }).join("");
-      return '<details class="job-detail">' +
-        '<summary><span>' + esc(label) + ' · ' + esc(s.label) + '</span><span>' +
-          esc(formatDuration(durationMs(job))) + '</span></summary>' +
-        '<div class="steps">' + steps + '</div>' +
-      '</details>';
-    }).join("");
-  }
-
-  function renderTimeline(gate, arm64, arm, publish) {
+  function renderMetrics(latest, jobs) {
+    const parts = findJobs(jobs);
+    const total = durationMs(latest);
     const items = [
-      ["Gate", gate],
-      ["arm64", arm64],
-      ["armv7", arm],
-      ["Publish", publish]
-    ].filter(([,j]) => j && j.started_at);
-    if (!items.length) {
-      $("timeline").innerHTML = '<div class="meta">Timeline unavailable.</div>';
-      return;
-    }
-    const starts = items.map(([,j]) => new Date(j.started_at).getTime());
-    const ends = items.map(([,j]) => j.completed_at ? new Date(j.completed_at).getTime() : Date.now());
-    const min = Math.min(...starts), max = Math.max(...ends), span = Math.max(1, max-min);
-    const buildJobs = [["arm64",arm64],["armv7",arm]].filter(([,j])=>j);
-    let critical = "";
-    if (buildJobs.length) critical = buildJobs.sort((a,b)=>(durationMs(b[1])||0)-(durationMs(a[1])||0))[0][0];
-    $("timeline").innerHTML = '<strong>Wall-clock timeline</strong>' + items.map(([label,j]) => {
-      const start = new Date(j.started_at).getTime();
-      const end = j.completed_at ? new Date(j.completed_at).getTime() : Date.now();
-      const left = ((start-min)/span)*100;
-      const width = Math.max(0.5, ((end-start)/span)*100);
-      return '<div class="timeline-row ' + (label === critical ? "critical" : "") + '">' +
-        '<div class="timeline-label">' + esc(label) + (label === critical ? ' · critical' : '') + '</div>' +
-        '<div class="timeline-track"><div class="timeline-bar" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div></div>' +
-        '<div class="timeline-time">' + esc(formatDuration(end-start)) + '</div>' +
-      '</div>';
-    }).join("");
+      ["Wall time", formatDuration(total)],
+      ["arm64-v8a", jobDuration(parts.arm64)],
+      ["armeabi-v7a", jobDuration(parts.arm)],
+      ["Critical path", criticalPath(parts)],
+      ["Publish", jobDuration(parts.publish)]
+    ];
+    $("metrics").innerHTML = items.map(item =>
+      '<div class="metric"><div class="metric-label">' + esc(item[0]) +
+      '</div><div class="metric-value">' + esc(item[1]) + '</div></div>'
+    ).join("");
   }
 
-  function renderPipeline(jobs, latest) {
-    const find = predicate => jobs.find(predicate);
-    const gate = find(j => j.name === "Require latest compatible prepared image");
-    const arm64 = find(j => j.name.includes("Build and verify arm64"));
-    const arm = find(j => j.name.includes("Build and verify arm /"));
-    const publish = find(j => j.name.includes("Publish verified dual-ARM release"));
-    const verification = deriveVerification(arm64, arm);
-
+  function renderPipeline(latest, jobs) {
+    const parts = findJobs(jobs);
     const stages = [
-      ["Prepared image", gate, "Compatibility gate"],
-      ["arm64-v8a", arm64, "Build, sign and verify APK"],
-      ["armeabi-v7a", arm, "Build, sign and verify APK"],
-      ["Verification", verification, "Both ABI jobs must succeed"],
-      ["Publish", publish, "Automatic for manual release build"]
+      ["Prepared image", parts.gate, "Compatibility gate"],
+      ["arm64-v8a", parts.arm64, "Build, sign and verify APK"],
+      ["armeabi-v7a", parts.arm, "Build, sign and verify APK"],
+      ["Publish", parts.publish, "Verify provenance and create release"],
+      ["Total", latest, "End-to-end wall time"]
     ];
 
-    $("pipeline").innerHTML = stages.map(([name,item,detail]) => {
-      const s = state(item);
-      const duration = (name === "Verification") ? null : durationMs(item);
+    $("pipeline").innerHTML = stages.map(row => {
+      const name=row[0], item=row[1], detail=row[2], s=state(item);
       return '<article class="stage">' +
         '<div class="stage-name"><span class="dot" style="background:var(--' +
           (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
           ')"></span><span>' + esc(name) + '</span></div>' +
-        '<div class="stage-status status-' + esc(s.key) + '">' + esc(s.label) + '</div>' +
-        '<div class="stage-duration">' + esc(formatDuration(duration)) + '</div>' +
+        '<div class="stage-status ' + statusTextClass(item) + '">' + esc(s.label) + '</div>' +
+        '<div class="stage-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
         '<div class="stage-detail">' + esc(detail) + '</div>' +
       '</article>';
     }).join("");
+  }
 
-    const arm64Ms=durationMs(arm64), armMs=durationMs(arm);
-    const critical = arm64Ms != null || armMs != null
-      ? (armMs >= arm64Ms ? "armeabi-v7a" : "arm64-v8a") : "—";
-    const doneSteps = [arm64,arm].flatMap(j => j?.steps || []).filter(s => s.conclusion === "success").length;
-    $("metrics").innerHTML =
-      '<div class="metric"><div class="label">Total wall time</div><div class="value" data-live-duration>' + esc(formatDuration(runDuration(latest))) + '</div></div>' +
-      '<div class="metric"><div class="label">Critical path</div><div class="value">' + esc(critical) + '</div></div>' +
-      '<div class="metric"><div class="label">arm64 / armv7</div><div class="value">' + esc(formatDuration(arm64Ms)) + ' / ' + esc(formatDuration(armMs)) + '</div></div>' +
-      '<div class="metric"><div class="label">Completed steps</div><div class="value">' + esc(doneSteps) + '</div></div>';
+  function renderTimeline(latest, jobs) {
+    const parts=findJobs(jobs);
+    const runStart=startTime(latest);
+    const runEnd=endTime(latest);
+    const total=(runStart != null && runEnd != null) ? Math.max(1,runEnd-runStart) : 1;
 
-    renderTimeline(gate,arm64,arm,publish);
-    renderJobDetails(arm64,arm);
+    const rows = [
+      ["Prepared image", parts.gate],
+      ["arm64-v8a", parts.arm64],
+      ["armeabi-v7a", parts.arm],
+      ["Publish", parts.publish]
+    ].filter(row => row[1]);
+
+    $("timeline").innerHTML = rows.map(row => {
+      const name=row[0], item=row[1];
+      const start=startTime(item), end=endTime(item);
+      const left=start == null ? 0 : Math.max(0,Math.min(100,((start-runStart)/total)*100));
+      const width=(start == null || end == null) ? 0 :
+        Math.max(.4,Math.min(100-left,((end-start)/total)*100));
+      const s=state(item);
+      return '<div class="timeline-row">' +
+        '<div class="timeline-label">' + esc(name) + '</div>' +
+        '<div class="track"><div class="bar ' + esc(s.key) + '" style="left:' +
+          left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div></div>' +
+        '<div class="timeline-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function checkpointStats(job) {
+    const warm=(job && job.steps || []).filter(s => /^Warm local compiler cache \(checkpoint \d+\/\d+\)$/.test(s.name));
+    return {
+      success:warm.filter(s => s.conclusion === "success").length,
+      skipped:warm.filter(s => s.conclusion === "skipped").length,
+      total:warm.length
+    };
+  }
+
+  function stepByName(job, fragment) {
+    return (job && job.steps || []).find(s => s.name.includes(fragment));
+  }
+
+  function visibleSteps(job) {
+    if (!job || !job.steps) return [];
+    const hidden = name =>
+      name === "Set up job" || name === "Complete job" || name.startsWith("Post ");
+    const output=[];
+    let skippedStart=null, skippedEnd=null;
+
+    function flushSkipped() {
+      if (skippedStart == null) return;
+      output.push({
+        name:"Cache checkpoints " + skippedStart + (skippedEnd !== skippedStart ? "–" + skippedEnd : ""),
+        status:"completed", conclusion:"skipped", started_at:null, completed_at:null, synthetic:true
+      });
+      skippedStart=null; skippedEnd=null;
+    }
+
+    job.steps.forEach(step => {
+      if (hidden(step.name)) return;
+      const match=step.name.match(/^(?:Warm local compiler cache|Save compiler cache checkpoint|Drop cache superseded by checkpoint) (\d+)(?:\/\d+)?$/);
+      if (step.conclusion === "skipped" && match) {
+        const n=Number(match[1]);
+        if (skippedStart == null) skippedStart=n;
+        skippedEnd=n;
+        return;
+      }
+      flushSkipped();
+      output.push(step);
+    });
+    flushSkipped();
+
+    const dedup=[];
+    output.forEach(step => {
+      if (step.synthetic && dedup.length && dedup[dedup.length-1].synthetic &&
+          dedup[dedup.length-1].name === step.name) return;
+      dedup.push(step);
+    });
+    return dedup;
+  }
+
+  function renderArchitecture(name, job) {
+    if (!job) {
+      return '<details class="arch"><summary><div class="arch-title">' + esc(name) +
+        '</div><div class="arch-summary">Waiting</div></summary></details>';
+    }
+    const s=state(job);
+    const stats=checkpointStats(job);
+    const apk=stepByName(job,"Build, sign and verify APK");
+    const restore=stepByName(job,"Restore compiler cache");
+    const steps=visibleSteps(job);
+
+    return '<details class="arch" open>' +
+      '<summary><div class="arch-title"><span class="dot" style="background:var(--' +
+        (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
+        ')"></span>' + esc(name) + '</div>' +
+        '<div class="arch-summary"><strong>' + esc(formatDuration(durationMs(job))) +
+        '</strong> · ' + esc(s.label) + '</div></summary>' +
+      '<div class="arch-body">' +
+        '<div class="arch-metrics">' +
+          '<div class="mini">Warm-up <strong>' + esc(stats.success) + '/' + esc(stats.total || 20) + '</strong></div>' +
+          '<div class="mini">APK <strong>' + esc(formatDuration(durationMs(apk))) + '</strong></div>' +
+          '<div class="mini">Cache restore <strong>' + esc(formatDuration(durationMs(restore))) + '</strong></div>' +
+        '</div>' +
+        steps.map(step => {
+          const ss=state(step);
+          return '<div class="step">' +
+            '<div class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</div>' +
+            '<div class="step-status ' + statusTextClass(step) + '">' + esc(ss.label) + '</div>' +
+            '<div class="step-time">' + esc(step.synthetic ? "—" : formatDuration(durationMs(step))) + '</div>' +
+          '</div>';
+        }).join("") +
+      '</div></details>';
+  }
+
+  function renderArchitectures(jobs) {
+    const parts=findJobs(jobs);
+    $("architectures").innerHTML =
+      renderArchitecture("arm64-v8a",parts.arm64) +
+      renderArchitecture("armeabi-v7a",parts.arm);
   }
 
   function renderHistory(runs) {
     $("history").innerHTML = runs.map(run => {
-      const s = state(run);
-      const url = run.html_url;
-      return '<a class="run" href="' + esc(url) + '">' +
+      const s=state(run);
+      return '<a class="run" href="' + esc(run.html_url) + '">' +
         '<div class="run-num">#' + esc(run.run_number) + '</div>' +
-        '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' + esc(run.head_branch || "") + '</div></div>' +
+        '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' +
+          esc(run.head_branch || "") + '</div></div>' +
         '<div class="run-sha">' + esc((run.head_sha || "").slice(0,7)) + '</div>' +
-        '<div class="run-time">' + esc(formatDuration(runDuration(run))) + '<br><span class="meta">' + esc(timeAgo(run.updated_at || run.created_at)) + '</span></div>' +
-        '<div class="run-status status-' + esc(s.key) + '">' + esc(s.label) + '</div>' +
+        '<div class="run-time">' + esc(timeAgo(run.updated_at || run.created_at)) + '</div>' +
+        '<div class="run-duration">' + esc(formatDuration(durationMs(run))) + '</div>' +
+        '<div class="run-status ' + statusTextClass(run) + '">' + esc(s.label) + '</div>' +
       '</a>';
     }).join("") || '<div class="run">No Build Argon runs found.</div>';
   }
 
   function renderRelease(release) {
-    const box = $("release-card");
+    const box=$("release-card");
     if (!release) {
-      box.innerHTML = '<h3>Latest published release</h3><div class="meta">No published release yet.</div>';
+      box.innerHTML='<h3>Latest published release</h3><div class="meta">No published release yet.</div>';
       return;
     }
-    box.innerHTML = '<h3><a href="' + esc(release.html_url) + '">' + esc(release.name || release.tag_name) + '</a></h3>' +
+    box.innerHTML='<h3><a href="' + esc(release.html_url) + '">' +
+      esc(release.name || release.tag_name) + '</a></h3>' +
       '<div class="kv">' +
         '<div class="k">Tag</div><div>' + esc(release.tag_name) + '</div>' +
         '<div class="k">Published</div><div>' + esc(timeAgo(release.published_at)) + '</div>' +
@@ -452,63 +563,81 @@
   }
 
   function renderArtifacts(artifacts, run) {
-    const box = $("artifacts-card");
-    const list = artifacts && artifacts.artifacts ? artifacts.artifacts : [];
+    const box=$("artifacts-card");
+    const list=artifacts && artifacts.artifacts ? artifacts.artifacts : [];
     if (!list.length) {
-      box.innerHTML = '<h3>Latest run artifacts</h3><div class="meta">No artifacts available yet.</div>';
+      box.innerHTML='<h3>Latest run artifacts</h3><div class="meta">No artifacts available yet.</div>';
       return;
     }
-    box.innerHTML = '<h3>Latest run artifacts</h3><ul class="artifacts">' +
-      list.map(a => '<li>' + esc(a.name) + '</li>').join("") +
+    box.innerHTML='<h3>Latest run artifacts</h3><ul class="artifacts">' +
+      list.map(a => '<li>' + esc(a.name) + '<span class="artifact-size">' +
+        esc(formatBytes(a.size_in_bytes)) + '</span></li>').join("") +
       '</ul><p><a href="' + esc(run.html_url) + '">Open run to download</a></p>';
   }
 
+  function renderModel() {
+    if (!model) return;
+    const latest=model.latest, jobs=model.jobs;
+    $("run-title").innerHTML='<a href="' + esc(latest.html_url) + '">Build Argon #' +
+      esc(latest.run_number) + '</a>';
+    $("run-meta").textContent =
+      eventLabel(latest.event) + "  •  " + (latest.head_sha || "").slice(0,7) +
+      "  •  " + (latest.head_branch || "—") + "  •  started " + timeAgo(latest.run_started_at || latest.created_at);
+    renderPill($("run-pill"),latest);
+    renderMetrics(latest,jobs);
+    renderPipeline(latest,jobs);
+    renderTimeline(latest,jobs);
+    renderArchitectures(jobs);
+    renderHistory(model.runs);
+    renderRelease(model.release);
+    renderArtifacts(model.artifacts,latest);
+  }
+
   async function loadDashboard() {
-    const refresh = $("refresh");
-    refresh.disabled = true;
-    refresh.textContent = "Refreshing…";
+    const refresh=$("refresh");
+    refresh.disabled=true;
+    refresh.textContent="Refreshing…";
     $("notice").classList.remove("error");
-
     try {
-      const runsData = await request(RUNS_URL);
-      const runs = runsData.workflow_runs || [];
-      const latest = runs[0];
-
+      const runsData=await request(RUNS_URL,false);
+      const runs=(runsData.workflow_runs || []);
+      const latest=runs[0];
       if (!latest) throw new Error("No Build Argon runs found.");
 
-      const [jobsData, artifactsData, release] = await Promise.all([
-        request(API + "/actions/runs/" + latest.id + "/jobs?filter=latest&per_page=100"),
-        request(API + "/actions/runs/" + latest.id + "/artifacts?per_page=100"),
-        request(API + "/releases/latest", true)
+      const results=await Promise.all([
+        request(API + "/actions/runs/" + latest.id + "/jobs?filter=latest&per_page=100",false),
+        request(API + "/actions/runs/" + latest.id + "/artifacts?per_page=100",false),
+        request(API + "/releases/latest",true)
       ]);
 
-      $("run-title").innerHTML = '<a href="' + esc(latest.html_url) + '">Build Argon #' + esc(latest.run_number) + '</a>';
-      $("run-meta").textContent =
-        eventLabel(latest.event) + "  •  " + (latest.head_sha || "").slice(0,7) +
-        "  •  " + (latest.head_branch || "—") + "  •  " + timeAgo(latest.created_at);
-      renderPill($("run-pill"), latest);
-      renderPipeline(jobsData.jobs || [], latest);
-      renderHistory(runs);
-      renderRelease(release);
-      renderArtifacts(artifactsData, latest);
-
+      model={
+        latest:latest,
+        runs:runs,
+        jobs:results[0].jobs || [],
+        artifacts:results[1],
+        release:results[2]
+      };
+      renderModel();
       $("notice").textContent =
-        "Read-only dashboard. Data comes directly from the public GitHub API; this page cannot start, rerun or cancel builds.";
-    } catch (error) {
+        "Read-only dashboard. Timings come from GitHub job/step timestamps. This page cannot start, rerun or cancel builds.";
+    } catch(error) {
       console.error(error);
       $("notice").classList.add("error");
       $("notice").textContent =
         "Could not refresh GitHub data: " + error.message +
         ". Public API requests are rate-limited; try again later or open GitHub Actions.";
     } finally {
-      refresh.disabled = false;
-      refresh.textContent = "Refresh";
+      refresh.disabled=false;
+      refresh.textContent="Refresh";
     }
   }
 
-  $("refresh").addEventListener("click", loadDashboard);
+  $("refresh").addEventListener("click",loadDashboard);
   loadDashboard();
-  setInterval(loadDashboard, 10 * 60 * 1000);
+  setInterval(loadDashboard,10*60*1000);
+  setInterval(() => {
+    if (model && model.latest && model.latest.status !== "completed") renderModel();
+  },1000);
 })();
 </script>
 </body>
