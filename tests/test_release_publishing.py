@@ -188,12 +188,18 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("Allowing publication across documentation-only main drift", workflow)
         self.assertIn("Skipping stale release", workflow)
 
-    def test_prepared_image_workflow_does_not_loop_back_from_build_argon(self):
+    def test_main_build_is_manual_only_and_prepared_image_does_not_start_apk(self):
         image_workflow = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
-        trigger = image_workflow.split("\npermissions:", 1)[0]
-        self.assertNotIn("workflow_run:", trigger)
+        image_trigger = image_workflow.split("\npermissions:", 1)[0]
+        self.assertNotIn("workflow_run:", image_trigger)
+
         build_workflow = (ROOT / ".github/workflows/build.yml").read_text()
-        self.assertIn("workflows: [Build prepared Chromium image]", build_workflow)
+        trigger = build_workflow.split("\npermissions:", 1)[0]
+        self.assertIn("workflow_dispatch:", trigger)
+        self.assertIn("pull_request:", trigger)
+        self.assertNotIn("push:", trigger)
+        self.assertNotIn("workflow_run:", trigger)
+        self.assertNotIn("workflows: [Build prepared Chromium image]", trigger)
 
     def test_publish_is_reusable_and_only_runs_for_manual_release_build(self):
         publisher = (ROOT / ".github/workflows/publish-release.yml").read_text()
@@ -216,12 +222,13 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn('[[ "$run_event" == workflow_dispatch ]]', publisher)
         self.assertNotIn("push|workflow_run) ;;", publisher)
 
-    def test_release_policy_changes_trigger_a_fresh_dual_arm_build(self):
+    def test_release_policy_changes_are_checked_in_pull_requests_without_auto_main_build(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()
-        self.assertGreaterEqual(
-            workflow.count("'.github/workflows/publish-release.yml'"), 2
-        )
-        self.assertGreaterEqual(workflow.count("'scripts/release_policy.py'"), 2)
+        trigger = workflow.split("\npermissions:", 1)[0]
+        self.assertIn("'.github/workflows/publish-release.yml'", trigger)
+        self.assertIn("'scripts/release_policy.py'", trigger)
+        self.assertNotIn("push:", trigger)
+        self.assertIn("workflow_dispatch:", trigger)
 
     def test_primary_build_runs_both_arm_architectures_in_parallel(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()

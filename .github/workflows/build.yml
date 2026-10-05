@@ -1,18 +1,6 @@
 name: Build Argon
 
 on:
-  push:
-    branches: [main]
-    # Runtime changes can reuse a compatible prepared image.
-    paths:
-      - '.github/workflows/build.yml'
-      - '.github/workflows/build-arch.yml'
-      - '.github/workflows/continue-build.yml'
-      - '.github/workflows/publish-release.yml'
-      - '.github/ci/**'
-      - 'scripts/release_policy.py'
-      - 'scripts/sign_and_verify.py'
-      - 'scripts/VerifyReleaseKey.java'
   pull_request:
     # PR builds use a temporary signing key and still verify prepared inputs.
     paths:
@@ -24,10 +12,6 @@ on:
       - 'scripts/release_policy.py'
       - 'scripts/sign_and_verify.py'
       - 'scripts/VerifyReleaseKey.java'
-  workflow_run:
-    workflows: [Build prepared Chromium image]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       runner:
@@ -54,41 +38,12 @@ permissions:
   pull-requests: read
 
 concurrency:
-  # Different revisions must be able to start long enough to cancel stale work.
-  # Duplicate runs of the same revision collapse to one.
+  # Duplicate manual/PR runs of the same revision collapse to one.
   group: ${{ format('argon-{0}-{1}', github.ref, github.sha) }}
   cancel-in-progress: true
 
 jobs:
-  supersede:
-    name: Cancel stale main builds
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Cancel older active Build Argon runs
-        if: >-
-          (github.event_name == 'push' || github.event_name == 'workflow_run') &&
-          github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          CURRENT_RUN_ID: ${{ github.run_id }}
-          CURRENT_SHA: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh api --paginate "repos/$GH_REPO/actions/workflows/build.yml/runs?branch=main&per_page=100" \
-            --jq '.workflow_runs[] | [.id, .head_sha, .status] | @tsv' |
-          while read -r run_id head_sha status; do
-            if [[ "$run_id" == "$CURRENT_RUN_ID" || "$status" == completed || "$head_sha" == "$CURRENT_SHA" ]]; then
-              continue
-            fi
-            echo "Cancelling stale Build Argon run $run_id ($head_sha, $status)"
-            gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel" >/dev/null || true
-          done
-
   gate:
-    needs: supersede
     name: Require latest compatible prepared image
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -103,9 +58,6 @@ jobs:
           CURRENT_RUN_ID: ${{ github.run_id }}
           CURRENT_SHA: ${{ github.sha }}
           EVENT_NAME: ${{ github.event_name }}
-          TRIGGER_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          TRIGGER_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
-          TRIGGER_BRANCH: ${{ github.event.workflow_run.head_branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -160,12 +112,6 @@ jobs:
             exit 0
           fi
 
-          if [[ "$EVENT_NAME" == workflow_run ]]; then
-            if [[ "$TRIGGER_CONCLUSION" != success || "$TRIGGER_REPO" != "$GH_REPO" || "$TRIGGER_BRANCH" != main ]]; then
-              defer "Prepared-image workflow was not a trusted successful main build."
-            fi
-          fi
-
           active_image_runs=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&per_page=20"             --jq '[.workflow_runs[] | select(.status != "completed")] | length')
           if (( active_image_runs > 0 )); then
             defer "A newer prepared-image build is still active; defer APK until it completes."
@@ -184,7 +130,7 @@ jobs:
           allow "Latest successful prepared image ($latest_image_sha) is compatible with current main."
 
   build:
-    needs: [supersede, gate]
+    needs: gate
     # The gate requires the newest successful compatible prepared image.
     # Both Android ARM ABIs run concurrently and keep architecture-scoped
     # compiler caches through build-arch.yml.
@@ -201,9 +147,8 @@ jobs:
       # build-arch.yml resolves it to an immutable digest before pulling.
       image: ghcr.io/${{ github.repository_owner }}/argon-build:branch-main
       runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-24.04' }}
-      # Trusted pushes to main use the permanent release key.
-      # Pull-request builds keep their temporary key, including same-repo PRs.
-      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || ((github.event_name == 'push' || github.event_name == 'workflow_run') && 'release' || 'test') }}
+      # Manual builds use the selected key; pull requests always use a temporary key.
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
       continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
     secrets: inherit
 
