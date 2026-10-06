@@ -64,6 +64,31 @@ class ReleasePublishingTests(unittest.TestCase):
             )
         )
 
+    def test_rename_checks_both_paths_for_main_and_release_payload_drift(self):
+        production = "chromium_overlay/net/cert/titanium_ru_constraints.h"
+        documentation = "docs/titanium_ru_constraints.h"
+        for old, new in ((production, documentation), (documentation, production)):
+            compare = {"status": "ahead", "files": [{"status": "renamed",
+                       "previous_filename": old, "filename": new}]}
+            with self.subTest(old=old, new=new):
+                self.assertEqual(release_policy.unsafe_main_drift(compare), [production])
+                self.assertEqual(release_policy.unsafe_release_payload_drift(compare),
+                                 [production])
+        compare["files"] = [{"status": "renamed", "filename": "docs/new.md",
+                             "previous_filename": "docs/old.md"}]
+        self.assertEqual(release_policy.unsafe_main_drift(compare), [])
+        self.assertEqual(release_policy.unsafe_release_payload_drift(compare), [])
+
+    def test_missing_or_invalid_rename_metadata_fails_closed(self):
+        for previous in (None, "", 42):
+            item = {"status": "renamed", "filename": "docs/new.md"}
+            if previous is not None:
+                item["previous_filename"] = previous
+            compare = {"status": "ahead", "files": [item]}
+            with self.subTest(previous=previous):
+                self.assertTrue(release_policy.unsafe_main_drift(compare))
+                self.assertTrue(release_policy.unsafe_release_payload_drift(compare))
+
     def test_nested_release_artifact_layout_is_supported(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

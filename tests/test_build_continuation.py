@@ -34,6 +34,10 @@ class ContinuationTests(unittest.TestCase):
                                "RESUME_RUN": "123", "RESUME_ATTEMPT": "3",
                                "RESUME_SHA": self.merge}
         self.writes = []
+        self.jobs = [{"id": 201 + index, "name": name, "conclusion": "failure"}
+                     for index, name in enumerate(continuation.BUILD_JOBS)]
+        self.artifacts = [{"name": f"argon-continuation-3-{arch}", "expired": False}
+                          for arch in ("arm64", "arm")]
 
     def api(self, repository, path, payload=None):
         self.assertEqual(repository, self.repository)
@@ -46,6 +50,11 @@ class ContinuationTests(unittest.TestCase):
             return {"object": {"sha": self.branch_sha}}
         if path == "pulls/11":
             return copy.deepcopy(self.pr)
+        if path == "actions/runs/123/attempts/3/jobs?per_page=100":
+            return {"total_count": len(self.jobs), "jobs": copy.deepcopy(self.jobs)}
+        if path == "actions/runs/123/artifacts?per_page=100":
+            return {"total_count": len(self.artifacts),
+                    "artifacts": copy.deepcopy(self.artifacts)}
         self.fail(f"Unexpected API path {path}")
 
     def test_pr_schedules_main_controller_with_original_merge_sha(self):
@@ -59,6 +68,56 @@ class ContinuationTests(unittest.TestCase):
         with patch.object(continuation, "api", side_effect=self.api):
             continuation.resume(self.controller_env)
         self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
+
+    def test_mixed_budget_and_compiler_or_oom_failure_retries_only_budget_job(self):
+        # The run-level conclusion cannot distinguish compiler errors from OOM.
+        # Only the explicit per-attempt budget marker authorizes continuation.
+        for budget_arch in ("arm64", "arm"):
+            with self.subTest(budget_arch=budget_arch):
+                self.writes.clear()
+                self.artifacts = [{"name": f"argon-continuation-3-{budget_arch}",
+                                   "expired": False}]
+                job = next(job for job in self.jobs
+                           if continuation.BUILD_JOBS[job["name"]] == budget_arch)
+                with patch.object(continuation, "api", side_effect=self.api):
+                    continuation.resume(self.controller_env)
+                self.assertEqual(self.writes, [(f"actions/jobs/{job['id']}/rerun", {})])
+
+    def test_successful_architecture_is_not_retried(self):
+        self.jobs[0]["conclusion"] = "success"
+        with patch.object(continuation, "api", side_effect=self.api):
+            continuation.resume(self.controller_env)
+        self.assertEqual(self.writes, [(f"actions/jobs/{self.jobs[1]['id']}/rerun", {})])
+
+    def test_older_compiler_failure_absent_from_attempt_list_is_not_retried(self):
+        self.jobs = self.jobs[:1]
+        with patch.object(continuation, "api", side_effect=self.api):
+            continuation.resume(self.controller_env)
+        self.assertEqual(self.writes, [(f"actions/jobs/{self.jobs[0]['id']}/rerun", {})])
+
+    def test_stale_expired_or_missing_budget_markers_do_not_authorize_retry(self):
+        for artifacts in ([], [{"name": "argon-continuation-2-arm", "expired": False}],
+                          [{"name": "argon-continuation-3-arm", "expired": True}]):
+            with self.subTest(artifacts=artifacts):
+                self.artifacts = artifacts
+                with patch.object(continuation, "api", side_effect=self.api), \
+                     self.assertRaisesRegex(ValueError, "No failed job"):
+                    continuation.resume(self.controller_env)
+                self.assertEqual(self.writes, [])
+
+    def test_truncated_job_or_artifact_lists_fail_closed(self):
+        original = self.api
+        for collection in ("jobs", "artifacts"):
+            def truncated(repository, path, payload=None):
+                response = original(repository, path, payload)
+                if isinstance(response, dict) and collection in response:
+                    response["total_count"] = 101
+                return response
+            with self.subTest(collection=collection), \
+                 patch.object(continuation, "api", side_effect=truncated), \
+                 self.assertRaisesRegex(ValueError, "Incomplete"):
+                continuation.resume(self.controller_env)
+            self.assertEqual(self.writes, [])
 
     def test_controller_waits_for_cleanup(self):
         self.run.update(status="in_progress", conclusion=None)

@@ -67,7 +67,7 @@ class ArmReleasePolicyTests(unittest.TestCase):
             self.assertEqual(selected["asset_dir"], payload)
             self.assertEqual(selected["apk"], apk)
 
-    def test_arm64_release_can_be_idempotent_after_armv7_pair_is_added(self):
+    def test_legacy_arm64_release_allows_only_a_complete_missing_armv7_pair(self):
         with tempfile.TemporaryDirectory() as tmp:
             assets = Path(tmp)
             arm64 = assets / "Argon-154.0.8037.57-release-arm64-v8a.apk"
@@ -75,17 +75,16 @@ class ArmReleasePolicyTests(unittest.TestCase):
             arm64.write_bytes(b"arm64")
             checksum.write_text("checksum\n")
 
+            armv7 = "Argon-154.0.8037.57-release-armeabi-v7a.apk"
+            for name in (armv7, f"{armv7}.sha256", *release_policy.RELEASE_LICENSES):
+                (assets / name).write_bytes(name.encode())
             expected = {
                 path.name: "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in (arm64, checksum)
+                for path in assets.iterdir()
             }
-            armv7 = "Argon-154.0.8037.57-release-armeabi-v7a.apk"
             release_assets = [
                 {"name": name, "digest": digest}
                 for name, digest in expected.items()
-            ] + [
-                {"name": armv7, "digest": "sha256:" + "1" * 64},
-                {"name": f"{armv7}.sha256", "digest": "sha256:" + "2" * 64},
             ]
             release = {
                 "draft": False,
@@ -94,16 +93,44 @@ class ArmReleasePolicyTests(unittest.TestCase):
             }
 
             release_policy.verify_existing_release(
-                release, "a" * 40, assets, allow_armv7=True
+                release, "a" * 40, assets
             )
-            with self.assertRaisesRegex(ValueError, "asset names"):
+
+            release["assets"] = [item for item in release_assets
+                                 if item["name"] not in (armv7, f"{armv7}.sha256")]
+            release_policy.verify_existing_release(
+                release, "a" * 40, assets, allow_missing_armv7=True
+            )
+            with self.assertRaisesRegex(ValueError, "missing verified assets"):
                 release_policy.verify_existing_release(release, "a" * 40, assets)
 
-            release["assets"] = release_assets[:-1]
-            with self.assertRaisesRegex(ValueError, "unexpected additional"):
+            release["assets"].append(next(item for item in release_assets
+                                          if item["name"] == armv7))
+            with self.assertRaisesRegex(ValueError, "incomplete armv7 pair"):
                 release_policy.verify_existing_release(
-                    release, "a" * 40, assets, allow_armv7=True
+                    release, "a" * 40, assets, allow_missing_armv7=True
                 )
+
+    def test_each_published_asset_digest_is_verified_even_during_backfill(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            assets = Path(tmp)
+            names = [f"Argon-154.0.8037.57-release-{abi}.apk{suffix}"
+                     for abi in ("arm64-v8a", "armeabi-v7a")
+                     for suffix in ("", ".sha256")]
+            names += list(release_policy.RELEASE_LICENSES)
+            for name in names:
+                (assets / name).write_bytes(name.encode())
+            published = [{"name": name, "digest": "sha256:" + hashlib.sha256(
+                (assets / name).read_bytes()).hexdigest()} for name in names]
+            for index, name in enumerate(names):
+                with self.subTest(asset=name):
+                    bad = [dict(item) for item in published]
+                    bad[index]["digest"] = "sha256:" + "0" * 64
+                    release = {"draft": False, "target_commitish": "a" * 40,
+                               "assets": bad}
+                    with self.assertRaisesRegex(ValueError, "digest mismatch"):
+                        release_policy.verify_existing_release(
+                            release, "a" * 40, assets, allow_missing_armv7=True)
 
 
 if __name__ == "__main__":

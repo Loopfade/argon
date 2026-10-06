@@ -59,8 +59,8 @@ def is_documentation_path(path: str) -> bool:
     return path in DOCUMENTATION_FILES or path.startswith(DOCUMENTATION_PREFIXES)
 
 
-def unsafe_main_drift(compare: dict) -> list[str]:
-    """Return changed paths that make an older build stale.
+def _changed_paths(compare: dict) -> list[str]:
+    """Include both sides of a rename and reject incomplete comparisons.
 
     GitHub's compare endpoint reports at most 300 files. Exactly hitting that
     limit is treated as unsafe because additional non-documentation files may
@@ -70,20 +70,36 @@ def unsafe_main_drift(compare: dict) -> list[str]:
     if status == "identical":
         return []
     if status != "ahead":
-        return [f"<compare-status:{status}>"]
+        raise ValueError(f"<compare-status:{status}>")
 
     files = compare.get("files")
     if not isinstance(files, list):
-        return ["<missing-files>"]
+        raise ValueError("<missing-files>")
     if len(files) >= GITHUB_COMPARE_FILE_LIMIT:
-        return ["<compare-file-limit>"]
+        raise ValueError("<compare-file-limit>")
 
     paths = []
     for item in files:
-        if not isinstance(item, dict) or not isinstance(item.get("filename"), str):
-            return ["<invalid-file-entry>"]
+        if (not isinstance(item, dict)
+                or not isinstance(item.get("filename"), str)
+                or not item["filename"]):
+            raise ValueError("<invalid-file-entry>")
         paths.append(item["filename"])
-    return [path for path in paths if not is_documentation_path(path)]
+        if item.get("status") == "renamed" or "previous_filename" in item:
+            previous = item.get("previous_filename")
+            if not isinstance(previous, str) or not previous:
+                raise ValueError("<invalid-rename-entry>")
+            paths.append(previous)
+    return list(dict.fromkeys(paths))
+
+
+def unsafe_main_drift(compare: dict) -> list[str]:
+    """Return changed paths that make an older build stale."""
+    try:
+        return [path for path in _changed_paths(compare)
+                if not is_documentation_path(path)]
+    except ValueError as error:
+        return [str(error)]
 
 
 def is_release_payload_path(path: str) -> bool:
@@ -92,24 +108,11 @@ def is_release_payload_path(path: str) -> bool:
 
 def unsafe_release_payload_drift(compare: dict) -> list[str]:
     """Return changes that can alter an APK payload or its signing identity."""
-    status = compare.get("status")
-    if status == "identical":
-        return []
-    if status != "ahead":
-        return [f"<compare-status:{status}>"]
-
-    files = compare.get("files")
-    if not isinstance(files, list):
-        return ["<missing-files>"]
-    if len(files) >= GITHUB_COMPARE_FILE_LIMIT:
-        return ["<compare-file-limit>"]
-
-    paths = []
-    for item in files:
-        if not isinstance(item, dict) or not isinstance(item.get("filename"), str):
-            return ["<invalid-file-entry>"]
-        paths.append(item["filename"])
-    return [path for path in paths if is_release_payload_path(path)]
+    try:
+        return [path for path in _changed_paths(compare)
+                if is_release_payload_path(path)]
+    except ValueError as error:
+        return [str(error)]
 
 
 def locate_release_artifact(
@@ -152,7 +155,7 @@ def _file_digests(directory: Path) -> dict[str, str]:
 
 
 def verify_existing_release(
-    release: dict, target_sha: str, assets: Path, allow_armv7: bool = False
+    release: dict, target_sha: str, assets: Path, allow_missing_armv7: bool = False
 ) -> None:
     if release.get("draft"):
         raise ValueError("existing release is still a draft")
@@ -176,27 +179,26 @@ def verify_existing_release(
 
     actual_names = set(actual)
     expected_names = set(expected)
-    if not expected_names.issubset(actual_names):
-        raise ValueError("existing release is missing verified assets")
+    if actual_names - expected_names:
+        raise ValueError("existing release asset names do not match the verified asset set")
 
-    extras = actual_names - expected_names
-    if extras:
-        if not allow_armv7:
-            raise ValueError("existing release asset names do not match the verified asset set")
+    missing = expected_names - actual_names
+    if missing:
+        if not allow_missing_armv7:
+            raise ValueError("existing release is missing verified assets")
         arm64_apks = [
             name for name in expected_names if name.endswith("-release-arm64-v8a.apk")
         ]
         if len(arm64_apks) != 1:
-            raise ValueError("cannot derive optional armv7 release asset names")
+            raise ValueError("cannot derive missing armv7 release asset names")
         armv7_apk = arm64_apks[0].replace(
             "-release-arm64-v8a.apk", "-release-armeabi-v7a.apk"
         )
-        allowed_extras = {armv7_apk, f"{armv7_apk}.sha256"}
-        if extras != allowed_extras:
-            raise ValueError("existing release has unexpected additional assets")
+        if missing != {armv7_apk, f"{armv7_apk}.sha256"}:
+            raise ValueError("existing release is missing assets or has an incomplete armv7 pair")
 
-    for name, digest in expected.items():
-        if actual[name] != digest:
+    for name, digest in actual.items():
+        if digest != expected[name]:
             raise ValueError(f"existing release asset digest mismatch: {name}")
 
 
@@ -231,7 +233,7 @@ def main() -> None:
     release.add_argument("--release-json", required=True)
     release.add_argument("--target-sha", required=True)
     release.add_argument("--assets", required=True, type=Path)
-    release.add_argument("--allow-armv7", action="store_true")
+    release.add_argument("--allow-missing-armv7", action="store_true")
 
     tag = subparsers.add_parser("verify-tag")
     tag.add_argument("--tag-json", required=True)
@@ -255,7 +257,7 @@ def main() -> None:
                 _load_json(args.release_json),
                 args.target_sha,
                 args.assets,
-                allow_armv7=args.allow_armv7,
+                allow_missing_armv7=args.allow_missing_armv7,
             )
         else:
             verify_tag_ref(_load_json(args.tag_json), args.target_sha)

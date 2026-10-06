@@ -253,15 +253,7 @@ jobs:
             exit 1
           fi
 
-          arm64_apk="Argon-${RELEASE_VERSION}-release-arm64-v8a.apk"
           arm_apk="Argon-${RELEASE_VERSION}-release-armeabi-v7a.apk"
-          base_assets=(
-            "$arm64_apk"
-            "$arm64_apk.sha256"
-            "Chromium-LICENSE.txt"
-            "Ruthenium-LICENSE.txt"
-            "Titanium-LICENSE.txt"
-          )
           arm_assets=("$arm_apk" "$arm_apk.sha256")
 
           release_notes=$(cat <<EOF
@@ -304,41 +296,16 @@ jobs:
               echo "::notice::Reusing existing release across non-payload repository drift."
             fi
 
-            allowed_asset() {
-              local candidate="$1" name
-              for name in "${base_assets[@]}" "${arm_assets[@]}"; do
-                [[ "$candidate" == "$name" ]] && return 0
-              done
-              return 1
-            }
-
-            while IFS= read -r name; do
-              if ! allowed_asset "$name"; then
-                echo "::error::Existing release has unexpected asset: $name"
-                exit 1
-              fi
-            done < <(jq -r '.assets[].name' "$release_json")
-
-            for name in "${base_assets[@]}"; do
-              if ! jq -e --arg name "$name" '[.assets[].name] | index($name) != null' "$release_json" >/dev/null; then
-                echo "::error::Existing release is missing required arm64 asset: $name"
-                exit 1
-              fi
-            done
-
-            existing_arm=0
-            for name in "${arm_assets[@]}"; do
-              asset_json=$(jq -c --arg name "$name" '.assets[] | select(.name == $name)' "$release_json" | head -n1)
-              if [[ -n "$asset_json" ]]; then
-                existing_arm=$((existing_arm + 1))
-                expected_digest="sha256:$(sha256sum "public-assets/$name" | awk '{print $1}')"
-                actual_digest=$(jq -er '.digest' <<<"$asset_json")
-                [[ "$actual_digest" == "$expected_digest" ]] || {
-                  echo "::error::Existing release asset digest mismatch: $name"
-                  exit 1
-                }
-              fi
-            done
+            # Verify every existing byte before uploading or editing anything.
+            # Legacy releases may be missing the entire armv7 pair, never half.
+            python3 scripts/release_policy.py verify-release \
+              --release-json "$release_json" \
+              --target-sha "$release_target" \
+              --assets public-assets \
+              --allow-missing-armv7
+            existing_arm=$(jq --arg apk "$arm_apk" \
+              '[.assets[].name | select(. == $apk or . == ($apk + ".sha256"))] | length' \
+              "$release_json")
 
             if (( existing_arm == 0 )); then
               gh release upload "$RELEASE_TAG" \
@@ -351,6 +318,11 @@ jobs:
               exit 1
             fi
 
+            gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" >"$release_json"
+            python3 scripts/release_policy.py verify-release \
+              --release-json "$release_json" \
+              --target-sha "$release_target" \
+              --assets public-assets
             gh release edit "$RELEASE_TAG" \
               --title "$RELEASE_TITLE" \
               --notes "$release_notes"

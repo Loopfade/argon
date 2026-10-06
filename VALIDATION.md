@@ -37,6 +37,10 @@ Validation:
 4. Проверяет применение CA/JNI overlay к закреплённым upstream-исходникам.
 5. Собирает и запускает `scoped_ca_test` с закреплённым BoringSSL для
    production DNS/IP constraints.
+6. В отдельной job собирает host target `argon_domain_policy_tests` и запускает
+   `TitaniumRuDomainPolicyTest.*` с настоящими GURL, ICU и public/private PSL
+   закреплённого Chromium. Prepared image предоставляет sources/toolchain;
+   header и тесты берутся из проверяемого checkout, включая pull requests.
 
 Эта стадия не собирает релизный APK. `x64` и `x86` проверяются только
 на уровне конфигурации/preflight и не входят в release pipeline.
@@ -105,7 +109,7 @@ architecture-specific `ccache`. Если job исчерпала выделенн
 budget, она инициирует `Continue Argon build`.
 
 Continuation workflow не создаёт новый самостоятельный `Build Argon`.
-Небольшой controller запускается из `main` и вызывает rerun failed jobs
+Небольшой controller запускается из `main` и повторяет подходящие jobs
 **исходного run**, поэтому сохраняются исходные event, SHA и cache scope.
 Продвижение `main` во время ручной сборки не мешает продолжению; актуальность
 исходного SHA отдельно проверяется перед публикацией. Для PR continuation
@@ -115,9 +119,12 @@ Continuation workflow не создаёт новый самостоятельн�
 
 `arm64 ✅ + arm ❌ → retry только arm`.
 
-Если failed обе архитектуры, повторяются обе failed jobs. Автоматическое
-продолжение предназначено для исчерпания временного бюджета; реальная ошибка
-сборки, ранний OOM/SIGKILL или ручная отмена не должны маскироваться retry.
+Право на retry подтверждается artifact `argon-continuation-<attempt>-<arch>`:
+он загружается только после исчерпания временного бюджета и успешного
+сохранения финального compiler cache. Если обе failed jobs имеют такой marker
+для текущей попытки, controller повторяет обе одним запросом. При сочетании
+budget timeout и реальной ошибки сборки повторяется только job с marker.
+Ошибка компиляции, ранний OOM/SIGKILL и ручная отмена не разрешают retry.
 
 ## Публикация релиза
 
@@ -154,6 +161,12 @@ Publisher скачивает **оба** artifacts из одного `Build Argon
 Публичный релиз содержит семь assets: два APK, две SHA-256 checksum и три
 license files. Tag имеет формат `v<chromium_version>-<release_revision>`.
 Release notes формируются **только на русском языке**.
+
+Перед изменением существующего Release publisher сверяет SHA-256 каждого
+уже опубликованного APK, checksum и license file с проверенными artifacts.
+Допускается только отсутствие всей ARMv7-пары в старом ARM64-релизе. После
+добавления пары все семь assets повторно проверяются до обновления notes.
+Неполные пары, лишние assets и дубликаты блокируют изменение Release.
 
 Если хотя бы одна архитектура не завершилась успешно, publisher не
 запускается и публичный релиз не создаётся.

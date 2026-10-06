@@ -29,6 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Build authenticated dashboard snapshot
+        id: snapshot
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -37,6 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "updated=false" >> "$GITHUB_OUTPUT"
 
           releases=$(gh api "repos/$GH_REPO/releases?per_page=20" |
             jq '[.[] | select(.draft == false and .published_at != null)][0:20]
@@ -128,9 +130,10 @@ jobs:
               builds: $builds,
               release: $release
             }' > dashboard-data.json
+          echo "updated=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish snapshot to main
-        if: success()
+        if: steps.snapshot.outputs.updated == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
