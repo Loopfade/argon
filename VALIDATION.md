@@ -1,8 +1,8 @@
 # CI-проверки Argon
 
 Этот документ описывает текущую CI-схему Argon: проверку исходников и патчей,
-подготовку Chromium, сборку двух Android ARM-архитектур и публикацию релиза.
-Исторические Actions runs и локальная сборка здесь не документируются.
+подготовку Chromium, ручную релизную сборку двух Android ARM-архитектур,
+автоматическое продолжение долгих jobs, публикацию Release и dashboard.
 
 ## Закреплённые входы
 
@@ -20,8 +20,12 @@
 
 ## Validate scoped Russian CA
 
-Workflow `.github/workflows/validate.yml` запускается на push, pull request
-и вручную. Он:
+Workflow `.github/workflows/validate.yml` запускается на обычные push,
+pull request и вручную. Изменения, относящиеся только к статическому dashboard
+и его публикации, исключены из push-validation, чтобы не создавать лишние
+служебные runs.
+
+Validation:
 
 1. Выполняет preflight и генерирует GN args для `arm64`, `arm`, `x64`
    и `x86`.
@@ -31,69 +35,92 @@ Workflow `.github/workflows/validate.yml` запускается на push, pull
 5. Собирает и запускает `scoped_ca_test` с закреплённым BoringSSL для
    production DNS/IP constraints.
 
-Эта стадия проверяет конфигурацию, патчи и policy tests, но сама по себе
-не является полной сборкой APK. `x64` и `x86` здесь проверяются только
-на уровне конфигурации/preflight и не входят в текущий release pipeline.
+Эта стадия не собирает релизный APK. `x64` и `x86` проверяются только
+на уровне конфигурации/preflight и не входят в release pipeline.
 
 ## Подготовленный Chromium image
 
-Workflow `.github/workflows/build-chromium-image.yml` запускается, когда
-изменяются входы подготовленного Chromium: pins, patches, overlays,
-extensions, ресурсы, GN/build scripts и связанные файлы.
+Workflow `.github/workflows/build-chromium-image.yml` автоматически
+запускается на push в `main`, когда меняются входы подготовленного Chromium:
+pins, patches, overlays, extensions, ресурсы, GN/build scripts и связанные
+файлы. Его также можно запустить вручную.
 
-Он подготавливает закреплённые Chromium sources/toolchain и публикует общий
-OCI image в GHCR. Один и тот же prepared image затем используется обеими
-ARM-сборками. Между `Build prepared Chromium image` и `Build Argon`
-настроена только односторонняя зависимость, чтобы workflows не образовывали
-цикл.
+Workflow подготавливает закреплённые Chromium sources/toolchain и публикует
+OCI image в GHCR. Один совместимый prepared image используется обеими
+ARM-сборками.
 
-## Build Argon: две архитектуры
+Успешное завершение `Build prepared Chromium image` **не запускает
+`Build Argon` автоматически**. Перед ручной релизной сборкой prepared image
+должен быть совместим с текущими входами; это проверяет gate внутри
+`Build Argon`.
 
-Основной workflow `.github/workflows/build.yml` запускает matrix с:
+## Build Argon: запуск и архитектуры
+
+Workflow `.github/workflows/build.yml` имеет два типа запуска:
+
+- в `main` — только ручной `workflow_dispatch`;
+- в pull request — автоматически только для перечисленных в workflow
+  build/CI/release-файлов.
+
+Push в `main` и завершение prepared-image workflow сами по себе
+`Build Argon` не запускают.
+
+Ручной запуск принимает:
+
+- `runner` — label Linux x64 runner;
+- `signing=release|test`;
+- внутренний счётчик `continuation`.
+
+Matrix содержит:
 
 - `arm64` → Android ABI `arm64-v8a`;
 - `arm` → Android ABI `armeabi-v7a`.
 
-Обе jobs используют reusable workflow
-`.github/workflows/build-arch.yml`, один prepared Chromium image и
-выполняются независимо с `fail-fast: false`.
+Обе jobs используют reusable workflow `.github/workflows/build-arch.yml`,
+один prepared Chromium image и выполняются независимо с `fail-fast: false`.
 
 Compiler cache разделён по архитектурам:
 
 - `argon-ccache-v2-arm64-*`;
 - `argon-ccache-v2-arm-*`.
 
-Это исключает смешивание объектов ARM64 и ARMv7. На доверенных сборках
-`main` используется release key; pull request builds используют временную
-test-подпись.
+Ручной `signing=release` использует постоянный release key.
+Ручной `signing=test` и pull request builds используют временную тестовую
+подпись.
 
-Каждая job собирает, подписывает и проверяет APK, после чего загружает
-artifact с APK, checksum, provenance и лицензиями.
+Каждая architecture job собирает, подписывает и проверяет APK, после чего
+загружает artifact с APK, checksum, provenance и лицензиями.
 
 ## Checkpoints и автоматическое продолжение
 
 Длительная компиляция разбита на checkpoint-этапы с сохранением
 architecture-specific `ccache`. Если job исчерпала выделенный build-time
-budget, continuation-controller после завершения run вызывает GitHub
-`rerun-failed-jobs`.
+budget, она инициирует `Continue Argon build`.
 
-Поэтому уже успешная архитектура повторно не собирается:
+Continuation workflow не создаёт новый самостоятельный `Build Argon`.
+Он вызывает rerun failed jobs **исходного run**, сохраняя его SHA, event и
+cache scope. Поэтому уже успешная архитектура повторно не собирается:
 
 `arm64 ✅ + arm ❌ → retry только arm`.
 
 Если failed обе архитектуры, повторяются обе failed jobs. Автоматическое
 продолжение предназначено для исчерпания временного бюджета; реальная ошибка
-сборки, ранний OOM/SIGKILL или отмена не маскируются автоматическим retry.
+сборки, ранний OOM/SIGKILL или ручная отмена не должны маскироваться retry.
 
 ## Публикация релиза
 
-После успешного завершения обеих matrix jobs `Build Argon` вызывает
-`.github/workflows/publish-release.yml` как reusable workflow внутри того же
-run. Поэтому failed/timeout attempts и continuation не создают отдельные
-publisher runs. Автоматическая публикация выполняется только для доверенного
-`main` build, у которого обе архитектуры уже успешно загрузили verified
-artifacts. Для повторной публикации готового успешного run остаётся ручной
-`workflow_dispatch`.
+`.github/workflows/publish-release.yml` является reusable
+`workflow_call` и отдельно вручную не запускается.
+
+Publisher вызывается внутри `Build Argon` только если одновременно
+выполнены условия:
+
+- обе architecture jobs завершились успешно;
+- исходная ветка — `main`;
+- исходный event — ручной `workflow_dispatch`;
+- выбран `signing=release`.
+
+Ручной `signing=test` и pull request builds релиз не публикуют.
 
 Publisher скачивает **оба** artifacts из одного `Build Argon` run и
 проверяет:
@@ -109,10 +136,39 @@ Publisher скачивает **оба** artifacts из одного `Build Argon
 
 Публичный релиз содержит семь assets: два APK, две SHA-256 checksum и три
 license files. Tag имеет формат `v<chromium_version>-<release_revision>`.
-Release notes формируются на английском и русском языках.
+Release notes формируются **только на русском языке**.
 
-Если хотя бы одна архитектура не завершилась успешно, весь `Build Argon`
-не считается успешным и автоматический publisher релиз не создаёт.
+Если хотя бы одна архитектура не завершилась успешно, publisher не
+запускается и публичный релиз не создаётся.
+
+## Dashboard и GitHub Pages
+
+Статический dashboard доступен по
+[https://loopfade.github.io/argon/](https://loopfade.github.io/argon/).
+
+Исходники сайта находятся прямо в `main`:
+
+- `index.html` — UI;
+- `dashboard-data.json` — read-only snapshot;
+- `.nojekyll` — публикация без Jekyll.
+
+Отдельная ветка `gh-pages` не используется; в репозитории рабочая ветка
+одна — `main`.
+
+Workflow `.github/workflows/update-dashboard.yml` запускается после
+завершения `Build Argon`, но обновляет snapshot только если этот run
+действительно создал новый опубликованный Release. В snapshot сохраняются
+до трёх последних валидных опубликованных релизных билдов с jobs,
+step timings, artifacts и release metadata.
+
+Workflow `.github/workflows/deploy-dashboard.yml` публикует
+`index.html`, `dashboard-data.json` и `.nojekyll` через официальный
+GitHub Pages deployment из `main`. Браузер не обращается к GitHub API и
+не получает токены.
+
+Dashboard является read-only: он не может запускать, перезапускать или
+отменять сборки. Активный ещё не опубликованный `Build Argon` следует
+смотреть непосредственно в GitHub Actions.
 
 ## Что CI не подтверждает автоматически
 
@@ -124,19 +180,18 @@ CI не заменяет проверки на реальном Android-устр
 - end-to-end TLS-сценарии;
 - публикация через магазин приложений.
 
-Также текущий release pipeline не собирает `x86_64` и `x86`: публичные
-APK выпускаются только для `arm64-v8a` и `armeabi-v7a`.
+Текущий release pipeline не собирает `x86_64` и `x86`: публичные APK
+выпускаются только для `arm64-v8a` и `armeabi-v7a`.
 
-## Когда запускается пересборка
+## Что запускается при изменениях
 
-Изменения prepared Chromium inputs запускают
-`Build prepared Chromium image`, после успешного завершения которого
-запускается `Build Argon`.
-
-Изменения runtime CI, signing/release logic и основного build workflow,
-включённые в `paths` `.github/workflows/build.yml`, запускают
-`Build Argon` напрямую и используют последний совместимый prepared image.
-
-Изменения только документации, включая `README.md` и `VALIDATION.md`,
-не запускают APK или prepared-image rebuild. Для них выполняется только
-`Validate scoped Russian CA`.
+- Prepared Chromium inputs → автоматически запускается
+  `Build prepared Chromium image`.
+- Push в `main` → **не запускает релизный `Build Argon`**.
+- Релизный `Build Argon` в `main` → запускается только вручную.
+- Изменения build/CI/release-файлов в pull request → могут запустить
+  тестовый `Build Argon` для PR.
+- `README.md` и `VALIDATION.md` → не запускают APK или prepared-image
+  build; для них выполняется обычная validation.
+- Dashboard-only файлы и служебные snapshot/deploy изменения → не должны
+  запускать APK build.
