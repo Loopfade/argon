@@ -1,13 +1,20 @@
 name: Validate scoped Russian CA
 on:
   push:
-    branches-ignore: [gh-pages]
     paths-ignore:
       - '.github/workflows/update-dashboard.yml'
+      - '.github/workflows/migrate-pages-to-main.yml'
+      - 'index.html'
+      - 'dashboard-data.json'
+      - '.nojekyll'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     paths-ignore:
       - '.github/workflows/update-dashboard.yml'
+      - '.github/workflows/migrate-pages-to-main.yml'
+      - 'index.html'
+      - 'dashboard-data.json'
+      - '.nojekyll'
   workflow_dispatch:
 permissions:
   actions: write

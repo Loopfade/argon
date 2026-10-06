@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Argon CI Dashboard</title>
+  <style>
+    :root{
+      --bg:#0d1117;--panel:#161b22;--panel2:#21262d;--border:#30363d;
+      --text:#f0f6fc;--muted:#8b949e;--green:#3fb950;--yellow:#d29922;
+      --red:#f85149;--blue:#58a6ff;--purple:#bc8cff;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{
+      margin:0;color:var(--text);background:var(--bg);
+      font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    }
+    a{color:var(--blue);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:1280px;margin:0 auto;padding:0 20px 48px}
+    header{
+      position:sticky;top:0;z-index:10;background:rgba(22,27,34,.96);
+      backdrop-filter:blur(12px);border-bottom:1px solid var(--border)
+    }
+    .head{
+      max-width:1280px;margin:0 auto;padding:16px 20px;display:flex;
+      align-items:center;gap:16px;justify-content:space-between
+    }
+    .brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+    .brand strong{font-size:22px;letter-spacing:.02em}
+    .brand span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .actions{display:flex;gap:8px}
+    button,.button{
+      appearance:none;border:1px solid var(--border);background:var(--panel2);
+      color:var(--text);border-radius:8px;padding:8px 12px;font-weight:600;
+      cursor:pointer;text-decoration:none
+    }
+    button:hover,.button:hover{border-color:#6e7681;text-decoration:none}
+    button:disabled{opacity:.6;cursor:default}
+    .hero{
+      margin:24px 0 20px;padding:22px;border:1px solid var(--border);
+      background:var(--panel);border-radius:14px
+    }
+    .hero-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+    .hero h1{margin:0 0 4px;font-size:30px}
+    .meta{color:var(--muted)}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);
+      border-radius:999px;padding:8px 12px;font-weight:700;white-space:nowrap
+    }
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block}
+    .status-success .dot{background:var(--green)}
+    .status-failure .dot{background:var(--red)}
+    .status-progress .dot{background:var(--yellow)}
+    .status-queued .dot{background:var(--blue)}
+    .status-cancelled .dot,.status-skipped .dot{background:var(--muted)}
+    .metrics{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:20px
+    }
+    .metric{
+      padding:12px 14px;border:1px solid var(--border);background:var(--bg);border-radius:10px
+    }
+    .metric-label{color:var(--muted);font-size:12px}
+    .metric-value{font-weight:800;font-size:18px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .section-title{margin:26px 0 12px;font-size:20px}
+    .pipeline{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .stage,.card{
+      border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:16px
+    }
+    .stage-name{display:flex;gap:10px;align-items:center;font-weight:700;min-height:42px}
+    .stage-status{margin-top:12px;font-weight:800}
+    .stage-detail{margin-top:5px;color:var(--muted);font-size:12px;min-height:36px}
+    .stage-time{font-size:20px;font-weight:800;margin-top:10px}
+    .timeline{
+      border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:16px
+    }
+    .timeline-row{
+      display:grid;grid-template-columns:150px minmax(0,1fr) 90px;gap:12px;align-items:center;
+      min-height:44px;border-top:1px solid rgba(48,54,61,.55)
+    }
+    .timeline-row:first-child{border-top:0}
+    .timeline-label{font-weight:700}
+    .timeline-time{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+    .track{position:relative;height:18px;background:var(--bg);border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    .bar{position:absolute;top:0;bottom:0;min-width:3px;border-radius:999px;background:var(--blue)}
+    .bar.success{background:var(--green)}
+    .bar.progress{background:var(--yellow)}
+    .bar.failure{background:var(--red)}
+    .architecture-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    details.arch{
+      border:1px solid var(--border);background:var(--panel);border-radius:12px;overflow:hidden
+    }
+    details.arch summary{
+      list-style:none;cursor:pointer;padding:16px;display:flex;gap:12px;align-items:center;
+      justify-content:space-between
+    }
+    details.arch summary::-webkit-details-marker{display:none}
+    .arch-title{display:flex;gap:10px;align-items:center;font-weight:800;font-size:16px}
+    .arch-summary{display:flex;gap:16px;align-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
+    .arch-body{border-top:1px solid var(--border);padding:0 16px 14px}
+    .arch-metrics{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+    .mini{
+      padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--muted)
+    }
+    .mini strong{color:var(--text)}
+    .step{
+      display:grid;grid-template-columns:minmax(0,1fr) 90px 90px;gap:10px;
+      padding:8px 0;border-top:1px solid rgba(48,54,61,.55);align-items:center
+    }
+    .step:first-child{border-top:0}
+    .step-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .step-status{font-size:12px;font-weight:800}
+    .step-time{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+    .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:16px;align-items:start}
+    .history{overflow:hidden;padding:0}
+    .run{
+      display:grid;grid-template-columns:70px 1.2fr .7fr 100px 110px auto;gap:12px;
+      align-items:center;padding:14px 16px;border-top:1px solid var(--border)
+    }
+    .run:first-child{border-top:0}
+    .history button.run{
+      width:100%;border-left:0;border-right:0;border-bottom:0;border-radius:0;
+      background:transparent;color:inherit;text-align:left
+    }
+    .history button.run:hover{background:var(--panel2)}
+    .history button.run.selected{background:var(--panel2);box-shadow:inset 3px 0 var(--blue)}
+    .run-num{font-weight:800;font-size:16px}
+    .run-kind,.run-time{color:var(--muted)}
+    .run-sha{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .run-duration{font-variant-numeric:tabular-nums;font-weight:700}
+    .run-status{font-weight:700}
+    .side-stack{display:grid;gap:16px}
+    .card h3{margin:0 0 14px;font-size:17px}
+    .kv{display:grid;grid-template-columns:1fr auto;gap:8px 12px;margin-top:8px}
+    .kv .k{color:var(--muted)}
+    .artifacts{margin:8px 0 0;padding-left:18px}
+    .artifact-size{color:var(--muted);margin-left:5px}
+    .note{
+      margin-top:20px;color:var(--muted);padding:12px 14px;
+      border:1px solid var(--border);border-radius:10px;background:var(--panel)
+    }
+    .error{border-color:rgba(248,81,73,.55);color:#ffb4ad}
+    .skeleton{color:var(--muted)}
+    .success-text{color:var(--green)}.failure-text{color:var(--red)}
+    .progress-text{color:var(--yellow)}.muted-text{color:var(--muted)}
+    footer{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
+    @media(max-width:1000px){
+      .metrics,.pipeline{grid-template-columns:1fr 1fr}
+      .architecture-grid,.grid{grid-template-columns:1fr}
+      .run{grid-template-columns:62px 1fr 90px auto}
+      .run-sha,.run-time{display:none}
+    }
+    @media(max-width:620px){
+      .head{align-items:flex-start}.brand{display:block}.brand span{display:block;margin-top:2px}
+      .actions .button{display:none}.hero-top{display:block}.hero .pill{margin-top:14px}
+      .metrics,.pipeline{grid-template-columns:1fr}.hero h1{font-size:25px}
+      .timeline-row{grid-template-columns:105px minmax(0,1fr);gap:8px}
+      .timeline-time{grid-column:2;text-align:left;margin-top:-8px;padding-bottom:6px}
+      .architecture-grid{grid-template-columns:1fr}
+      .arch-summary{display:block;text-align:right}
+      .step{grid-template-columns:minmax(0,1fr) 72px}
+      .step-status{display:none}
+      .run{grid-template-columns:55px 1fr auto}.run-duration{display:none}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div class="brand">
+      <strong>ARGON CI</strong>
+      <span>GitHub Actions dashboard</span>
+    </div>
+    <div class="actions">
+      <a class="button" href="https://github.com/Loopfade/argon/actions/workflows/build.yml">GitHub Actions</a>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <div>
+      <h2 class="section-title">Recent release builds</h2>
+      <section class="card history" id="history"><div class="run skeleton">Loading…</div></section>
+    </div>
+
+    <div>
+      <h2 class="section-title">Artifacts</h2>
+      <section class="card" id="artifacts-card">
+        <h3>Latest run artifacts</h3>
+        <div class="skeleton">Loading…</div>
+      </section>
+    </div>
+  </div>
+
+  <h2 class="section-title" id="timeline-title">Build timeline</h2>
+  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
+
+  <h2 class="section-title" id="architecture-title">Architecture details</h2>
+  <section class="architecture-grid" id="architectures"></section>
+
+  <div class="grid">
+    <div>
+      <h2 class="section-title">Release</h2>
+      <section class="card" id="release-card">
+        <h3>Latest published release</h3>
+        <div class="skeleton">Loading…</div>
+      </section>
+    </div>
+
+    <div>
+      <h2 class="section-title">Dashboard</h2>
+      <section class="card">
+        <div class="kv">
+          <div class="k">Mode</div><div>Read-only</div>
+          <div class="k">Source</div><div>Published releases</div>
+          <div class="k">Snapshot</div><div>After release build</div>
+          <div class="k">Page refresh</div><div>1 minute</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="note" id="notice">
+    This page reads a local dashboard snapshot. It cannot start, rerun or cancel builds.
+  </div>
+  <footer>Loopfade/argon · static GitHub Pages dashboard</footer>
+</main>
+
+<script>
+(() => {
+  const DATA_URL = "./dashboard-data.json";
+  let model = null;
+
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+
+  function ms(value) {
+    if (!value) return null;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function endTime(item) {
+    return ms(item && (item.completed_at || item.updated_at)) ||
+      ((item && item.status !== "completed") ? Date.now() : null);
+  }
+
+  function startTime(item) {
+    return ms(item && (item.started_at || item.run_started_at || item.created_at));
+  }
+
+  function durationMs(item) {
+    const start = startTime(item);
+    const end = endTime(item);
+    if (start == null || end == null) return null;
+    return Math.max(0, end - start);
+  }
+
+  function formatDuration(value) {
+    if (value == null || !Number.isFinite(value)) return "—";
+    let seconds = Math.max(0, Math.round(value / 1000));
+    const hours = Math.floor(seconds / 3600);
+    seconds -= hours * 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds -= minutes * 60;
+    if (hours) return hours + "h " + String(minutes).padStart(2,"0") + "m " + String(seconds).padStart(2,"0") + "s";
+    if (minutes) return minutes + "m " + String(seconds).padStart(2,"0") + "s";
+    return seconds + "s";
+  }
+
+  function formatBytes(bytes) {
+    const value = Number(bytes || 0);
+    if (!value) return "0 B";
+    const units = ["B","KiB","MiB","GiB"];
+    const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
+    return (value / Math.pow(1024,index)).toFixed(index < 2 ? 0 : 1) + " " + units[index];
+  }
+
+  function state(item) {
+    if (!item) return { key:"queued", label:"WAITING" };
+    if (item.status !== "completed") {
+      return item.status === "in_progress"
+        ? { key:"progress", label:"IN PROGRESS" }
+        : { key:"queued", label:String(item.status || "queued").toUpperCase() };
+    }
+    const conclusion = item.conclusion || "completed";
+    const map = {
+      success:["success","SUCCESS"],
+      failure:["failure","FAILED"],
+      cancelled:["cancelled","CANCELLED"],
+      skipped:["skipped","SKIPPED"],
+      neutral:["cancelled","NEUTRAL"],
+      timed_out:["failure","TIMED OUT"],
+      action_required:["failure","ACTION REQUIRED"]
+    };
+    const pair = map[conclusion] || ["cancelled", conclusion.toUpperCase()];
+    return { key:pair[0], label:pair[1] };
+  }
+
+  function statusTextClass(item) {
+    const s = state(item).key;
+    if (s === "success") return "success-text";
+    if (s === "failure") return "failure-text";
+    if (s === "progress") return "progress-text";
+    return "muted-text";
+  }
+
+  function timeAgo(value) {
+    if (!value) return "—";
+    const seconds = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
+    if (seconds < 60) return Math.floor(seconds) + "s ago";
+    if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+    if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+    return Math.floor(seconds / 86400) + "d ago";
+  }
+
+  function eventLabel(event) {
+    if (event === "workflow_dispatch") return "Manual release";
+    if (event === "push") return "Push validation";
+    if (event === "workflow_run") return "Prepared-image follow-up";
+    if (event === "pull_request") return "Pull request";
+    return event || "Unknown";
+  }
+
+  async function requestSnapshot() {
+    const separator = DATA_URL.includes("?") ? "&" : "?";
+    const response = await fetch(DATA_URL + separator + "t=" + Date.now(), { cache:"no-store" });
+    if (!response.ok) throw new Error("Dashboard snapshot HTTP " + response.status);
+    return response.json();
+  }
+
+  function findJobs(jobs) {
+    const find = predicate => jobs.find(predicate);
+    return {
+      gate: find(j => j.name === "Require latest compatible prepared image"),
+      arm64: find(j => j.name.includes("Build and verify arm64")),
+      arm: find(j => j.name.includes("Build and verify arm /")),
+      publish: find(j => j.name.includes("Publish verified dual-ARM release"))
+    };
+  }
+
+  function renderPill(target, item) {
+    const s = state(item);
+    target.className = "pill status-" + s.key;
+    target.innerHTML = '<span class="dot"></span><span>' + esc(s.label) + '</span>';
+  }
+
+  function jobDuration(job) {
+    return formatDuration(durationMs(job));
+  }
+
+  function criticalPath(parts) {
+    const candidates = [
+      ["arm64-v8a", parts.arm64],
+      ["armeabi-v7a", parts.arm]
+    ].filter(x => x[1] && durationMs(x[1]) != null);
+    if (!candidates.length) return "—";
+    candidates.sort((a,b) => durationMs(b[1]) - durationMs(a[1]));
+    return candidates[0][0];
+  }
+
+  function renderMetrics(latest, jobs) {
+    const parts = findJobs(jobs);
+    const total = durationMs(latest);
+    const items = [
+      ["Wall time", formatDuration(total)],
+      ["arm64-v8a", jobDuration(parts.arm64)],
+      ["armeabi-v7a", jobDuration(parts.arm)],
+      ["Critical path", criticalPath(parts)],
+      ["Publish", jobDuration(parts.publish)]
+    ];
+    $("metrics").innerHTML = items.map(item =>
+      '<div class="metric"><div class="metric-label">' + esc(item[0]) +
+      '</div><div class="metric-value">' + esc(item[1]) + '</div></div>'
+    ).join("");
+  }
+
+  function renderPipeline(latest, jobs) {
+    const parts = findJobs(jobs);
+    const stages = [
+      ["Prepared image", parts.gate, "Compatibility gate"],
+      ["arm64-v8a", parts.arm64, "Build, sign and verify APK"],
+      ["armeabi-v7a", parts.arm, "Build, sign and verify APK"],
+      ["Publish", parts.publish, "Verify provenance and create release"],
+      ["Total", latest, "End-to-end wall time"]
+    ];
+
+    $("pipeline").innerHTML = stages.map(row => {
+      const name=row[0], item=row[1], detail=row[2], s=state(item);
+      return '<article class="stage">' +
+        '<div class="stage-name"><span class="dot" style="background:var(--' +
+          (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
+          ')"></span><span>' + esc(name) + '</span></div>' +
+        '<div class="stage-status ' + statusTextClass(item) + '">' + esc(s.label) + '</div>' +
+        '<div class="stage-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
+        '<div class="stage-detail">' + esc(detail) + '</div>' +
+      '</article>';
+    }).join("");
+  }
+
+  function renderTimeline(latest, jobs) {
+    const parts=findJobs(jobs);
+    const runStart=startTime(latest);
+    const runEnd=endTime(latest);
+    const total=(runStart != null && runEnd != null) ? Math.max(1,runEnd-runStart) : 1;
+
+    const rows = [
+      ["Prepared image", parts.gate],
+      ["arm64-v8a", parts.arm64],
+      ["armeabi-v7a", parts.arm],
+      ["Publish", parts.publish]
+    ].filter(row => row[1]);
+
+    $("timeline").innerHTML = rows.map(row => {
+      const name=row[0], item=row[1];
+      const start=startTime(item), end=endTime(item);
+      const left=start == null ? 0 : Math.max(0,Math.min(100,((start-runStart)/total)*100));
+      const width=(start == null || end == null) ? 0 :
+        Math.max(.4,Math.min(100-left,((end-start)/total)*100));
+      const s=state(item);
+      return '<div class="timeline-row">' +
+        '<div class="timeline-label">' + esc(name) + '</div>' +
+        '<div class="track"><div class="bar ' + esc(s.key) + '" style="left:' +
+          left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div></div>' +
+        '<div class="timeline-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function checkpointStats(job) {
+    const warm=(job && job.steps || []).filter(s => /^Warm local compiler cache \(checkpoint \d+\/\d+\)$/.test(s.name));
+    return {
+      success:warm.filter(s => s.conclusion === "success").length,
+      skipped:warm.filter(s => s.conclusion === "skipped").length,
+      total:warm.length
+    };
+  }
+
+  function stepByName(job, fragment) {
+    return (job && job.steps || []).find(s => s.name.includes(fragment));
+  }
+
+  function visibleSteps(job) {
+    if (!job || !job.steps) return [];
+    const hidden = name =>
+      name === "Set up job" || name === "Complete job" || name.startsWith("Post ");
+    const output=[];
+    let skippedStart=null, skippedEnd=null;
+
+    function flushSkipped() {
+      if (skippedStart == null) return;
+      output.push({
+        name:"Cache checkpoints " + skippedStart + (skippedEnd !== skippedStart ? "–" + skippedEnd : ""),
+        status:"completed", conclusion:"skipped", started_at:null, completed_at:null, synthetic:true
+      });
+      skippedStart=null; skippedEnd=null;
+    }
+
+    job.steps.forEach(step => {
+      if (hidden(step.name)) return;
+      const match=step.name.match(/^(?:Warm local compiler cache \(checkpoint (\d+)\/\d+\)|Save compiler cache checkpoint (\d+)|Drop cache superseded by checkpoint (\d+))$/);
+      if (step.conclusion === "skipped" && match) {
+        const n=Number(match[1] || match[2] || match[3]);
+        if (skippedStart == null) skippedStart=n;
+        skippedEnd=n;
+        return;
+      }
+      flushSkipped();
+      output.push(step);
+    });
+    flushSkipped();
+
+    const dedup=[];
+    output.forEach(step => {
+      if (step.synthetic && dedup.length && dedup[dedup.length-1].synthetic &&
+          dedup[dedup.length-1].name === step.name) return;
+      dedup.push(step);
+    });
+    return dedup;
+  }
+
+  function renderArchitecture(name, job) {
+    if (!job) {
+      return '<details class="arch"><summary><div class="arch-title">' + esc(name) +
+        '</div><div class="arch-summary">Waiting</div></summary></details>';
+    }
+    const s=state(job);
+    const stats=checkpointStats(job);
+    const apk=stepByName(job,"Build, sign and verify APK");
+    const restore=stepByName(job,"Restore compiler cache");
+    const steps=visibleSteps(job);
+
+    return '<details class="arch">' +
+      '<summary><div class="arch-title"><span class="dot" style="background:var(--' +
+        (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
+        ')"></span>' + esc(name) + '</div>' +
+        '<div class="arch-summary"><strong>' + esc(formatDuration(durationMs(job))) +
+        '</strong> · ' + esc(s.label) + '</div></summary>' +
+      '<div class="arch-body">' +
+        '<div class="arch-metrics">' +
+          '<div class="mini">Warm-up <strong>' + esc(stats.success) + '/' + esc(stats.total || 20) + '</strong></div>' +
+          '<div class="mini">APK <strong>' + esc(formatDuration(durationMs(apk))) + '</strong></div>' +
+          '<div class="mini">Cache restore <strong>' + esc(formatDuration(durationMs(restore))) + '</strong></div>' +
+        '</div>' +
+        steps.map(step => {
+          const ss=state(step);
+          return '<div class="step">' +
+            '<div class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</div>' +
+            '<div class="step-status ' + statusTextClass(step) + '">' + esc(ss.label) + '</div>' +
+            '<div class="step-time">' + esc(step.synthetic ? "—" : formatDuration(durationMs(step))) + '</div>' +
+          '</div>';
+        }).join("") +
+      '</div></details>';
+  }
+
+  function renderArchitectures(jobs) {
+    const parts=findJobs(jobs);
+    $("architectures").innerHTML =
+      renderArchitecture("arm64-v8a",parts.arm64) +
+      renderArchitecture("armeabi-v7a",parts.arm);
+  }
+
+  function selectedBuild() {
+    if (!model || !model.builds || !model.builds.length) return null;
+    return model.builds.find(build => String(build.run.id) === String(model.selectedRunId)) ||
+      model.builds[0];
+  }
+
+  function selectBuild(runId) {
+    if (!model || !model.builds.some(build => String(build.run.id) === String(runId))) return;
+    model.selectedRunId=String(runId);
+    renderModel();
+  }
+
+  function renderHistory(builds) {
+    const visible=(builds || []).slice(0,3);
+    $("history").innerHTML = visible.map(build => {
+      const run=build.run;
+      const s=state(run);
+      const selected=String(run.id) === String(model.selectedRunId);
+      return '<button type="button" class="run' + (selected ? ' selected' : '') +
+        '" data-run-id="' + esc(run.id) + '">' +
+        '<div class="run-num">#' + esc(run.run_number) + '</div>' +
+        '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' +
+          esc((build.release && build.release.tag_name) || run.head_branch || "") + '</div></div>' +
+        '<div class="run-sha">' + esc((run.head_sha || "").slice(0,7)) + '</div>' +
+        '<div class="run-time">' + esc(timeAgo(run.updated_at || run.created_at)) + '</div>' +
+        '<div class="run-duration">' + esc(formatDuration(durationMs(run))) + '</div>' +
+        '<div class="run-status ' + statusTextClass(run) + '">' + esc(s.label) + '</div>' +
+      '</button>';
+    }).join("") || '<div class="run">No Build Argon runs found.</div>';
+
+    $("history").querySelectorAll("[data-run-id]").forEach(row => {
+      row.addEventListener("click", () => selectBuild(row.dataset.runId));
+    });
+  }
+
+  function renderRelease(release) {
+    const box=$("release-card");
+    if (!release) {
+      box.innerHTML='<h3>Latest published release</h3><div class="meta">No published release yet.</div>';
+      return;
+    }
+    box.innerHTML='<h3><a href="' + esc(release.html_url) + '">' +
+      esc(release.name || release.tag_name) + '</a></h3>' +
+      '<div class="kv">' +
+        '<div class="k">Tag</div><div>' + esc(release.tag_name) + '</div>' +
+        '<div class="k">Published</div><div>' + esc(timeAgo(release.published_at)) + '</div>' +
+        '<div class="k">Assets</div><div>' + esc((release.assets || []).length) + '</div>' +
+      '</div>';
+  }
+
+  function renderArtifacts(artifacts, run) {
+    const box=$("artifacts-card");
+    const list=artifacts && artifacts.artifacts ? artifacts.artifacts : [];
+    if (!list.length) {
+      box.innerHTML='<h3>Build #' + esc(run.run_number) + ' artifacts</h3><div class="meta">No artifacts available yet.</div>';
+      return;
+    }
+    box.innerHTML='<h3>Build #' + esc(run.run_number) + ' artifacts</h3><ul class="artifacts">' +
+      list.map(a => '<li>' + esc(a.name) + '<span class="artifact-size">' +
+        esc(formatBytes(a.size_in_bytes)) + '</span></li>').join("") +
+      '</ul><p><a href="' + esc(run.html_url) + '">Open run to download</a></p>';
+  }
+
+  function renderModel() {
+    if (!model) return;
+    const build=selectedBuild();
+    if (!build) return;
+    const run=build.run, jobs=build.jobs || [];
+    $("timeline-title").textContent="Build #" + run.run_number + " timeline";
+    $("architecture-title").textContent="Architecture details · #" + run.run_number;
+    renderHistory(model.builds);
+    renderTimeline(run,jobs);
+    renderArchitectures(jobs);
+    renderRelease(build.release || model.release);
+    renderArtifacts({artifacts:build.artifacts || []},run);
+  }
+
+  async function loadDashboard() {
+    const refresh=$("refresh");
+    refresh.disabled=true;
+    refresh.textContent="Refreshing…";
+    $("notice").classList.remove("error");
+    try {
+      const snapshot=await requestSnapshot();
+      let builds=Array.isArray(snapshot.builds) ? snapshot.builds.slice(0,3) : [];
+      if (!builds.length) {
+        const runs=snapshot.runs || [];
+        const latest=snapshot.latest || runs[0];
+        if (latest) builds=[{
+          run:latest,
+          jobs:snapshot.jobs || [],
+          artifacts:snapshot.artifacts || []
+        }];
+      }
+      if (!builds.length) throw new Error("No Build Argon runs in dashboard snapshot.");
+
+      const previous=model && model.selectedRunId;
+      const selected=previous && builds.some(build => String(build.run.id) === String(previous))
+        ? String(previous) : String(builds[0].run.id);
+      model={
+        builds:builds,
+        selectedRunId:selected,
+        release:snapshot.release || null
+      };
+      renderModel();
+      const age=snapshot.generated_at ? timeAgo(snapshot.generated_at) : "unknown";
+      $("notice").textContent =
+        "Read-only dashboard snapshot generated by GitHub Actions " + age +
+        ". No browser GitHub API token is used, and this page cannot start, rerun or cancel builds.";
+    } catch(error) {
+      console.error(error);
+      $("notice").classList.add("error");
+      $("notice").textContent =
+        "Could not load dashboard-data.json: " + error.message +
+        ". The snapshot updater may still be publishing the latest data.";
+    } finally {
+      refresh.disabled=false;
+      refresh.textContent="Refresh";
+    }
+  }
+
+  $("refresh").addEventListener("click",loadDashboard);
+  loadDashboard();
+  setInterval(loadDashboard,60*1000);
+  setInterval(() => {
+    const build=selectedBuild();
+    if (build && build.run.status !== "completed") renderModel();
+  },1000);
+})();
+</script>
+</body>
+</html>

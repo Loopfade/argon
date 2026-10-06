@@ -25,6 +25,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -92,6 +93,12 @@ jobs:
           latest=$(jq '.[0].run // null' <<<"$builds")
           release=$(jq '.[0].release // null' <<<"$builds")
 
+          latest_release_run=$(jq -r '.[0].run.id // empty' <<<"$builds")
+          if [[ "$EVENT_NAME" == workflow_run && "$latest_release_run" != "$TRIGGER_RUN_ID" ]]; then
+            echo "Build Argon run $TRIGGER_RUN_ID did not publish a new release; dashboard snapshot is unchanged."
+            exit 0
+          fi
+
           jq -n \
             --arg generated_at "$(date -u +%FT%TZ)" \
             --argjson latest "$latest" \
@@ -106,7 +113,7 @@ jobs:
               release: $release
             }' > dashboard-data.json
 
-      - name: Publish snapshot to gh-pages
+      - name: Publish snapshot to main
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -114,13 +121,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # The previous step exits successfully without a file when a
-          # scheduled refresh is unnecessary.
           [[ -f dashboard-data.json ]] || exit 0
 
           api_path="repos/$GH_REPO/contents/dashboard-data.json"
-          current=$(gh api "$api_path?ref=gh-pages" 2>/dev/null || true)
+          current=$(gh api "$api_path?ref=main" 2>/dev/null || true)
           sha=$(jq -r '.sha // empty' <<<"$current")
           content=$(base64 -w0 dashboard-data.json)
 
@@ -129,13 +133,13 @@ jobs:
               --arg message "pages: refresh Argon dashboard data" \
               --arg content "$content" \
               --arg sha "$sha" \
-              --arg branch "gh-pages" \
+              --arg branch "main" \
               '{message:$message,content:$content,sha:$sha,branch:$branch}')
           else
             payload=$(jq -n \
               --arg message "pages: initialize Argon dashboard data" \
               --arg content "$content" \
-              --arg branch "gh-pages" \
+              --arg branch "main" \
               '{message:$message,content:$content,branch:$branch}')
           fi
 
