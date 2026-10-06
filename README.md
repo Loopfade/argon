@@ -21,15 +21,11 @@ Argon — Android-браузер на базе [Titanium](https://github.com/jqs
 
 ## Сборка, CI и релизы
 
-CI проверяет закреплённые зависимости, патчи и ограничения сертификатов. Релизная сборка APK для `arm64-v8a` и `armeabi-v7a` в ветке `main` запускается **только вручную** через [Build Argon](https://github.com/Loopfade/argon/actions/workflows/build.yml).
+CI проверяет закреплённые зависимости, патчи и ограничения сертификатов. Релизная сборка APK для `arm64-v8a` и `armeabi-v7a` запускается вручную через [Build Argon](https://github.com/Loopfade/argon/actions/workflows/build.yml) и после успешной проверки автоматически публикуется как GitHub Release.
 
-Для релиза используется `signing=release`. После успешной проверки обеих архитектур GitHub Actions автоматически вызывает publisher внутри того же `Build Argon` run и публикует GitHub Release. Ручной запуск с `signing=test` и pull request builds используют тестовую подпись и релиз не публикуют.
+Текущую сборку можно отслеживать в [GitHub Actions](https://github.com/Loopfade/argon/actions/workflows/build.yml), а статистику последних опубликованных сборок — в [Argon CI dashboard](https://loopfade.github.io/argon/).
 
-Текущий выполняющийся run удобнее отслеживать непосредственно в [GitHub Actions](https://github.com/Loopfade/argon/actions/workflows/build.yml). [Argon CI dashboard](https://loopfade.github.io/argon/) хранит статистику последних трёх **опубликованных релизных** сборок: этапы, длительность, архитектуры, артефакты и связанный Release.
-
-Dashboard хранится в `main` (`index.html` и `dashboard-data.json`) и публикуется через GitHub Actions; отдельная ветка `gh-pages` не используется.
-
-Подробная схема проверки, prepared image, continuation и публикации описана в [VALIDATION.md](VALIDATION.md).
+Подробности CI и release pipeline описаны в [VALIDATION.md](VALIDATION.md).
 
 ## Происхождение и лицензии
 
