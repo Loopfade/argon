@@ -7,7 +7,6 @@ on:
       - 'index.html'
       - 'dashboard-data.json'
       - '.nojekyll'
-      - '.github/workflows/deploy-dashboard.yml'
   workflow_dispatch:
 
 permissions:
@@ -23,7 +22,8 @@ jobs:
   deploy:
     name: Deploy GitHub Pages
     environment:
-      name: pages-main
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
