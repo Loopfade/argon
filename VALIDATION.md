@@ -20,10 +20,13 @@
 
 ## Validate scoped Russian CA
 
-Workflow `.github/workflows/validate.yml` запускается на обычные push,
-pull request и вручную. Изменения, относящиеся только к статическому dashboard
-и его публикации, исключены из push-validation, чтобы не создавать лишние
-служебные runs.
+Workflow `.github/workflows/validate.yml` запускается на push, pull request
+и вручную. Изменения только dashboard-файлов и workflows его обновления/
+публикации исключены и для push, и для pull request.
+
+На push дополнительно выполняется cleanup закрытых PR: отменяются оставшиеся
+активными PR-сборки и удаляются их Actions caches. При закрытии PR запускается
+только этот cleanup; основная validation job не выполняется.
 
 Validation:
 
@@ -50,17 +53,20 @@ OCI image в GHCR. Один совместимый prepared image использ
 ARM-сборками.
 
 Успешное завершение `Build prepared Chromium image` **не запускает
-`Build Argon` автоматически**. Перед ручной релизной сборкой prepared image
-должен быть совместим с текущими входами; это проверяет gate внутри
-`Build Argon`.
+`Build Argon` автоматически**. Перед сборкой совместимость prepared image
+проверяется gate и самой architecture job. Если успешный prepared-image run
+уже отсутствует в Actions history, сборка не блокируется только из-за
+очищенной истории: фактический GHCR image всё равно проверяется перед
+компиляцией.
 
 ## Build Argon: запуск и архитектуры
 
 Workflow `.github/workflows/build.yml` имеет два типа запуска:
 
 - в `main` — только ручной `workflow_dispatch`;
-- в pull request — автоматически только для перечисленных в workflow
-  build/CI/release-файлов.
+- в pull request — автоматически, если PR меняет хотя бы один путь из
+  `pull_request.paths` в `build.yml` (build workflow, reusable build/
+  continuation/publisher, `.github/ci/**` или signing/release scripts).
 
 Push в `main` и завершение prepared-image workflow сами по себе
 `Build Argon` не запускают.
@@ -69,7 +75,8 @@ Push в `main` и завершение prepared-image workflow сами по с�
 
 - `runner` — label Linux x64 runner;
 - `signing=release|test`;
-- внутренний счётчик `continuation`.
+- `continuation` — внутренний счётчик автоматических продолжений;
+  при обычном ручном запуске остаётся `0`.
 
 Matrix содержит:
 
@@ -152,14 +159,12 @@ Release notes формируются **только на русском язык
 - `dashboard-data.json` — read-only snapshot;
 - `.nojekyll` — публикация без Jekyll.
 
-Отдельная ветка `gh-pages` не используется; в репозитории рабочая ветка
-одна — `main`.
-
 Workflow `.github/workflows/update-dashboard.yml` запускается после
-завершения `Build Argon`, но обновляет snapshot только если этот run
-действительно создал новый опубликованный Release. В snapshot сохраняются
-до трёх последних валидных опубликованных релизных билдов с jobs,
-step timings, artifacts и release metadata.
+завершения `Build Argon` и может быть запущен вручную. При автоматическом
+запуске snapshot изменяется только если завершившийся run соответствует
+последнему опубликованному Release. В snapshot сохраняются до трёх последних
+валидных опубликованных релизных билдов с jobs, step timings, artifacts и
+release metadata.
 
 Workflow `.github/workflows/deploy-dashboard.yml` публикует
 `index.html`, `dashboard-data.json` и `.nojekyll` через официальный
@@ -189,9 +194,9 @@ CI не заменяет проверки на реальном Android-устр
   `Build prepared Chromium image`.
 - Push в `main` → **не запускает релизный `Build Argon`**.
 - Релизный `Build Argon` в `main` → запускается только вручную.
-- Изменения build/CI/release-файлов в pull request → могут запустить
-  тестовый `Build Argon` для PR.
+- Pull request, меняющий путь из `pull_request.paths` в `build.yml` →
+  автоматически запускает тестовый `Build Argon` без публикации релиза.
 - `README.md` и `VALIDATION.md` → не запускают APK или prepared-image
   build; для них выполняется обычная validation.
-- Dashboard-only файлы и служебные snapshot/deploy изменения → не должны
-  запускать APK build.
+- Dashboard-only файлы и workflows snapshot/deploy → не запускают
+  `Build Argon`; изменения snapshot/site публикуют только dashboard.

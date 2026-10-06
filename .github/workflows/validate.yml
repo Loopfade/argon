@@ -3,9 +3,7 @@ on:
   push:
     paths-ignore:
       - '.github/workflows/update-dashboard.yml'
-      - '.github/workflows/migrate-pages-to-main.yml'
       - '.github/workflows/deploy-dashboard.yml'
-      - '.github/workflows/remove-gh-pages.yml'
       - 'index.html'
       - 'dashboard-data.json'
       - '.nojekyll'
@@ -13,7 +11,7 @@ on:
     types: [opened, synchronize, reopened, closed]
     paths-ignore:
       - '.github/workflows/update-dashboard.yml'
-      - '.github/workflows/migrate-pages-to-main.yml'
+      - '.github/workflows/deploy-dashboard.yml'
       - 'index.html'
       - 'dashboard-data.json'
       - '.nojekyll'
