@@ -8,19 +8,8 @@ depot=${2:?Pass the prepared depot_tools directory}
 export PATH="$depot:$PATH"
 export DEPOT_TOOLS_UPDATE=0
 
-python3 - "$ROOT/build-lock.json" "$src" <<'PY'
-import json
-from pathlib import Path
-import subprocess
-import sys
-
-expected = json.loads(Path(sys.argv[1]).read_text())["chromium_commit"]
-actual = subprocess.check_output(
-    ["git", "-C", sys.argv[2], "rev-parse", "HEAD"], text=True
-).strip()
-if actual != expected:
-    raise SystemExit("Prepared Chromium revision does not match build-lock.json")
-PY
+python3 "$ROOT/.github/ci/check-domain-test-inputs.py" \
+  --lock "$ROOT/build-lock.json" --src "$src" --depot "$depot"
 
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert"
