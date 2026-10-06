@@ -10,7 +10,14 @@ import sys
 DOCUMENTATION_FILES = {
     "README.md",
     "README.upstream.md",
+    "VALIDATION.md",
     "BUILDING.md",
+    "index.html",
+    "dashboard-data.json",
+    ".nojekyll",
+    ".github/package-metadata/argon-build-description.txt",
+    ".github/workflows/update-dashboard.yml",
+    ".github/workflows/deploy-dashboard.yml",
 }
 DOCUMENTATION_PREFIXES = ("docs/",)
 GITHUB_COMPARE_FILE_LIMIT = 300

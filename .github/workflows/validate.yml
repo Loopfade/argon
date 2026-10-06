@@ -17,13 +17,15 @@ on:
       - '.nojekyll'
   workflow_dispatch:
 permissions:
-  actions: write
   contents: read
-  pull-requests: read
 jobs:
   cleanup:
     name: Clean closed PR builds and caches
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.base.ref == 'main')
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.base.ref == 'main'
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -78,6 +80,8 @@ jobs:
           done
   validate:
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

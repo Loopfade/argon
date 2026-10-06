@@ -1,13 +1,17 @@
 name: Update Argon dashboard snapshot
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-dashboard.yml'
   workflow_run:
     workflows: [Build Argon]
     types: [completed]
   workflow_dispatch:
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -20,6 +24,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
       - name: Build authenticated dashboard snapshot
         env:
           GH_TOKEN: ${{ github.token }}
@@ -59,9 +67,17 @@ jobs:
             release_sha=$(jq -r '.target_commitish' <<<"$release")
 
             if [[ "$run_name" != "Build Argon" || "$run_event" != workflow_dispatch ||
-                  "$run_conclusion" != success || "$run_sha" != "$release_sha" ]]; then
+                  "$run_conclusion" != success ]]; then
               echo "::warning::Release $(jq -r '.tag_name' <<<"$release") does not map to a verified successful manual Build Argon run; skipping."
               continue
+            fi
+
+            if [[ "$run_sha" != "$release_sha" ]]; then
+              compare_json=$(gh api "repos/$GH_REPO/compare/$release_sha...$run_sha")
+              if ! python3 scripts/release_policy.py check-release-payload-drift <<<"$compare_json"; then
+                echo "::warning::Release $(jq -r '.tag_name' <<<"$release") target differs from its Build Argon run across release-payload changes; skipping."
+                continue
+              fi
             fi
 
             jobs=$(gh api "repos/$GH_REPO/actions/runs/$run_id/jobs?filter=latest&per_page=100" |
@@ -144,3 +160,8 @@ jobs:
           fi
 
           gh api --method PUT "$api_path" --input - <<<"$payload" >/dev/null
+
+          # GITHUB_TOKEN commits do not recursively trigger push workflows.
+          gh api --method POST \
+            "repos/$GH_REPO/actions/workflows/deploy-dashboard.yml/dispatches" \
+            -f ref=main >/dev/null

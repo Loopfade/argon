@@ -96,6 +96,12 @@ jobs:
               *) return 0 ;;
             esac
 
+            file_count=$(jq '.files | length' <<<"$compare")
+            if (( file_count >= 300 )); then
+              echo "Prepared-image comparison reached GitHub's 300-file limit; requiring a fresh image."
+              return 0
+            fi
+
             while IFS= read -r path; do
               if image_input "$path"; then
                 echo "Prepared-image input changed: $path"

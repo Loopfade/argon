@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/deploy-dashboard.yml'
       - 'index.html'
       - 'dashboard-data.json'
       - '.nojekyll'
@@ -45,6 +46,7 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
+          include-hidden-files: true
 
       - name: Deploy Pages
         id: deployment

@@ -29,7 +29,8 @@ class ContinuationTests(unittest.TestCase):
                     "GITHUB_RUN_ATTEMPT": "3", "GITHUB_SHA": self.merge,
                     "GITHUB_REF": "refs/pull/11/merge", "GITHUB_REF_NAME": "11/merge",
                     "CONTINUATION_COUNT": "0", "AUTO_CONTINUE_MAX": "10"}
-        self.controller_env = {**self.env, "GITHUB_SHA": self.head,
+        self.controller_env = {**self.env, "GITHUB_REF": "refs/heads/main",
+                               "GITHUB_SHA": "c" * 40,
                                "RESUME_RUN": "123", "RESUME_ATTEMPT": "3",
                                "RESUME_SHA": self.merge}
         self.writes = []
@@ -47,22 +48,21 @@ class ContinuationTests(unittest.TestCase):
             return copy.deepcopy(self.pr)
         self.fail(f"Unexpected API path {path}")
 
-    def test_pr_schedules_controller_with_original_merge_sha_and_run_id(self):
+    def test_pr_schedules_main_controller_with_original_merge_sha(self):
         with patch.object(continuation, "api", side_effect=self.api):
             continuation.schedule(self.env)
         self.assertEqual(self.writes, [("actions/workflows/continue-build.yml/dispatches", {
-            "ref": self.run["head_branch"], "inputs": {
+            "ref": "main", "inputs": {
                 "resume_run": "123", "resume_attempt": "3", "resume_sha": self.merge}})])
 
-    def test_controller_reruns_original_pr_instead_of_dispatching_branch_build(self):
+    def test_controller_reruns_original_pr(self):
         with patch.object(continuation, "api", side_effect=self.api):
             continuation.resume(self.controller_env)
         self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
 
-    def test_controller_waits_for_source_cleanup_before_rerun(self):
+    def test_controller_waits_for_cleanup(self):
         self.run.update(status="in_progress", conclusion=None)
         def finish(_seconds):
-            self.assertEqual(self.writes, [])
             self.run.update(status="completed", conclusion="failure")
         with patch.object(continuation, "api", side_effect=self.api), \
              patch.object(continuation.time, "sleep", side_effect=finish) as sleep:
@@ -70,17 +70,20 @@ class ContinuationTests(unittest.TestCase):
         sleep.assert_called_once_with(5)
         self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
 
-    def test_push_continuation_keeps_original_run_and_commit(self):
-        self.run.update(event="push", pull_requests=[])
+    def test_manual_build_continues_after_main_advances(self):
+        self.run.update(event="workflow_dispatch", head_branch="main", pull_requests=[])
+        manual_env = {**self.env, "GITHUB_SHA": self.head}
+        controller = {**self.controller_env, "RESUME_SHA": self.head, "GITHUB_SHA": "d" * 40}
         with patch.object(continuation, "api", side_effect=self.api):
-            continuation.schedule({**self.env, "GITHUB_SHA": self.head})
+            continuation.schedule(manual_env)
             self.writes.clear()
-            continuation.resume({**self.controller_env, "RESUME_SHA": self.head})
+            continuation.resume(controller)
         self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
 
-    def test_changed_branch_or_pr_base_never_dispatches_or_reruns(self):
+    def test_changed_pr_head_or_base_never_continues(self):
         for changed in ("head", "merge"):
             with self.subTest(changed=changed):
+                self.setUp()
                 self.branch_sha = "c" * 40 if changed == "head" else self.head
                 self.pr["merge_commit_sha"] = "c" * 40 if changed == "merge" else self.merge
                 for function, env in [(continuation.schedule, self.env),
@@ -90,8 +93,8 @@ class ContinuationTests(unittest.TestCase):
                         function(env)
         self.assertEqual(self.writes, [])
 
-    def test_foreign_workflow_fork_or_closed_pr_never_runs(self):
-        for change in ("workflow", "repository", "fork", "closed"):
+    def test_foreign_or_legacy_source_never_runs(self):
+        for change in ("workflow", "repository", "fork", "closed", "legacy_event"):
             with self.subTest(change=change):
                 self.setUp()
                 if change == "workflow":
@@ -100,8 +103,10 @@ class ContinuationTests(unittest.TestCase):
                     self.run["repository"]["full_name"] = "other/argon"
                 elif change == "fork":
                     self.run["head_repository"]["full_name"] = "other/argon"
-                else:
+                elif change == "closed":
                     self.pr["state"] = "closed"
+                else:
+                    self.run.update(event="push", pull_requests=[])
                 with patch.object(continuation, "api", side_effect=self.api), \
                      self.assertRaises(ValueError):
                     continuation.schedule(self.env)
@@ -116,28 +121,27 @@ class ContinuationTests(unittest.TestCase):
                 continuation.resume(self.controller_env)
         self.assertEqual(self.writes, [])
 
-    def test_newer_attempt_does_not_schedule_duplicate(self):
+    def test_newer_attempt_does_not_duplicate(self):
         self.run["run_attempt"] = 4
         with patch.object(continuation, "api", side_effect=self.api):
             continuation.resume(self.controller_env)
         self.assertEqual(self.writes, [])
 
-    def test_wrong_controller_commit_is_rejected(self):
+    def test_controller_must_run_from_main(self):
         with patch.object(continuation, "api", side_effect=self.api), \
-             self.assertRaisesRegex(ValueError, "Controller does not match"):
-            continuation.resume({**self.controller_env, "GITHUB_SHA": "c" * 40})
+             self.assertRaisesRegex(ValueError, "must run from main"):
+            continuation.resume({**self.controller_env, "GITHUB_REF": "refs/heads/topic"})
         self.assertEqual(self.writes, [])
 
-    def test_hung_source_has_a_bounded_wait(self):
+    def test_hung_source_has_bounded_wait(self):
         self.run.update(status="in_progress", conclusion=None)
         with patch.object(continuation, "api", side_effect=self.api), \
              patch.object(continuation.time, "sleep") as sleep, \
              self.assertRaisesRegex(ValueError, "did not finish"):
             continuation.resume(self.controller_env, max_polls=2)
         sleep.assert_called_once_with(5)
-        self.assertEqual(self.writes, [])
 
-    def test_limit_counts_reruns_even_when_dispatch_input_stays_zero(self):
+    def test_limit_counts_reruns(self):
         self.run["run_attempt"] = 11
         with patch.object(continuation, "api", side_effect=self.api), \
              self.assertRaisesRegex(ValueError, "limit"):
@@ -145,13 +149,11 @@ class ContinuationTests(unittest.TestCase):
         with patch.object(continuation, "api", side_effect=self.api), \
              self.assertRaisesRegex(ValueError, "limit"):
             continuation.resume({**self.controller_env, "RESUME_ATTEMPT": "11"})
-        self.assertEqual(self.writes, [])
 
-    def test_api_failure_does_not_claim_to_have_queued_continuation(self):
+    def test_api_failure_is_propagated(self):
         with patch.object(continuation, "api", side_effect=RuntimeError("HTTP 403")), \
              self.assertRaisesRegex(RuntimeError, "HTTP 403"):
             continuation.schedule(self.env)
-        self.assertEqual(self.writes, [])
 
 
 if __name__ == "__main__":

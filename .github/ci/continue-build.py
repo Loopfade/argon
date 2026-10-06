@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resume the original build run without losing its PR-scoped compiler cache."""
+"""Resume the original build run without losing its event, SHA or cache scope."""
 import json
 import os
 import re
@@ -31,24 +31,26 @@ def check_run(run, repository, run_id):
     if (run["id"] != run_id or run["path"] != WORKFLOW
             or run["repository"]["full_name"] != repository
             or run["head_repository"]["full_name"] != repository
-            or run["event"] not in ("pull_request", "push", "workflow_dispatch", "workflow_run")):
-        raise ValueError("Refusing to continue an unrelated or fork workflow")
+            or run["event"] not in ("pull_request", "workflow_dispatch")):
+        raise ValueError("Refusing to continue an unrelated or unsupported workflow")
 
 
 def check_revision(run, repository, checkout_sha):
+    if run["event"] == "workflow_dispatch":
+        if run["head_sha"] != checkout_sha:
+            raise ValueError("Checkout does not match the original manual run")
+        return
+
     branch = quote(run["head_branch"], safe="/")
     head = api(repository, f"git/ref/heads/{branch}")["object"]["sha"]
     if head != run["head_sha"]:
         raise ValueError("Branch changed; refusing to resume stale code")
-    if run["event"] == "pull_request":
-        if len(run["pull_requests"]) != 1:
-            raise ValueError("Expected one pull request for this run")
-        pr = api(repository, f"pulls/{run['pull_requests'][0]['number']}")
-        if (pr["state"] != "open" or pr["head"]["repo"]["full_name"] != repository
-                or pr["head"]["sha"] != head or pr["merge_commit_sha"] != checkout_sha):
-            raise ValueError("Pull request head/base changed; refusing a stale merge build")
-    elif head != checkout_sha:
-        raise ValueError("Checkout does not match the branch commit")
+    if len(run["pull_requests"]) != 1:
+        raise ValueError("Expected one pull request for this run")
+    pr = api(repository, f"pulls/{run['pull_requests'][0]['number']}")
+    if (pr["state"] != "open" or pr["head"]["repo"]["full_name"] != repository
+            or pr["head"]["sha"] != head or pr["merge_commit_sha"] != checkout_sha):
+        raise ValueError("Pull request head/base changed; refusing a stale merge build")
 
 
 def schedule(env):
@@ -63,10 +65,9 @@ def schedule(env):
     if run["run_attempt"] != attempt:
         raise ValueError("The build attempt changed")
     check_revision(run, repository, env["GITHUB_SHA"])
-    # Dispatch only a small controller on the head branch. The actual build
-    # is rerun with the original event/ref/SHA and can read the PR cache.
+
     api(repository, "actions/workflows/continue-build.yml/dispatches", {
-        "ref": run["head_branch"],
+        "ref": "main",
         "inputs": {"resume_run": str(run_id), "resume_attempt": str(attempt),
                    "resume_sha": env["GITHUB_SHA"]},
     })
@@ -75,6 +76,9 @@ def schedule(env):
 
 def resume(env, max_polls=120):
     repository = env["GITHUB_REPOSITORY"]
+    if env.get("GITHUB_REF") != "refs/heads/main":
+        raise ValueError("Continuation controller must run from main")
+
     run_id = number(env["RESUME_RUN"])
     attempt = number(env["RESUME_ATTEMPT"])
     if attempt > number(env["AUTO_CONTINUE_MAX"]):
@@ -82,20 +86,22 @@ def resume(env, max_polls=120):
     checkout_sha = env["RESUME_SHA"]
     if not re.fullmatch(r"[0-9a-f]{40}", checkout_sha):
         raise ValueError("Invalid checkout SHA")
+
     for poll in range(max_polls):
         run = api(repository, f"actions/runs/{run_id}")
         check_run(run, repository, run_id)
         if run["run_attempt"] > attempt:
             print("The run was already retried; no duplicate continuation needed")
             return
-        if run["run_attempt"] != attempt or run["head_sha"] != env["GITHUB_SHA"]:
-            raise ValueError("Controller does not match the original run/commit")
+        if run["run_attempt"] != attempt:
+            raise ValueError("Controller does not match the original run attempt")
         if run["status"] == "completed":
             break
         if poll + 1 < max_polls:
             time.sleep(5)
     else:
         raise ValueError("The source run did not finish cleanup in time")
+
     if run["conclusion"] != "failure":
         raise ValueError("Only a failed run may be continued; preserving cancellations")
     check_revision(run, repository, checkout_sha)
