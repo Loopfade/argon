@@ -24,9 +24,9 @@ Workflow `.github/workflows/validate.yml` запускается на push, pull
 и вручную. Изменения только dashboard-файлов и workflows его обновления/
 публикации исключены и для push, и для pull request.
 
-На push дополнительно выполняется cleanup закрытых PR: отменяются оставшиеся
-активными PR-сборки и удаляются их Actions caches. При закрытии PR запускается
-только этот cleanup; основная validation job не выполняется.
+При закрытии PR запускается cleanup: отменяются оставшиеся активными
+PR-сборки и удаляются их Actions caches. На обычном push этот дополнительный
+runner не создаётся. При закрытии PR основная validation job не выполняется.
 
 Validation:
 
@@ -105,8 +105,13 @@ architecture-specific `ccache`. Если job исчерпала выделенн
 budget, она инициирует `Continue Argon build`.
 
 Continuation workflow не создаёт новый самостоятельный `Build Argon`.
-Он вызывает rerun failed jobs **исходного run**, сохраняя его SHA, event и
-cache scope. Поэтому уже успешная архитектура повторно не собирается:
+Небольшой controller запускается из `main` и вызывает rerun failed jobs
+**исходного run**, поэтому сохраняются исходные event, SHA и cache scope.
+Продвижение `main` во время ручной сборки не мешает продолжению; актуальность
+исходного SHA отдельно проверяется перед публикацией. Для PR continuation
+отклоняется, если head или merge-base уже изменились.
+
+Поэтому уже успешная архитектура повторно не собирается:
 
 `arm64 ✅ + arm ❌ → retry только arm`.
 
@@ -128,6 +133,11 @@ Publisher вызывается внутри `Build Argon` только если 
 - выбран `signing=release`.
 
 Ручной `signing=test` и pull request builds релиз не публикуют.
+
+Если `main` продвинулся во время сборки, безопасные изменения документации,
+dashboard и его deployment metadata не делают проверенный APK устаревшим.
+Изменения build/signing/release logic по-прежнему блокируют публикацию
+старого build.
 
 Publisher скачивает **оба** artifacts из одного `Build Argon` run и
 проверяет:
@@ -160,11 +170,15 @@ Release notes формируются **только на русском язык
 - `.nojekyll` — публикация без Jekyll.
 
 Workflow `.github/workflows/update-dashboard.yml` запускается после
-завершения `Build Argon` и может быть запущен вручную. При автоматическом
-запуске snapshot изменяется только если завершившийся run соответствует
-последнему опубликованному Release. В snapshot сохраняются до трёх последних
-валидных опубликованных релизных билдов с jobs, step timings, artifacts и
-release metadata.
+завершения `Build Argon`, при изменении самого updater workflow и вручную.
+При автоматическом запуске от `Build Argon` snapshot изменяется только если
+завершившийся run соответствует опубликованному Release. В snapshot
+сохраняются до трёх последних валидных опубликованных релизных билдов с jobs,
+step timings, artifacts и release metadata.
+
+После записи `dashboard-data.json` updater явно запускает
+`Deploy Argon dashboard`. Это необходимо, потому что commit, созданный
+через `GITHUB_TOKEN`, не используется для рекурсивного запуска push-workflow.
 
 Workflow `.github/workflows/deploy-dashboard.yml` публикует
 `index.html`, `dashboard-data.json` и `.nojekyll` через официальный
