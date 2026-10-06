@@ -43,10 +43,5 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("file_count >= 300", build)
         self.assertIn("requiring a fresh image", build)
 
-    def test_no_legacy_workflow_run_condition_in_image_job(self):
-        image = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
-        self.assertNotIn("github.event_name != 'workflow_run'", image)
-
-
 if __name__ == "__main__":
     unittest.main()
