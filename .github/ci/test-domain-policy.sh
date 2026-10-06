@@ -24,7 +24,7 @@ PY
 
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert"
-cp "$ROOT/chromium_overlay/argon_tests/"* "$src/argon_tests/"
+cp "$ROOT/tests/domain_policy/"* "$src/argon_tests/"
 cp "$ROOT/chromium_overlay/net/cert/titanium_ru_domain_policy.h" \
    "$ROOT/chromium_overlay/net/cert/titanium_ru_domain_policy_unittest.cc" \
    "$src/net/cert/"

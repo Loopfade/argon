@@ -46,7 +46,7 @@ class WorkflowWiringTests(unittest.TestCase):
     def test_domain_validator_tests_are_built_and_executed_in_ci(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
         runner = (ROOT / ".github/ci/test-domain-policy.sh").read_text()
-        target = (ROOT / "chromium_overlay/argon_tests/BUILD.gn").read_text()
+        target = (ROOT / "tests/domain_policy/BUILD.gn").read_text()
         self.assertIn("bash /workspace/.github/ci/test-domain-policy.sh", validation)
         self.assertIn("--root-target=//argon_tests:argon_domain_policy_tests", runner)
         self.assertIn("--gtest_filter=TitaniumRuDomainPolicyTest.*", runner)
