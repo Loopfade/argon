@@ -4,6 +4,8 @@ on:
     paths-ignore:
       - '.github/workflows/update-dashboard.yml'
       - '.github/workflows/migrate-pages-to-main.yml'
+      - '.github/workflows/deploy-dashboard.yml'
+      - '.github/workflows/remove-gh-pages.yml'
       - 'index.html'
       - 'dashboard-data.json'
       - '.nojekyll'
