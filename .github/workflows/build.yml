@@ -1,79 +1,189 @@
-name: Build
+name: Build Argon
 
 on:
+  pull_request:
+    # PR builds use a temporary signing key and still verify prepared inputs.
+    paths:
+      - '.github/workflows/build.yml'
+      - '.github/workflows/build-arch.yml'
+      - '.github/workflows/continue-build.yml'
+      - '.github/workflows/publish-release.yml'
+      - '.github/ci/**'
+      - 'scripts/release_policy.py'
+      - 'scripts/sign_and_verify.py'
+      - 'scripts/VerifyReleaseKey.java'
   workflow_dispatch:
     inputs:
       runner:
-        description: 'Runner'
+        description: 'Linux x64 runner label (at least 100 GiB free disk)'
         required: true
         type: string
-        default: 'self-hosted' # ubuntu-latest
-  schedule:
-    - cron: '0 0 */16 * *'
+        default: ubuntu-24.04
+      signing:
+        description: 'Release uses the permanent repository key; test uses a temporary certificate'
+        required: true
+        type: choice
+        options: [release, test]
+        default: release
+      continuation:
+        description: 'Internal automatic continuation counter'
+        required: false
+        type: string
+        default: '0'
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  actions: write
+  contents: read
+  packages: read
+  pull-requests: read
+
+concurrency:
+  # Duplicate manual/PR runs of the same revision collapse to one.
+  group: ${{ format('argon-{0}-{1}', github.ref, github.sha) }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'self-hosted' }}
+  gate:
+    name: Require latest compatible prepared image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.image.outputs.build }}
     steps:
-      - uses: actions/checkout@v5
-        with:
-          submodules: true
-      
-      - name: Update 
+      - name: Gate APK build on prepared image
+        id: image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          CURRENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
         run: |
-          cd vanadium
-          git fetch --tags
-          git checkout $(git tag | sort -V | tail -n1)
-          cd ..
-          git add vanadium
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          if ! git diff --staged --quiet; then
-            git commit -am "update"
-            git push
+          set -euo pipefail
+
+          allow() {
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$1"
+          }
+
+          defer() {
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$1"
+            # A deferred run must not look successful to the release publisher.
+            gh api --method POST "repos/$GH_REPO/actions/runs/$CURRENT_RUN_ID/cancel" >/dev/null || true
+            exit 0
+          }
+
+          image_input() {
+            case "$1" in
+              .github/workflows/build-chromium-image.yml|              .gclient|.dockerignore|build-lock.json|build.sh|common.sh|patch.sh|args.gn|              chromium_overlay/*|certificates/*|extensions/*|res/*|              scripts/apply_scoped_ca.py|scripts/fetch_pinned_extension.py|              scripts/fetch_pinned_filter_lists.py|scripts/preflight.py|              scripts/configure_build.py|tests/CMakeLists.txt|tests/scoped_ca_test.cc|              vanadium|docker/chromium/*)
+                return 0
+                ;;
+            esac
+            return 1
+          }
+
+          image_inputs_changed() {
+            local base="$1" head="$2" base_tree head_tree changed_paths path
+            [[ "$base" == "$head" ]] && return 1
+
+            # Compare the snapshots directly. A history-only squash does not
+            # alter the baked sources, even when the old SHA is not an ancestor.
+            if ! base_tree=$(gh api "repos/$GH_REPO/git/trees/$base?recursive=1") ||
+               ! head_tree=$(gh api "repos/$GH_REPO/git/trees/$head?recursive=1"); then
+              echo "Cannot obtain prepared-image input trees; requiring a fresh image."
+              return 0
+            fi
+
+            # An incomplete response cannot prove that the inputs are equal.
+            if ! jq -e '.truncated == false and (.tree | type == "array")' \
+                 <<<"$base_tree" >/dev/null ||
+               ! jq -e '.truncated == false and (.tree | type == "array")' \
+                 <<<"$head_tree" >/dev/null; then
+              echo "Prepared-image input tree is incomplete; requiring a fresh image."
+              return 0
+            fi
+            if ! changed_paths=$(jq -nr --argjson before "$base_tree" --argjson after "$head_tree" '
+              def files:
+                .tree | map(select(.type != "tree")
+                  | {key: .path, value: {sha: .sha, mode: .mode, type: .type}}) | from_entries;
+              ($before | files) as $old | ($after | files) as $new
+              | (($old | keys) + ($new | keys) | unique)[]
+              | select($old[.] != $new[.])
+            '); then
+              echo "Cannot compare prepared-image input trees; requiring a fresh image."
+              return 0
+            fi
+
+            while IFS= read -r path; do
+              if image_input "$path"; then
+                echo "Prepared-image input changed: $path"
+                return 0
+              fi
+            done <<<"$changed_paths"
+            return 1
+          }
+
+          # Pull requests intentionally use the latest successful main image;
+          # check-prepared-inputs.py still rejects incompatible source inputs.
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            allow "PR will verify the latest successful prepared image against the PR checkout."
+            exit 0
           fi
 
-      - name: Set ENV
-        run: | 
-          chmod +x *.sh
-          echo "unix_time=$(date +%s)" >> $GITHUB_ENV
-    
-      - name: Build
-        env:
-            DEBIAN_FRONTEND: noninteractive
-            LOCAL_TEST_JKS: ${{ secrets.LOCAL_TEST_JKS }}
-            STORE_TEST_JKS: ${{ secrets.STORE_TEST_JKS }}
-        run: |
-          ./build.sh
+          active_image_runs=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&per_page=20"             --jq '[.workflow_runs[] | select(.status != "completed")] | length')
+          if (( active_image_runs > 0 )); then
+            defer "A newer prepared-image build is still active; defer APK until it completes."
+          fi
 
-      - name: Set
-        run: |
-          export VERSION=$(find chromium/src/out/release -name '*arm64-v8a.apk' | sed 's/.*\///;s/\-arm64-v8a.apk$//')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          mv $(find chromium/src/out/release -name '*arm64-v8a.aab') $VERSION-${{ env.unix_time }}-arm64-v8a.aab
-          mv $(find chromium/src/out/release -name '*arm64-v8a.apk') $VERSION-${{ env.unix_time }}-arm64-v8a.apk
-          mv $(find chromium/src/out/release -name '*armeabi-v7a.apk') $VERSION-${{ env.unix_time }}-armeabi-v7a.apk
+          latest_image_sha=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&status=success&per_page=1"             --jq '.workflow_runs[0].head_sha // empty')
+          if [[ -z "$latest_image_sha" ]]; then
+            allow "No successful prepared-image run remains in Actions history; verify the GHCR image directly."
+            exit 0
+          fi
 
-      - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: v${{ env.VERSION }}
-          tag_name: v${{ env.VERSION }}
-          files: |
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.aab
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.apk
-            ${{ env.VERSION }}-${{ env.unix_time }}-armeabi-v7a.apk
+          if image_inputs_changed "$latest_image_sha" "$CURRENT_SHA"; then
+            defer "Latest successful prepared image ($latest_image_sha) is incompatible with current main ($CURRENT_SHA)."
+          fi
 
-      - name: Attest
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-path: |
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.aab
-            ${{ env.VERSION }}-${{ env.unix_time }}-arm64-v8a.apk
-            ${{ env.VERSION }}-${{ env.unix_time }}-armeabi-v7a.apk
+          allow "Latest successful prepared image ($latest_image_sha) is compatible with current main."
+
+  build:
+    needs: gate
+    # The gate requires the newest successful compatible prepared image.
+    # Both Android ARM ABIs run concurrently and keep architecture-scoped
+    # compiler caches through build-arch.yml.
+    if: needs.gate.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, arm]
+    name: Build and verify ${{ matrix.arch }}
+    uses: ./.github/workflows/build-arch.yml
+    with:
+      arch: ${{ matrix.arch }}
+      # Both architectures reuse the same prepared source/toolchain image.
+      # build-arch.yml resolves it to an immutable digest before pulling.
+      image: ghcr.io/${{ github.repository_owner }}/argon-build:branch-main
+      runner: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'ubuntu-24.04' }}
+      # Manual builds use the selected key; pull requests always use a temporary key.
+      signing: ${{ github.event_name == 'workflow_dispatch' && inputs.signing || 'test' }}
+      continuation: ${{ github.event_name == 'workflow_dispatch' && inputs.continuation || '0' }}
+    secrets: inherit
+
+  publish:
+    needs: build
+    if: >-
+      needs.build.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.signing == 'release'
+    name: Publish verified dual-ARM release
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      run_id: ${{ github.run_id }}
+      source_sha: ${{ github.sha }}

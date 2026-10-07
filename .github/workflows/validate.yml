@@ -1,0 +1,147 @@
+name: Validate scoped Russian CA
+on:
+  push:
+    paths-ignore:
+      - '.github/workflows/update-dashboard.yml'
+      - '.github/workflows/deploy-dashboard.yml'
+      - 'index.html'
+      - 'dashboard-data.json'
+      - '.nojekyll'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths-ignore:
+      - '.github/workflows/update-dashboard.yml'
+      - '.github/workflows/deploy-dashboard.yml'
+      - 'index.html'
+      - 'dashboard-data.json'
+      - '.nojekyll'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cleanup:
+    name: Clean closed PR builds and caches
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.base.ref == 'main'
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Cancel stale pull-request builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api --paginate "repos/$GH_REPO/actions/workflows/build.yml/runs?per_page=100" \
+            --jq '.workflow_runs[]
+              | select(.event == "pull_request" and .status != "completed")
+              | [.id, .head_branch, (.head_repository.owner.login // "")]
+              | @tsv' |
+          while read -r run_id head_branch head_owner; do
+            [[ -n "$run_id" && -n "$head_branch" && -n "$head_owner" ]] || continue
+
+            open_prs=$(gh api --method GET "repos/$GH_REPO/pulls" \
+              -f state=open \
+              -f "head=$head_owner:$head_branch" \
+              -f per_page=1 \
+              --jq 'length')
+
+            if (( open_prs == 0 )); then
+              echo "Cancelling stale PR Build Argon run $run_id ($head_owner:$head_branch)"
+              gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel" >/dev/null || true
+            fi
+          done
+
+      - name: Delete caches belonging to closed pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api --paginate "repos/$GH_REPO/actions/caches?per_page=100" \
+            --jq '.actions_caches[] | [.id, .ref] | @tsv' |
+          while read -r cache_id ref; do
+            [[ "$cache_id" =~ ^[0-9]+$ ]] || continue
+            [[ "$ref" =~ ^refs/pull/([0-9]+)/merge$ ]] || continue
+
+            pr_number="${BASH_REMATCH[1]}"
+            state=$(gh api "repos/$GH_REPO/pulls/$pr_number" --jq '.state')
+            if [[ "$state" == closed ]]; then
+              echo "Deleting cache $cache_id for closed PR #$pr_number ($ref)"
+              gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id" >/dev/null
+            fi
+          done
+  validate:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Validate patches and pinned inputs
+        run: |
+          for arch in arm64 arm x64 x86; do
+            python3 scripts/preflight.py --inputs-only --arch "$arch"
+            python3 scripts/configure_build.py --arch "$arch" --output ".build/args/$arch/args.gn"
+          done
+          python3 -m unittest discover -s tests -v
+          bash -n build.sh
+          bash -n build-arm64.sh
+          for script in .github/ci/*.sh; do bash -n "$script"; done
+      - name: Check CA and JNI patches against pinned upstream sources
+        run: python3 tests/check_upstream_patches.py
+      - name: Obtain pinned BoringSSL
+        run: |
+          revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')
+          git init .build/boringssl
+          git -C .build/boringssl remote add origin https://github.com/google/boringssl.git
+          git -C .build/boringssl fetch --depth=1 origin "$revision"
+          git -C .build/boringssl checkout --detach "$revision"
+      - name: Test production DNS and IP constraints
+        run: |
+          cmake -S tests -B .build/policy-tests -DBORINGSSL_SOURCE_DIR="$PWD/.build/boringssl" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/policy-tests --target scoped_ca_test -j 4
+          ctest --test-dir .build/policy-tests --output-on-failure
+  domain-policy:
+    name: Test production domain normalization (GURL and PSL)
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Free space on disposable GitHub-hosted runner
+        if: runner.environment == 'github-hosted'
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
+          df -h .
+      - name: Set up Docker Buildx for image digest resolution
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Compile and run Chromium domain policy tests
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image=$(python3 .github/ci/resolve-prepared-image.py --image "ghcr.io/$owner/argon-build:branch-main")
+          docker run --rm --user 0 --volume "$GITHUB_WORKSPACE:/workspace:ro" \
+            "$image" bash -c '
+              git config --global --add safe.directory "*"
+              bash /workspace/.github/ci/test-domain-policy.sh /opt/argon/chromium/src /opt/argon/depot_tools
+            '
