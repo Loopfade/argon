@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_certificates_title">Сертификаты Argon</string>
+    <string name="argon_certificates_summary">Домены, для которых разрешён встроенный российский корневой УЦ</string>
+    <string name="argon_certificates_description">Встроенный российский корневой УЦ считается доверенным только для включённых зон и явно добавленных доменов. Запись домена также разрешает его поддомены. Публичные суффиксы и подстановочные знаки добавлять нельзя. Значок ! показывает пересечение правил доверия; нажмите его для пояснения. Изменения применяются к новым проверкам сертификатов.</string>
+    <string name="argon_certificates_built_in_domains">Встроенные зоны</string>
+    <string name="argon_certificates_additional_domains">Дополнительные домены</string>
+    <string name="argon_certificates_no_additional_domains">Дополнительных доменов нет</string>
+    <string name="argon_certificates_add_domain">Добавить домен</string>
+    <string name="argon_certificates_domain_hint">example.com</string>
+    <string name="argon_certificates_tap_to_remove">Нажмите, чтобы удалить</string>
+    <string name="argon_certificates_remove_domain">Удалить %1$s?</string>
+    <string name="argon_certificates_remove_domain_message">Удаление отменит доверие, предоставляемое этой записью. Другие правила доверия останутся в силе.</string>
+    <string name="argon_certificates_error_invalid">Введите корректный DNS-домен без схемы, пути, порта, IP-адреса и подстановочных знаков.</string>
+    <string name="argon_certificates_error_public_suffix">Нельзя добавлять публичные суффиксы, например .com, .net или .org.</string>
+    <string name="argon_certificates_error_duplicate">Этот домен уже есть в списке.</string>
+    <string name="argon_certificates_error_too_many">Достигнут лимит в 100 дополнительных доменов.</string>
+    <string name="argon_certificates_zone_enabled">Доверие разрешено для всей зоны</string>
+    <string name="argon_certificates_zone_disabled">Доверие для всей зоны выключено</string>
+    <string name="argon_certificates_root_disabled">Все зоны выключены, список доменов пуст: доверие к встроенному российскому корневому УЦ отключено.</string>
+    <string name="argon_certificates_redundant_summary">Уже покрыт другим правилом. Нажмите ! для пояснения.</string>
+    <string name="argon_certificates_overlap_button">Показать пересечения доверия</string>
+    <string name="argon_certificates_overlap_details">Показать пересечения доверия для %1$s</string>
+    <string name="argon_certificates_overlap_title">Пересечения для %1$s</string>
+    <string name="argon_certificates_overlap_zone_source">Включённая зона %1$s</string>
+    <string name="argon_certificates_overlap_domain_source">Домен %1$s и его поддомены</string>
+    <string name="argon_certificates_overlap_message">Доверие к российскому УЦ для %1$s и его поддоменов уже обеспечивают:\n%2$s\n\nЭта запись сейчас не расширяет доверие, но остаётся в вашем списке.\n\nЕё удаление не отключит доверие, пока действует хотя бы одно покрывающее правило. Если выключить или удалить все покрывающие правила, сохранённая запись будет обеспечивать доверие самостоятельно.</string>
+    <string name="argon_certificates_remove_covered_domain_message">Удалить запись из вашего списка?\n\nДоверие для этого домена и его поддоменов сохранится благодаря следующим правилам:\n%1$s</string>
+    <string name="argon_certificates_error_covered">Доверие уже обеспечивается правилами: %1$s.</string>
+</resources>

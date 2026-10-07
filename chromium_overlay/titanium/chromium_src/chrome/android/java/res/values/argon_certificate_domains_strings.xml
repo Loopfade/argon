@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_certificates_title">Argon certificates</string>
+    <string name="argon_certificates_summary">Manage domains trusted by the built-in Russian root CA</string>
+    <string name="argon_certificates_description">The built-in Russian root CA is trusted only for enabled zones and domains you explicitly add. A domain entry also covers its subdomains. Public suffixes and wildcards cannot be added. Tap ! to see overlapping trust rules. Changes apply to new certificate checks.</string>
+    <string name="argon_certificates_built_in_domains">Built-in zones</string>
+    <string name="argon_certificates_additional_domains">Additional domains</string>
+    <string name="argon_certificates_no_additional_domains">No additional domains</string>
+    <string name="argon_certificates_add_domain">Add domain</string>
+    <string name="argon_certificates_domain_hint">example.com</string>
+    <string name="argon_certificates_tap_to_remove">Tap to remove</string>
+    <string name="argon_certificates_remove_domain">Remove %1$s?</string>
+    <string name="argon_certificates_remove_domain_message">Removing this entry revokes the trust it provides. Other trust rules remain in effect.</string>
+    <string name="argon_certificates_error_invalid">Enter a valid DNS domain without a scheme, path, port, IP address, or wildcard.</string>
+    <string name="argon_certificates_error_public_suffix">Public suffixes such as .com, .net, or .org cannot be added.</string>
+    <string name="argon_certificates_error_duplicate">This domain is already in the list.</string>
+    <string name="argon_certificates_error_too_many">The limit of 100 additional domains has been reached.</string>
+    <string name="argon_certificates_zone_enabled">Trust enabled for the whole zone</string>
+    <string name="argon_certificates_zone_disabled">Trust for the whole zone is disabled</string>
+    <string name="argon_certificates_root_disabled">All zones are disabled and the domain list is empty: trust in the built-in Russian root CA is disabled.</string>
+    <string name="argon_certificates_redundant_summary">Already covered by another rule. Tap ! for details.</string>
+    <string name="argon_certificates_overlap_button">Show overlapping trust rules</string>
+    <string name="argon_certificates_overlap_details">Show overlapping trust rules for %1$s</string>
+    <string name="argon_certificates_overlap_title">Overlaps for %1$s</string>
+    <string name="argon_certificates_overlap_zone_source">Enabled zone %1$s</string>
+    <string name="argon_certificates_overlap_domain_source">Domain %1$s and its subdomains</string>
+    <string name="argon_certificates_overlap_message">Trust in the Russian root CA for %1$s and its subdomains is already provided by:\n%2$s\n\nThis entry currently adds no extra trust, but remains in your list.\n\nRemoving it will not revoke trust while any covering rule remains. If you disable or remove every covering rule, the saved entry will provide trust on its own.</string>
+    <string name="argon_certificates_remove_covered_domain_message">Remove the entry from your list?\n\nTrust for this domain and its subdomains will remain through these rules:\n%1$s</string>
+    <string name="argon_certificates_error_covered">Trust is already provided by these rules: %1$s.</string>
+</resources>

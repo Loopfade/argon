@@ -1,102 +1,99 @@
-# Titanium Browser for Android
+# Argon
 
-[![Stars](https://img.shields.io/github/stars/jqssun/android-titanium-browser?label=Stars&logo=GitHub)](https://github.com/jqssun/android-titanium-browser)
-[![GitHub](https://img.shields.io/github/downloads/jqssun/android-titanium-browser/total?label=GitHub&logo=GitHub)](https://github.com/jqssun/android-titanium-browser/releases)
-[![license](https://img.shields.io/badge/License-GPLv2-blue.svg)](https://github.com/jqssun/android-titanium-browser/blob/main/LICENSE)
-[![build](https://img.shields.io/github/actions/workflow/status/jqssun/android-titanium-browser/build.yml)](https://github.com/jqssun/android-titanium-browser/actions/workflows/build.yml)
-[![release](https://img.shields.io/github/v/release/jqssun/android-titanium-browser)](https://github.com/jqssun/android-titanium-browser/releases)
+Android-браузер на базе Titanium и Chromium с поддержкой расширений Chrome и сайтов, использующих российский корневой сертификат.
 
-A secure and fully open-source, Chromium-based web browser with support for extensions, based on [Vanadium](https://github.com/GrapheneOS/Vanadium) by [GrapheneOS](https://github.com/GrapheneOS). This project was formerly known as [Helium Browser for Android](https://github.com/jqssun/android-helium-browser) but was later renamed to avoid branding confusion. To maintain a fast and native experience for everyone, advanced features are modularized into [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension).
+**[Скачать последнюю версию](https://github.com/Loopfade/argon/releases/latest)** · [Сообщить об ошибке](https://github.com/Loopfade/argon/issues/new/choose)
 
-For the latest builds, see [**Releases**](https://github.com/jqssun/android-titanium-browser/releases/latest). You can also update between GitHub and Google Play releases seamlessly.
+## Возможности
 
-[<img height="48" alt="Get it on Google Play" src="https://jqssun.github.io/images/badges/google-play-store.svg">](https://play.google.com/store/apps/details?id=io.github.jqssun.helium)
-[<img height="48" alt="Get it on GitHub" src="https://jqssun.github.io/images/badges/github.svg">](https://github.com/jqssun/android-titanium-browser/releases/latest)
+- **Расширения Chrome на Android.** Устанавливайте из Chrome Web Store блокировщики рекламы, переводчики и другие дополнения прямо на телефон. Chrome для Android не поддерживает их запуск. Argon также поддерживает Manifest V2 — старый формат расширений, от которого [Google Chrome отказался](https://developer.chrome.com/docs/extensions/develop/migrate/mv2-deprecation-timeline).
+- **Российские сертификаты для `.ru`, `.рф` и `.su` без установки в Android.** Для этих зон, например `rosreestr.gov.ru`, доверие к встроенному российскому корневому УЦ уже разрешено. Его сертификат входит в Argon, поэтому вручную добавлять его в системное хранилище устройства не требуется.
+- **Доверие для выбранных сайтов в других зонах.** Добавьте нужный домен, например `example.com`, в **Сертификаты Argon**, чтобы разрешить использование сертификатов этого УЦ для выбранного сайта и его поддоменов, например `www.example.com`. Так можно пользоваться нужными сайтами, сохраняя ограничение доверия к этому УЦ для остальных доменов.
 
-<img alt="Titanium Browser for Android" src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" />
+## Скачать и установить
 
-## Usage
+Для текущих сборок требуется **Android 10 или новее** и устройство с ARM-процессором.
 
-### Installing Extensions
+1. Откройте [последний релиз](https://github.com/Loopfade/argon/releases/latest) и разверните список **Assets**.
+2. Выберите APK для своего устройства:
 
-For Chrome extensions, navigate to [Chrome Web Store](https://chromewebstore.google.com/), enable **Desktop site** using the menu button <kbd>⋮</kbd> in the top right corner, and proceed as normal.
+| Файл APK | Для какого устройства |
+| --- | --- |
+| `…-release-arm64-v8a.apk` | Устройства с 64-битной версией Android — большинство современных телефонов |
+| `…-release-armeabi-v7a.apk` | Устройства с 32-битной версией Android на ARM |
 
-For [Opera Add-ons](https://addons.opera.com/), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/), or other marketplaces, targeted User Agent modifications may be required. See [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension) for instructions.
+3. Откройте скачанный APK. Если Android запросит разрешение на установку из этого источника, предоставьте его и завершите установку.
 
-You can also load an unpacked extension manually by navigating to the **Manage extensions** page or [`chrome://extensions`](chrome://extensions). Enable **Developer mode**, select **Load unpacked**, and choose the folder containing the extension in the Storage Access Framework (SAF) picker. Manifest V2 (MV2) extensions are supported. It may take a moment for the extension to load.
+Для обновления скачайте APK нового релиза для той же архитектуры и установите его поверх текущей версии. Рядом с каждым APK опубликован файл `.sha256` для проверки целостности загрузки.
 
-### Using Extensions
+## Расширения
 
-To run an extension in Incognito (OTR) mode, go to **Manage extensions**, find the extension you want to use in Incognito mode, select **Details**, and turn on **Allow in Incognito**.
+1. Откройте [Chrome Web Store](https://chromewebstore.google.com/) в Argon.
+2. В меню **⋮** включите версию сайта для компьютера.
+3. Найдите расширение и подтвердите его установку.
 
-For advanced features including external download manager support, enhanced dark mode, and additional privacy options, you can use [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension).
+Управлять установленными расширениями можно на странице `chrome://extensions`. Там же можно включить режим разработчика и загрузить распакованное расширение из папки.
 
-### Debug URLs
+Расширения Manifest V2 больше не доступны в Chrome Web Store. Для них используйте загрузку распакованного расширения, полученного от его разработчика.
 
-To view and access the debug URLs, use [`chrome://chrome-urls`](chrome://chrome-urls). For **Experiments**, use [`chrome://flags`](chrome://flags).
+Для работы расширения в режиме инкогнито откройте его сведения и включите соответствующее разрешение. Совместимость конкретного расширения с мобильным интерфейсом может различаться.
 
-### WebRTC IP Policy
+## Российские сертификаты
 
-The option is available by using the menu button <kbd>⋮</kbd> in the top right corner, then selecting **Settings**, **Privacy and security**. If you experience issues with WebRTC due to IPs being shielded by default (e.g. [Discord Voice](https://discord.com/blog/how-discord-handles-two-and-half-million-concurrent-voice-users-using-webrtc)), try changing it to **Default public interface only**, or **Default**.
+По умолчанию Argon доверяет встроенному российскому корневому удостоверяющему центру для сайтов в зонах **`.ru`, `.рф` и `.su`**. У каждой зоны есть отдельный переключатель: её можно выключить, сохранив запись на экране. Для выбранных доменов доверие можно разрешить отдельно в настройках.
 
-## Implementation
+Откройте **Настройки → Конфиденциальность и безопасность → Сертификаты Argon**.
 
-> [!WARNING]
-> [Titanium Browser for Android](#titanium-browser-for-android) only attempts to improve security and privacy where possible. For better protection on Android, you should instead use [GrapheneOS](https://grapheneos.org) with [Vanadium](https://vanadium.app), which additionally integrates patches into Android System WebView and provides significant kernel and memory management hardening on the OS level.
+Чтобы вести только свой список, выключите все встроенные зоны и добавьте нужные домены. Если все зоны выключены и список пуст, доверие к этому УЦ полностью отключено. Это также действует, если тот же корневой сертификат установлен в Android. Сертификаты других доверенных УЦ проверяются по обычным правилам.
 
-```mermaid
----
-config:
-  layout: dagre
----
-flowchart TD
- subgraph s1["Additional Patches"]
-        n5["Feature Overrides"]
-        n6["UI Overrides"]
-        n7["Manifest V2 + Secure Off Store Install Support"]
-        n8["Miscellaneous Fixes + Improvements"]
-  end
- subgraph s2["Vanadium"]
-        n9["Generic Patches<small><br>patches/*.patch</small>"]
-        n10["Subprojects Patches<small><br>subprojects_patches/**/*.patch</small>"]
-  end
- subgraph s3["Titanium Browser for Android"]
-        n11["GN Build Configuration<small><br>args.gn</small>"]
-        n12["Signed Release"]
-  end
-    n1["Chromium"] --> s1 & s2
-    n5 --> n6
-    n6 --> n7
-    n7 --> n8
-    s1 --> s3
-    s2 --> s3
-    n11 --> n12
-    n5@{ shape: subproc}
-    n6@{ shape: subproc}
-    n7@{ shape: subproc}
-    n8@{ shape: subproc}
-    n9@{ shape: subproc}
-    n10@{ shape: subproc}
-    n11@{ shape: subproc}
-    n12@{ shape: subproc}
-    n1@{ shape: rounded}
-    classDef Aqua stroke-width:1px, stroke-dasharray:none, stroke:#46EDC8, fill:#DEFFF8, color:#378E7A
-    style n5 stroke:#FF6D00
-    style n7 stroke:#FF6D00
-```
+### Пересечения правил доверия
 
-## Building
+Новый домен нельзя добавить, если его уже покрывает включённая зона или существующая запись. Например, при включённой `.ru` нельзя добавить `bank.ru`, а запись `example.com` уже покрывает `www.example.com`.
 
-All releases are built using [Actions](https://github.com/jqssun/android-titanium-browser/actions). Current releases can also be attested using [GitHub CLI](https://github.com/cli/cli).
+Если включить зону или добавить родительский домен, уже сохранённые записи не удаляются. У покрытых записей появляется отдельный значок **!**. Нажмите его, чтобы увидеть все покрывающие правила и последствия изменения или удаления записи. Значок означает избыточность правила, а не ошибку сертификата.
 
-```shell
-gh attestation verify *.apk -R jqssun/android-titanium-browser
-```
+После выключения или удаления всех покрывающих правил значок исчезнет, а сохранённая запись будет обеспечивать доверие самостоятельно. Удаление покрытой записи не отключает доверие, пока действует другое покрывающее правило.
 
-This repository provides the build script to compile on the latest Ubuntu, and may also work with other Linux distributions.
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/certificate-domains.png"><img src="docs/images/certificate-domains.png" width="260" alt="Сертификаты Argon: встроенные зоны .ru, .рф, .su и список дополнительных доменов"></a></td>
+    <td align="center"><a href="docs/images/connection-rosreestr.png"><img src="docs/images/connection-rosreestr.png" width="260" alt="Информация о защищённом соединении с rosreestr.gov.ru"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Встроенные зоны и список дополнительных доменов</td>
+    <td align="center">rosreestr.gov.ru — пример сайта в зоне .ru</td>
+  </tr>
+</table>
 
-To build these releases yourself via CI (e.g. GitHub Actions), fork this repository. Supply your `base64` encoded `keystore.jks` and `local.properties` (containing `keyAlias`, `keyPassword` and `storePassword`) to [**Repository secrets**](https://github.com/jqssun/android-titanium-browser/blob/main/.github/workflows/build.yml#L49-L50) under **Settings** > **Secrets and variables** > **Actions**. To generate a release, go to **Actions**, select **Build**, and select **Run workflow**. Under **Runner**, you can either use a GitHub-hosted runner by entering `ubuntu-latest`, or `self-hosted` for your own hardware.
+### Добавление доменов
 
-## Credits
+1. В разделе **Сертификаты Argon** нажмите **Добавить домен**.
+2. Введите имя сайта, например `example.com`, без `https://`, пути и порта.
+3. Подтвердите добавление.
 
-This project would not have been possible without the huge community contributions from [Vanadium](https://github.com/GrapheneOS/Vanadium), and without the privacy-focused, open-source approach shared by various other Chromium projects. All credit goes to the original authors and contributors. This project started around the same time as [Helium Browser for Linux](https://github.com/imputnet/helium-linux) but it is not affiliated with the desktop Helium project.
+Запись разрешает доверие этому УЦ для указанного домена и его поддоменов. Например, `example.com` также охватывает `www.example.com`. Изменения применяются к новым проверкам сертификатов.
+
+На скриншоте ниже показано защищённое соединение с сайтом, домен которого добавлен пользователем. Этот домен не входит во встроенный список.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/connection-tochka.png"><img src="docs/images/connection-tochka.png" width="260" alt="Информация о защищённом соединении после добавления домена"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Соединение с добавленным доменом</td>
+  </tr>
+</table>
+
+Чтобы удалить дополнительный домен, нажмите на его запись и подтвердите удаление. IP-адреса, подстановки вроде `*.example.com` и публичные суффиксы вроде `.com` добавлять нельзя. Добавление домена не отключает остальные проверки сертификата.
+
+Проверяются все доменные имена внутри сертификата: если он содержит разрешённый и неразрешённый домены, доверие отклоняется. Это может потребовать дополнительных записей при использовании узкого списка.
+
+## Помощь и обратная связь
+
+Нашли проблему? [Создайте issue](https://github.com/Loopfade/argon/issues/new/choose) и укажите версию Argon, версию Android, модель устройства и шаги для повторения ошибки.
+
+## О проекте
+
+Argon основан на [Titanium](https://github.com/jqssun/android-titanium-browser) и [Chromium](https://www.chromium.org/). Поддержка российского сертификата адаптирована из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android).
+
+[Лицензия Argon](https://github.com/Loopfade/argon/blob/main/LICENSE) · [Лицензия Ruthenium](https://github.com/Loopfade/argon/blob/main/licenses/Ruthenium-BSD-3-Clause.txt) · [Сборка и проверки](https://github.com/Loopfade/argon/blob/main/VALIDATION.md)

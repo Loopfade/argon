@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<ImageButton xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/argon_certificate_overlap"
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:background="?android:attr/selectableItemBackgroundBorderless"
+    android:contentDescription="@string/argon_certificates_overlap_button"
+    android:focusable="true"
+    android:padding="12dp"
+    android:src="@drawable/argon_certificate_overlap" />
