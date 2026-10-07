@@ -193,6 +193,11 @@ Workflow `.github/workflows/update-dashboard.yml` запускается пос�
 сохраняются до трёх последних валидных опубликованных релизных билдов с jobs,
 step timings, artifacts и release metadata.
 
+Push с меткой `[history-only]` сохраняет опубликованный snapshot: свёртка
+истории не создаёт новый релиз и не должна добавлять служебный коммит со
+сменой timestamp над завершающим слиянием. Ручное обновление и обновление
+после опубликованного релиза продолжают работать.
+
 После записи `dashboard-data.json` updater явно запускает
 `Deploy Argon dashboard`. Это необходимо, потому что commit, созданный
 через `GITHUB_TOKEN`, не используется для рекурсивного запуска push-workflow.

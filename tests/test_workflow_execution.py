@@ -123,6 +123,24 @@ class WorkflowExecutionTests(unittest.TestCase):
     def publish(self):
         return self.execute("publish-release.yml", "Publish immutable verified dual-ARM release")
 
+    def test_history_only_push_preserves_dashboard_without_api_calls(self):
+        self.env.update(EVENT_NAME="push", HEAD_COMMIT_MESSAGE="Merge Titanium [history-only]")
+        snapshot = self.root / "dashboard-data.json"
+        snapshot.write_bytes(b"existing published snapshot")
+        result = self.execute("update-dashboard.yml", "Build authenticated dashboard snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(snapshot.read_bytes(), b"existing published snapshot")
+        self.assertEqual((self.root / "output").read_text(), "updated=false\n")
+        self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_normal_push_still_refreshes_dashboard(self):
+        self.env.update(EVENT_NAME="push", HEAD_COMMIT_MESSAGE="Update dashboard workflow")
+        result = self.execute("update-dashboard.yml", "Build authenticated dashboard snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "output").read_text(), "updated=false\nupdated=true\n")
+        self.assertEqual(json.loads((self.root / "dashboard-data.json").read_text())["latest"]["id"], 42)
+        self.assertTrue(self.calls())
+
     def test_bad_base_asset_digest_blocks_all_release_mutations(self):
         for name in (self.release["assets"][0]["name"], "Chromium-LICENSE.txt"):
             with self.subTest(asset=name):
