@@ -7,9 +7,11 @@ the relevant Vanadium patches, and applies Argon's overlay twice. It does not
 replace GN, Java/C++ compilation, or Android smoke tests.
 """
 import concurrent.futures
+import fnmatch
 import json
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -35,6 +37,18 @@ DIALOG_PATH = Path(
 def download(url):
     with urllib.request.urlopen(url, timeout=60) as response:
         return response.read().decode("utf-8")
+
+
+def vanadium_patch_exclusions(build_script):
+    # Use the build's actual selection so excluded config initialization hooks
+    # cannot make this integration fixture differ from the prepared source.
+    selection = re.search(
+        r"for pattern in (.*?); do\s+find \.build/vanadium-patches",
+        build_script, re.DOTALL,
+    )
+    if not selection:
+        raise ValueError("Vanadium patch selection not found in build.sh")
+    return shlex.split(selection[1].replace("\\\n", " "))
 
 
 def verify_pins(lock, version_text, deps_text, titanium_tree):
@@ -109,10 +123,10 @@ def main():
         paths = (*BASE_PATHS, *EXTENSION_PATHS, DIALOG_PATH)
         includes = [f"--include={path}" for path in paths]
         count = 0
+        exclusions = vanadium_patch_exclusions((ROOT / "build.sh").read_text())
         for source in sorted((ROOT / "vanadium/patches").glob("*.patch")):
-            # Titanium excludes Trichrome. Its browser-target patch is the only
-            # excluded patch touching this CA/JNI subset of Chromium sources.
-            if "trichrome" in source.name:
+            if any(fnmatch.fnmatchcase(source.name, pattern)
+                   for pattern in exclusions):
                 continue
             data = source.read_text().replace("VANADIUM", "TITANIUM")
             data = data.replace("Vanadium", "Titanium").replace("vanadium", "titanium")

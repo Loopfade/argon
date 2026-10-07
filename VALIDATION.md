@@ -8,10 +8,10 @@
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
 
-- Chromium: `154.0.8037.57`, commit
-  `73c14f6228d7cd537c855007e8f88678969cc0eb`;
-- Titanium: `5c93149e4ca2f8fb659cf7e9fce7ee5e66cbf905`;
-- Vanadium: `83085d1694c4de653eac382fa2be6d008f193bce`;
+- Chromium: `154.0.8037.126`, commit
+  `8eaafabb47f12210d524f648b78bce074fa3c83e`;
+- Titanium: `e951781e2cfea65c209bc1afab8c00b4f06590e5`;
+- Vanadium: `5f832b54eab6d367d09166c49f57b7f6dfa7a5ae`;
 - BoringSSL: `ac39ea6853833c1f18fd23614091d11855e71752`;
 - release revision: `3`.
 
@@ -41,6 +41,11 @@ Validation:
    `TitaniumRuDomainPolicyTest.*` с настоящими GURL, ICU и public/private PSL
    закреплённого Chromium. Prepared image предоставляет sources/toolchain;
    header и тесты берутся из проверяемого checkout, включая pull requests.
+
+Проверка CA/JNI использует те же исключения патчей Vanadium, что и `build.sh`,
+включая раннюю инициализацию внешнего config app. Python-тесты отдельно
+проверяют выбор ветки DevTools до Chromium `156.0.8060.0` и на этой границе:
+закреплённый Chromium 154 должен использовать прежнюю ветку.
 
 Эта стадия не собирает релизный APK. `x64` и `x86` проверяются только
 на уровне конфигурации/preflight и не входят в release pipeline.

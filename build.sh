@@ -91,7 +91,8 @@ for pattern in '*trichrome-apk-build-targets.patch' '*trichrome-browser-apk-targ
     '*detailed-language*.patch' '*supported-language*.patch' \
     '*javascript-optimizer-site-setting.patch' '*javascript-optimizer-settings-UI.patch' \
     '*component-updates.patch' '*pdf*.patch' '*PDF*.patch' '*for-content-public*.patch' \
-    '*toolbar-button*.patch' '*configs-from-config-app*.patch' '*new-tab-card*.patch' \
+    '*toolbar-button*.patch' '*configs-from-config-app*.patch' '*config-app-parsing*.patch' \
+    '*new-tab-card*.patch' \
     '*predictive-back*.patch'; do
   find .build/vanadium-patches -maxdepth 1 -type f -name "$pattern" -delete
 done
