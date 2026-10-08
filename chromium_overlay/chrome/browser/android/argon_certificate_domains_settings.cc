@@ -17,6 +17,14 @@ static std::vector<std::string> JNI_ArgonCertificateDomainsSettings_GetDomains(
   return argon::GetRussianCaAdditionalDomains(profile->GetPrefs());
 }
 
+static std::vector<std::string>
+JNI_ArgonCertificateDomainsSettings_GetCoveredDomains(
+    JNIEnv* env,
+    Profile* profile,
+    const std::vector<std::string>& domains) {
+  return argon::GetRussianCaCoveredDomains(profile->GetPrefs(), domains);
+}
+
 static jboolean JNI_ArgonCertificateDomainsSettings_IsBuiltInZoneEnabled(
     JNIEnv* env,
     Profile* profile,

@@ -20,6 +20,9 @@ on:
       - 'extensions/**'
       - 'res/**'
       # Runtime signing and Python test changes do not alter prepared sources.
+      - 'scripts/prepare_chromium.sh'
+      - 'scripts/image_source_inputs.py'
+      - '.github/ci/prune-prepared-images.py'
       - 'scripts/apply_scoped_ca.py'
       - 'scripts/fetch_pinned_extension.py'
       - 'scripts/fetch_pinned_filter_lists.py'
@@ -59,6 +62,9 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+
+      - name: Verify pinned checkout inputs
+        run: python3 scripts/preflight.py --inputs-only
 
       - name: Free space on disposable runner
         run: |
@@ -120,49 +126,12 @@ jobs:
       - name: Keep only the latest successful image
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
           OWNER: ${{ github.repository_owner }}
           PACKAGE: argon-build
           KEEP_TAG: branch-main
-        shell: bash
-        run: |
-          set -euo pipefail
-          versions="$RUNNER_TEMP/argon-package-versions.jsonl"
-
-          # This repository is user-owned. Emit one JSON object per package
-          # version so all pages can be processed as a single jq stream.
-          gh api --paginate \
-            "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100" \
-            --jq '.[]' > "$versions"
-
-          keep_id=$(
-            jq -s -r --arg tag "$KEEP_TAG" '
-              map(select((.metadata.container.tags // []) | index($tag)))
-              | first
-              | .id // empty
-            ' "$versions"
-          )
-          if [[ -z "$keep_id" ]]; then
-            echo "::error::Published tag ${KEEP_TAG} was not found in GHCR."
-            exit 1
-          fi
-
-          while IFS= read -r version_id; do
-            [[ -z "$version_id" ]] && continue
-            echo "Deleting superseded GHCR package version ${version_id}"
-            gh api --method DELETE \
-              "/users/${OWNER}/packages/container/${PACKAGE}/versions/${version_id}"
-          done < <(
-            jq -s -r --argjson keep "$keep_id" \
-              '.[] | select(.id != $keep) | .id' "$versions"
-          )
-
-          remaining=$(gh api \
-            "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100" \
-            --jq 'length')
-          if [[ "$remaining" != 1 ]]; then
-            echo "::error::Expected exactly one GHCR package version, found ${remaining}."
-            exit 1
-          fi
+        run: python3 .github/ci/prune-prepared-images.py
 
       - name: Publish summary
         run: |
@@ -195,17 +164,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           CURRENT_RUN_ID: ${{ github.run_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          active=$(gh api "repos/$GH_REPO/actions/workflows/build-chromium-image.yml/runs?branch=main&per_page=20" \
-            --jq "[.workflow_runs[] | select(.status != \"completed\" and .id != $CURRENT_RUN_ID)] | length")
-          if (( active > 0 )); then
-            echo "apply=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Prepared-image publication is active; metadata will be reconciled when it completes."
-          else
-            echo "apply=true" >> "$GITHUB_OUTPUT"
-          fi
+        run: python3 .github/ci/prune-prepared-images.py --check-publication
 
       - name: Log in to GitHub Container Registry
         if: steps.safe.outputs.apply == 'true'
@@ -255,40 +214,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
           OWNER: ${{ github.repository_owner }}
           PACKAGE: argon-build
           KEEP_TAG: branch-main
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          active_builds=$(gh api "repos/$GH_REPO/actions/workflows/build.yml/runs?per_page=100" \
-            --jq '[.workflow_runs[] | select(.status != "completed")] | length')
-          if (( active_builds > 0 )); then
-            echo "::notice::$active_builds Argon build(s) still active; keeping superseded image digests until the last build completes."
-            exit 0
-          fi
-
-          versions="$RUNNER_TEMP/argon-package-versions.jsonl"
-          gh api --paginate \
-            "/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100" \
-            --jq '.[]' > "$versions"
-
-          keep_id=$(
-            jq -s -r --arg tag "$KEEP_TAG" '
-              map(select((.metadata.container.tags // []) | index($tag)))
-              | first
-              | .id // empty
-            ' "$versions"
-          )
-          [[ -n "$keep_id" ]]
-
-          while IFS= read -r version_id; do
-            [[ -z "$version_id" ]] && continue
-            echo "Deleting superseded GHCR package version $version_id"
-            gh api --method DELETE \
-              "/users/${OWNER}/packages/container/${PACKAGE}/versions/${version_id}"
-          done < <(
-            jq -s -r --argjson keep "$keep_id" \
-              '.[] | select(.id != $keep) | .id' "$versions"
-          )
+        run: python3 .github/ci/prune-prepared-images.py

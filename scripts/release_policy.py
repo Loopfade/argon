@@ -17,6 +17,7 @@ DOCUMENTATION_FILES = {
     ".nojekyll",
     ".github/package-metadata/argon-build-description.txt",
     ".github/workflows/update-dashboard.yml",
+    ".github/ci/update-dashboard.py",
     ".github/workflows/deploy-dashboard.yml",
 }
 DOCUMENTATION_PREFIXES = ("docs/",)
@@ -44,6 +45,8 @@ RELEASE_PAYLOAD_FILES = {
     "scripts/fetch_pinned_extension.py",
     "scripts/fetch_pinned_filter_lists.py",
     "scripts/preflight.py",
+    "scripts/prepare_chromium.sh",
+    "scripts/image_source_inputs.py",
     "scripts/sign_and_verify.py",
 }
 RELEASE_PAYLOAD_PREFIXES = (

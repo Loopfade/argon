@@ -43,10 +43,10 @@ elif args[0] == "api":
         print(json.dumps(release))
     elif "/releases?" in url:
         print(json.dumps([release]))
-    elif "/actions/runs/42/jobs" in url:
-        print('{"jobs":[]}')
+    elif "/actions/runs/42/attempts/1/jobs" in url:
+        print('[{"jobs":[]}]')
     elif "/actions/runs/42/artifacts" in url:
-        print('{"artifacts":[]}')
+        print('[{"artifacts":[]}]')
     elif "/actions/runs/42" in url:
         print(json.dumps({"id":42, "name":"Build Argon", "event":"workflow_dispatch",
                           "status":"completed", "conclusion":"success",
@@ -88,6 +88,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         gh.write_text(GH_FIXTURE)
         gh.chmod(0o755)
         (root / "scripts").symlink_to(ROOT / "scripts", target_is_directory=True)
+        (root / ".github").symlink_to(ROOT / ".github", target_is_directory=True)
         assets = root / "public-assets"
         assets.mkdir()
         names = [f"Argon-{VERSION}-release-{abi}.apk{suffix}"

@@ -30,7 +30,9 @@ import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.components.browser_ui.settings.SettingsFragment;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Settings for DNS name constraints on Argon's built-in Russian root CA. */
 @NullMarked
@@ -80,8 +82,6 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
                     return true;
                 });
         screen.addPreference(addDomain);
-
-        refreshDomains();
     }
 
     @Override
@@ -144,10 +144,12 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
             category.addPreference(empty);
             return;
         }
+        Set<String> coveredDomains =
+                new HashSet<>(
+                        ArgonCertificateDomainsSettingsJni.get()
+                                .getCoveredDomains(getProfile(), domains));
         for (String domain : domains) {
-            List<String> rules =
-                    ArgonCertificateDomainsSettingsJni.get().getCoveringRules(getProfile(), domain);
-            category.addPreference(new DomainPreference(domain, !rules.isEmpty()));
+            category.addPreference(new DomainPreference(domain, coveredDomains.contains(domain)));
         }
     }
 
@@ -314,6 +316,11 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
     interface Natives {
         @JniType("std::vector<std::string>")
         List<String> getDomains(@JniType("Profile*") Profile profile);
+
+        @JniType("std::vector<std::string>")
+        List<String> getCoveredDomains(
+                @JniType("Profile*") Profile profile,
+                @JniType("std::vector<std::string>") List<String> domains);
 
         boolean isBuiltInZoneEnabled(@JniType("Profile*") Profile profile, int zone);
 

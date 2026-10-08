@@ -36,7 +36,6 @@ permissions:
   pull-requests: read
 
 env:
-  CCACHE_CACHE_PREFIX: argon-ccache-v2-${{ inputs.arch }}
   CCACHE_MAXSIZE: 7G
   BUILD_JOB_BUDGET_SECONDS: 21600
   BUILD_FINALIZE_RESERVE_SECONDS: 1800
@@ -59,6 +58,12 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+      - name: Select version-isolated compiler cache
+        env:
+          BUILD_ARCH: ${{ inputs.arch }}
+        run: |
+          prefix=$(python3 .github/ci/prune-compiler-cache.py --prefix-for "$BUILD_ARCH")
+          echo "CCACHE_CACHE_PREFIX=$prefix" >> "$GITHUB_ENV"
       - name: Free space on disposable GitHub-hosted runner
         if: runner.environment == 'github-hosted'
         run: |
@@ -115,6 +120,14 @@ jobs:
             --jdk /opt/argon/chromium/src/third_party/jdk/current
       # Missing/stale images or invalid signing tools must not copy a multi-GB
       # cache into the PR scope or consume quota through the final save step.
+      - name: Remove caches from previous Chromium versions
+        # Fork PR tokens may lack deletion permission; version isolation still
+        # guarantees a cold start without restoring an older Chromium cache.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_ARCH: ${{ inputs.arch }}
+        run: python3 .github/ci/prune-compiler-cache.py --remove-old-versions "$BUILD_ARCH"
       - name: Restore compiler cache
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -123,7 +136,7 @@ jobs:
           key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-
-            argon-ccache-v2-${{ inputs.arch }}-
+            ${{ env.CCACHE_CACHE_PREFIX }}-
       - name: Reset compiler-cache statistics
         run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --zero-stats
       - name: Warm local compiler cache (checkpoint 1/20)

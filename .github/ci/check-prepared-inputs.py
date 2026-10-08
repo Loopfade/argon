@@ -8,6 +8,7 @@ from pathlib import Path
 # have already been applied to the Chromium tree baked into that image.
 PREPARED_INPUTS = (
     ".gclient", "build-lock.json", "common.sh", "patch.sh",
+    "scripts/prepare_chromium.sh", "scripts/image_source_inputs.py",
     "scripts/apply_scoped_ca.py", "scripts/fetch_pinned_extension.py",
     "scripts/fetch_pinned_filter_lists.py", "chromium_overlay", "certificates",
     "extensions", "res",
@@ -31,7 +32,7 @@ def inputs(root):
     # build.sh also contains runtime checkpoint/signing code, which need not
     # invalidate the image. Compare its source-preparation branch separately.
     script = (root / "build.sh").read_text()
-    start, end = "else\nexport VERSION\n", "\nconfigure_args="
+    start, end = "# BEGIN PREPARED SOURCES\n", "# END PREPARED SOURCES"
     if script.count(start) != 1 or script.count(end) != 1:
         raise ValueError("Cannot identify the prepared-source section of build.sh")
     files["build.sh (source preparation)"] = script.split(start, 1)[1].split(end, 1)[0].encode()

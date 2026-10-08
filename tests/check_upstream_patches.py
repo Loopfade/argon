@@ -47,7 +47,7 @@ def vanadium_patch_exclusions(build_script):
         build_script, re.DOTALL,
     )
     if not selection:
-        raise ValueError("Vanadium patch selection not found in build.sh")
+        raise ValueError("Vanadium patch selection not found in prepare_chromium.sh")
     return shlex.split(selection[1].replace("\\\n", " "))
 
 
@@ -123,7 +123,7 @@ def main():
         paths = (*BASE_PATHS, *EXTENSION_PATHS, DIALOG_PATH)
         includes = [f"--include={path}" for path in paths]
         count = 0
-        exclusions = vanadium_patch_exclusions((ROOT / "build.sh").read_text())
+        exclusions = vanadium_patch_exclusions((ROOT / "scripts/prepare_chromium.sh").read_text())
         for source in sorted((ROOT / "vanadium/patches").glob("*.patch")):
             if any(fnmatch.fnmatchcase(source.name, pattern)
                    for pattern in exclusions):

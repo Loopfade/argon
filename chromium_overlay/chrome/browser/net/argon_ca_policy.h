@@ -93,6 +93,23 @@ inline std::vector<std::string> GetRussianCaCoveringRules(
       GetRussianCaAdditionalDomains(pref_service));
 }
 
+// UI batch operation. Reuse the normalized domain snapshot returned above,
+// rather than reading and normalizing the complete pref list for every row.
+// Certificate verification continues to read the actual profile preferences.
+inline std::vector<std::string> GetRussianCaCoveredDomains(
+    const PrefService* pref_service,
+    const std::vector<std::string>& domains) {
+  const auto states = GetRussianCaBuiltInZoneStates(pref_service);
+  std::vector<std::string> covered;
+  for (const std::string& domain : domains) {
+    if (!net::GetTitaniumRussianRootCoveringRules(domain, states, domains)
+             .empty()) {
+      covered.push_back(domain);
+    }
+  }
+  return covered;
+}
+
 inline void WriteRussianCaDomains(PrefService* pref_service,
                                  const std::vector<std::string>& domains) {
   ScopedListPrefUpdate update(pref_service, prefs::kRussianCaAdditionalDomains);

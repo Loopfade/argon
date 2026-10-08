@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/update-dashboard.yml'
+      - '.github/ci/update-dashboard.py'
   workflow_run:
     workflows: [Build Argon]
     types: [completed]
@@ -39,106 +40,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "updated=false" >> "$GITHUB_OUTPUT"
-
-          # Compacting history does not publish a release. Preserve the
-          # snapshot so this push cannot append a timestamp-only commit.
-          if [[ "$EVENT_NAME" == push && ${HEAD_COMMIT_MESSAGE:-} == *'[history-only]'* ]]; then
-            echo 'History-only push preserves the published dashboard snapshot.'
-            exit 0
-          fi
-
-          releases=$(gh api "repos/$GH_REPO/releases?per_page=20" |
-            jq '[.[] | select(.draft == false and .published_at != null)][0:20]
-              | map({
-                  html_url, tag_name, name, published_at, target_commitish, body,
-                  assets: [.assets[]? | {name, size, browser_download_url}]
-                })')
-
-          builds='[]'
-          while IFS= read -r release; do
-            run_id=$(jq -r 'try (.body | capture("Build Argon run #(?<id>[0-9]+)").id) catch ""' <<<"$release")
-            if [[ -z "$run_id" ]]; then
-              echo "::warning::Release $(jq -r '.tag_name' <<<"$release") has no Build Argon run reference; skipping."
-              continue
-            fi
-
-            run_json=$(gh api "repos/$GH_REPO/actions/runs/$run_id")
-            run=$(jq '{
-                id, run_number, event, status, conclusion,
-                head_branch, head_sha, html_url,
-                created_at, updated_at, run_started_at, run_attempt
-              }' <<<"$run_json")
-
-            run_name=$(jq -r '.name' <<<"$run_json")
-            run_event=$(jq -r '.event' <<<"$run_json")
-            run_conclusion=$(jq -r '.conclusion // empty' <<<"$run_json")
-            run_sha=$(jq -r '.head_sha' <<<"$run_json")
-            release_sha=$(jq -r '.target_commitish' <<<"$release")
-
-            if [[ "$run_name" != "Build Argon" || "$run_event" != workflow_dispatch ||
-                  "$run_conclusion" != success ]]; then
-              echo "::warning::Release $(jq -r '.tag_name' <<<"$release") does not map to a verified successful manual Build Argon run; skipping."
-              continue
-            fi
-
-            if [[ "$run_sha" != "$release_sha" ]]; then
-              compare_json=$(gh api "repos/$GH_REPO/compare/$release_sha...$run_sha")
-              if ! python3 scripts/release_policy.py check-release-payload-drift <<<"$compare_json"; then
-                echo "::warning::Release $(jq -r '.tag_name' <<<"$release") target differs from its Build Argon run across release-payload changes; skipping."
-                continue
-              fi
-            fi
-
-            jobs=$(gh api "repos/$GH_REPO/actions/runs/$run_id/jobs?filter=latest&per_page=100" |
-              jq '[.jobs[] | {
-                id, name, status, conclusion, html_url, started_at, completed_at,
-                steps: [.steps[]? | {
-                  name, status, conclusion, number, started_at, completed_at
-                }]
-              }]')
-            artifacts=$(gh api "repos/$GH_REPO/actions/runs/$run_id/artifacts?per_page=100" |
-              jq '[.artifacts[] | {
-                id, name, size_in_bytes, expired, created_at, expires_at
-              }]')
-
-            clean_release=$(jq 'del(.body, .target_commitish)' <<<"$release")
-            build=$(jq -n \
-              --argjson run "$run" \
-              --argjson jobs "$jobs" \
-              --argjson artifacts "$artifacts" \
-              --argjson release "$clean_release" \
-              '{run:$run,jobs:$jobs,artifacts:$artifacts,release:$release}')
-            builds=$(jq --argjson build "$build" '. + [$build]' <<<"$builds")
-            if (( $(jq 'length' <<<"$builds") >= 3 )); then
-              break
-            fi
-          done < <(jq -c '.[]' <<<"$releases")
-
-          runs=$(jq '[.[].run]' <<<"$builds")
-          latest=$(jq '.[0].run // null' <<<"$builds")
-          release=$(jq '.[0].release // null' <<<"$builds")
-
-          latest_release_run=$(jq -r '.[0].run.id // empty' <<<"$builds")
-          if [[ "$EVENT_NAME" == workflow_run && "$latest_release_run" != "$TRIGGER_RUN_ID" ]]; then
-            echo "Build Argon run $TRIGGER_RUN_ID did not publish a new release; dashboard snapshot is unchanged."
-            exit 0
-          fi
-
-          jq -n \
-            --arg generated_at "$(date -u +%FT%TZ)" \
-            --argjson latest "$latest" \
-            --argjson runs "$runs" \
-            --argjson builds "$builds" \
-            --argjson release "$release" \
-            '{
-              generated_at: $generated_at,
-              latest: $latest,
-              runs: $runs,
-              builds: $builds,
-              release: $release
-            }' > dashboard-data.json
-          echo "updated=true" >> "$GITHUB_OUTPUT"
+          python3 .github/ci/update-dashboard.py
 
       - name: Publish snapshot to main
         if: steps.snapshot.outputs.updated == 'true'
@@ -148,31 +50,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ -f dashboard-data.json ]] || exit 0
-
-          api_path="repos/$GH_REPO/contents/dashboard-data.json"
-          current=$(gh api "$api_path?ref=main" 2>/dev/null || true)
-          sha=$(jq -r '.sha // empty' <<<"$current")
-          content=$(base64 -w0 dashboard-data.json)
-
-          if [[ -n "$sha" ]]; then
-            payload=$(jq -n \
-              --arg message "pages: refresh Argon dashboard data" \
-              --arg content "$content" \
-              --arg sha "$sha" \
-              --arg branch "main" \
-              '{message:$message,content:$content,sha:$sha,branch:$branch}')
-          else
-            payload=$(jq -n \
-              --arg message "pages: initialize Argon dashboard data" \
-              --arg content "$content" \
-              --arg branch "main" \
-              '{message:$message,content:$content,branch:$branch}')
-          fi
-
-          gh api --method PUT "$api_path" --input - <<<"$payload" >/dev/null
-
-          # GITHUB_TOKEN commits do not recursively trigger push workflows.
-          gh api --method POST \
-            "repos/$GH_REPO/actions/workflows/deploy-dashboard.yml/dispatches" \
-            -f ref=main >/dev/null
+          python3 .github/ci/update-dashboard.py --publish
