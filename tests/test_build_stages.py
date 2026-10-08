@@ -63,6 +63,8 @@ touch "$2/apks/ChromePublic.apk"''')
                    "COMPILER_ARGS": str(root / "compiler"),
                    "COMPILER_STATUS": str(compiler_status)}
             env.pop("CCACHE_DIR", None)
+            # Fresh-checkout fixtures must not inherit the Docker reuse flag.
+            env.pop("ARGON_PREPATCHED_SOURCES", None)
             if mode == "checkpoint":
                 env["CCACHE_DIR"] = str(root / "cache")
             result = subprocess.run(["bash", root / "build.sh", "arm64"], env=env,
