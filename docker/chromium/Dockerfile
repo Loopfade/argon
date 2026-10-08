@@ -44,7 +44,7 @@ COPY --from=source-pins --chown=argon:argon /tmp/source-lock.json build-lock.jso
 COPY --chown=argon:argon .gclient common.sh ./
 COPY --chown=argon:argon scripts/prepare_chromium.sh scripts/image_source_inputs.py \
     scripts/fetch_pinned_filter_lists.py scripts/fetch_pinned_extension.py ./scripts/
-COPY --chown=argon:argon extensions/bundle.py ./extensions/bundle.py
+COPY --chown=argon:argon extensions/bundle.py extensions/BUILD.gn ./extensions/
 # Seed pinned filter bytes even when no registry build cache exists.
 COPY --chown=argon:argon docker/chromium/filter-cache/ /opt/argon-filter-cache/
 USER argon
