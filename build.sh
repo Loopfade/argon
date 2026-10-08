@@ -36,7 +36,8 @@ if [[ "$BUILD_MODE" == finish || "$BUILD_MODE" == checkpoint || ${ARGON_PREPATCH
   preflight_args+=(--inputs-only)
 fi
 python3 scripts/preflight.py "${preflight_args[@]}"
-python3 -m unittest discover -s tests -v
+# The image's source reuse flag must not reach fresh-checkout test fixtures.
+env -u ARGON_PREPATCHED_SOURCES python3 -m unittest discover -s tests -v
 if [[ ( "$BUILD_MODE" == apk || "$BUILD_MODE" == finish ) && "$SIGNING_MODE" == release ]]; then
   : "${TITANIUM_RU_KEYSTORE_BASE64:?Missing release keystore}"
   : "${TITANIUM_RU_STORE_PASSWORD:?Missing release store password}"
