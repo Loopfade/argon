@@ -98,13 +98,14 @@
     }
     details.arch summary::-webkit-details-marker{display:none}
     .arch-title{display:flex;gap:10px;align-items:center;font-weight:800;font-size:16px}
-    .arch-summary{display:flex;gap:16px;align-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
+    .arch-summary{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
     .arch-body{border-top:1px solid var(--border);padding:0 16px 14px}
     .arch-metrics{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
     .mini{
       padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--muted)
     }
     .mini strong{color:var(--text)}
+    .attempt-heading{margin:18px 0 8px;color:var(--muted);font-weight:600}
     .step{
       display:grid;grid-template-columns:minmax(0,1fr) 90px 90px;gap:10px;
       padding:8px 0;border-top:1px solid rgba(48,54,61,.55);align-items:center
@@ -252,10 +253,11 @@
   }
 
   function startTime(item) {
-    return ms(item && (item.started_at || item.run_started_at || item.created_at));
+    return ms(item && (item.first_started_at || item.started_at || item.run_started_at || item.created_at));
   }
 
   function durationMs(item) {
+    if (item && Number.isFinite(item.duration_ms)) return item.duration_ms;
     const start = startTime(item);
     const end = endTime(item);
     if (start == null || end == null) return null;
@@ -361,7 +363,7 @@
       ["armeabi-v7a", parts.arm]
     ].filter(x => x[1] && durationMs(x[1]) != null);
     if (!candidates.length) return "—";
-    candidates.sort((a,b) => durationMs(b[1]) - durationMs(a[1]));
+    candidates.sort((a,b) => endTime(b[1]) - endTime(a[1]));
     return candidates[0][0];
   }
 
@@ -419,22 +421,35 @@
 
     $("timeline").innerHTML = rows.map(row => {
       const name=row[0], item=row[1];
-      const start=startTime(item), end=endTime(item);
-      const left=start == null ? 0 : Math.max(0,Math.min(100,((start-runStart)/total)*100));
-      const width=(start == null || end == null) ? 0 :
-        Math.max(.4,Math.min(100-left,((end-start)/total)*100));
-      const s=state(item);
+      const bars=jobAttempts(item).map(attempt => {
+        const start=startTime(attempt), end=endTime(attempt);
+        const left=start == null ? 0 : Math.max(0,Math.min(100,((start-runStart)/total)*100));
+        const width=(start == null || end == null) ? 0 :
+          Math.max(.4,Math.min(100-left,((end-start)/total)*100));
+        const status=state(attempt);
+        const title="Attempt " + (attempt.run_attempt || 1) + " · " + status.label +
+          " · " + formatDuration(durationMs(attempt));
+        return '<div class="bar ' + esc(status.key) + '" title="' + esc(title) +
+          '" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div>';
+      }).join("");
       return '<div class="timeline-row">' +
         '<div class="timeline-label">' + esc(name) + '</div>' +
-        '<div class="track"><div class="bar ' + esc(s.key) + '" style="left:' +
-          left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div></div>' +
+        '<div class="track">' + bars + '</div>' +
         '<div class="timeline-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
       '</div>';
     }).join("");
   }
 
+  function jobAttempts(job) {
+    return job ? (job.attempts && job.attempts.length ? job.attempts : [job]) : [];
+  }
+
+  function allSteps(job) {
+    return jobAttempts(job).flatMap(attempt => attempt.steps || []);
+  }
+
   function checkpointStats(job) {
-    const warm=(job && job.steps || []).filter(s => /^Warm local compiler cache \(checkpoint \d+\/\d+\)$/.test(s.name));
+    const warm=allSteps(job).filter(s => /^Warm local compiler cache \(checkpoint \d+\/\d+\)$/.test(s.name));
     return {
       success:warm.filter(s => s.conclusion === "success").length,
       skipped:warm.filter(s => s.conclusion === "skipped").length,
@@ -442,8 +457,10 @@
     };
   }
 
-  function stepByName(job, fragment) {
-    return (job && job.steps || []).find(s => s.name.includes(fragment));
+  function stepDuration(job, fragment) {
+    const values=allSteps(job).filter(step => step.name.includes(fragment))
+      .map(durationMs).filter(value => value != null);
+    return values.length ? values.reduce((total,value) => total + value,0) : null;
   }
 
   function visibleSteps(job) {
@@ -492,29 +509,34 @@
     }
     const s=state(job);
     const stats=checkpointStats(job);
-    const apk=stepByName(job,"Build, sign and verify APK");
-    const restore=stepByName(job,"Restore compiler cache");
-    const steps=visibleSteps(job);
+    const apk=stepDuration(job,"Build, sign and verify APK");
+    const restore=stepDuration(job,"Restore compiler cache");
+    const attempts=jobAttempts(job);
 
     return '<details class="arch">' +
       '<summary><div class="arch-title"><span class="dot" style="background:var(--' +
         (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
         ')"></span>' + esc(name) + '</div>' +
         '<div class="arch-summary"><strong>' + esc(formatDuration(durationMs(job))) +
-        '</strong> · ' + esc(s.label) + '</div></summary>' +
+        '</strong> · ' + esc(s.label) + ' · ' + attempts.length +
+        (attempts.length === 1 ? ' attempt' : ' attempts') + '</div></summary>' +
       '<div class="arch-body">' +
         '<div class="arch-metrics">' +
           '<div class="mini">Warm-up <strong>' + esc(stats.success) + '/' + esc(stats.total || 20) + '</strong></div>' +
-          '<div class="mini">APK <strong>' + esc(formatDuration(durationMs(apk))) + '</strong></div>' +
-          '<div class="mini">Cache restore <strong>' + esc(formatDuration(durationMs(restore))) + '</strong></div>' +
+          '<div class="mini">APK <strong>' + esc(formatDuration(apk)) + '</strong></div>' +
+          '<div class="mini">Cache restore <strong>' + esc(formatDuration(restore)) + '</strong></div>' +
         '</div>' +
-        steps.map(step => {
-          const ss=state(step);
-          return '<div class="step">' +
-            '<div class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</div>' +
-            '<div class="step-status ' + statusTextClass(step) + '">' + esc(ss.label) + '</div>' +
-            '<div class="step-time">' + esc(step.synthetic ? "—" : formatDuration(durationMs(step))) + '</div>' +
-          '</div>';
+        attempts.map(attempt => {
+          const heading='<div class="attempt-heading">Attempt ' + (attempt.run_attempt || 1) +
+            ' · ' + esc(state(attempt).label) + ' · ' + esc(formatDuration(durationMs(attempt))) + '</div>';
+          return heading + visibleSteps(attempt).map(step => {
+            const ss=state(step);
+            return '<div class="step">' +
+              '<div class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</div>' +
+              '<div class="step-status ' + statusTextClass(step) + '">' + esc(ss.label) + '</div>' +
+              '<div class="step-time">' + esc(step.synthetic ? "—" : formatDuration(durationMs(step))) + '</div>' +
+            '</div>';
+          }).join("");
         }).join("") +
       '</div></details>';
   }

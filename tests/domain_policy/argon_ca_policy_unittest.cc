@@ -146,5 +146,28 @@ TEST_F(ArgonRussianCaPolicyTest, UserLimitAndValidationStillApply) {
             AddRussianCaDomain(&prefs_, "other.example.com"));
 }
 
+TEST_F(ArgonRussianCaPolicyTest, BatchCoverageMatchesDetailsForNormalizedSnapshot) {
+  base::ListValue stored;
+  stored.Append("BANK.RU.");
+  stored.Append("bank.ru");
+  stored.Append("pay.example.com");
+  stored.Append("example.com");
+  stored.Append("bad_name.com");
+  prefs_.SetList(prefs::kRussianCaAdditionalDomains, std::move(stored));
+  const auto domains = GetRussianCaAdditionalDomains(&prefs_);
+  EXPECT_EQ((std::vector<std::string>{"bank.ru", "pay.example.com"}),
+            GetRussianCaCoveredDomains(&prefs_, domains));
+  SetZones({false, false, false});
+  EXPECT_EQ((std::vector<std::string>{"pay.example.com"}),
+            GetRussianCaCoveredDomains(&prefs_, domains));
+  for (const auto& domain : domains) {
+    const auto covered = GetRussianCaCoveredDomains(&prefs_, domains);
+    EXPECT_EQ(!GetRussianCaCoveringRules(&prefs_, domain).empty(),
+              std::find(covered.begin(), covered.end(), domain) != covered.end());
+  }
+  // Rendering coverage must never rewrite or drop saved entries.
+  EXPECT_EQ(domains, GetRussianCaAdditionalDomains(&prefs_));
+}
+
 }  // namespace
 }  // namespace argon

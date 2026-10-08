@@ -20,7 +20,8 @@ class BuildStageTests(unittest.TestCase):
     def run_build(self, mode, compiler_status=0):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for name in ("build.sh", "common.sh"):
+            for name in ("build.sh", "common.sh", "scripts/prepare_chromium.sh"):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(ROOT / name, root / name)
             (root / ".gclient").touch()
             (root / "vanadium/patches").mkdir(parents=True)

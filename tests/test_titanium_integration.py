@@ -28,7 +28,7 @@ class TitaniumIntegrationTests(unittest.TestCase):
                 self.assertEqual(result.stderr, "")
 
     def test_integration_checks_use_the_builds_config_patch_exclusions(self):
-        patterns = vanadium_patch_exclusions((ROOT / "build.sh").read_text())
+        patterns = vanadium_patch_exclusions((ROOT / "scripts/prepare_chromium.sh").read_text())
         for name, excluded in (
             ("0015-trichrome-apk-build-targets.patch", True),
             ("0297-Earlier-config-app-parsing-and-feature-list-init-on-.patch", True),

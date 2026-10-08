@@ -77,7 +77,7 @@ jobs:
 
           image_input() {
             case "$1" in
-              .github/workflows/build-chromium-image.yml|              .gclient|.dockerignore|build-lock.json|build.sh|common.sh|patch.sh|args.gn|              chromium_overlay/*|certificates/*|extensions/*|res/*|              scripts/apply_scoped_ca.py|scripts/fetch_pinned_extension.py|              scripts/fetch_pinned_filter_lists.py|scripts/preflight.py|              scripts/configure_build.py|tests/CMakeLists.txt|tests/scoped_ca_test.cc|              vanadium|docker/chromium/*)
+              .github/workflows/build-chromium-image.yml|              .gclient|.dockerignore|build-lock.json|build.sh|common.sh|patch.sh|args.gn|              chromium_overlay/*|certificates/*|extensions/*|res/*|              scripts/prepare_chromium.sh|scripts/image_source_inputs.py|              scripts/apply_scoped_ca.py|scripts/fetch_pinned_extension.py|              scripts/fetch_pinned_filter_lists.py|scripts/preflight.py|              scripts/configure_build.py|tests/CMakeLists.txt|tests/scoped_ca_test.cc|              vanadium|docker/chromium/*)
                 return 0
                 ;;
             esac

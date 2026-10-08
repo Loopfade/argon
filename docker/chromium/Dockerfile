@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM ubuntu:24.04
-
-ARG ARGON_REVISION=unknown
+FROM ubuntu:24.04 AS tooling
 
 LABEL org.opencontainers.image.title="Argon prepared Chromium source"
 LABEL org.opencontainers.image.description="Pinned Chromium checkout prepared for Argon Android builds"
@@ -32,34 +30,45 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR /opt/argon
 RUN chown argon:argon /opt/argon \
     && install -d -o argon -g argon \
-        /opt/argon-cache /opt/argon-cache/scripts /opt/argon-filter-cache
+        /opt/argon-filter-cache
 
-# This layer changes only when the downloader or pinned digests change. The
-# normalized payloads are named by SHA-256 and verified again before every use.
-COPY --chown=argon:argon build-lock.json /opt/argon-cache/build-lock.json
-COPY --chown=argon:argon scripts/fetch_pinned_filter_lists.py \
-    /opt/argon-cache/scripts/fetch_pinned_filter_lists.py
-# Seed the mutable upstream input even when no registry build cache exists.
-# The downloader below verifies the committed bytes against build-lock.json.
+# Export only source/toolchain pins, so Argon artifact metadata does not
+# invalidate the expensive source layer. Identical output is copied by digest.
+FROM tooling AS source-pins
+COPY build-lock.json /tmp/build-lock.json
+COPY scripts/image_source_inputs.py /tmp/image_source_inputs.py
+RUN python3 /tmp/image_source_inputs.py --lock /tmp/build-lock.json > /tmp/source-lock.json
+
+FROM tooling AS prepared
+COPY --from=source-pins --chown=argon:argon /tmp/source-lock.json build-lock.json
+COPY --chown=argon:argon .gclient common.sh ./
+COPY --chown=argon:argon scripts/prepare_chromium.sh scripts/image_source_inputs.py \
+    scripts/fetch_pinned_filter_lists.py scripts/fetch_pinned_extension.py ./scripts/
+COPY --chown=argon:argon extensions/bundle.py ./extensions/bundle.py
+# Seed pinned filter bytes even when no registry build cache exists.
 COPY --chown=argon:argon docker/chromium/filter-cache/ /opt/argon-filter-cache/
-
 USER argon
-RUN python3 /opt/argon-cache/scripts/fetch_pinned_filter_lists.py \
-        --output /opt/argon-cache/verified-filter-lists.txt \
-        --cache-dir "$ARGON_FILTER_LIST_CACHE_DIR" \
-    && rm -rf /opt/argon-cache/*
 
-LABEL org.opencontainers.image.revision="${ARGON_REVISION}"
-
-COPY --chown=argon:argon . .
-
-# BUILD_MODE=prepare performs the pinned Chromium/depot_tools checkout, gclient
-# sync, build-dependency installation, hooks, Argon patches and policy tests,
-# and GN generation. Android JNI/Java compilation runs with the APK targets
-# in the workflow that saves ccache; it must not hold up this indivisible RUN.
+# Includes pinned Vanadium patches and dependency hooks in their original order.
+# An Argon overlay change reuses this entire checkout, SDK and toolchain layer.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    BUILD_MODE=prepare BUILD_JOBS=2 bash build.sh arm64 \
+    ARGON_FETCH_VANADIUM=1 bash scripts/prepare_chromium.sh sources
+
+COPY --chown=argon:argon patch.sh ./
+COPY --chown=argon:argon scripts/apply_scoped_ca.py ./scripts/
+COPY --chown=argon:argon chromium_overlay/ ./chromium_overlay/
+COPY --chown=argon:argon certificates/ ./certificates/
+COPY --chown=argon:argon extensions/ ./extensions/
+COPY --chown=argon:argon res/ ./res/
+RUN bash scripts/prepare_chromium.sh patch
+
+# Runtime CI, signing and documentation changes do not reapply patches.
+COPY --chown=argon:argon . .
+RUN BUILD_MODE=prepare ARGON_PREPATCHED_SOURCES=1 BUILD_JOBS=2 bash build.sh arm64 \
     && rm -rf .build/policy-tests chromium/src/out
 
+# Revision is metadata; it must not invalidate source preparation or tests.
+ARG ARGON_REVISION=unknown
+LABEL org.opencontainers.image.revision="${ARGON_REVISION}"
 CMD ["/bin/bash"]

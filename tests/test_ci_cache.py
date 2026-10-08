@@ -85,13 +85,30 @@ class CacheReplacementTests(unittest.TestCase):
         self.assertEqual(calls[0].args[0],
                          ["gh", "cache", "delete", "1", "--repo", "Loopfade/argon"])
 
+    def test_version_cache_is_isolated_and_same_version_retries_survive_cleanup(self):
+        lock = {"chromium_version": "154.0.8037.126", "chromium_commit": "a" * 40}
+        prefix = cache.cache_prefix(lock, "arm64")
+        self.assertNotEqual(prefix, cache.cache_prefix({**lock, "chromium_version": "154.0.8037.57"}, "arm64"))
+        self.assertNotEqual(prefix, cache.cache_prefix({**lock, "chromium_commit": "b" * 40}, "arm64"))
+        old = self.entry(1)
+        retry = self.entry(2, key=prefix + "-sha-run-attempt-2")
+        entries = [old, retry, self.entry(3, key="argon-ccache-v2-arm-1"),
+                   self.entry(4, ref="refs/heads/main"), self.entry(5, key="unrelated-cache")]
+        self.assertEqual(cache.old_version_caches(entries, prefix, "arm64", self.ref), [old])
+
+    def test_delayed_old_build_preserves_newer_version_caches(self):
+        old_lock = {"chromium_version": "154.0.8037.57", "chromium_commit": "a" * 40}
+        prefix = cache.cache_prefix(old_lock, "arm64")
+        newer = self.entry(1, key=cache.cache_prefix({**old_lock, "chromium_version": "154.0.8037.126"}, "arm64") + "-run-2")
+        self.assertEqual(cache.old_version_caches([newer], prefix, "arm64", self.ref), [])
+
 
 class PreparedImageTests(unittest.TestCase):
     def compare(self, before, after):
         with tempfile.TemporaryDirectory() as tmp:
             roots = [Path(tmp) / "image", Path(tmp) / "checkout"]
             for root, files in zip(roots, [before, after]):
-                fixture = {"build.sh": "runtime\nelse\nexport VERSION\nprepare\nconfigure_args=()\n",
+                fixture = {"build.sh": "runtime\nelse\n# BEGIN PREPARED SOURCES\nprepare\n# END PREPARED SOURCES\nconfigure_args=()\n",
                            **files}
                 for name, content in fixture.items():
                     path = root / name
@@ -118,10 +135,10 @@ class PreparedImageTests(unittest.TestCase):
     def test_runtime_build_changes_are_allowed_but_source_preparation_changes_are_not(self):
         baseline = {"build-lock.json": "pinned", "extensions/bundle.py": "source"}
         self.compare(baseline, {**baseline, "build.sh":
-                     "updated runtime\nelse\nexport VERSION\nprepare\nconfigure_args=(new)\n"})
+                     "updated runtime\nelse\n# BEGIN PREPARED SOURCES\nprepare\n# END PREPARED SOURCES\nconfigure_args=(new)\n"})
         with self.assertRaisesRegex(SystemExit, "source preparation"):
             self.compare(baseline, {**baseline, "build.sh":
-                         "runtime\nelse\nexport VERSION\ndifferent patches\nconfigure_args=()\n"})
+                         "runtime\nelse\n# BEGIN PREPARED SOURCES\ndifferent patches\n# END PREPARED SOURCES\nconfigure_args=()\n"})
 
 
 if __name__ == "__main__":
