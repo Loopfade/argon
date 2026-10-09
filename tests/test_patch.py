@@ -85,7 +85,7 @@ class PatchTests(unittest.TestCase):
         self.assertIn("pref_change_registrar_.Add(argon::prefs::kRussianCaAdditionalDomains", value)
         self.assertIn("argon::prefs::kRussianCaBuiltInZonePrefs", value)
         self.assertIn("argon::GetRussianCaPermittedDnsNames(prefs)", value)
-        self.assertIn("if (!permitted_dns_names.empty())", value)
+        self.assertIn("if (!argon_permitted_dns_names.empty())", value)
 
     def test_verifier_uses_per_instance_dynamic_constraints(self):
         value = patch.patch_verifier(

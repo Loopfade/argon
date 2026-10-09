@@ -40,12 +40,12 @@ PROFILE_ANCHOR = """  auto additional_certificates =
 PROFILE_BLOCK = """
   // BEGIN TITANIUM_RU_SCOPED_ANCHOR
 #if BUILDFLAG(IS_ANDROID)
-  auto permitted_dns_names = argon::GetRussianCaPermittedDnsNames(prefs);
-  if (!permitted_dns_names.empty()) {
+  auto argon_permitted_dns_names = argon::GetRussianCaPermittedDnsNames(prefs);
+  if (!argon_permitted_dns_names.empty()) {
     auto russian_root = cert_verifier::mojom::CertWithConstraints::New();
     russian_root->certificate =
         base::ToVector(base::span(net::kTitaniumRussianRootDer));
-    russian_root->permitted_dns_names = std::move(permitted_dns_names);
+    russian_root->permitted_dns_names = std::move(argon_permitted_dns_names);
     additional_certificates->trust_anchors_with_additional_constraints.push_back(
         std::move(russian_root));
   }
