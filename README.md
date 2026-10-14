@@ -2,7 +2,7 @@
 
 Android-браузер на базе Titanium и Chromium с поддержкой расширений Chrome и сайтов, использующих российский корневой сертификат.
 
-**[Скачать последнюю версию](https://github.com/Loopfade/argon/releases/latest)** · [Сообщить об ошибке](https://github.com/Loopfade/argon/issues/new/choose)
+**[Скачать последнюю версию](https://github.com/Loopfade/argon/releases/latest)** · [Обсуждение на 4PDA](https://4pda.to/forum/index.php?showtopic=1127809) · [Сообщить об ошибке](https://github.com/Loopfade/argon/issues/new/choose)
 
 ## Возможности
 
