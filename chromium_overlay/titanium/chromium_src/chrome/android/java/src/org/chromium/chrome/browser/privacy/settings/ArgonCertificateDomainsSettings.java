@@ -55,6 +55,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -226,7 +227,7 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
                     coveredDomains.contains(domain)
                             ? ArgonCertificateDomainsSettingsJni.get()
                                     .getCoveringRules(getProfile(), domain)
-                            : List.of();
+                            : Collections.emptyList();
             category.addPreference(new DomainPreference(domain, rules));
         }
     }
