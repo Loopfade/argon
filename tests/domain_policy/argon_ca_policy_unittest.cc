@@ -51,6 +51,70 @@ TEST_F(ArgonRussianCaPolicyTest, AddsRussianDomainOnlyWhenItsZoneIsDisabled) {
             AddRussianCaDomain(&prefs_, "BANK.RU"));
 }
 
+TEST_F(ArgonRussianCaPolicyTest, PreviewUsesCurrentRulesWithoutChangingPrefs) {
+  SetZones({false, false, false});
+  ASSERT_EQ(AddRussianCaDomainResult::kSuccess,
+            AddRussianCaDomain(&prefs_, "pay.bank.ru"));
+  const auto saved = prefs_.GetList(prefs::kRussianCaAdditionalDomains).Clone();
+  std::string normalized;
+
+  EXPECT_EQ(AddRussianCaDomainResult::kSuccess,
+            ValidateRussianCaDomain(&prefs_, " BANK.RU. ", &normalized));
+  EXPECT_EQ("bank.ru", normalized);
+  EXPECT_EQ(saved, prefs_.GetList(prefs::kRussianCaAdditionalDomains));
+
+  prefs_.SetBoolean(prefs::kRussianCaBuiltInZonePrefs[0], true);
+  EXPECT_EQ(AddRussianCaDomainResult::kCovered,
+            ValidateRussianCaDomain(&prefs_, " BANK.RU. ", &normalized));
+  EXPECT_EQ(AddRussianCaDomainResult::kCovered,
+            AddRussianCaDomain(&prefs_, " BANK.RU. "));
+  EXPECT_EQ(saved, prefs_.GetList(prefs::kRussianCaAdditionalDomains));
+  EXPECT_EQ((std::vector<std::string>{".ru"}),
+            GetRussianCaCoveringRules(&prefs_, "pay.bank.ru"));
+
+  prefs_.SetBoolean(prefs::kRussianCaBuiltInZonePrefs[0], false);
+  EXPECT_EQ(AddRussianCaDomainResult::kSuccess,
+            ValidateRussianCaDomain(&prefs_, " BANK.RU. ", &normalized));
+  EXPECT_EQ(saved, prefs_.GetList(prefs::kRussianCaAdditionalDomains));
+  EXPECT_EQ(AddRussianCaDomainResult::kSuccess,
+            AddRussianCaDomain(&prefs_, " BANK.RU. "));
+  EXPECT_EQ(AddRussianCaDomainResult::kCovered,
+            ValidateRussianCaDomain(&prefs_, "www.bank.ru", &normalized));
+  EXPECT_EQ((std::vector<std::string>{"bank.ru"}),
+            GetRussianCaCoveringRules(&prefs_, "pay.bank.ru"));
+  EXPECT_EQ((std::vector<std::string>{"bank.ru", "pay.bank.ru"}),
+            GetRussianCaAdditionalDomains(&prefs_));
+}
+
+TEST_F(ArgonRussianCaPolicyTest, PreviewAndWriteAgreeOnErrorsAtTheLimit) {
+  for (size_t i = 0; i < net::kTitaniumRussianRootMaxUserDomains; ++i) {
+    ASSERT_EQ(AddRussianCaDomainResult::kSuccess,
+              AddRussianCaDomain(
+                  &prefs_, "site" + std::to_string(i) + ".example.com"));
+  }
+  const auto saved = prefs_.GetList(prefs::kRussianCaAdditionalDomains).Clone();
+  const struct {
+    const char* input;
+    AddRussianCaDomainResult expected;
+  } cases[] = {
+      {"https://example.com", AddRussianCaDomainResult::kInvalid},
+      {"ru", AddRussianCaDomainResult::kPublicSuffix},
+      {"bank.ru", AddRussianCaDomainResult::kCovered},
+      {"www.site0.example.com", AddRussianCaDomainResult::kCovered},
+      {"SITE0.EXAMPLE.COM.", AddRussianCaDomainResult::kDuplicate},
+      {"other.example.com", AddRussianCaDomainResult::kTooMany},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.input);
+    std::string normalized;
+    EXPECT_EQ(test.expected,
+              ValidateRussianCaDomain(&prefs_, test.input, &normalized));
+    EXPECT_EQ(saved, prefs_.GetList(prefs::kRussianCaAdditionalDomains));
+    EXPECT_EQ(test.expected, AddRussianCaDomain(&prefs_, test.input));
+    EXPECT_EQ(saved, prefs_.GetList(prefs::kRussianCaAdditionalDomains));
+  }
+}
+
 TEST_F(ArgonRussianCaPolicyTest, SwitchingAndEditingDoNotLoseCoveredEntries) {
   SetZones({false, false, false});
   ASSERT_EQ(AddRussianCaDomainResult::kSuccess,

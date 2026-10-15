@@ -41,6 +41,9 @@ TITANIUM_ANDROID_CC_DEPS = Path(
 TITANIUM_PRIVACY_PREFERENCES = Path(
     "titanium/chromium_src/chrome/android/java/res/xml/privacy_preferences_ext.xml"
 )
+TITANIUM_ROOT_RESOURCE = Path(
+    "titanium/chromium_src/chrome/android/java/res/raw/argon_root_ca.pem"
+)
 PROFILE_ANCHOR = """  auto additional_certificates =
       cert_verifier::mojom::AdditionalCertificates::New();"""
 PROFILE_BLOCK = """
@@ -243,6 +246,9 @@ def patch_titanium_chrome_resources(text: str) -> str:
         '  "java/res/values-ru/argon_certificate_domains_strings.xml",'
         '\n  "java/res/layout/argon_certificate_domain_overlap_widget.xml",'
         '\n  "java/res/drawable/argon_certificate_overlap.xml",'
+        '\n  "java/res/drawable/argon_certificate_more.xml",'
+        '\n  "java/res/drawable/argon_certificate_add.xml",'
+        '\n  "java/res/raw/argon_root_ca.pem",'
         '\n  "java/res/values/argon_about_strings.xml",'
         '\n  "java/res/values-ru/argon_about_strings.xml",'
     )
@@ -333,6 +339,10 @@ def apply(src: Path, product_name: bool = True) -> None:
         raise ValueError("Generated CA header differs from the pinned certificate")
     # Validate all inputs first. Never silently continue after a source change.
     writes = {
+        # Details shown by Android come from the exact PEM checked by load_root().
+        src / TITANIUM_ROOT_RESOURCE: (
+            ROOT / "certificates/russian_trusted_root_ca.pem"
+        ).read_text("ascii"),
         src / PROFILE: patch_profile((src / PROFILE).read_text()),
         src / VERIFIER: patch_verifier((src / VERIFIER).read_text()),
         src / GN: patch_gn((src / GN).read_text()),

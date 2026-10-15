@@ -119,10 +119,13 @@ inline void WriteRussianCaDomains(PrefService* pref_service,
   }
 }
 
-inline AddRussianCaDomainResult AddRussianCaDomain(PrefService* pref_service,
-                                                  std::string_view input) {
-  std::string normalized;
-  switch (net::NormalizeTitaniumRussianRootDomain(input, &normalized)) {
+// Used by both live input validation and the final write. Validation never
+// changes preferences. New entries covered by a wider rule remain forbidden.
+inline AddRussianCaDomainResult ValidateRussianCaDomain(
+    const PrefService* pref_service,
+    std::string_view input,
+    std::string* normalized) {
+  switch (net::NormalizeTitaniumRussianRootDomain(input, normalized)) {
     case net::TitaniumRuDomainValidationResult::kInvalid:
       return AddRussianCaDomainResult::kInvalid;
     case net::TitaniumRuDomainValidationResult::kPublicSuffix:
@@ -131,17 +134,28 @@ inline AddRussianCaDomainResult AddRussianCaDomain(PrefService* pref_service,
       break;
   }
   std::vector<std::string> domains = GetRussianCaAdditionalDomains(pref_service);
-  if (std::find(domains.begin(), domains.end(), normalized) != domains.end()) {
+  if (std::find(domains.begin(), domains.end(), *normalized) != domains.end()) {
     return AddRussianCaDomainResult::kDuplicate;
   }
   if (!net::GetTitaniumRussianRootCoveringRules(
-           normalized, GetRussianCaBuiltInZoneStates(pref_service), domains)
+           *normalized, GetRussianCaBuiltInZoneStates(pref_service), domains)
            .empty()) {
     return AddRussianCaDomainResult::kCovered;
   }
   if (domains.size() >= net::kTitaniumRussianRootMaxUserDomains) {
     return AddRussianCaDomainResult::kTooMany;
   }
+  return AddRussianCaDomainResult::kSuccess;
+}
+
+inline AddRussianCaDomainResult AddRussianCaDomain(PrefService* pref_service,
+                                                 std::string_view input) {
+  std::string normalized;
+  const auto result = ValidateRussianCaDomain(pref_service, input, &normalized);
+  if (result != AddRussianCaDomainResult::kSuccess) {
+    return result;
+  }
+  std::vector<std::string> domains = GetRussianCaAdditionalDomains(pref_service);
   domains.push_back(std::move(normalized));
   std::sort(domains.begin(), domains.end());
   WriteRussianCaDomains(pref_service, domains);

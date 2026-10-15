@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import re
 import shlex
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -143,6 +144,19 @@ def main():
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         patch.apply(src, product_name=False)
+        # Android details must describe the same pinned root used by the verifier.
+        resource_pem = (src / patch.TITANIUM_ROOT_RESOURCE).read_text("ascii")
+        if ssl.PEM_cert_to_DER_cert(resource_pem) != patch.load_root():
+            raise ValueError("Android certificate details differ from the trusted root")
+        resources = re.findall(
+            r'"(java/res/[^"\n]*argon[^"\n]*)"',
+            (src / patch.TITANIUM_CHROME_RESOURCES).read_text(),
+        )
+        if len(resources) != len(set(resources)):
+            raise ValueError("Duplicate Argon Android resource registration")
+        for resource in resources:
+            if not (src / "titanium/chromium_src/chrome/android" / resource).is_file():
+                raise ValueError(f"Missing Argon Android resource: {resource}")
         before = {path: path.read_bytes() for path in src.rglob("*")
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
         patch.apply(src, product_name=False)

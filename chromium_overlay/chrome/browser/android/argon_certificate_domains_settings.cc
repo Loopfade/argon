@@ -59,6 +59,15 @@ JNI_ArgonCertificateDomainsSettings_GetCoveringRules(
   return argon::GetRussianCaCoveringRules(profile->GetPrefs(), domain);
 }
 
+static jint JNI_ArgonCertificateDomainsSettings_ValidateDomain(
+    JNIEnv* env,
+    Profile* profile,
+    const std::string& input) {
+  std::string normalized;
+  return static_cast<jint>(
+      argon::ValidateRussianCaDomain(profile->GetPrefs(), input, &normalized));
+}
+
 static jint JNI_ArgonCertificateDomainsSettings_AddDomain(
     JNIEnv* env,
     Profile* profile,
