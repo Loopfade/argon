@@ -126,4 +126,6 @@ Android-браузер на базе Titanium и Chromium с поддержко�
 
 Argon основан на [Titanium](https://github.com/jqssun/android-titanium-browser) и [Chromium](https://www.chromium.org/). Поддержка российского сертификата адаптирована из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android).
 
+В **Настройки → О браузере Argon** (на английском — **About Argon**) есть описание форка и ссылки на исходный код Argon, сообщения об ошибках и исходный проект Titanium. На том же экране доступны версия приложения, версия Android и юридическая информация.
+
 [Лицензия Argon](https://github.com/Loopfade/argon/blob/main/LICENSE) · [Лицензия Ruthenium](https://github.com/Loopfade/argon/blob/main/licenses/Ruthenium-BSD-3-Clause.txt) · [Сборка и проверки](https://github.com/Loopfade/argon/blob/main/VALIDATION.md)

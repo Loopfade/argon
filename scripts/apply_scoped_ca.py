@@ -20,6 +20,12 @@ VERIFIER = Path("net/cert/cert_verify_proc_builtin.cc")
 GN = Path("net/BUILD.gn")
 CHROME_NET_GN = Path("chrome/browser/net/BUILD.gn")
 CHROME_ANDROID_GN = Path("chrome/android/BUILD.gn")
+MAIN_PREFERENCES = Path("chrome/android/java/res/xml/main_preferences.xml")
+ABOUT_PREFERENCES = Path("chrome/android/java/res/xml/about_chrome_preferences.xml")
+ABOUT_SETTINGS = Path(
+    "chrome/android/java/src/org/chromium/chrome/browser/about_settings/"
+    "AboutChromeSettings.java"
+)
 TITANIUM_CHROME_JAVA_SOURCES = Path(
     "titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni"
 )
@@ -237,6 +243,8 @@ def patch_titanium_chrome_resources(text: str) -> str:
         '  "java/res/values-ru/argon_certificate_domains_strings.xml",'
         '\n  "java/res/layout/argon_certificate_domain_overlap_widget.xml",'
         '\n  "java/res/drawable/argon_certificate_overlap.xml",'
+        '\n  "java/res/values/argon_about_strings.xml",'
+        '\n  "java/res/values-ru/argon_about_strings.xml",'
     )
     return replace_once(text, anchor, anchor + "\n" + addition)
 
@@ -273,6 +281,51 @@ def patch_titanium_privacy_preferences(text: str) -> str:
     return replace_once(text, anchor, addition + anchor)
 
 
+def patch_main_preferences(text: str) -> str:
+    return replace_once(
+        text, 'android:title="@string/prefs_about_chrome"',
+        'android:title="@string/argon_about_title"',
+    )
+
+
+def patch_about_settings(text: str) -> str:
+    return replace_once(
+        text, 'mPageTitle.set(getString(R.string.prefs_about_chrome));',
+        'mPageTitle.set(getString(R.string.argon_about_title));',
+    )
+
+
+def patch_about_preferences(text: str) -> str:
+    anchor = '<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">'
+    replacement = '''<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <org.chromium.components.browser_ui.settings.ChromeBasePreference
+        android:key="argon_project_description"
+        android:title="@string/argon_about_project_title"
+        android:summary="@string/argon_about_description"
+        android:selectable="false" />
+    <org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory
+        android:key="argon_project_links"
+        android:title="@string/argon_about_links_title">
+        <org.chromium.chrome.browser.about_settings.HyperlinkPreference
+            android:key="argon_project_github"
+            android:title="@string/argon_about_github_title"
+            android:summary="@string/argon_about_github_url"
+            app:url="@string/argon_about_github_url" />
+        <org.chromium.chrome.browser.about_settings.HyperlinkPreference
+            android:key="argon_project_issues"
+            android:title="@string/argon_about_issues_title"
+            android:summary="@string/argon_about_issues_summary"
+            app:url="@string/argon_about_issues_url" />
+        <org.chromium.chrome.browser.about_settings.HyperlinkPreference
+            android:key="argon_project_upstream"
+            android:title="@string/argon_about_upstream_title"
+            android:summary="@string/argon_about_upstream_url"
+            app:url="@string/argon_about_upstream_url" />
+    </org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory>'''
+    return replace_once(text, anchor, replacement)
+
+
 def apply(src: Path, product_name: bool = True) -> None:
     der = load_root()
     generated = ROOT / "chromium_overlay/net/cert/titanium_ru_root.h"
@@ -288,6 +341,15 @@ def apply(src: Path, product_name: bool = True) -> None:
         ),
         src / CHROME_ANDROID_GN: patch_chrome_android_gn(
             (src / CHROME_ANDROID_GN).read_text()
+        ),
+        src / MAIN_PREFERENCES: patch_main_preferences(
+            (src / MAIN_PREFERENCES).read_text()
+        ),
+        src / ABOUT_PREFERENCES: patch_about_preferences(
+            (src / ABOUT_PREFERENCES).read_text()
+        ),
+        src / ABOUT_SETTINGS: patch_about_settings(
+            (src / ABOUT_SETTINGS).read_text()
         ),
         src / TITANIUM_CHROME_JAVA_SOURCES: patch_titanium_chrome_java_sources(
             (src / TITANIUM_CHROME_JAVA_SOURCES).read_text()

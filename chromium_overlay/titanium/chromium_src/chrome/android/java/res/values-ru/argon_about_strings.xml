@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_about_title">О браузере Argon</string>
+    <string name="argon_about_project_title">О проекте</string>
+    <string name="argon_about_description">Argon — независимый форк Titanium на базе Chromium. Он сохраняет поддержку расширений Chrome и добавляет управление доверием к встроенному корневому сертификату Минцифры для выбранных сайтов.</string>
+    <string name="argon_about_github_title">Исходный код Argon</string>
+    <string name="argon_about_issues_title">Сообщить об ошибке</string>
+    <string name="argon_about_issues_summary">Ошибки и предложения на GitHub</string>
+    <string name="argon_about_upstream_title">Titanium — исходный проект</string>
+</resources>

@@ -2,9 +2,9 @@
 """Check Argon's patches against the pinned upstream sources.
 
 This small integration check downloads the Chromium files needed to validate
-the CA/JNI overlay and the M154/M155 extension-install dialog regression, applies
-the relevant Vanadium patches, and applies Argon's overlay twice. It does not
-replace GN, Java/C++ compilation, or Android smoke tests.
+the CA/JNI overlay, About screen and M154/M155 extension-install dialog
+regression, applies the relevant Vanadium patches, and applies Argon's overlay
+twice. It does not replace GN, Java/C++ compilation, or Android smoke tests.
 """
 import concurrent.futures
 import fnmatch
@@ -22,7 +22,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import apply_scoped_ca as patch
 
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
-              patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN)
+              patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
+              patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS)
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
@@ -150,7 +151,7 @@ def main():
         if before != after:
             raise ValueError("Argon patch is not idempotent on the pinned upstream")
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
-          f'{count} relevant Vanadium patches and idempotent Argon CA/JNI overlay')
+          f'{count} relevant Vanadium patches and idempotent Argon CA/JNI/About patches')
 
 
 if __name__ == "__main__":
