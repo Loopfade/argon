@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 
 
@@ -56,6 +57,60 @@ RELEASE_PAYLOAD_PREFIXES = (
     "res/",
     "vanadium/",
 )
+
+
+def select_release_revision(
+    version: str, target_sha: str, releases: list, tags: list
+) -> int:
+    """Choose a version-local revision while the publisher holds its CI lock.
+
+    Count both releases (including drafts) and tags left by interrupted
+    publications. Retrying the same source commit reuses its existing revision;
+    the publisher must still verify its tag, provenance and asset digests.
+    """
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", version) is None:
+        raise ValueError("invalid Chromium version")
+    if re.fullmatch(r"[0-9a-f]{40}", target_sha) is None:
+        raise ValueError("invalid release target SHA")
+    if not isinstance(releases, list) or not isinstance(tags, list):
+        raise ValueError("release and tag inventories must be complete lists")
+
+    pattern = re.compile(r"v" + re.escape(version) + r"-([1-9][0-9]*)")
+    release_targets, tag_targets = {}, {}
+    for items, name_key, targets in (
+        (releases, "tag_name", release_targets),
+        (tags, "name", tag_targets),
+    ):
+        for item in items:
+            if not isinstance(item, dict) or not isinstance(item.get(name_key), str):
+                raise ValueError("invalid release or tag inventory entry")
+            match = pattern.fullmatch(item[name_key])
+            if match is None:
+                continue
+            revision = int(match[1])
+            commit = item.get("commit")
+            target = (item.get("target_commitish") if name_key == "tag_name"
+                      else commit.get("sha") if isinstance(commit, dict) else None)
+            if not isinstance(target, str) or not target:
+                raise ValueError("numbered release or tag has no target")
+            if name_key == "name" and re.fullmatch(r"[0-9a-f]{40}", target) is None:
+                raise ValueError("numbered tag has an invalid target SHA")
+            if revision in targets and targets[revision] != target:
+                raise ValueError("conflicting duplicate revision in inventory")
+            targets[revision] = target
+
+    occupied = release_targets.keys() | tag_targets.keys()
+    reusable = []
+    for revision in occupied:
+        release_target = release_targets.get(revision)
+        tag_target = tag_targets.get(revision)
+        if target_sha not in (release_target, tag_target):
+            continue
+        if any(target is not None and target != target_sha
+               for target in (release_target, tag_target)):
+            raise ValueError("existing release and tag disagree about the target")
+        reusable.append(revision)
+    return max(reusable) if reusable else max(occupied, default=0) + 1
 
 
 def is_documentation_path(path: str) -> bool:
@@ -224,6 +279,12 @@ def main() -> None:
     subparsers.add_parser("check-drift")
     subparsers.add_parser("check-release-payload-drift")
 
+    revision = subparsers.add_parser("select-revision")
+    revision.add_argument("--version", required=True)
+    revision.add_argument("--target-sha", required=True)
+    revision.add_argument("--releases-json", required=True)
+    revision.add_argument("--tags-json", required=True)
+
     locate = subparsers.add_parser("locate-artifact")
     locate.add_argument("--root", required=True, type=Path)
     locate.add_argument(
@@ -252,6 +313,11 @@ def main() -> None:
             unsafe = unsafe_release_payload_drift(_load_json(None))
             if unsafe:
                 raise ValueError("release-payload drift: " + ", ".join(unsafe))
+        elif args.command == "select-revision":
+            print(select_release_revision(
+                args.version, args.target_sha,
+                _load_json(args.releases_json), _load_json(args.tags_json),
+            ))
         elif args.command == "locate-artifact":
             selected = locate_release_artifact(args.root, args.abi)
             print(json.dumps({name: str(path) for name, path in selected.items()}))

@@ -37,12 +37,22 @@ elif args[0] == "api":
         print("{}")
         sys.exit(0)
     url = next(arg for arg in args[1:] if arg.startswith("repos/"))
+    if os.environ.get("FAIL_INVENTORY") and os.environ["FAIL_INVENTORY"] in url:
+        raise SystemExit("Fixture GitHub inventory request failed")
     if "/git/ref/heads/main" in url:
         print(os.environ["RELEASE_TARGET"])
     elif "/releases/tags/" in url:
         print(json.dumps(release))
     elif "/releases?" in url:
-        print(json.dumps([release]))
+        history = root / "releases.json"
+        items = json.loads(history.read_text()) if history.exists() else [release]
+        pages = [items[i:i+100] for i in range(0, len(items), 100)] or [[]]
+        print(json.dumps(pages if "--slurp" in args else items))
+    elif "/tags?" in url:
+        history = root / "tags.json"
+        items = json.loads(history.read_text()) if history.exists() else []
+        pages = [items[i:i+100] for i in range(0, len(items), 100)] or [[]]
+        print(json.dumps(pages if "--slurp" in args else items))
     elif "/actions/runs/42/attempts/1/jobs" in url:
         print('[{"jobs":[]}]')
     elif "/actions/runs/42/artifacts" in url:
@@ -50,7 +60,8 @@ elif args[0] == "api":
     elif "/actions/runs/42" in url:
         print(json.dumps({"id":42, "name":"Build Argon", "event":"workflow_dispatch",
                           "status":"completed", "conclusion":"success",
-                          "head_sha":"a"*40, "head_branch":"main"}))
+                          "head_sha":"a"*40, "head_branch":"main",
+                          "repository":{"full_name":os.environ["GH_REPO"]}}))
     elif "/contents/dashboard-data.json" in url:
         print('{"sha":"existing-snapshot-sha"}')
     else:
@@ -96,7 +107,8 @@ class WorkflowExecutionTests(unittest.TestCase):
         names += ["Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"]
         published = []
         for name in names:
-            data = name.encode()
+            data = (f"{hashlib.sha256((assets / name[:-7]).read_bytes()).hexdigest()}  "
+                    f"{name[:-7]}\n").encode() if name.endswith(".sha256") else name.encode()
             (assets / name).write_bytes(data)
             published.append({"name": name, "digest": "sha256:" +
                               hashlib.sha256(data).hexdigest()})
@@ -123,6 +135,71 @@ class WorkflowExecutionTests(unittest.TestCase):
 
     def publish(self):
         return self.execute("publish-release.yml", "Publish immutable verified dual-ARM release")
+
+    def prepare_provenance(self):
+        assets = self.root / "public-assets"
+        for abi, cpu in (("arm64-v8a", "arm64"), ("armeabi-v7a", "arm")):
+            target = self.root / "release-assets" / abi
+            target.mkdir(parents=True)
+            apk_name = f"Argon-{VERSION}-release-{abi}.apk"
+            for name in (apk_name, apk_name + ".sha256", "Chromium-LICENSE.txt",
+                         "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
+                shutil.copy(assets / name, target / name)
+            # Old images carry a fixed revision; future metadata can omit it.
+            # Neither form is allowed to override the automatic release number.
+            inputs = {"chromium_version": VERSION}
+            if cpu == "arm64":
+                inputs["argon_revision"] = 99
+            (target / "build-info.json").write_text(json.dumps({
+                "source_commit": "a" * 40, "inputs": inputs, "abi": abi,
+                "target_cpu": cpu, "signing_mode": "release",
+                "apk_sha256": hashlib.sha256((target / apk_name).read_bytes()).hexdigest(),
+            }))
+        shutil.rmtree(assets)
+        self.env.update(EVENT_NAME="workflow_dispatch", SOURCE_RUN_ID="42",
+                        GITHUB_RUN_ID="42", AUTO_SOURCE_SHA="a" * 40)
+
+    def select_revision(self):
+        return self.execute("publish-release.yml",
+                            "Verify dual-architecture provenance and select public assets")
+
+    def test_first_publication_ignores_legacy_revision_in_artifacts(self):
+        self.prepare_provenance()
+        (self.root / "releases.json").write_text("[]")
+        (self.root / "tags.json").write_text("[]")
+        result = self.select_revision()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"tag=v{VERSION}-1\n", (self.root / "output").read_text())
+        self.assertFalse(any(call[0] == "release" for call in self.calls()))
+
+    def test_revision_selection_includes_later_inventory_pages(self):
+        self.prepare_provenance()
+        (self.root / "releases.json").write_text("[]")
+        tags = [{"name": f"v100.0.0.0-{i}", "commit": {"sha": "b" * 40}}
+                for i in range(1, 101)]
+        tags += [{"name": f"v{VERSION}-10", "commit": {"sha": "b" * 40}}]
+        (self.root / "tags.json").write_text(json.dumps(tags))
+        result = self.select_revision()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"tag=v{VERSION}-11\n", (self.root / "output").read_text())
+        requests = [call for call in self.calls() if "/tags?" in " ".join(call)
+                    or "/releases?" in " ".join(call)]
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(all("--paginate" in call and "--slurp" in call for call in requests))
+
+    def test_publication_retry_reuses_existing_revision(self):
+        self.prepare_provenance()
+        result = self.select_revision()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"tag=v{VERSION}-2\n", (self.root / "output").read_text())
+
+    def test_inventory_failure_does_not_allocate_or_publish(self):
+        self.prepare_provenance()
+        self.env["FAIL_INVENTORY"] = "/tags?"
+        result = self.select_revision()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "output").exists())
+        self.assertFalse(any(call[0] == "release" for call in self.calls()))
 
     def test_history_only_push_preserves_dashboard_without_api_calls(self):
         self.env.update(EVENT_NAME="push", HEAD_COMMIT_MESSAGE="Merge Titanium [history-only]")

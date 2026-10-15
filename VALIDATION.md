@@ -13,7 +13,11 @@
 - Titanium: `3f02ed2a05886655b875b21e7c273d8a54fe75ed`;
 - Vanadium: `8a06a43a04074ab26fa4dc8f8aba915285d56839`;
 - BoringSSL: `b780f192ce515ed8ed358f6c0947bd7acce438b9`;
-- release revision: `3`.
+- release revision: автоматически, отдельно для каждой версии Chromium.
+
+Старое поле `argon_revision` в `build-lock.json` сохраняется для совместимости
+с уже подготовленными образами и больше не задаёт номер релизного тега.
+Вручную изменять его при выпуске не нужно.
 
 `scripts/preflight.py` проверяет согласованность pins, Vanadium gitlink,
 версии Chromium, сертификата, filter-list pins и GN-конфигурации.
@@ -171,7 +175,7 @@ dashboard и его deployment metadata не делают проверенный
 Publisher скачивает **оба** artifacts из одного `Build Argon` run и
 проверяет:
 
-- одинаковые source SHA, Chromium version и release revision;
+- одинаковые source SHA и Chromium version;
 - `arm64-v8a` / `arm64` для первой сборки;
 - `armeabi-v7a` / `arm` для второй;
 - release signing;
@@ -183,6 +187,16 @@ Publisher скачивает **оба** artifacts из одного `Build Argon
 Публичный релиз содержит семь assets: два APK, две SHA-256 checksum и три
 license files. Tag имеет формат `v<chromium_version>-<release_revision>`.
 Release notes формируются **только на русском языке**.
+
+Номер выбирается автоматически непосредственно перед публикацией под общим
+concurrency lock `publish-release`. Для новой версии Chromium это `-1`, далее
+берётся максимальный занятый номер этой версии плюс один. Publisher читает
+все страницы тегов и релизов, включая drafts и теги незавершённых публикаций.
+Теги других версий и upstream-теги без суффикса не влияют на счётчик.
+Повтор публикации того же source SHA переиспользует его номер и заново
+проверяет tag и все assets; он не создаёт новый релиз и не перезаписывает APK.
+Ошибка чтения истории или несогласованные tag/Release останавливают публикацию.
+Нумерация не меняет Docker inputs и не требует пересборки prepared image.
 
 Перед изменением существующего Release publisher сверяет SHA-256 каждого
 уже опубликованного APK, checksum и license file с проверенными artifacts.

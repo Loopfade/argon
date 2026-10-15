@@ -76,8 +76,6 @@ jobs:
           arm_source_sha=$(jq -er '.source_commit' "$arm_metadata")
           version=$(jq -er '.inputs.chromium_version' "$arm64_metadata")
           arm_version=$(jq -er '.inputs.chromium_version' "$arm_metadata")
-          release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm64_metadata")
-          arm_release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm_metadata")
 
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || {
             echo "Invalid source commit in arm64 build-info.json: $source_sha" >&2
@@ -93,14 +91,6 @@ jobs:
           }
           [[ "$version" == "$arm_version" ]] || {
             echo "Architecture artifacts use different Chromium versions." >&2
-            exit 1
-          }
-          [[ "$release_revision" =~ ^[1-9][0-9]*$ ]] || {
-            echo "Invalid Argon release revision in build-info.json: $release_revision" >&2
-            exit 1
-          }
-          [[ "$release_revision" == "$arm_release_revision" ]] || {
-            echo "Architecture artifacts use different Argon revisions." >&2
             exit 1
           }
 
@@ -212,6 +202,19 @@ jobs:
 
           cp "$arm64_apk" "$arm64_checksum" "$arm_apk" "$arm_checksum" public-assets/
           cp "$arm64_chromium_license" "$arm64_ruthenium_license" "$arm64_titanium_license" public-assets/
+
+          # The workflow-level publish-release lock covers selection and creation.
+          # Fetch every page; an API failure must never look like an empty history.
+          # The legacy inputs.argon_revision is not a release-number source.
+          releases_json=$(mktemp)
+          tags_json=$(mktemp)
+          gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" \
+            | jq -e 'add // []' > "$releases_json"
+          gh api --paginate --slurp "repos/$GH_REPO/tags?per_page=100" \
+            | jq -e 'add // []' > "$tags_json"
+          release_revision=$(python3 scripts/release_policy.py select-revision \
+            --version "$version" --target-sha "$source_sha" \
+            --releases-json "$releases_json" --tags-json "$tags_json")
 
           {
             echo "publish=true"

@@ -41,7 +41,8 @@ else:
 def tree():
     paths = (".gclient", "build-lock.json", "build.sh", "args.gn", "patch.sh",
              ".github/workflows/build-chromium-image.yml",
-             ".github/workflows/build.yml", "chromium_overlay/net/cert/root.h",
+             ".github/workflows/build.yml", ".github/workflows/publish-release.yml",
+             "scripts/release_policy.py", "chromium_overlay/net/cert/root.h",
              "certificates/root.pem", "extensions/bundle.py", "res/icon.svg",
              "docker/chromium/Dockerfile", "README.md")
     entries = [{"path": path, "type": "blob", "mode": "100644", "sha": "a" * 40}
@@ -90,7 +91,9 @@ class ImageGateTests(unittest.TestCase):
         self.assertEqual(self.execute(), "build=true\n")
 
     def test_runtime_workflow_and_documentation_changes_use_existing_image(self):
-        for path in (".github", ".github/workflows/build.yml", "README.md"):
+        for path in (".github", ".github/workflows/build.yml",
+                     ".github/workflows/publish-release.yml",
+                     "scripts/release_policy.py", "README.md"):
             self.entry(path)["sha"] = "d" * 40
         self.head["tree"].append({"path": "tests/test_image_gate.py", "type": "blob",
                                   "mode": "100644", "sha": "e" * 40})

@@ -20,13 +20,13 @@ POLICY_SPEC.loader.exec_module(release_policy)
 
 
 class ReleasePublishingTests(unittest.TestCase):
-    def test_release_revision_is_explicit_and_positive(self):
+    def test_legacy_image_revision_remains_valid_without_rebuilding_sources(self):
         lock = json.loads((ROOT / "build-lock.json").read_text())
         self.assertEqual(validate_release_revision(lock), lock["argon_revision"])
         self.assertIs(type(lock["argon_revision"]), int)
         self.assertGreater(lock["argon_revision"], 0)
 
-    def test_invalid_release_revisions_are_rejected(self):
+    def test_invalid_legacy_image_revisions_are_rejected(self):
         for value in (None, 0, -1, 1.5, "2", True):
             with self.subTest(value=value), self.assertRaisesRegex(
                 ValueError, "argon_revision"
@@ -184,10 +184,9 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn("--abi armeabi-v7a", workflow)
         self.assertIn("arm64_metadata=$(jq -er '.metadata'", workflow)
         self.assertIn("arm_metadata=$(jq -er '.metadata'", workflow)
-        self.assertIn(
-            """release_revision=$(jq -er '.inputs.argon_revision | select(type == "number")' "$arm64_metadata")""",
-            workflow,
-        )
+        self.assertNotIn("jq -er '.inputs.argon_revision", workflow)
+        self.assertIn("scripts/release_policy.py select-revision", workflow)
+        self.assertIn('--version "$version" --target-sha "$source_sha"', workflow)
         self.assertIn('echo "tag=v${version}-${release_revision}"', workflow)
         self.assertNotIn("-argon.", workflow)
         self.assertIn('echo "target_sha=$source_sha"', workflow)
