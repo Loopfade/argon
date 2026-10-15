@@ -28,6 +28,9 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.components.browser_ui.settings.SettingsFragment;
+import org.chromium.components.url_formatter.SchemeDisplay;
+import org.chromium.components.url_formatter.UrlFormatter;
+import org.chromium.url.GURL;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -159,7 +162,8 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
         DomainPreference(String domain, boolean covered) {
             super(ArgonCertificateDomainsSettings.this.requireContext());
             mDomain = domain;
-            setTitle(domain);
+            setTitle(displayDomain(domain));
+            setSingleLineTitle(false);
             setSummary(
                     covered
                             ? R.string.argon_certificates_redundant_summary
@@ -180,7 +184,8 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
             View warning = holder.findViewById(R.id.argon_certificate_overlap);
             if (warning != null) {
                 String description =
-                        getString(R.string.argon_certificates_overlap_details, mDomain);
+                        getString(
+                                R.string.argon_certificates_overlap_details, displayDomain(mDomain));
                 warning.setContentDescription(description);
                 warning.setTooltipText(description);
                 warning.setOnClickListener(ignored -> showOverlapDialog(mDomain));
@@ -188,8 +193,16 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
         }
     }
 
+    private static String displayDomain(String domain) {
+        // Display safe IDNs in Unicode using Chromium's spoof checks. Keep the
+        // original ASCII domain for all preference storage and JNI operations.
+        return UrlFormatter.formatUrlForSecurityDisplay(
+                new GURL("https://" + domain), SchemeDisplay.OMIT_HTTP_AND_HTTPS);
+    }
+
     private String displayRule(String rule) {
-        return ".xn--p1ai".equals(rule) ? ".рф (.xn--p1ai)" : rule;
+        if (".xn--p1ai".equals(rule)) return ".рф (.xn--p1ai)";
+        return rule.startsWith(".") ? rule : displayDomain(rule);
     }
 
     private String formatRuleNames(List<String> rules) {
@@ -219,12 +232,13 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
             refreshDomains();
             return;
         }
+        String displayName = displayDomain(domain);
         new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.argon_certificates_overlap_title, domain))
+                .setTitle(getString(R.string.argon_certificates_overlap_title, displayName))
                 .setMessage(
                         getString(
                                 R.string.argon_certificates_overlap_message,
-                                domain,
+                                displayName,
                                 formatRuleDescriptions(rules)))
                 .setPositiveButton(android.R.string.ok, null)
                 .show();
@@ -289,7 +303,8 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
                                 R.string.argon_certificates_remove_covered_domain_message,
                                 formatRuleDescriptions(rules));
         new AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.argon_certificates_remove_domain, domain))
+                .setTitle(
+                        getString(R.string.argon_certificates_remove_domain, displayDomain(domain)))
                 .setMessage(message)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(

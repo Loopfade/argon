@@ -2,7 +2,7 @@
 """Check Argon's patches against the pinned upstream sources.
 
 This small integration check downloads the Chromium files needed to validate
-the CA/JNI overlay and the M154 extension-install dialog regression, applies
+the CA/JNI overlay and the M154/M155 extension-install dialog regression, applies
 the relevant Vanadium patches, and applies Argon's overlay twice. It does not
 replace GN, Java/C++ compilation, or Android smoke tests.
 """
@@ -83,9 +83,10 @@ def verify_extension_install_dialog(source):
     if any("DCHECK(view_android);" in line for line in lines[old_range_start:]):
         raise ValueError("Pinned Chromium unexpectedly restored the retired end anchor")
 
-    # Regression proof: on Chromium 154 the obsolete sed range starts on line
-    # 57 and never finds its old end anchor, so it deletes lines 58..203.
-    if len(lines) != 203 or old_range_start + 1 != 57:
+    # The retired sed range has no end anchor in either reviewed version.
+    # M155 adds two headers and uses OpenURLParams::CreateBrowserInitiated;
+    # it keeps the parent-window fix and must also remain byte-for-byte intact.
+    if (len(lines), old_range_start + 1) not in ((203, 57), (206, 59)):
         raise ValueError(
             "Pinned dialog source changed; review the retired M154 patch regression"
         )

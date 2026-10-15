@@ -8,11 +8,11 @@
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
 
-- Chromium: `154.0.8037.126`, commit
-  `8eaafabb47f12210d524f648b78bce074fa3c83e`;
-- Titanium: `e951781e2cfea65c209bc1afab8c00b4f06590e5`;
-- Vanadium: `5f832b54eab6d367d09166c49f57b7f6dfa7a5ae`;
-- BoringSSL: `ac39ea6853833c1f18fd23614091d11855e71752`;
+- Chromium: `155.0.8059.79`, commit
+  `a49e2e3d4addfd84e765b52afe230bedb81096db`;
+- Titanium: `3f02ed2a05886655b875b21e7c273d8a54fe75ed`;
+- Vanadium: `8a06a43a04074ab26fa4dc8f8aba915285d56839`;
+- BoringSSL: `b780f192ce515ed8ed358f6c0947bd7acce438b9`;
 - release revision: `3`.
 
 `scripts/preflight.py` проверяет согласованность pins, Vanadium gitlink,
@@ -45,7 +45,7 @@ Validation:
 Проверка CA/JNI использует те же исключения патчей Vanadium, что и `build.sh`,
 включая раннюю инициализацию внешнего config app. Python-тесты отдельно
 проверяют выбор ветки DevTools до Chromium `156.0.8060.0` и на этой границе:
-закреплённый Chromium 154 должен использовать прежнюю ветку.
+закреплённый Chromium 155 должен использовать прежнюю ветку.
 
 Эта стадия не собирает релизный APK. `x64` и `x86` проверяются только
 на уровне конфигурации/preflight и не входят в release pipeline.
