@@ -8,10 +8,10 @@
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
 
-- Chromium: `155.0.8059.79`, commit
-  `a49e2e3d4addfd84e765b52afe230bedb81096db`;
-- Titanium: `3f02ed2a05886655b875b21e7c273d8a54fe75ed`;
-- Vanadium: `8a06a43a04074ab26fa4dc8f8aba915285d56839`;
+- Chromium: `155.0.8059.84`, commit
+  `5869fe313571d75152b77813cf0a4ee26a4e6df0`;
+- Titanium: `e59e03dc83bc940d73cf29a7683286fca390b393`;
+- Vanadium: `20526e052e304b62cf3e80114b423934e2d1c540`;
 - BoringSSL: `b780f192ce515ed8ed358f6c0947bd7acce438b9`;
 - release revision: автоматически, отдельно для каждой версии Chromium.
 
