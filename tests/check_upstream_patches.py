@@ -2,9 +2,10 @@
 """Check Argon's patches against the pinned upstream sources.
 
 This small integration check downloads the Chromium files needed to validate
-the CA/JNI overlay, About screen and M154/M155 extension-install dialog
-regression, applies the relevant Vanadium patches, and applies Argon's overlay
-twice. It does not replace GN, Java/C++ compilation, or Android smoke tests.
+the CA/JNI overlay, About screen, omnibox icon dependency and M154/M155
+extension-install dialog regression, applies the relevant Vanadium patches,
+and applies Argon's overlay twice. It does not replace GN, Java/C++ compilation,
+or Android smoke tests.
 """
 import concurrent.futures
 import fnmatch
@@ -22,9 +23,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import apply_scoped_ca as patch
 
+SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
-              patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS)
+              patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
+              patch.OMNIBOX_GN, SEARCHBOX_PATH)
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
@@ -100,6 +103,22 @@ def verify_extension_install_dialog(source):
         raise ValueError("Extension-dialog integrity guard is missing from patch.sh")
 
 
+def verify_omnibox_icon_dependency(build_file, searchbox_source):
+    # This include has nogncheck, so successful GN generation alone does not
+    # catch a missing edge to its header generator before Android compilation.
+    if '#include "components/omnibox/browser/vector_icons.h"' not in searchbox_source:
+        raise ValueError("Omnibox icon include moved; review the build fix")
+    browser = re.search(
+        r'^static_library\("browser"\) \{\n(.*?)^\}',
+        build_file, re.MULTILINE | re.DOTALL,
+    )
+    if not browser or '"searchbox_utils.cc"' not in browser[1]:
+        raise ValueError("Omnibox browser target moved; review the build fix")
+    required = '  if (!is_ios) {\n    deps += [ ":vector_icons" ]\n  }'
+    if required not in browser[1]:
+        raise ValueError("Omnibox vector icons must be dependencies on Android without VR")
+
+
 def main():
     lock = json.loads((ROOT / "build-lock.json").read_text())
     for key in ("chromium_commit", "boringssl_commit", "titanium_commit", "vanadium_commit"):
@@ -144,6 +163,10 @@ def main():
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         patch.apply(src, product_name=False)
+        verify_omnibox_icon_dependency(
+            (src / patch.OMNIBOX_GN).read_text(),
+            (src / SEARCHBOX_PATH).read_text(),
+        )
         # Android details must describe the same pinned root used by the verifier.
         resource_pem = (src / patch.TITANIUM_ROOT_RESOURCE).read_text("ascii")
         if ssl.PEM_cert_to_DER_cert(resource_pem) != patch.load_root():
@@ -165,7 +188,8 @@ def main():
         if before != after:
             raise ValueError("Argon patch is not idempotent on the pinned upstream")
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
-          f'{count} relevant Vanadium patches and idempotent Argon CA/JNI/About patches')
+          f'{count} relevant Vanadium patches, omnibox icon dependency '
+          'and idempotent Argon CA/JNI/About patches')
 
 
 if __name__ == "__main__":

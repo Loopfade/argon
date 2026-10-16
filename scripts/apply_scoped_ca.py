@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply Argon branding and the pinned Russian CA with DNS/IP constraints.
+"""Apply Argon branding, build fixes and the scoped Russian CA.
 
 The AdditionalCertificates integration is adapted from Ruthenium's
 scripts/patch_chromium.py; see licenses/Ruthenium-BSD-3-Clause.txt.
@@ -20,6 +20,7 @@ VERIFIER = Path("net/cert/cert_verify_proc_builtin.cc")
 GN = Path("net/BUILD.gn")
 CHROME_NET_GN = Path("chrome/browser/net/BUILD.gn")
 CHROME_ANDROID_GN = Path("chrome/android/BUILD.gn")
+OMNIBOX_GN = Path("components/omnibox/browser/BUILD.gn")
 MAIN_PREFERENCES = Path("chrome/android/java/res/xml/main_preferences.xml")
 ABOUT_PREFERENCES = Path("chrome/android/java/res/xml/about_chrome_preferences.xml")
 ABOUT_SETTINGS = Path(
@@ -287,6 +288,23 @@ def patch_titanium_privacy_preferences(text: str) -> str:
     return replace_once(text, anchor, addition + anchor)
 
 
+def patch_omnibox_gn(text: str) -> str:
+    # searchbox_utils.cc includes vector_icons.h on every non-iOS build,
+    # including Android with enable_vr=false. Keep location_bar's VR guard.
+    anchor = '''  if ((!is_android || enable_vr) && !is_ios) {
+    deps += [ ":vector_icons" ]
+  }
+
+  if (enable_extensions_core) {'''
+    replacement = '''  # searchbox_utils.cc needs these generated icons even without VR.
+  if (!is_ios) {
+    deps += [ ":vector_icons" ]
+  }
+
+  if (enable_extensions_core) {'''
+    return replace_once(text, anchor, replacement)
+
+
 def patch_main_preferences(text: str) -> str:
     return replace_once(
         text, 'android:title="@string/prefs_about_chrome"',
@@ -352,6 +370,7 @@ def apply(src: Path, product_name: bool = True) -> None:
         src / CHROME_ANDROID_GN: patch_chrome_android_gn(
             (src / CHROME_ANDROID_GN).read_text()
         ),
+        src / OMNIBOX_GN: patch_omnibox_gn((src / OMNIBOX_GN).read_text()),
         src / MAIN_PREFERENCES: patch_main_preferences(
             (src / MAIN_PREFERENCES).read_text()
         ),

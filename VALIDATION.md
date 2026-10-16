@@ -38,7 +38,8 @@ Validation:
    и `x86`.
 2. Запускает Python unittest suite.
 3. Проверяет shell-синтаксис build/CI scripts.
-4. Проверяет применение CA/JNI overlay к закреплённым upstream-исходникам.
+4. Проверяет применение CA/JNI/About overlay к закреплённым upstream-исходникам
+   и зависимость генерации иконок адресной строки на Android с отключённым VR.
 5. Собирает и запускает `scoped_ca_test` с закреплённым BoringSSL для
    production DNS/IP constraints.
 6. В отдельной job собирает host target `argon_domain_policy_tests` и запускает
