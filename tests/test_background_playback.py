@@ -47,22 +47,48 @@ class BackgroundPlaybackTests(unittest.TestCase):
     def test_patch_anchor_changes_fail_instead_of_silently_breaking_the_build(self):
         for transform in (background.patch_activity, background.patch_menu,
                           background.patch_locales, background.patch_java_sources,
-                          background.patch_resources):
+                          background.patch_resources, background.patch_android_packaging,
+                          background.patch_paks, background.patch_apk_template,
+                          background.patch_bundle_template, background.patch_native_locale_list):
             with self.subTest(transform=transform.__name__):
                 with self.assertRaises(ValueError):
                     transform("unexpected upstream source")
 
     def test_locale_patch_upgrades_prepared_sources_and_remains_idempotent(self):
-        source = ('platform_pak_locales = [ "en-US", "ru", "de" ]\n'
-                  '# List for Android locale names in .xml exports.\n'
-                  'if (is_android) {\n  android_bundle_locales_as_resources = []\n}\n'
-                  'locales_without_pseudolocales = platform_pak_locales - pseudolocales\n')
+        prefix = 'platform_pak_locales = [ "en-US", "ru", "de" ]\n'
+        suffix = 'locales_without_pseudolocales = platform_pak_locales - pseudolocales\n'
+        source = prefix + background.ANDROID_LOCALE_MAPPING + suffix
         patched = background.patch_locales(source)
         self.assertEqual(background.patch_locales(patched), patched)
-        # Existing prepared sources can contain the original invalid overlay.
-        legacy = patched.replace('  platform_pak_locales = []\n', '')
-        self.assertEqual(background.patch_locales(legacy), patched)
+        # Both published overlays overwrote the global catalogs. An already
+        # prepared checkout must recover the original Android mapping as well.
+        legacy = '''# ARGON_ANDROID_UI_LOCALES: package Russian and English only.
+# Keep source catalogs and website/translation language support intact.
+if (is_android) {
+  platform_pak_locales = []
+  platform_pak_locales = [ "en-US", "ru" ]
+  extended_locales = []
+  all_chrome_locales -= pseudolocales
+  pseudolocales = []
+  android_bundle_locales_as_resources = [ "ru" ]
+}
+
+'''
+        for old in (legacy, legacy.replace('  platform_pak_locales = []\n', '')):
+            with self.subTest(old=old):
+                self.assertEqual(background.patch_locales(prefix + old + suffix), patched)
+        self.assertTrue(patched.startswith(prefix + background.ANDROID_LOCALE_MAPPING))
+        self.assertTrue(patched.endswith(suffix))
+        self.assertNotIn('all_chrome_locales -= pseudolocales', patched)
+        self.assertNotIn('extended_locales = []', patched)
+        self.assertIn('argon_android_ui_locales = [ "en-US", "ru" ]', patched)
         self.assertEqual(patched.count('# ARGON_ANDROID_UI_LOCALES:'), 1)
+
+    def test_changed_upstream_android_mapping_requires_review(self):
+        source = (background.ANDROID_LOCALE_MAPPING.replace('"he",', '"new-locale",')
+                  + 'locales_without_pseudolocales = platform_pak_locales - pseudolocales\n')
+        with self.assertRaisesRegex(ValueError, 'mapping changed'):
+            background.patch_locales(source)
 
     @unittest.skipUnless(shutil.which("node"), "Node required for visibility compatibility test")
     def test_visibility_compatibility_is_reversible_and_idempotent(self):

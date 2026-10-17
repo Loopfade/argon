@@ -4,8 +4,9 @@
 This small integration check downloads the Chromium files needed to validate
 the CA/JNI overlay, About screen, omnibox icon dependency and M154/M155
 extension-install dialog regression, applies the relevant Vanadium patches,
-and applies Argon's overlay twice. A small GN project evaluates the patched
-locale configuration. This does not replace full Chromium GN generation,
+and applies Argon's overlay twice. A small GN project checks source catalogs,
+the upstream strings consumer and Android locale packaging. This does not
+replace full Chromium GN generation,
 Java/C++ compilation, or Android smoke tests.
 """
 import concurrent.futures
@@ -29,10 +30,11 @@ import apply_scoped_ca as patch
 import apply_background_playback as background
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
+LOCALE_CONSUMER = Path("components/strings/BUILD.gn")
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
-              patch.OMNIBOX_GN, SEARCHBOX_PATH)
+              patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
@@ -159,9 +161,73 @@ def obtain_pinned_gn(directory, deps_text):
     return target
 
 
-def verify_locale_configuration(source, gn):
-    # Execute real GN list semantics; text/anchor checks missed the nonempty
-    # list replacement that broke prepared-image run 39062207207.
+def locale_packaging_expressions(src):
+    # Execute the assignments and asset loop taken from the actual patched
+    # files, rather than restating their intended result in a test fixture.
+    def extract(path, pattern):
+        text = (src / path).read_text()
+        if 'import("//build/config/locales.gni")' not in text:
+            raise ValueError(f"Missing explicit locale import: {path}")
+        matches = re.findall(pattern, text, re.MULTILINE | re.DOTALL)
+        if len(matches) != 1:
+            raise ValueError(f"Locale packaging expression moved: {path}")
+        return matches[0]
+
+    java = extract(background.CHROME_ANDROID,
+                   r'generate_ui_locale_resources\("ui_locale_string_resources"\) \{\n(.*?)\n  \}')
+    assets = extract(background.CHROME_ANDROID,
+                     r'(^      foreach\(_locale, argon_android_ui_locales\) \{\n.*?)'
+                     r'(?=      treat_as_locale_paks = true)')
+    pak_inputs = extract(background.CHROME_PAKS,
+                         r'(^    if \(is_android\) \{\n      input_locales = .*?\n    \})'
+                         r'\n    output_dir = ')
+    pak_outputs = extract(background.CHROME_PAKS,
+                          r'(^    if \(is_android\) \{\n      output_locales = .*?\n    \})'
+                          r'\n  \}')
+    apk = extract(background.APK_TEMPLATE, r'^    aapt_locale_allowlist = [^\n]+')
+    bundle = extract(background.BUNDLE_TEMPLATE,
+                     r'^    system_image_locale_allowlist = [^\n]+')
+    native = extract(background.UI_BASE,
+                     r'(^if \(is_android\) \{\n  locales_for_platform_list = .*?\n\})'
+                     r'\nif \(is_apple\)')
+    return ('if (is_android) {\n'
+            '  java_ui = {\n' + java + '\n  }\n'
+            '  assets = {\n'
+            '    _variant = "chrome"\n'
+            '    renaming_sources = []\n'
+            '    renaming_destinations = []\n' + assets + '\n  }\n'
+            '  apk = {\n' + apk + '\n  }\n'
+            '  bundle = {\n' + bundle + '\n  }\n'
+            '  assert(java_ui.ui_locales == [ "en-US", "ru" ])\n'
+            '  assert(apk.aapt_locale_allowlist == java_ui.ui_locales)\n'
+            '  assert(bundle.system_image_locale_allowlist == java_ui.ui_locales)\n'
+            '  expected_assets = []\n'
+            '  foreach(locale, [ "en-US", "ru" ]) {\n'
+            '    foreach(suffix, gender_suffixes) {\n'
+            '      expected_assets += [ "locales/${locale}${suffix}.pak" ]\n'
+            '    }\n'
+            '  }\n'
+            '  assert(assets.renaming_destinations == expected_assets)\n'
+            '}\n'
+            'paks = {\n' + pak_inputs + '\n' + pak_outputs + '\n}\n'
+            + native + '\n'
+            'if (is_android) {\n'
+            '  assert(paks.input_locales == [ "en-US", "ru" ])\n'
+            '  assert(locales_for_platform_list == paks.input_locales)\n'
+            '} else {\n'
+            '  assert(paks.input_locales == platform_pak_locales)\n'
+            '  assert(locales_for_platform_list == platform_pak_locales)\n'
+            '}\n'
+            'assert(paks.output_locales == paks.input_locales)\n')
+
+
+def verify_locale_configuration(src, baseline, gn):
+    # Keep full source catalogs intact: components/strings subtracts en-XA,
+    # and bundle packaging relies on platform_pak_locales - extended_locales.
+    # Evaluate the real consumer that failed in run 39065400415.
+    consumer = (src / LOCALE_CONSUMER).read_text()
+    packaging = locale_packaging_expressions(src)
+    patched = (src / background.LOCALES).read_text()
     with tempfile.TemporaryDirectory(prefix="argon-locale-gn-") as directory:
         root = Path(directory)
         (root / ".gn").write_text('buildconfig = "//BUILDCONFIG.gn"\n')
@@ -174,47 +240,96 @@ is_official_build = locale_test_official
 is_ios = false
 is_chromeos = false
 is_apple = false
+is_mac = false
+is_linux = !is_android
+is_chrome_branded = false
+is_internal_chrome_branded = false
+branding_path_product = "chromium"
+enable_arcore = false
+enable_cardboard = false
+enable_pdf = false
+enable_pdf_ink2 = false
+enable_pdf_save_to_drive = false
+enable_plugins = false
+enable_print_preview = false
+enable_screen_ai_service = false
+enable_vr = false
+use_blink = true
 set_default_toolchain("//:default")
 ''')
-        (root / "locales.gni").write_text(source)
-        (root / "BUILD.gn").write_text('''import("//locales.gni")
-if (is_android) {
-  assert(platform_pak_locales == [ "en-US", "ru" ])
-  assert(locales_without_pseudolocales == [ "en-US", "ru" ])
-  assert(locales_with_pseudolocales == [ "en-US", "ru" ])
-  assert(android_bundle_locales_as_resources == [ "ru" ])
-  assert(extended_locales == [])
-  assert(pseudolocales == [])
-} else {
-  assert(filter_include(platform_pak_locales, [ "de" ]) == [ "de" ])
+        # Feature imports and resource generators are stubbed; the original
+        # consumer's GN expressions and XTB input lists execute unchanged.
+        for name in re.findall(r'import\("//([^"]+)"\)', consumer):
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("")
+        (root / LOCALE_CONSUMER).parent.mkdir(parents=True, exist_ok=True)
+        (root / LOCALE_CONSUMER).write_text(consumer)
+        (root / "tools/grit/grit_rule.gni").write_text('''template("grit_strings") {
+  not_needed(invoker, "*")
+  if (defined(invoker.inputs)) {
+    write_file("$root_build_dir/${target_name}.json", invoker.inputs, "json")
+  }
+  group(target_name) {
+  }
 }
-assert(filter_include(xtb_locales, [ "en-XA", "ar-XB" ]) == [])
-assert(filter_include(all_chrome_locales, [ "de", "ru" ]) == [ "de", "ru" ])
+''')
+        (root / "build/config/android/rules.gni").write_text('''template("java_strings_grd_prebuilt") {
+  not_needed(invoker, "*")
+  group(target_name) {
+  }
+}
+''')
+        base_build = '''import("//build/config/locales.gni")
+catalogs = {
+  all = all_chrome_locales
+  extended = extended_locales
+  pseudo = pseudolocales
+  xtb = xtb_locales
+  platform = platform_pak_locales
+  without_pseudo = locales_without_pseudolocales
+  with_pseudo = locales_with_pseudolocales
+  gender = gender_suffixes
+  if (is_android) {
+    android_resources = android_bundle_locales_as_resources
+    system_image = platform_pak_locales - extended_locales
+  }
+}
+write_file("$root_build_dir/catalogs.json", catalogs, "json")
 group("locale_check") {
+  deps = [ "//components/strings:strings" ]
 }
 toolchain("default") {
   tool("stamp") {
     command = "true"
   }
 }
-''')
+'''
         for android in (True, False):
             for official in (True, False):
                 args = ("locale_test_android=" + str(android).lower()
                         + " locale_test_official=" + str(official).lower())
-                output = root / "out"
-                output.mkdir(exist_ok=True)
-                (output / "args.gn").write_text(args + "\n")
-                # desc evaluates the GN sources without compiling anything;
-                # it only needs this marker to recognize the output directory.
-                (output / "build.ninja").write_text("# Locale evaluation only.\n")
-                result = subprocess.run(
-                    [str(gn), "desc", "out", "//:locale_check", "--format=json"], cwd=root,
-                    text=True, capture_output=True,
-                )
-                if result.returncode:
-                    raise ValueError("Locale GN check failed (" + args + "):\n"
-                                     + result.stdout + result.stderr)
+                snapshots = []
+                for name, source, checks in (("baseline", baseline, ""),
+                                             ("patched", patched, packaging)):
+                    (root / background.LOCALES).write_text(source)
+                    (root / "BUILD.gn").write_text(base_build + checks)
+                    output = root / ("out_" + name)
+                    output.mkdir(exist_ok=True)
+                    (output / "args.gn").write_text(args + "\n")
+                    # desc parses GN sources without invoking any compilation.
+                    (output / "build.ninja").write_text("# Locale evaluation only.\n")
+                    result = subprocess.run(
+                        [str(gn), "desc", output.name, "//:locale_check", "--format=json"],
+                        cwd=root, text=True, capture_output=True,
+                    )
+                    if result.returncode:
+                        raise ValueError("Locale GN check failed (" + name + ", " + args
+                                         + "):\n" + result.stdout + result.stderr)
+                    snapshots.append({path.name: json.loads(path.read_text())
+                                      for path in output.glob("*.json")})
+                if snapshots[0] != snapshots[1]:
+                    raise ValueError("Locale source catalogs or XTB inputs changed: " + args)
 
 
 def main():
@@ -261,6 +376,7 @@ def main():
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         patch.apply(src, product_name=False)
+        baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
         verify_omnibox_icon_dependency(
             (src / patch.OMNIBOX_GN).read_text(),
@@ -288,11 +404,12 @@ def main():
         if before != after:
             raise ValueError("Argon patch is not idempotent on the pinned upstream")
         gn = obtain_pinned_gn(src, values["DEPS"])
-        verify_locale_configuration((src / background.LOCALES).read_text(), gn)
+        verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
           'and idempotent Argon CA/JNI/About/Russian translation/background playback '
-          'patches; pinned GN locale checks (Android/desktop, official/development)')
+          'patches; pinned GN catalog, XTB consumer and two-language packaging checks '
+          '(Android/desktop, official/development)')
 
 
 if __name__ == "__main__":

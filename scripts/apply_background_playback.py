@@ -9,8 +9,47 @@ MAIN_PREFERENCES = Path("chrome/android/java/res/xml/main_preferences.xml")
 LOCALES = Path("build/config/locales.gni")
 JAVA_SOURCES = Path("titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni")
 RESOURCES = Path("titanium/chromium_src/chrome/android/chrome_app_java_resources_ext_sources.gni")
-INPUT_PATHS = (ACTIVITY, MAIN_PREFERENCES, LOCALES, JAVA_SOURCES, RESOURCES)
+CHROME_ANDROID = Path("chrome/android/BUILD.gn")
+CHROME_PAKS = Path("chrome/chrome_paks.gni")
+APK_TEMPLATE = Path("chrome/android/chrome_public_apk_tmpl.gni")
+BUNDLE_TEMPLATE = Path("chrome/android/modules/chrome_bundle_tmpl.gni")
+UI_BASE = Path("ui/base/BUILD.gn")
+INPUT_PATHS = (ACTIVITY, MAIN_PREFERENCES, LOCALES, JAVA_SOURCES, RESOURCES,
+               CHROME_ANDROID, CHROME_PAKS, APK_TEMPLATE, BUNDLE_TEMPLATE, UI_BASE)
 PACKAGE = "org.chromium.chrome.browser.media.ArgonBackgroundPlaybackController"
+
+# Reviewed upstream mapping, restored when upgrading an older prepared overlay.
+ANDROID_LOCALE_MAPPING = '''# List for Android locale names in .xml exports. Note: needs to stay in sync
+# with |ToAndroidLocaleName| in build/android/gyp/util/resource_utils.py.
+if (is_android) {
+  #  - add r: (e.g. zh-HK -> zh-rHK )
+  android_bundle_locales_as_resources = []
+  foreach(_locale, platform_pak_locales) {
+    android_bundle_locales_as_resources +=
+        [ string_replace(_locale, "-", "-r") ]
+  }
+
+  #  - remove en-US
+  #  - swap: (he, id, en-419, fil) -> (iw, in, es-rUS, tl)
+  #  - sr-rLatn -> -b+sr+Latn
+  android_bundle_locales_as_resources -= [
+    "en-rUS",
+    "es-r419",
+    "fil",
+    "he",
+    "id",
+    "sr-rLatn",
+  ]
+  android_bundle_locales_as_resources += [
+    "b+sr+Latn",
+    "es-rUS",
+    "in",
+    "iw",
+    "tl",
+  ]
+}
+
+'''
 
 
 def replace_once(text, anchor, replacement):
@@ -42,19 +81,9 @@ def patch_menu(text):
 def patch_locales(text):
     start = "# List for Android locale names in .xml exports."
     end = "locales_without_pseudolocales = platform_pak_locales - pseudolocales"
-    replacement = '''# ARGON_ANDROID_UI_LOCALES: package Russian and English only.
-# Keep source catalogs and website/translation language support intact.
-if (is_android) {
-  # GN requires clearing an existing nonempty list before replacing it.
-  platform_pak_locales = []
-  platform_pak_locales = [ "en-US", "ru" ]
-  extended_locales = []
-  # XTB catalogs must still exclude automatically generated pseudolocales.
-  all_chrome_locales -= pseudolocales
-  pseudolocales = []
-  # en-US uses Android's unqualified values/ resources.
-  android_bundle_locales_as_resources = [ "ru" ]
-}
+    replacement = ANDROID_LOCALE_MAPPING + '''# ARGON_ANDROID_UI_LOCALES: package Russian and English only.
+# Keep Chromium's source catalogs, extended locales and pseudolocales intact.
+argon_android_ui_locales = [ "en-US", "ru" ]
 
 '''
     if replacement in text:
@@ -62,12 +91,63 @@ if (is_android) {
     # Upgrade sources that already contain the earlier generated locale block.
     marker = "# ARGON_ANDROID_UI_LOCALES: package Russian and English only."
     if marker in text:
+        if start in text:
+            raise ValueError("Unexpected partially applied Android locale patch")
         start = marker
     if text.count(start) != 1 or text.count(end) != 1:
         raise ValueError("Android locale mapping changed upstream")
     before, rest = text.split(start)
-    _, after = rest.split(end)
+    current, after = rest.split(end)
+    if start != marker and start + current != ANDROID_LOCALE_MAPPING:
+        raise ValueError("Upstream Android locale mapping changed; review the locale patch")
     return before + replacement + end + after
+
+
+def patch_android_packaging(text):
+    text = replace_once(text, 'import("//build/config/android/config.gni")',
+                        'import("//build/config/android/config.gni")\n'
+                        'import("//build/config/locales.gni")')
+    text = replace_once(text, "    ui_locales = platform_pak_locales",
+                        "    ui_locales = argon_android_ui_locales")
+    return replace_once(text, "      foreach(_locale, platform_pak_locales) {",
+                        "      foreach(_locale, argon_android_ui_locales) {")
+
+
+def patch_paks(text):
+    text = replace_once(text, "    input_locales = platform_pak_locales",
+        "    if (is_android) {\n"
+        "      input_locales = argon_android_ui_locales\n"
+        "    } else {\n"
+        "      input_locales = platform_pak_locales\n"
+        "    }")
+    return replace_once(text,
+        "    if (is_mac) {\n      output_locales = locales_as_apple_outputs",
+        "    if (is_android) {\n"
+        "      output_locales = argon_android_ui_locales\n"
+        "    } else if (is_mac) {\n      output_locales = locales_as_apple_outputs")
+
+
+def patch_apk_template(text):
+    return replace_once(text, "    aapt_locale_allowlist = platform_pak_locales",
+                        "    aapt_locale_allowlist = argon_android_ui_locales")
+
+
+def patch_bundle_template(text):
+    text = replace_once(text, 'import("//build/config/android/config.gni")',
+                        'import("//build/config/android/config.gni")\n'
+                        'import("//build/config/locales.gni")')
+    return replace_once(text,
+        "    system_image_locale_allowlist = platform_pak_locales - extended_locales",
+        "    system_image_locale_allowlist = argon_android_ui_locales")
+
+
+def patch_native_locale_list(text):
+    return replace_once(text, "locales_for_platform_list = platform_pak_locales",
+        "if (is_android) {\n"
+        "  locales_for_platform_list = argon_android_ui_locales\n"
+        "} else {\n"
+        "  locales_for_platform_list = platform_pak_locales\n"
+        "}")
 
 
 def patch_java_sources(text):
@@ -90,7 +170,9 @@ def patch_resources(text):
 def apply(src):
     transforms = {ACTIVITY: patch_activity, MAIN_PREFERENCES: patch_menu,
                   LOCALES: patch_locales, JAVA_SOURCES: patch_java_sources,
-                  RESOURCES: patch_resources}
+                  RESOURCES: patch_resources, CHROME_ANDROID: patch_android_packaging,
+                  CHROME_PAKS: patch_paks, APK_TEMPLATE: patch_apk_template,
+                  BUNDLE_TEMPLATE: patch_bundle_template, UI_BASE: patch_native_locale_list}
     writes = {src / path: transform((src / path).read_text())
               for path, transform in transforms.items()}
     overlay = ROOT / "chromium_overlay"
