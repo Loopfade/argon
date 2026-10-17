@@ -10,6 +10,7 @@ PREPARED_INPUTS = (
     ".gclient", "build-lock.json", "common.sh", "patch.sh",
     "scripts/prepare_chromium.sh", "scripts/image_source_inputs.py",
     "scripts/apply_scoped_ca.py", "scripts/fetch_pinned_extension.py",
+    "scripts/apply_background_playback.py",
     "scripts/fetch_pinned_filter_lists.py", "chromium_overlay", "certificates",
     "extensions", "res",
 )

@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+from collections import Counter
+import copy
 import hashlib
 import json
 from pathlib import Path
 import re
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = Path("chrome/browser/net/profile_network_context_service.cc")
@@ -252,6 +255,7 @@ def patch_titanium_chrome_resources(text: str) -> str:
         '\n  "java/res/raw/argon_root_ca.pem",'
         '\n  "java/res/values/argon_about_strings.xml",'
         '\n  "java/res/values-ru/argon_about_strings.xml",'
+        '\n  "java/res/values-ru/argon_widget_strings.xml",'
     )
     return replace_once(text, anchor, anchor + "\n" + addition)
 
@@ -350,13 +354,167 @@ def patch_about_preferences(text: str) -> str:
     return replace_once(text, anchor, replacement)
 
 
+def russian_translation_groups() -> list[dict]:
+    return json.loads((ROOT / "res/translations/ru.json").read_text("utf-8"))
+
+
+def russian_translation_entries(group):
+    for name, values in group["messages"].items():
+        for value in values if isinstance(values, list) else [values]:
+            yield name, value
+
+
+def russian_browser_name(text: str) -> str:
+    # These are upstream services, not products maintained by this fork.
+    for product in ("Web Store", "Root Store", "Root Program", "Enterprise Connectors"):
+        text = text.replace("Titanium " + product, "Chrome " + product)
+    text = text.replace("Titanium OS Flex", "ChromeOS Flex")
+    text = re.sub(r"([Ии]нтернет-магазин(?:а|е|ом|у)? )Titanium\b", r"\1Chrome", text)
+    return text.replace("Titanium", "Argon")
+
+
+def presentable_message(message: ET.Element) -> str:
+    # GRIT fingerprints placeholder names, not their implementation or examples.
+    parts = [message.text or ""]
+    for child in message:
+        if child.tag != "ph":
+            raise ValueError(f"Unexpected message markup: {child.tag}")
+        parts.extend((child.attrib["name"].upper(), child.tail or ""))
+    text = "".join(parts).strip()
+    if text.startswith("'''"):
+        text = text[3:]
+    if text.endswith("'''"):
+        text = text[:-3]
+    return text.strip()
+
+
+def russian_resource_bundles() -> list[dict]:
+    return json.loads((ROOT / "res/translations/bundles.json").read_text("utf-8"))
+
+
+def grit_message_id(text: str, meaning: str = "") -> str:
+    # Chromium tools/grit/grit/extern/{FP,tclib}.py: signed MD5 fingerprint,
+    # optional meaning, then the low 63 bits. This is a resource ID, not security.
+    def fingerprint(value):
+        unsigned = int.from_bytes(hashlib.md5(value.encode("utf-8")).digest()[:8], "big")
+        return unsigned - (1 << 64) if unsigned & (1 << 63) else unsigned
+
+    value = fingerprint(text)
+    if meaning:
+        value = fingerprint(meaning) + (value << 1) + (1 if value < 0 else 0)
+    return str(value & 0x7fffffffffffffff)
+
+
+def russian_translation_writes(src: Path) -> dict[Path, str]:
+    """Extend Russian XTB catalogs, keeping other locales and existing IDs intact."""
+    catalogs = {}
+    additions = {}
+    for group in russian_translation_groups():
+        source = src / group["source"]
+        messages = {}
+        for message in ET.parse(source).iter("message"):
+            messages.setdefault(message.attrib["name"], []).append(message)
+        catalog = src / group["catalog"]
+        if catalog not in catalogs:
+            text = catalog.read_text("utf-8")
+            tree = ET.fromstring(text)
+            if tree.tag != "translationbundle" or tree.attrib.get("lang") != "ru":
+                raise ValueError(f"Expected a Russian XTB catalog: {catalog}")
+            catalogs[catalog] = text
+            additions[catalog] = {
+                element.attrib["id"]: element for element in tree
+            }
+        for name, translation in russian_translation_entries(group):
+            candidates = messages.get(name, [])
+            if not candidates:
+                raise ValueError(f"Missing source message: {name}")
+            candidates = [candidate for candidate in candidates if (
+                presentable_message(candidate), candidate.attrib.get("meaning", "")
+            ) == (translation["english"], translation["meaning"])]
+            if not candidates:
+                raise ValueError(f"Russian translation source changed: {name}")
+            message = candidates[0]
+            english = presentable_message(message)
+            meaning = message.attrib.get("meaning", "")
+            identifier = grit_message_id(english, meaning)
+            element = ET.fromstring(
+                f'<translation id="{identifier}">{translation["russian"]}</translation>'
+            )
+            if any(child.tag != "ph" or set(child.attrib) != {"name"}
+                   or len(child) or child.text for child in element):
+                raise ValueError(f"Invalid translation markup: {name}")
+            if Counter(child.attrib["name"] for child in element) != Counter(
+                child.attrib["name"] for child in message
+            ):
+                raise ValueError(f"Russian translation placeholders differ: {name}")
+            existing = additions[catalog].get(identifier)
+            if existing is not None and presentable_message(existing) != presentable_message(element):
+                raise ValueError(f"Conflicting Russian translation: {name}")
+            additions[catalog][identifier] = element
+    # Vanadium's branding patches replace Chrome/Chromium in both languages,
+    # but retain XTB IDs computed from the original English. Titanium's second
+    # rename changes the IDs again. Reconnect those existing Russian messages.
+    for bundle in russian_resource_bundles():
+        catalog = src / bundle["catalog"]
+        if catalog not in catalogs:
+            catalogs[catalog] = catalog.read_text("utf-8")
+            tree = ET.fromstring(catalogs[catalog])
+            if tree.tag != "translationbundle" or tree.attrib.get("lang") != "ru":
+                raise ValueError(f"Expected a Russian XTB catalog: {catalog}")
+            additions[catalog] = {element.attrib["id"]: element for element in tree}
+        for source in bundle["sources"]:
+            for message in ET.parse(src / source).iter("message"):
+                if (message.attrib.get("translateable") == "false"
+                        or message.attrib.get("use_name_for_id") == "true"):
+                    continue
+                english = presentable_message(message)
+                if "Titanium" not in english:
+                    continue
+                meaning = message.attrib.get("meaning", "")
+                identifier = grit_message_id(english, meaning)
+                if identifier in additions[catalog]:
+                    continue
+                candidates = [additions[catalog][old_id] for brand in (
+                    "Chrome", "Chromium", "Google Chrome"
+                ) if (old_id := grit_message_id(
+                    english.replace("Titanium", brand), meaning
+                )) in additions[catalog]]
+                if not candidates:
+                    continue
+                if len({presentable_message(item) for item in candidates}) != 1:
+                    raise ValueError(
+                        f'Ambiguous branding translation: {message.attrib["name"]}'
+                    )
+                element = copy.deepcopy(candidates[0])
+                element.attrib["id"] = identifier
+                element.tail = None
+                for child in element.iter():
+                    if child.text:
+                        child.text = russian_browser_name(child.text)
+                    if child.tail:
+                        child.tail = russian_browser_name(child.tail)
+                additions[catalog][identifier] = element
+    writes = {}
+    for catalog, text in catalogs.items():
+        existing = {element.attrib["id"] for element in ET.fromstring(text)}
+        lines = ["  " + ET.tostring(element, encoding="unicode")
+                 for identifier, element in additions[catalog].items()
+                 if identifier not in existing]
+        if text.count("</translationbundle>") != 1:
+            raise ValueError(f"Expected one translation bundle: {catalog}")
+        block = "\n".join(lines) + "\n" if lines else ""
+        writes[catalog] = text.replace("</translationbundle>", block + "</translationbundle>")
+    return writes
+
+
 def apply(src: Path, product_name: bool = True) -> None:
     der = load_root()
     generated = ROOT / "chromium_overlay/net/cert/titanium_ru_root.h"
     if generated.read_text() != root_header(der):
         raise ValueError("Generated CA header differs from the pinned certificate")
     # Validate all inputs first. Never silently continue after a source change.
-    writes = {
+    writes = russian_translation_writes(src)
+    writes.update({
         # Details shown by Android come from the exact PEM checked by load_root().
         src / TITANIUM_ROOT_RESOURCE: (
             ROOT / "certificates/russian_trusted_root_ca.pem"
@@ -395,7 +553,7 @@ def apply(src: Path, product_name: bool = True) -> None:
         src / TITANIUM_PRIVACY_PREFERENCES: patch_titanium_privacy_preferences(
             (src / TITANIUM_PRIVACY_PREFERENCES).read_text()
         ),
-    }
+    })
     for source in (ROOT / "chromium_overlay").rglob("*"):
         if not source.is_file():
             continue

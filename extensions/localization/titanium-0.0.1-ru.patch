@@ -1,0 +1,734 @@
+diff --git a/_locales/en/messages.json b/_locales/en/messages.json
+new file mode 100644
+index 0000000..ac7a0d4
+--- /dev/null
++++ b/_locales/en/messages.json
+@@ -0,0 +1,156 @@
++{
++  "extensionOptions": {
++    "message": "Titanium Extension"
++  },
++  "downloads": {
++    "message": "Downloads"
++  },
++  "redirectDownloads": {
++    "message": "Redirect downloads"
++  },
++  "redirectHint": {
++    "message": "Automatically redirect downloads to the download manager. You can still manually send links via the context menu when off."
++  },
++  "handoffStyle": {
++    "message": "Handoff style"
++  },
++  "handoffConfirm": {
++    "message": "Confirm (recommended)"
++  },
++  "handoffDirect": {
++    "message": "Direct"
++  },
++  "skipExtensions": {
++    "message": "Skip file extensions"
++  },
++  "skipHint": {
++    "message": "Downloads whose filename ends in one of these stay in the browser instead of being redirected to the download manager. Comma separated list."
++  },
++  "downloadManager": {
++    "message": "Download manager"
++  },
++  "applicationPreset": {
++    "message": "Application preset"
++  },
++  "packageId": {
++    "message": "Android package ID"
++  },
++  "intentStyle": {
++    "message": "Intent style"
++  },
++  "intentView": {
++    "message": "VIEW (URL as intent data)"
++  },
++  "intentSend": {
++    "message": "SEND (URL as EXTRA_TEXT)"
++  },
++  "forwardCookies": {
++    "message": "Forward cookies and headers"
++  },
++  "marketplaces": {
++    "message": "Extension marketplaces"
++  },
++  "get": {
++    "message": "Get"
++  },
++  "marketplaceHint": {
++    "message": "Enter the extension's marketplace page URL to download the extension file. If no install prompt appears, you can alternatively unzip the extension file and load it unpacked."
++  },
++  "marketplaceError": {
++    "message": "Not a recognized marketplace URL."
++  },
++  "patchOpera": {
++    "message": "Patch Opera Add-ons page"
++  },
++  "patchEdge": {
++    "message": "Patch Microsoft Edge Add-ons page"
++  },
++  "developerOptions": {
++    "message": "Developer options"
++  },
++  "showLog": {
++    "message": "Show log window"
++  },
++  "clearLog": {
++    "message": "Clear"
++  },
++  "logEmpty": {
++    "message": "(empty)"
++  },
++  "saved": {
++    "message": "Saved"
++  },
++  "sendingTo": {
++    "message": "Sending to"
++  },
++  "options": {
++    "message": "Options"
++  },
++  "getExtension": {
++    "message": "Get extension"
++  },
++  "downloadingExtension": {
++    "message": "Downloading extension..."
++  },
++  "sendDownload": {
++    "message": "Send download"
++  },
++  "cancel": {
++    "message": "Cancel"
++  },
++  "sendHint": {
++    "message": "If nothing opened, the download manager application was not detected. Check the package ID and the intent format configured in extension options."
++  },
++  "extensionName": {
++    "message": "Titanium"
++  },
++  "extensionDescription": {
++    "message": "This extension offers additional features for Chromium on Android, including support for securely installing extensions from alternative marketplaces, using external download managers, enhanced dark mode, and more."
++  },
++  "packageHintBefore": {
++    "message": "This must match the installed variant of the application exactly (e.g. "
++  },
++  "packageHintAfter": {
++    "message": " for 1DM+). The intent only runs when resolved to the correct application."
++  },
++  "customApplication": {
++    "message": "Custom"
++  },
++  "unset": {
++    "message": "(unset)"
++  },
++  "downloadWithManager": {
++    "message": "Download with download manager"
++  },
++  "nothingToGet": {
++    "message": "Nothing to get."
++  },
++  "extensionInstallPrompt": {
++    "message": "Use the prompt to proceed with adding the extension."
++  },
++  "nothingToSend": {
++    "message": "Nothing to send."
++  },
++  "file": {
++    "message": "(file)"
++  },
++  "app": {
++    "message": "app"
++  },
++  "sendToApp": {
++    "message": "Send to $APP$",
++    "placeholders": {
++      "app": {
++        "content": "$1"
++      }
++    }
++  },
++  "downloadFailed": {
++    "message": "Download failed: $ERROR$",
++    "placeholders": {
++      "error": {
++        "content": "$1"
++      }
++    }
++  }
++}
+diff --git a/_locales/ru/messages.json b/_locales/ru/messages.json
+new file mode 100644
+index 0000000..26b4925
+--- /dev/null
++++ b/_locales/ru/messages.json
+@@ -0,0 +1,156 @@
++{
++  "extensionOptions": {
++    "message": "Расширение Titanium"
++  },
++  "downloads": {
++    "message": "Загрузки"
++  },
++  "redirectDownloads": {
++    "message": "Передавать загрузки внешнему загрузчику"
++  },
++  "redirectHint": {
++    "message": "Автоматически передавать загрузки внешнему загрузчику. Если отключить эту функцию, ссылки можно передавать вручную через контекстное меню."
++  },
++  "handoffStyle": {
++    "message": "Способ передачи загрузки"
++  },
++  "handoffConfirm": {
++    "message": "С подтверждением — рекомендуется"
++  },
++  "handoffDirect": {
++    "message": "Напрямую"
++  },
++  "skipExtensions": {
++    "message": "Исключения по расширениям файлов"
++  },
++  "skipHint": {
++    "message": "Файлы с этими расширениями будут загружаться в браузере. Укажите расширения через запятую, например crx, apk."
++  },
++  "downloadManager": {
++    "message": "Менеджер загрузок"
++  },
++  "applicationPreset": {
++    "message": "Выбор загрузчика"
++  },
++  "packageId": {
++    "message": "Идентификатор пакета приложения"
++  },
++  "intentStyle": {
++    "message": "Способ передачи ссылки"
++  },
++  "intentView": {
++    "message": "VIEW — ссылка как адрес"
++  },
++  "intentSend": {
++    "message": "SEND — ссылка как текст"
++  },
++  "forwardCookies": {
++    "message": "Передавать cookies загрузчику"
++  },
++  "marketplaces": {
++    "message": "Магазины расширений"
++  },
++  "get": {
++    "message": "Скачать"
++  },
++  "marketplaceHint": {
++    "message": "Укажите ссылку на страницу расширения в магазине, чтобы скачать его файл. Если окно установки не появится, можно распаковать файл и загрузить расширение без упаковки."
++  },
++  "marketplaceError": {
++    "message": "Не удалось распознать ссылку на магазин расширений."
++  },
++  "patchOpera": {
++    "message": "Совместимость с магазином Opera Add-ons"
++  },
++  "patchEdge": {
++    "message": "Совместимость с магазином Microsoft Edge Add-ons"
++  },
++  "developerOptions": {
++    "message": "Для разработчиков"
++  },
++  "showLog": {
++    "message": "Показывать журнал событий"
++  },
++  "clearLog": {
++    "message": "Очистить"
++  },
++  "logEmpty": {
++    "message": "Журнал пуст"
++  },
++  "saved": {
++    "message": "Сохранено"
++  },
++  "sendingTo": {
++    "message": "Передавать в"
++  },
++  "options": {
++    "message": "Настройки"
++  },
++  "getExtension": {
++    "message": "Скачать расширение"
++  },
++  "downloadingExtension": {
++    "message": "Загрузка расширения…"
++  },
++  "sendDownload": {
++    "message": "Передать загрузку"
++  },
++  "cancel": {
++    "message": "Отмена"
++  },
++  "sendHint": {
++    "message": "Если приложение не открылось, загрузчик не найден. Проверьте идентификатор пакета и способ передачи ссылки в настройках расширения."
++  },
++  "extensionName": {
++    "message": "Titanium"
++  },
++  "extensionDescription": {
++    "message": "Дополнительные возможности Chromium на Android: установка расширений из других магазинов и передача загрузок внешним приложениям."
++  },
++  "packageHintBefore": {
++    "message": "Должен точно совпадать с идентификатором установленного приложения. Например, "
++  },
++  "packageHintAfter": {
++    "message": " для 1DM+. Ссылка передаётся только при обнаружении нужного приложения."
++  },
++  "customApplication": {
++    "message": "Другое приложение"
++  },
++  "unset": {
++    "message": "Не выбрано"
++  },
++  "downloadWithManager": {
++    "message": "Скачать через внешний загрузчик"
++  },
++  "nothingToGet": {
++    "message": "Нет ссылки для загрузки."
++  },
++  "extensionInstallPrompt": {
++    "message": "Подтвердите добавление расширения в появившемся окне."
++  },
++  "nothingToSend": {
++    "message": "Нет ссылки для передачи."
++  },
++  "file": {
++    "message": "Файл"
++  },
++  "app": {
++    "message": "приложение"
++  },
++  "sendToApp": {
++    "message": "Передать в $APP$",
++    "placeholders": {
++      "app": {
++        "content": "$1"
++      }
++    }
++  },
++  "downloadFailed": {
++    "message": "Не удалось скачать: $ERROR$",
++    "placeholders": {
++      "error": {
++        "content": "$1"
++      }
++    }
++  }
++}
+diff --git a/background.js b/background.js
+index 26f32d7..e4b65e2 100644
+--- a/background.js
++++ b/background.js
+@@ -3,7 +3,7 @@
+ importScripts("common.js");
+
+ const MENU_ID = "titanium-download-link";
+-const MENU_TITLE = "Download with download manager";
++const MENU_TITLE = l10n("downloadWithManager");
+
+ const handledIds = new Set();
+
+diff --git a/common.js b/common.js
+index 5573218..da377c6 100644
+--- a/common.js
++++ b/common.js
+@@ -1,5 +1,9 @@
+ "use strict";
+
++function l10n(name, substitutions) {
++  return chrome.i18n.getMessage(name, substitutions);
++}
++
+ const ONEDM_PACKAGES = [
+   "idm.internet.download.manager",
+   "idm.internet.download.manager.plus",
+@@ -37,7 +41,7 @@ const MANAGERS = {
+     extras: onedmExtras,
+   },
+   custom: {
+-    name: "Custom",
++    name: l10n("customApplication"),
+     defaultPackage: "",
+     knownPackages: [],
+     mode: "view",
+diff --git a/i18n.js b/i18n.js
+new file mode 100644
+index 0000000..b502a66
+--- /dev/null
++++ b/i18n.js
+@@ -0,0 +1,6 @@
++"use strict";
++
++document.documentElement.lang = chrome.i18n.getUILanguage();
++for (const element of document.querySelectorAll("[data-i18n]")) {
++  element.textContent = l10n(element.dataset.i18n);
++}
+diff --git a/install.html b/install.html
+index 4d25fa2..2ae89da 100644
+--- a/install.html
++++ b/install.html
+@@ -3,14 +3,15 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width">
+-<title>Get extension</title>
++<title data-i18n="getExtension">Get extension</title>
+ <link rel="stylesheet" href="style.css">
+ </head>
+ <body class="send">
+   <main>
+-    <div id="status">Downloading extension...</div>
++    <div id="status" data-i18n="downloadingExtension">Downloading extension...</div>
+   </main>
+   <script src="common.js"></script>
++  <script src="i18n.js"></script>
+   <script src="install.js"></script>
+ </body>
+ </html>
+diff --git a/install.js b/install.js
+index ec8fa12..abbc4e8 100644
+--- a/install.js
++++ b/install.js
+@@ -4,9 +4,9 @@ const crx = decodeURIComponent(location.hash.slice(1));
+ const status = document.getElementById("status");
+
+ if (!/^https?:/.test(crx)) {
+-  status.textContent = "Nothing to get.";
++  status.textContent = l10n("nothingToGet");
+ } else {
+   getCrx(crx)
+-    .then(() => (status.textContent = "Use the prompt to proceed with adding the extension."))
+-    .catch((e) => (status.textContent = "Download failed: " + e.message));
++    .then(() => (status.textContent = l10n("extensionInstallPrompt")))
++    .catch((e) => (status.textContent = l10n("downloadFailed", e.message)));
+ }
+diff --git a/manifest.json b/manifest.json
+index f476ff8..cfc1ca6 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,8 +1,8 @@
+ {
+   "manifest_version": 3,
+-  "name": "Titanium",
++  "name": "__MSG_extensionName__",
+   "version": "0.0.1",
+-  "description": "This extension offers additional features for Chromium on Android, including support for securely installing extensions from alternative marketplaces, using external download managers, enhanced dark mode, and more.",
++  "description": "__MSG_extensionDescription__",
+   "permissions": [
+     "downloads",
+     "tabs",
+@@ -19,24 +19,38 @@
+   },
+   "declarative_net_request": {
+     "rule_resources": [
+-      { "id": "opera_ua", "enabled": true, "path": "marketplaces/opera.json" },
+-      { "id": "edge_ua", "enabled": true, "path": "marketplaces/edge.json" }
++      {
++        "id": "opera_ua",
++        "enabled": true,
++        "path": "marketplaces/opera.json"
++      },
++      {
++        "id": "edge_ua",
++        "enabled": true,
++        "path": "marketplaces/edge.json"
++      }
+     ]
+   },
+   "content_scripts": [
+     {
+-      "matches": ["*://microsoftedge.microsoft.com/addons/*"],
+-      "js": ["common.js", "marketplaces/edge-install.js"],
++      "matches": [
++        "*://microsoftedge.microsoft.com/addons/*"
++      ],
++      "js": [
++        "common.js",
++        "marketplaces/edge-install.js"
++      ],
+       "run_at": "document_idle"
+     }
+   ],
+   "action": {
+     "default_popup": "popup.html",
+-    "default_title": "Titanium"
++    "default_title": "__MSG_extensionName__"
+   },
+   "options_ui": {
+     "page": "options.html",
+     "open_in_tab": true
+   },
+-  "incognito": "split"
++  "incognito": "split",
++  "default_locale": "en"
+ }
+diff --git a/marketplaces/edge-install.js b/marketplaces/edge-install.js
+index 4d447b0..6ed52d0 100644
+--- a/marketplaces/edge-install.js
++++ b/marketplaces/edge-install.js
+@@ -73,12 +73,12 @@ function refresh() {
+   getBtn = findGetButton();
+   if (getBtn) {
+     mode = "overlay";
+-    bar.textContent = "Get";
++    bar.textContent = l10n("get");
+     bar.style.cssText = OVERLAY_CSS;
+     reposition();
+   } else {
+     mode = "top";
+-    bar.textContent = "Get extension";
++    bar.textContent = l10n("getExtension");
+     bar.style.cssText = TOPBAR_CSS;
+   }
+ }
+diff --git a/options.html b/options.html
+index 306d9a0..a17f2a3 100644
+--- a/options.html
++++ b/options.html
+@@ -3,110 +3,111 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width">
+-<title>Titanium Extension</title>
++<title data-i18n="extensionOptions">Titanium Extension</title>
+ <link rel="stylesheet" href="style.css">
+ </head>
+ <body class="options">
+-  <h1>Titanium Extension</h1>
++  <h1 data-i18n="extensionOptions">Titanium Extension</h1>
+
+   <section>
+-    <h2>Downloads</h2>
++    <h2 data-i18n="downloads">Downloads</h2>
+     <div class="row">
+-      <label for="enabled">Redirect downloads</label>
++      <label for="enabled" data-i18n="redirectDownloads">Redirect downloads</label>
+       <input type="checkbox" id="enabled">
+     </div>
+-    <p class="hint">Automatically redirect downloads to the download manager. You can still manually send links via the context menu when off.</p>
++    <p class="hint" data-i18n="redirectHint">Automatically redirect downloads to the download manager. You can still manually send links via the context menu when off.</p>
+     <div class="row">
+-      <label for="handoffMode">Handoff style</label>
++      <label for="handoffMode" data-i18n="handoffStyle">Handoff style</label>
+       <select id="handoffMode">
+-        <option value="confirm">Confirm (recommended)</option>
+-        <option value="auto">Direct</option>
++        <option value="confirm" data-i18n="handoffConfirm">Confirm (recommended)</option>
++        <option value="auto" data-i18n="handoffDirect">Direct</option>
+       </select>
+     </div>
+     <div class="row">
+-      <label for="skipExtensions">Skip file extensions</label>
++      <label for="skipExtensions" data-i18n="skipExtensions">Skip file extensions</label>
+       <input type="text" id="skipExtensions" placeholder="crx, apk">
+     </div>
+-    <p class="hint">Downloads whose filename ends in one of these stay in the browser instead of being redirected to the download manager. Comma separated list.</p>
++    <p class="hint" data-i18n="skipHint">Downloads whose filename ends in one of these stay in the browser instead of being redirected to the download manager. Comma separated list.</p>
+   </section>
+
+   <section>
+-    <h2>Download manager</h2>
++    <h2 data-i18n="downloadManager">Download manager</h2>
+     <div class="row">
+-      <label for="manager">Application preset</label>
++      <label for="manager" data-i18n="applicationPreset">Application preset</label>
+       <select id="manager"></select>
+     </div>
+     <div class="row">
+-      <label for="packageName">Android package ID</label>
++      <label for="packageName" data-i18n="packageId">Android package ID</label>
+       <input type="text" id="packageName" list="knownPackages">
+       <datalist id="knownPackages"></datalist>
+     </div>
+-    <p class="hint">This must match the installed variant of the application exactly (e.g. <code>idm.internet.download.manager.plus</code> for 1DM+). The intent only runs when resolved to the correct application.</p>
++    <p class="hint"><span data-i18n="packageHintBefore">This must match the installed variant of the application exactly (e.g. </span><code>idm.internet.download.manager.plus</code><span data-i18n="packageHintAfter"> for 1DM+). The intent only runs when resolved to the correct application.</span></p>
+     <div class="row" id="customModeRow" hidden>
+-      <label for="customMode">Intent style</label>
++      <label for="customMode" data-i18n="intentStyle">Intent style</label>
+       <select id="customMode">
+-        <option value="view">VIEW (URL as intent data)</option>
+-        <option value="send">SEND (URL as EXTRA_TEXT)</option>
++        <option value="view" data-i18n="intentView">VIEW (URL as intent data)</option>
++        <option value="send" data-i18n="intentSend">SEND (URL as EXTRA_TEXT)</option>
+       </select>
+     </div>
+     <div class="row">
+-      <label for="forwardCookies">Forward cookies and headers</label>
++      <label for="forwardCookies" data-i18n="forwardCookies">Forward cookies and headers</label>
+       <input type="checkbox" id="forwardCookies">
+     </div>
+   </section>
+
+   <section>
+-    <h2>Extension marketplaces</h2>
++    <h2 data-i18n="marketplaces">Extension marketplaces</h2>
+     <div class="row">
+       <label for="operaUrl">Opera Add-ons</label>
+       <span class="field">
+         <input type="text" id="operaUrl" placeholder="https://addons.opera.com/en/extensions/details/...">
+-        <button id="operaGet">Get</button>
++        <button id="operaGet" data-i18n="get">Get</button>
+       </span>
+     </div>
+     <div class="row">
+       <label for="edgeUrl">Microsoft Edge Add-ons</label>
+       <span class="field">
+         <input type="text" id="edgeUrl" placeholder="https://microsoftedge.microsoft.com/addons/detail/...">
+-        <button id="edgeGet">Get</button>
++        <button id="edgeGet" data-i18n="get">Get</button>
+       </span>
+     </div>
+     <div class="row">
+       <label for="cwsUrl">Chrome Web Store</label>
+       <span class="field">
+         <input type="text" id="cwsUrl" placeholder="https://chromewebstore.google.com/detail/...">
+-        <button id="cwsGet">Get</button>
++        <button id="cwsGet" data-i18n="get">Get</button>
+       </span>
+     </div>
+-    <p class="hint">Enter the extension's marketplace page URL to download the extension file. If no install prompt appears, you can alternatively unzip the extension file and load it unpacked.</p>
+-    <p id="getError" class="hint" hidden>Not a recognized marketplace URL.</p>
++    <p class="hint" data-i18n="marketplaceHint">Enter the extension's marketplace page URL to download the extension file. If no install prompt appears, you can alternatively unzip the extension file and load it unpacked.</p>
++    <p id="getError" class="hint" hidden data-i18n="marketplaceError">Not a recognized marketplace URL.</p>
+     <div class="row">
+-      <label for="patchOpera">Patch Opera Add-ons page</label>
++      <label for="patchOpera" data-i18n="patchOpera">Patch Opera Add-ons page</label>
+       <input type="checkbox" id="patchOpera">
+     </div>
+     <div class="row">
+-      <label for="patchEdge">Patch Microsoft Edge Add-ons page</label>
++      <label for="patchEdge" data-i18n="patchEdge">Patch Microsoft Edge Add-ons page</label>
+       <input type="checkbox" id="patchEdge">
+     </div>
+   </section>
+
+   <section>
+-    <h2>Developer options</h2>
++    <h2 data-i18n="developerOptions">Developer options</h2>
+     <div class="row">
+-      <label for="devMode">Show log window</label>
++      <label for="devMode" data-i18n="showLog">Show log window</label>
+       <input type="checkbox" id="devMode">
+     </div>
+     <div id="devTools" hidden>
+       <div class="row">
+-        <button id="clearLog">Clear</button>
++        <button id="clearLog" data-i18n="clearLog">Clear</button>
+       </div>
+-      <pre id="devLog">(empty)</pre>
++      <pre id="devLog" data-i18n="logEmpty">(empty)</pre>
+     </div>
+   </section>
+
+-  <p id="saved">Saved</p>
++  <p id="saved" data-i18n="saved">Saved</p>
+
+   <script src="common.js"></script>
++  <script src="i18n.js"></script>
+   <script src="options.js"></script>
+ </body>
+ </html>
+diff --git a/options.js b/options.js
+index 1118e1b..84698f1 100644
+--- a/options.js
++++ b/options.js
+@@ -28,7 +28,7 @@ const els = {
+
+ async function renderLog() {
+   const log = await getEventLog();
+-  els.devLog.textContent = log.length ? log.join("\n") : "(empty)";
++  els.devLog.textContent = log.length ? log.join("\n") : l10n("logEmpty");
+   els.devLog.scrollTop = els.devLog.scrollHeight;
+ }
+
+diff --git a/popup.html b/popup.html
+index 7f7af4f..98cf7c5 100644
+--- a/popup.html
++++ b/popup.html
+@@ -6,15 +6,16 @@
+ </head>
+ <body class="popup">
+   <div class="row">
+-    <label for="enabled">Redirect downloads</label>
++    <label for="enabled" data-i18n="redirectDownloads">Redirect downloads</label>
+     <input type="checkbox" id="enabled">
+   </div>
+   <div class="row">
+-    <span class="muted">Sending to</span>
++    <span class="muted" data-i18n="sendingTo">Sending to</span>
+     <span id="target"></span>
+   </div>
+-  <button id="openOptions">Options</button>
++  <button id="openOptions" data-i18n="options">Options</button>
+   <script src="common.js"></script>
++  <script src="i18n.js"></script>
+   <script src="popup.js"></script>
+ </body>
+ </html>
+diff --git a/popup.js b/popup.js
+index 9e49db9..8df0b25 100644
+--- a/popup.js
++++ b/popup.js
+@@ -5,7 +5,7 @@ const targetEl = document.getElementById("target");
+
+ getSettings().then((settings) => {
+   enabledEl.checked = settings.enabled;
+-  targetEl.textContent = settings.packageName.trim() || "(unset)";
++  targetEl.textContent = settings.packageName.trim() || l10n("unset");
+ });
+
+ enabledEl.addEventListener("change", () => {
+diff --git a/send.html b/send.html
+index aa5467f..bee4c27 100644
+--- a/send.html
++++ b/send.html
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width">
+-<title>Send download</title>
++<title data-i18n="sendDownload">Send download</title>
+ <link rel="stylesheet" href="style.css">
+ </head>
+ <body class="send">
+@@ -11,10 +11,11 @@
+     <div id="name"></div>
+     <div id="url"></div>
+     <button id="send" class="primary"></button>
+-    <div><a href="#" id="cancel">Cancel</a></div>
+-    <div id="hint" hidden>If nothing opened, the download manager application was not detected. Check the package ID and the intent format configured in extension options.</div>
++    <div><a href="#" id="cancel" data-i18n="cancel">Cancel</a></div>
++    <div id="hint" hidden data-i18n="sendHint">If nothing opened, the download manager application was not detected. Check the package ID and the intent format configured in extension options.</div>
+   </main>
+   <script src="common.js"></script>
++  <script src="i18n.js"></script>
+   <script src="send.js"></script>
+ </body>
+ </html>
+diff --git a/send.js b/send.js
+index ddf2248..6e7636e 100644
+--- a/send.js
++++ b/send.js
+@@ -6,12 +6,12 @@ try {
+ } catch {}
+
+ if (!payload || !payload.intent || !payload.intent.startsWith("intent:")) {
+-  document.getElementById("name").textContent = "Nothing to send.";
++  document.getElementById("name").textContent = l10n("nothingToSend");
+   document.getElementById("send").hidden = true;
+ } else {
+-  document.getElementById("name").textContent = payload.name || "(file)";
++  document.getElementById("name").textContent = payload.name || l10n("file");
+   document.getElementById("url").textContent = payload.url || "";
+-  document.getElementById("send").textContent = `Send to ${payload.app || "app"}`;
++  document.getElementById("send").textContent = l10n("sendToApp", payload.app || l10n("app"));
+
+   document.getElementById("send").addEventListener("click", () => {
+     chrome.runtime.sendMessage({ type: "log", text: `send tapped for ${payload.name || payload.url}` });

@@ -42,7 +42,7 @@ def tree():
     paths = (".gclient", "build-lock.json", "build.sh", "args.gn", "patch.sh",
              ".github/workflows/build-chromium-image.yml",
              ".github/workflows/build.yml", ".github/workflows/publish-release.yml",
-             "scripts/release_policy.py", "chromium_overlay/net/cert/root.h",
+             "scripts/release_policy.py", "scripts/apply_background_playback.py", "chromium_overlay/net/cert/root.h",
              "certificates/root.pem", "extensions/bundle.py", "res/icon.svg",
              "docker/chromium/Dockerfile", "README.md")
     entries = [{"path": path, "type": "blob", "mode": "100644", "sha": "a" * 40}
@@ -104,6 +104,7 @@ class ImageGateTests(unittest.TestCase):
                      ".github/workflows/build-chromium-image.yml",
                      "chromium_overlay/net/cert/root.h", "certificates/root.pem",
                      "extensions/bundle.py", "res/icon.svg", "docker/chromium/Dockerfile",
+                     "scripts/apply_background_playback.py",
                      "vanadium"):
             with self.subTest(path=path):
                 self.head = tree()

@@ -56,7 +56,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     ARGON_FETCH_VANADIUM=1 bash scripts/prepare_chromium.sh sources
 
 COPY --chown=argon:argon patch.sh ./
-COPY --chown=argon:argon scripts/apply_scoped_ca.py ./scripts/
+COPY --chown=argon:argon scripts/apply_scoped_ca.py scripts/apply_background_playback.py ./scripts/
 COPY --chown=argon:argon chromium_overlay/ ./chromium_overlay/
 COPY --chown=argon:argon certificates/ ./certificates/
 COPY --chown=argon:argon extensions/ ./extensions/

@@ -1,0 +1,631 @@
+[
+  {
+    "source": "chrome/browser/ui/android/strings/android_chrome_strings.grd",
+    "catalog": "chrome/browser/ui/android/strings/translations/android_chrome_strings_ru.xtb",
+    "messages": {
+      "IDS_PASSWORD_MANAGER_SETTINGS_TITLE": {
+        "english": "Password Manager",
+        "meaning": "",
+        "russian": "Менеджер паролей"
+      },
+      "IDS_AUTOFILL_OPTIONS_RESTART_PROMPT_TITLE": {
+        "english": "Restart Titanium?",
+        "meaning": "",
+        "russian": "Перезапустить Argon?"
+      },
+      "IDS_AUTOFILL_OPTIONS_RESTART_PROMPT_TEXT": {
+        "english": "To finish setting up autofill, restart Titanium now. Your tabs will automatically reopen.",
+        "meaning": "",
+        "russian": "Чтобы завершить настройку автозаполнения, перезапустите Argon. Вкладки откроются автоматически."
+      },
+      "IDS_PASSWORD_SETTINGS_SAVE_PASSWORDS": {
+        "english": "Save passwords",
+        "meaning": "",
+        "russian": "Сохранять пароли"
+      },
+      "IDS_PASSWORDS_AUTO_SIGNIN_TITLE": {
+        "english": "Auto Sign-in",
+        "meaning": "",
+        "russian": "Автоматический вход"
+      },
+      "IDS_PASSWORDS_AUTO_SIGNIN_DESCRIPTION": {
+        "english": "Automatically sign in to websites using stored credentials. When the feature is off, you’ll be asked for verification every time before signing in to a website.",
+        "meaning": "",
+        "russian": "Автоматически входить на сайты с сохранёнными данными. Если отключить эту функцию, перед каждым входом потребуется подтверждение."
+      },
+      "IDS_PASSWORDS_CHECK_TITLE": {
+        "english": "Check passwords",
+        "meaning": "",
+        "russian": "Проверить пароли"
+      },
+      "IDS_PASSWORDS_CHECK_DESCRIPTION": {
+        "english": "Keep your passwords safe from data breaches and other security issues",
+        "meaning": "",
+        "russian": "Защитите пароли от утечек данных и других угроз безопасности"
+      },
+      "IDS_ANDROID_TRUSTED_VAULT_BANNER_LABEL": {
+        "english": "On-device encryption",
+        "meaning": "",
+        "russian": "Шифрование на устройстве"
+      },
+      "IDS_ANDROID_TRUSTED_VAULT_BANNER_SUB_LABEL_OFFER_OPT_IN": {
+        "english": "For added safety, encrypt passwords on your device before they‘re saved to Google Password Manager",
+        "meaning": "",
+        "russian": "Для дополнительной защиты шифруйте пароли на устройстве перед сохранением в Менеджере паролей Google"
+      },
+      "IDS_ANDROID_TRUSTED_VAULT_BANNER_SUB_LABEL_OPTED_IN": {
+        "english": "Your passwords are encrypted on your device before they’re saved to Google Password Manager",
+        "meaning": "",
+        "russian": "Пароли шифруются на устройстве перед сохранением в Менеджере паролей Google"
+      },
+      "IDS_SECTION_SAVED_PASSWORDS_EXCEPTIONS": {
+        "english": "Never saved",
+        "meaning": "",
+        "russian": "Сайты, для которых пароли не сохраняются"
+      },
+      "IDS_MANAGE_PASSWORDS_TEXT": {
+        "english": "View and manage saved passwords in your BEGIN_LINKGoogle AccountEND_LINK",
+        "meaning": "",
+        "russian": "Просматривайте сохранённые пароли и управляйте ими в <ph name=\"BEGIN_LINK\"/>аккаунте Google<ph name=\"END_LINK\"/>"
+      },
+      "IDS_SAVED_PASSWORDS_NONE_TEXT": {
+        "english": "Saved passwords will appear here.",
+        "meaning": "",
+        "russian": "Здесь появятся сохранённые пароли."
+      },
+      "IDS_PASSWORD_NO_RESULT": {
+        "english": "Can’t find that password. Check your spelling and try again.",
+        "meaning": "",
+        "russian": "Пароль не найден. Проверьте написание и повторите поиск."
+      },
+      "IDS_PASSWORD_EDIT_HINT": {
+        "english": "Make sure the password you are saving matches your password for SITE",
+        "meaning": "",
+        "russian": "Убедитесь, что сохраняемый пароль совпадает с паролем для <ph name=\"SITE\"/>"
+      },
+      "IDS_PASSWORD_ENTRY_EDIT_DELETION_DIALOG_BODY": {
+        "english": "Deleting this password will not delete your account on SITE",
+        "meaning": "",
+        "russian": "Удаление этого пароля не удалит ваш аккаунт на <ph name=\"SITE\"/>"
+      },
+      "IDS_PASSWORD_CHECK_DELETE_CREDENTIAL_DIALOG_BODY": {
+        "english": "Deleting this password will not delete your account on SITE. Change your password or delete your account on SITE to keep it safe from others.",
+        "meaning": "",
+        "russian": "Удаление этого пароля не удалит ваш аккаунт на <ph name=\"SITE\"/>. Чтобы защитить аккаунт, измените пароль или удалите аккаунт на <ph name=\"SITE\"/>."
+      },
+      "IDS_PASSWORD_ENTRY_EDIT_DELETE_CREDENTIAL_DIALOG_TITLE": {
+        "english": "Delete password?",
+        "meaning": "",
+        "russian": "Удалить пароль?"
+      },
+      "IDS_PASSWORD_ENTRY_EDIT_DELETE_CREDENTIAL_DIALOG_CONFIRM": {
+        "english": "Delete password",
+        "meaning": "",
+        "russian": "Удалить пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_TITLE": {
+        "english": "Saved password",
+        "meaning": "",
+        "russian": "Сохранённый пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_SITE_TITLE": {
+        "english": "Site",
+        "meaning": "",
+        "russian": "Сайт"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_USERNAME_TITLE": {
+        "english": "Username",
+        "meaning": "",
+        "russian": "Имя пользователя"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_PASSWORD": {
+        "english": "Password",
+        "meaning": "",
+        "russian": "Пароль"
+      },
+      "IDS_PASSWORD_VIA_FEDERATION": {
+        "english": "with PROVIDER",
+        "meaning": "",
+        "russian": "через <ph name=\"PROVIDER\"/>"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_COPY_STORED_USERNAME": {
+        "english": "Copy username",
+        "meaning": "",
+        "russian": "Копировать имя пользователя"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_COPY_STORED_PASSWORD": {
+        "english": "Copy password",
+        "meaning": "",
+        "russian": "Копировать пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_SHOW_STORED_PASSWORD": {
+        "english": "Show password",
+        "meaning": "",
+        "russian": "Показать пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_DELETE_STORED_PASSWORD_ACTION_TITLE": {
+        "english": "Delete password",
+        "meaning": "",
+        "russian": "Удалить пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_EDIT_STORED_PASSWORD_ACTION_TITLE": {
+        "english": "Edit password",
+        "meaning": "",
+        "russian": "Изменить пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_HIDE_STORED_PASSWORD": {
+        "english": "Hide password",
+        "meaning": "",
+        "russian": "Скрыть пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_DELETE_STORED_PASSWORD": {
+        "english": "Delete stored password",
+        "meaning": "",
+        "russian": "Удалить сохранённый пароль"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_USERNAME_COPIED_INTO_CLIPBOARD": {
+        "english": "Username copied",
+        "meaning": "",
+        "russian": "Имя пользователя скопировано"
+      },
+      "IDS_PASSWORD_ENTRY_VIEWER_PASSWORD_COPIED_INTO_CLIPBOARD": {
+        "english": "Password copied",
+        "meaning": "",
+        "russian": "Пароль скопирован"
+      },
+      "IDS_PASSWORD_ENTRY_VIEW_SET_SCREEN_LOCK": {
+        "english": "To view passwords, first set a screen lock on your device",
+        "meaning": "",
+        "russian": "Чтобы просматривать пароли, сначала настройте блокировку экрана устройства"
+      },
+      "IDS_PASSWORD_ENTRY_COPY_SET_SCREEN_LOCK": {
+        "english": "To copy passwords, first set a screen lock on your device",
+        "meaning": "",
+        "russian": "Чтобы копировать пароли, сначала настройте блокировку экрана устройства"
+      },
+      "IDS_PASSWORD_ENTRY_EDIT_DUPLICATE_USERNAME_ERROR": {
+        "english": "You already saved this username for this site",
+        "meaning": "",
+        "russian": "Это имя пользователя уже сохранено для данного сайта"
+      },
+      "IDS_PASSWORD_SETTINGS_EXPORT_ACTION_TITLE": {
+        "english": "Export passwords…",
+        "meaning": "",
+        "russian": "Экспортировать пароли…"
+      },
+      "IDS_PASSWORD_SETTINGS_EXPORT_ACTION_DESCRIPTION": {
+        "english": "Export passwords stored with Chrome",
+        "meaning": "",
+        "russian": "Экспортировать пароли, сохранённые в Argon"
+      },
+      "IDS_SETTINGS_PASSWORDS_PREPARING_EXPORT": {
+        "english": "Preparing passwords…",
+        "meaning": "",
+        "russian": "Подготовка паролей…"
+      },
+      "IDS_PASSWORD_SETTINGS_EXPORT_LEARN_GOOGLE_DRIVE": {
+        "english": "Learn how to use Google Drive",
+        "meaning": "",
+        "russian": "Как пользоваться Google Диском"
+      },
+      "IDS_PASSWORD_SETTINGS_EXPORT_NO_APP": {
+        "english": "Your device doesn’t have an app to store the passwords file.",
+        "meaning": "",
+        "russian": "На устройстве нет приложения для сохранения файла с паролями."
+      },
+      "IDS_PASSWORD_SETTINGS_EXPORT_ERROR_DETAILS": {
+        "english": "Details: ERROR_DESCRIPTION",
+        "meaning": "",
+        "russian": "Подробности: <ph name=\"ERROR_DESCRIPTION\"/>"
+      },
+      "IDS_LOCKSCREEN_DESCRIPTION_COPY": {
+        "english": "Unlock to copy your password",
+        "meaning": "",
+        "russian": "Разблокируйте устройство, чтобы скопировать пароль"
+      },
+      "IDS_LOCKSCREEN_DESCRIPTION_VIEW": {
+        "english": "Unlock to view your password",
+        "meaning": "",
+        "russian": "Разблокируйте устройство, чтобы посмотреть пароль"
+      },
+      "IDS_LOCKSCREEN_DESCRIPTION_EDIT": {
+        "english": "Unlock to edit your password",
+        "meaning": "",
+        "russian": "Разблокируйте устройство, чтобы изменить пароль"
+      },
+      "IDS_LOCKSCREEN_DESCRIPTION_EXPORT": {
+        "english": "Unlock to export your passwords",
+        "meaning": "",
+        "russian": "Разблокируйте устройство, чтобы экспортировать пароли"
+      },
+      "IDS_IMPORT_OR_EXPORT_BOOKMARKS": {
+        "english": "Import or export bookmarks",
+        "meaning": "",
+        "russian": "Импорт и экспорт закладок"
+      },
+      "IDS_IMPORT_BOOKMARKS": {
+        "english": "Import bookmarks",
+        "meaning": "",
+        "russian": "Импортировать закладки"
+      },
+      "IDS_EXPORT_BOOKMARKS": {
+        "english": "Export bookmarks",
+        "meaning": "",
+        "russian": "Экспортировать закладки"
+      },
+      "IDS_LIGHTWEIGHT_FRE_ASSOCIATED_APP_TOS": {
+        "english": "APP_NAME will open in Titanium. By continuing, you agree to the BEGIN_LINK1Google Terms of ServiceEND_LINK1, and the BEGIN_LINK2Titanium and ChromeOS Additional Terms of ServiceEND_LINK2.",
+        "meaning": "",
+        "russian": "<ph name=\"APP_NAME\"/> откроется в Argon. Продолжая, вы принимаете <ph name=\"BEGIN_LINK1\"/>Условия использования Google<ph name=\"END_LINK1\"/> и <ph name=\"BEGIN_LINK2\"/>Дополнительные условия использования Chrome и ChromeOS<ph name=\"END_LINK2\"/>."
+      },
+      "IDS_LIGHTWEIGHT_FRE_ASSOCIATED_APP_TOS_AND_PRIVACY_CHILD_ACCOUNT": {
+        "english": "APP_NAME will open in Titanium. By continuing, you agree to the BEGIN_LINK1Google Terms of ServiceEND_LINK1, and the BEGIN_LINK2Titanium and ChromeOS Additional Terms of ServiceEND_LINK2. The BEGIN_LINK3Privacy PolicyEND_LINK3 also applies.",
+        "meaning": "",
+        "russian": "<ph name=\"APP_NAME\"/> откроется в Argon. Продолжая, вы принимаете <ph name=\"BEGIN_LINK1\"/>Условия использования Google<ph name=\"END_LINK1\"/> и <ph name=\"BEGIN_LINK2\"/>Дополнительные условия использования Chrome и ChromeOS<ph name=\"END_LINK2\"/>. Также применяется <ph name=\"BEGIN_LINK3\"/>Политика конфиденциальности<ph name=\"END_LINK3\"/>."
+      },
+      "IDS_STORAGE_MANAGEMENT_ACTIVITY_LABEL": {
+        "english": "APP_NAME storage",
+        "meaning": "",
+        "russian": "Хранилище <ph name=\"APP_NAME\"/>"
+      }
+    }
+  },
+  {
+    "source": "components/autofill_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_AUTOFILL_THIRD_PARTY_FILLING_OPT_IN_DESCRIPTION_NEW": {
+        "english": "To use another autofill service in Titanium, choose your autofill provider in Android settings",
+        "meaning": "",
+        "russian": "Чтобы использовать другую службу автозаполнения в Argon, выберите её в настройках Android"
+      },
+      "IDS_AUTOFILL_MANAGE_ADDRESSES": [
+        {
+          "english": "Manage addresses...",
+          "meaning": "Manage addresses in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление адресами…"
+        },
+        {
+          "english": "Manage Addresses...",
+          "meaning": "Manage addresses in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление адресами…"
+        }
+      ],
+      "IDS_AUTOFILL_MANAGE_PAYMENT_METHODS": [
+        {
+          "english": "Manage payment methods...",
+          "meaning": "Manage the payment methods in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление способами оплаты…"
+        },
+        {
+          "english": "Manage Payment Methods...",
+          "meaning": "Manage the payment methods in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление способами оплаты…"
+        }
+      ],
+      "IDS_AUTOFILL_MANAGE_LOYALTY_CARDS": [
+        {
+          "english": "Manage loyalty cards...",
+          "meaning": "Manage loyalty cards in the user wallet that can be used by Titanium Autofill.",
+          "russian": "Управление картами постоянного клиента…"
+        },
+        {
+          "english": "Manage Loyalty Cards...",
+          "meaning": "Manage loyalty cards in the user wallet that can be used by Titanium Autofill.",
+          "russian": "Управление картами постоянного клиента…"
+        }
+      ],
+      "IDS_AUTOFILL_THIRD_PARTY_FILLING_DEFAULT_DESCRIPTION": {
+        "english": "Use Google Password Manager and Titanium Autofill to save and fill passwords, payment methods, and addresses",
+        "meaning": "",
+        "russian": "Использовать Менеджер паролей Google и автозаполнение Argon для сохранения и заполнения паролей, способов оплаты и адресов"
+      },
+      "IDS_AUTOFILL_AI_FILLING_REAUTH": [
+        {
+          "english": "Titanium is trying to fill your sensitive info on APP_NAME.",
+          "meaning": "",
+          "russian": "Argon пытается подставить конфиденциальную информацию на странице <ph name=\"APP_NAME\"/>."
+        },
+        {
+          "english": "Titanium browser is trying to fill your sensitive info on APP_NAME.",
+          "meaning": "",
+          "russian": "Argon пытается подставить конфиденциальную информацию на странице <ph name=\"APP_NAME\"/>."
+        }
+      ]
+    }
+  },
+  {
+    "source": "titanium/chromium_src/chrome/browser/ui/android/strings/android_chrome_ext_strings.grdp",
+    "catalog": "chrome/browser/ui/android/strings/translations/android_chrome_strings_ru.xtb",
+    "messages": {
+      "IDS_CLOSE_TABS_ON_EXIT_TITLE": {
+        "english": "Close tabs on exit",
+        "meaning": "",
+        "russian": "Закрывать вкладки при выходе"
+      },
+      "IDS_CLOSE_TABS_ON_EXIT_SUMMARY": {
+        "english": "Don't persist tabs between browsing sessions",
+        "meaning": "",
+        "russian": "Не сохранять вкладки между сеансами"
+      },
+      "IDS_CROSS_ORIGIN_REFERRER_POLICY_TITLE": {
+        "english": "Cross-origin referrer policy",
+        "meaning": "",
+        "russian": "Передача адреса страницы другим сайтам"
+      },
+      "IDS_CROSS_ORIGIN_REFERRER_POLICY_DEFAULT": {
+        "english": "Default",
+        "meaning": "",
+        "russian": "По умолчанию"
+      },
+      "IDS_CROSS_ORIGIN_REFERRER_POLICY_REDUCE": {
+        "english": "Reduce cross-origin referrer",
+        "meaning": "",
+        "russian": "Передавать только адрес сайта, без пути и параметров"
+      },
+      "IDS_CROSS_ORIGIN_REFERRER_POLICY_DISABLE": {
+        "english": "Disable cross-origin referrer",
+        "meaning": "",
+        "russian": "Не передавать адрес страницы другим сайтам"
+      },
+      "IDS_OPEN_LINKS_IN_INCOGNITO_TITLE": {
+        "english": "Open external links in incognito",
+        "meaning": "",
+        "russian": "Открывать внешние ссылки в режиме инкогнито"
+      },
+      "IDS_OPEN_LINKS_IN_INCOGNITO_SUMMARY": {
+        "english": "Open links navigated by external apps in incognito tabs",
+        "meaning": "",
+        "russian": "Открывать ссылки из других приложений во вкладках инкогнито"
+      },
+      "IDS_TITANIUM_CONFIG_VERSION_TITLE": {
+        "english": "Titanium Config version",
+        "meaning": "",
+        "russian": "Версия конфигурации Titanium"
+      },
+      "IDS_WEBRTC_POLICY_TITLE": {
+        "english": "WebRTC IP handling policy",
+        "meaning": "",
+        "russian": "Передача IP-адресов через WebRTC"
+      },
+      "IDS_WEBRTC_POLICY_DEFAULT": {
+        "english": "Default",
+        "meaning": "",
+        "russian": "По умолчанию"
+      },
+      "IDS_WEBRTC_POLICY_DEFAULT_PUBLIC_AND_PRIVATE_INTERFACES": {
+        "english": "Default public and private interfaces",
+        "meaning": "",
+        "russian": "Публичные и локальные интерфейсы по умолчанию"
+      },
+      "IDS_WEBRTC_POLICY_DEFAULT_PUBLIC_INTERFACE_ONLY": {
+        "english": "Default public interface only",
+        "meaning": "",
+        "russian": "Только публичный интерфейс по умолчанию"
+      },
+      "IDS_WEBRTC_POLICY_DISABLE_NON_PROXIED_UDP": {
+        "english": "Disable non-proxied UDP",
+        "meaning": "",
+        "russian": "Запретить UDP в обход прокси"
+      }
+    }
+  },
+  {
+    "source": "titanium/chromium_src/components/browser_ui/strings/android/site_settings_ext.grdp",
+    "catalog": "components/browser_ui/strings/android/translations/browser_ui_strings_ru.xtb",
+    "messages": {
+      "IDS_JAVASCRIPT_JIT_PERMISSION_TITLE": {
+        "english": "JavaScript JIT",
+        "meaning": "",
+        "russian": "JIT-компиляция JavaScript"
+      },
+      "IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_ALLOWED": {
+        "english": "Allow sites to use just-in-time compilation; improve performance at expense of security by compiling JavaScript to native code.",
+        "meaning": "",
+        "russian": "Разрешить сайтам JIT-компиляцию JavaScript. Ускоряет работу сайтов, но увеличивает риски безопасности."
+      },
+      "IDS_WEBSITE_SETTINGS_CATEGORY_JAVASCRIPT_JIT_BLOCKED": {
+        "english": "Block sites to use just-in-time compilation; improve security at expense of performance by not compiling JavaScript to native code, and using only interpreted code.",
+        "meaning": "",
+        "russian": "Запретить сайтам JIT-компиляцию JavaScript. Повышает защищённость, но может замедлять работу сайтов."
+      },
+      "IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_ALLOW": {
+        "english": "Allow JIT for a specific site.",
+        "meaning": "",
+        "russian": "Разрешить JIT-компиляцию для отдельного сайта"
+      },
+      "IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_JAVASCRIPT_JIT_BLOCK": {
+        "english": "Block JIT for a specific site.",
+        "meaning": "",
+        "russian": "Запретить JIT-компиляцию для отдельного сайта"
+      },
+      "IDS_WEBSITE_SETTINGS_JAVASCRIPT_JIT_ALLOW": {
+        "english": "Sites can use JavaScript JIT",
+        "meaning": "",
+        "russian": "Разрешить сайтам JIT-компиляцию JavaScript"
+      },
+      "IDS_WEBSITE_SETTINGS_JAVASCRIPT_JIT_BLOCK": {
+        "english": "Don't allow sites to use JavaScript JIT",
+        "meaning": "",
+        "russian": "Запретить сайтам JIT-компиляцию JavaScript"
+      },
+      "IDS_BROWSER_DCL_MEMORY_RESTRICTED": {
+        "english": "Dynamic code loading via memory is restricted.",
+        "meaning": "",
+        "russian": "Динамическая загрузка кода из памяти ограничена."
+      },
+      "IDS_BROWSER_DCL_MEMORY_RESTRICTED_WITH_LINK": {
+        "english": "Dynamic code loading via memory for APP_NAME is currently restricted, which can be allowed at BEGIN_LINKAndroid SettingsEND_LINK.",
+        "meaning": "",
+        "russian": "Динамическая загрузка кода из памяти для <ph name=\"APP_NAME\"/> ограничена. Её можно разрешить в <ph name=\"BEGIN_LINK\"/>настройках Android<ph name=\"END_LINK\"/>."
+      },
+      "IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_MOTION_SENSORS_ALLOW": {
+        "english": "Allow motion sensors for a specific site.",
+        "meaning": "",
+        "russian": "Разрешить доступ к датчикам движения для отдельного сайта"
+      },
+      "IDS_WEBSITE_SETTINGS_ADD_SITE_DESCRIPTION_MOTION_SENSORS_BLOCK": {
+        "english": "Block motion sensors for a specific site.",
+        "meaning": "",
+        "russian": "Запретить доступ к датчикам движения для отдельного сайта"
+      }
+    }
+  },
+  {
+    "source": "titanium/chromium_src/components/site_settings_strings_ext.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SITE_SETTINGS_TYPE_JAVASCRIPT_JIT": {
+        "english": "JavaScript JIT",
+        "meaning": "",
+        "russian": "JIT-компиляция JavaScript"
+      },
+      "IDS_SITE_SETTINGS_TYPE_JAVASCRIPT_JIT_MID_SENTENCE": {
+        "english": "javascript JIT",
+        "meaning": "",
+        "russian": "JIT-компиляция JavaScript"
+      }
+    }
+  },
+  {
+    "source": "chrome/app/chromium_strings.grd",
+    "catalog": "chrome/app/resources/chromium_strings_ru.xtb",
+    "messages": {
+      "IDS_SAFETY_CHECK_EXTENSIONS_POLICY_VIOLATION": {
+        "english": "This extension violates the Titanium Web Store policy, and might be unsafe. Remove it from Titanium so it can no longer see and change your data on sites you visit, including your personal info.",
+        "meaning": "",
+        "russian": "Это расширение нарушает правила Интернет-магазина Chrome и может быть небезопасным. Удалите его из Argon, чтобы оно больше не могло просматривать и изменять данные на посещаемых сайтах, включая личную информацию."
+      }
+    }
+  },
+  {
+    "source": "chrome/app/glic_strings.grdp",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "messages": {
+      "IDS_SETTINGS_GLIC_INLINE_CUE_MENU_PREVIEW_TEXT": {
+        "english": "Titanium is made possible by the Titanium open source project and other BEGIN_HIGHLIGHTopen sourceEND_HIGHLIGHT software.",
+        "meaning": "",
+        "russian": "Argon создан на основе проекта Chromium и другого программного обеспечения с <ph name=\"BEGIN_HIGHLIGHT\"/>открытым исходным кодом<ph name=\"END_HIGHLIGHT\"/>."
+      }
+    }
+  },
+  {
+    "source": "chrome/app/profiles_strings.grdp",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "messages": {
+      "IDS_AVATAR_BUTTON_SIGNIN_PAUSED": {
+        "english": "Verify it's you",
+        "meaning": "The account is signed in on Titanium but signed out on the Web.",
+        "russian": "Подтвердите, что это вы"
+      }
+    }
+  },
+  {
+    "source": "chrome/app/generated_resources.grd",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "messages": {
+      "IDS_NTP_CUSTOMIZE_CHROME_COLOR_SCHEME_MODE_LIGHT_LABEL": {
+        "english": "Light",
+        "meaning": "Titanium browser light color scheme mode.",
+        "russian": "Светлая"
+      },
+      "IDS_NTP_CUSTOMIZE_CHROME_COLOR_SCHEME_MODE_DARK_LABEL": {
+        "english": "Dark",
+        "meaning": "Titanium browser dark color scheme mode.",
+        "russian": "Тёмная"
+      },
+      "IDS_SAVE_TO_DRIVE_FOLDER_NAME": {
+        "english": "Saved from Titanium",
+        "meaning": "Name of the folder in Drive where files saved from Titanium are stored. Please use the short version of the branded term for Titanium i.e. Titanium",
+        "russian": "Сохранено из Argon"
+      }
+    }
+  },
+  {
+    "source": "components/browser_ui/strings/android/site_settings.grdp",
+    "catalog": "components/browser_ui/strings/android/translations/browser_ui_strings_ru.xtb",
+    "messages": {
+      "IDS_ADS_PERMISSION_TITLE": {
+        "english": "Ads",
+        "meaning": "",
+        "russian": "Реклама"
+      }
+    }
+  },
+  {
+    "source": "components/password_manager_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_PASSWORD_MANAGER_LEAK_HELP_MESSAGE": {
+        "english": "When you use a password, Titanium warns you if it has been published online. When doing this, your passwords and usernames are encrypted, so they can’t be read by anyone, including Google.",
+        "meaning": "",
+        "russian": "Argon предупреждает, если используемый вами пароль был опубликован в интернете. При этом имена пользователей и сами пароли зашифрованы и никому не видны, даже сотрудникам Google."
+      }
+    }
+  },
+  {
+    "source": "components/security_interstitials_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SSL_NONOVERRIDABLE_MORE": {
+        "english": "SITE normally uses encryption to protect your information. When Titanium tried to connect to SITE this time, the website sent back unusual and incorrect credentials. This may happen when an attacker is trying to pretend to be SITE, or a Wi-Fi sign-in screen has interrupted the connection. Your information is still secure because Titanium stopped the connection before any data was exchanged.",
+        "meaning": "",
+        "russian": "На сайте <ph name=\"SITE\" /> для защиты ваших данных обычно используется шифрование. Однако учетные данные, которые мы получили от сайта <ph name=\"SITE\" /> сейчас, отличаются от тех, которые он отправляет обычно. Вероятно, вредоносный сайт пытается выдать себя за <ph name=\"SITE\" />, либо страница подключения к сети Wi-Fi прервала соединение. Ваша информация по-прежнему в безопасности, так как браузер Argon разорвал соединение до того, как произошел обмен данными."
+      }
+    }
+  },
+  {
+    "source": "components/site_settings_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SITE_SETTINGS_TYPE_ADS_2": {
+        "english": "Ads",
+        "meaning": "",
+        "russian": "Реклама"
+      },
+      "IDS_SITE_SETTINGS_TYPE_ADS_MID_SENTENCE_2": {
+        "english": "ads",
+        "meaning": "",
+        "russian": "реклама"
+      }
+    }
+  },
+  {
+    "source": "components/components_chromium_strings.grd",
+    "catalog": "components/strings/components_chromium_strings_ru.xtb",
+    "messages": {
+      "IDS_VERSION_UI_LICENSE": {
+        "english": "Titanium is made possible by the BEGIN_LINK_CHROMIUMTitaniumEND_LINK_CHROMIUM open source project and other BEGIN_LINK_OSSopen source softwareEND_LINK_OSS.",
+        "meaning": "",
+        "russian": "Argon создан на основе проекта <ph name=\"BEGIN_LINK_CHROMIUM\"/>Chromium<ph name=\"END_LINK_CHROMIUM\"/> и другого <ph name=\"BEGIN_LINK_OSS\"/>программного обеспечения с открытым исходным кодом<ph name=\"END_LINK_OSS\"/>."
+      },
+      "IDS_VERSION_UI_LICENSE_CHROMIUM": {
+        "english": "Titanium is made possible by the BEGIN_LINK_CHROMIUMTitaniumEND_LINK_CHROMIUM open source project.",
+        "meaning": "",
+        "russian": "Argon создан на основе проекта <ph name=\"BEGIN_LINK_CHROMIUM\"/>Chromium<ph name=\"END_LINK_CHROMIUM\"/> с открытым исходным кодом."
+      }
+    }
+  },
+  {
+    "source": "components/autofill_payments_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_PAYMENTS_AUTOFILL_SETTINGS_TOGGLE_MANDATORY_REAUTH": {
+        "english": "Titanium is trying to modify settings for filling payment methods.",
+        "meaning": "",
+        "russian": "Argon пытается изменить настройки автозаполнения платёжных данных."
+      }
+    }
+  },
+  {
+    "source": "components/search_engine_choice_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SEARCH_ENGINE_CHOICE_INFO_DIALOG_BODY_FIRST_PARAGRAPH": {
+        "english": "Based on a law in your region, Titanium asks you to choose your default search engine. These search engines are popular in your region and are shown in random order.",
+        "meaning": "",
+        "russian": "В соответствии с законом вашей страны Argon просит выбрать поисковую систему по умолчанию. Предложенные варианты популярны в вашем регионе. Они расположены в случайном порядке."
+      }
+    }
+  }
+]
