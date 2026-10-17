@@ -22,7 +22,6 @@ import java.util.List;
 @NullMarked
 public final class ArgonBackgroundPlaybackStore {
     public static final String ENABLED = "enabled";
-    public static final String HEADPHONES = "pause_on_headphones";
     private static final String RULES = "rules";
     private static @Nullable ArgonBackgroundPlaybackStore sInstance;
 
@@ -38,10 +37,6 @@ public final class ArgonBackgroundPlaybackStore {
     public static ArgonBackgroundPlaybackStore get() {
         if (sInstance == null) sInstance = new ArgonBackgroundPlaybackStore();
         return sInstance;
-    }
-
-    public boolean pauseOnHeadphones() {
-        return preferences.getBoolean(HEADPHONES, true);
     }
 
     public void reload() {

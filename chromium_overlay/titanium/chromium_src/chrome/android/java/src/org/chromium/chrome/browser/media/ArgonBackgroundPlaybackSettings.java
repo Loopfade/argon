@@ -86,16 +86,6 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         add.setFragment(RuleEditor.class.getName());
         sites.addPreference(add);
 
-        SwitchPreferenceCompat headphones = new SwitchPreferenceCompat(requireContext());
-        headphones.setPersistent(false);
-        headphones.setTitle(R.string.argon_background_headphones);
-        headphones.setSummary(R.string.argon_background_headphones_description);
-        headphones.setChecked(store.pauseOnHeadphones());
-        headphones.setOnPreferenceChangeListener((preference, value) -> {
-            store.preferences.edit().putBoolean(ArgonBackgroundPlaybackStore.HEADPHONES, (Boolean) value).apply();
-            return true;
-        });
-        screen.addPreference(headphones);
         Preference help = new Preference(requireContext());
         help.setSummary(R.string.argon_background_reset_description);
         help.setSelectable(false);

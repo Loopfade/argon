@@ -7,8 +7,6 @@
     <string name="argon_background_sites">Your sites</string>
     <string name="argon_background_empty">No sites yet. Add the sites you want to listen to.</string>
     <string name="argon_background_add_site">Add site</string>
-    <string name="argon_background_headphones">Pause when headphones change</string>
-    <string name="argon_background_headphones_description">Pause when connecting, disconnecting or switching audio output. Resume manually.</string>
     <string name="argon_background_reset_description">One limit is shared by a site\'s tabs for the whole background session, including time with the screen off. Pausing or waking the screen does not reset it. Return to the site to reset the limit. Some sites may still restrict playback.</string>
     <string name="argon_background_limit">Limit: %1$s</string>
     <string name="argon_background_limit_disabled">Limit: %1$s · Disabled</string>

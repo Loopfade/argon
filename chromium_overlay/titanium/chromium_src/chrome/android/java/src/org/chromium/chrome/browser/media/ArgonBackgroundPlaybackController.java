@@ -10,11 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.media.AudioAttributes;
-import android.media.AudioDeviceCallback;
-import android.media.AudioDeviceInfo;
-import android.media.AudioManager;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -40,7 +35,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeSet;
 
 /** Uses Chromium's existing player, audio focus, media notification and lock-screen controls. */
 @NullMarked
@@ -54,9 +48,7 @@ public final class ArgonBackgroundPlaybackController {
     private final TabModelSelectorTabObserver mObserver;
     private final @Nullable PowerManager mPower = mContext.getSystemService(PowerManager.class);
     private final @Nullable KeyguardManager mKeyguard = mContext.getSystemService(KeyguardManager.class);
-    private final @Nullable AudioManager mAudio = mContext.getSystemService(AudioManager.class);
     private final String mScript;
-    private String mRoute = "";
     private boolean mDestroyed;
     private boolean mWasEnabled = mStore.policy.isEnabled();
     private final Runnable mTick = this::refresh;
@@ -79,26 +71,11 @@ public final class ArgonBackgroundPlaybackController {
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                if (mStore.policy.isEnabled() && mStore.pauseOnHeadphones()) pauseManagedSites();
-            }
             refresh();
             // Screen-on arrives before keyguard/window focus has necessarily settled.
             mHandler.postDelayed(mTick, 200);
         }
     };
-    private final AudioDeviceCallback mAudioDevices = new AudioDeviceCallback() {
-        @Override
-        public void onAudioDevicesAdded(AudioDeviceInfo[] devices) {
-            mHandler.postDelayed(mTick, 100);
-        }
-
-        @Override
-        public void onAudioDevicesRemoved(AudioDeviceInfo[] devices) {
-            mHandler.postDelayed(mTick, 100);
-        }
-    };
-
     private static final class State {
         final Tab tab;
         final WebContents contents;
@@ -186,11 +163,9 @@ public final class ArgonBackgroundPlaybackController {
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_USER_PRESENT);
-        filter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
         ContextUtils.registerNonExportedBroadcastReceiver(mContext, mReceiver, filter);
         mStore.preferences.registerOnSharedPreferenceChangeListener(mPreferences);
         ApplicationStatus.registerStateListenerForActivity(mActivityListener, activity);
-        if (mAudio != null) mAudio.registerAudioDeviceCallback(mAudioDevices, mHandler);
     }
 
     private void track(Tab tab) {
@@ -233,19 +208,6 @@ public final class ArgonBackgroundPlaybackController {
         mHandler.removeCallbacks(mTick);
         long now = SystemClock.elapsedRealtime();
         boolean playing = false;
-        boolean watchRoute = false;
-        if (mStore.policy.isEnabled() && mStore.pauseOnHeadphones()) {
-            for (State state : mTabs.values()) {
-                watchRoute |= state.playing && mStore.policy.isSiteEnabled(state.host);
-            }
-        }
-        if (watchRoute) {
-            String route = audioRoute();
-            if (!route.isEmpty() && !mRoute.isEmpty() && !route.equals(mRoute)) pauseManagedSites();
-            mRoute = route;
-        } else {
-            mRoute = "";
-        }
         for (State state : new ArrayList<>(mTabs.values())) {
             if (state.contents.isDestroyed() || state.tab.isDestroyed()) continue;
             GURL url = state.tab.getUrl();
@@ -282,36 +244,6 @@ public final class ArgonBackgroundPlaybackController {
         state.contents.suspendAllMediaPlayers();
     }
 
-    private void pauseManagedSites() {
-        for (State state : new ArrayList<>(mTabs.values())) {
-            if (state.playing && mStore.policy.isSiteEnabled(state.host)) pause(state);
-        }
-        // Never automatically resume after a route change.
-    }
-
-    private String audioRoute() {
-        if (mAudio == null) return "";
-        TreeSet<Integer> devices = new TreeSet<>();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            AudioAttributes attributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA).build();
-            for (AudioDeviceInfo device : mAudio.getAudioDevicesForAttributes(attributes)) {
-                devices.add(device.getId());
-            }
-        } else {
-            // Older Android exposes connected outputs rather than the selected media route.
-            for (AudioDeviceInfo device : mAudio.getDevices(AudioManager.GET_DEVICES_OUTPUTS)) {
-                int type = device.getType();
-                if (type == AudioDeviceInfo.TYPE_WIRED_HEADSET
-                        || type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
-                        || type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
-                        || type == AudioDeviceInfo.TYPE_USB_HEADSET) devices.add(device.getId());
-            }
-            devices.add(-1); // The empty-headphone/speaker route must also have a signature.
-        }
-        return devices.toString();
-    }
-
     private String readScript() {
         StringBuilder script = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
@@ -333,6 +265,5 @@ public final class ArgonBackgroundPlaybackController {
         mContext.unregisterReceiver(mReceiver);
         mStore.preferences.unregisterOnSharedPreferenceChangeListener(mPreferences);
         ApplicationStatus.unregisterActivityStateListener(mActivityListener);
-        if (mAudio != null) mAudio.unregisterAudioDeviceCallback(mAudioDevices);
     }
 }

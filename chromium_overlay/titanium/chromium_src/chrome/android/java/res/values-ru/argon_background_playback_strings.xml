@@ -7,8 +7,6 @@
     <string name="argon_background_sites">Ваши сайты</string>
     <string name="argon_background_empty">Список пуст. Добавьте сайты, которые хотите слушать.</string>
     <string name="argon_background_add_site">Добавить сайт</string>
-    <string name="argon_background_headphones">Пауза при смене наушников</string>
-    <string name="argon_background_headphones_description">При подключении, отключении или смене аудиоустройства воспроизведение ставится на паузу. Возобновите его вручную.</string>
     <string name="argon_background_reset_description">Один лимит действует для всех вкладок сайта на весь фоновый сеанс, включая время с выключенным экраном. Пауза и включение экрана не сбрасывают таймер. Чтобы обновить лимит, вернитесь на сам сайт. Некоторые сайты могут ограничивать воспроизведение.</string>
     <string name="argon_background_limit">Лимит: %1$s</string>
     <string name="argon_background_limit_disabled">Лимит: %1$s · Отключено</string>

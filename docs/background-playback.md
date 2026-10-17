@@ -44,11 +44,9 @@ the list of languages used for translating web pages are independent.
   service is started to resurrect it automatically.
 * The usual Chromium media notification, metadata, lock-screen controls and
   audio focus remain attached to the site's original player.
-* The optional headphones setting pauses on output changes and never resumes
-  automatically. Android 13+ exposes the anticipated media route; older Android
-  exposes connected headphones, so connecting an unused pair may also pause.
-  The standard noisy-output broadcast handles disconnects immediately. Route
-  polling runs only while media is playing; no extra wake lock is acquired.
+* Headphone disconnection uses Chromium's existing media-session pause handler.
+  There is no extra audio-output switch setting, device callback or route polling
+  in this mode. Connecting headphones adds no pause of its own.
 
 ## Compatibility and verification
 
