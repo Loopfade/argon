@@ -3,6 +3,11 @@
     "source": "chrome/browser/ui/android/strings/android_chrome_strings.grd",
     "catalog": "chrome/browser/ui/android/strings/translations/android_chrome_strings_ru.xtb",
     "messages": {
+      "IDS_PASSWORD_MANAGER_SETTINGS_TITLE": {
+        "english": "Password Manager",
+        "meaning": "",
+        "russian": "Менеджер паролей"
+      },
       "IDS_AUTOFILL_OPTIONS_RESTART_PROMPT_TITLE": {
         "english": "Restart Titanium?",
         "meaning": "",
