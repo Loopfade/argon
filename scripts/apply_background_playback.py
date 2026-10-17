@@ -45,6 +45,8 @@ def patch_locales(text):
     replacement = '''# ARGON_ANDROID_UI_LOCALES: package Russian and English only.
 # Keep source catalogs and website/translation language support intact.
 if (is_android) {
+  # GN requires clearing an existing nonempty list before replacing it.
+  platform_pak_locales = []
   platform_pak_locales = [ "en-US", "ru" ]
   extended_locales = []
   # XTB catalogs must still exclude automatically generated pseudolocales.
@@ -57,6 +59,10 @@ if (is_android) {
 '''
     if replacement in text:
         return text
+    # Upgrade sources that already contain the earlier generated locale block.
+    marker = "# ARGON_ANDROID_UI_LOCALES: package Russian and English only."
+    if marker in text:
+        start = marker
     if text.count(start) != 1 or text.count(end) != 1:
         raise ValueError("Android locale mapping changed upstream")
     before, rest = text.split(start)

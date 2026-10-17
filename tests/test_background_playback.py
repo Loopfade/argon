@@ -52,6 +52,18 @@ class BackgroundPlaybackTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     transform("unexpected upstream source")
 
+    def test_locale_patch_upgrades_prepared_sources_and_remains_idempotent(self):
+        source = ('platform_pak_locales = [ "en-US", "ru", "de" ]\n'
+                  '# List for Android locale names in .xml exports.\n'
+                  'if (is_android) {\n  android_bundle_locales_as_resources = []\n}\n'
+                  'locales_without_pseudolocales = platform_pak_locales - pseudolocales\n')
+        patched = background.patch_locales(source)
+        self.assertEqual(background.patch_locales(patched), patched)
+        # Existing prepared sources can contain the original invalid overlay.
+        legacy = patched.replace('  platform_pak_locales = []\n', '')
+        self.assertEqual(background.patch_locales(legacy), patched)
+        self.assertEqual(patched.count('# ARGON_ANDROID_UI_LOCALES:'), 1)
+
     @unittest.skipUnless(shutil.which("node"), "Node required for visibility compatibility test")
     def test_visibility_compatibility_is_reversible_and_idempotent(self):
         script = (OVERLAY / "res/raw/argon_background_playback.js").read_text()

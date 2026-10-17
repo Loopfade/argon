@@ -4,13 +4,16 @@
 This small integration check downloads the Chromium files needed to validate
 the CA/JNI overlay, About screen, omnibox icon dependency and M154/M155
 extension-install dialog regression, applies the relevant Vanadium patches,
-and applies Argon's overlay twice. It does not replace GN, Java/C++ compilation,
-or Android smoke tests.
+and applies Argon's overlay twice. A small GN project evaluates the patched
+locale configuration. This does not replace full Chromium GN generation,
+Java/C++ compilation, or Android smoke tests.
 """
 import concurrent.futures
 import fnmatch
+import io
 import json
 from pathlib import Path
+import platform
 import re
 import shlex
 import ssl
@@ -18,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -134,6 +138,85 @@ def verify_omnibox_icon_dependency(build_file, searchbox_source):
         raise ValueError("Omnibox vector icons must be dependencies on Android without VR")
 
 
+def obtain_pinned_gn(directory, deps_text):
+    version = re.search(r"'gn_version':\s*'git_revision:([0-9a-f]{40})'", deps_text)
+    if not version:
+        raise ValueError("Pinned Chromium GN version not found in DEPS")
+    system = {"Linux": "linux", "Darwin": "mac", "Windows": "windows"}.get(platform.system())
+    arch = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64",
+            "arm64": "arm64"}.get(platform.machine())
+    if not system or not arch:
+        raise ValueError("Unsupported host for the pinned GN locale check")
+    executable = "gn.exe" if system == "windows" else "gn"
+    url = (f"https://chrome-infra-packages.appspot.com/dl/gn/gn/{system}-{arch}/+/"
+           + "git_revision:" + version[1])
+    with urllib.request.urlopen(url, timeout=60) as response:
+        with zipfile.ZipFile(io.BytesIO(response.read())) as package:
+            binary = package.read(executable)
+    target = directory / executable
+    target.write_bytes(binary)
+    target.chmod(0o755)
+    return target
+
+
+def verify_locale_configuration(source, gn):
+    # Execute real GN list semantics; text/anchor checks missed the nonempty
+    # list replacement that broke prepared-image run 39062207207.
+    with tempfile.TemporaryDirectory(prefix="argon-locale-gn-") as directory:
+        root = Path(directory)
+        (root / ".gn").write_text('buildconfig = "//BUILDCONFIG.gn"\n')
+        (root / "BUILDCONFIG.gn").write_text('''declare_args() {
+  locale_test_android = true
+  locale_test_official = true
+}
+is_android = locale_test_android
+is_official_build = locale_test_official
+is_ios = false
+is_chromeos = false
+is_apple = false
+set_default_toolchain("//:default")
+''')
+        (root / "locales.gni").write_text(source)
+        (root / "BUILD.gn").write_text('''import("//locales.gni")
+if (is_android) {
+  assert(platform_pak_locales == [ "en-US", "ru" ])
+  assert(locales_without_pseudolocales == [ "en-US", "ru" ])
+  assert(locales_with_pseudolocales == [ "en-US", "ru" ])
+  assert(android_bundle_locales_as_resources == [ "ru" ])
+  assert(extended_locales == [])
+  assert(pseudolocales == [])
+} else {
+  assert(filter_include(platform_pak_locales, [ "de" ]) == [ "de" ])
+}
+assert(filter_include(xtb_locales, [ "en-XA", "ar-XB" ]) == [])
+assert(filter_include(all_chrome_locales, [ "de", "ru" ]) == [ "de", "ru" ])
+group("locale_check") {
+}
+toolchain("default") {
+  tool("stamp") {
+    command = "true"
+  }
+}
+''')
+        for android in (True, False):
+            for official in (True, False):
+                args = ("locale_test_android=" + str(android).lower()
+                        + " locale_test_official=" + str(official).lower())
+                output = root / "out"
+                output.mkdir(exist_ok=True)
+                (output / "args.gn").write_text(args + "\n")
+                # desc evaluates the GN sources without compiling anything;
+                # it only needs this marker to recognize the output directory.
+                (output / "build.ninja").write_text("# Locale evaluation only.\n")
+                result = subprocess.run(
+                    [str(gn), "desc", "out", "//:locale_check", "--format=json"], cwd=root,
+                    text=True, capture_output=True,
+                )
+                if result.returncode:
+                    raise ValueError("Locale GN check failed (" + args + "):\n"
+                                     + result.stdout + result.stderr)
+
+
 def main():
     lock = json.loads((ROOT / "build-lock.json").read_text())
     for key in ("chromium_commit", "boringssl_commit", "titanium_commit", "vanadium_commit"):
@@ -204,9 +287,12 @@ def main():
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
             raise ValueError("Argon patch is not idempotent on the pinned upstream")
+        gn = obtain_pinned_gn(src, values["DEPS"])
+        verify_locale_configuration((src / background.LOCALES).read_text(), gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and idempotent Argon CA/JNI/About/Russian translation/background playback patches')
+          'and idempotent Argon CA/JNI/About/Russian translation/background playback '
+          'patches; pinned GN locale checks (Android/desktop, official/development)')
 
 
 if __name__ == "__main__":
