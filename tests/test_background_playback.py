@@ -72,9 +72,12 @@ function check(value) { if (!value) throw Error('Visibility shim regression'); }
             import json
             harness += "\nvm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "true")) + ", sandbox);\n"
             harness += "check(sandbox.document.hidden === false && sandbox.document.visibilityState === 'visible');\n"
+            harness += "const readHidden = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden').get; check(readHidden.call(sandbox.document) === false);\n"
+            harness += "const otherDocument = new Document(); check(otherDocument.hidden === true && otherDocument.visibilityState === 'hidden');\n"
             harness += "let stopped = 0; listeners[0]({stopImmediatePropagation() { stopped++; }}); check(stopped === 1);\n"
             harness += "vm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "false")) + ", sandbox);\n"
             harness += "check(sandbox.document.hidden === true && sandbox.document.visibilityState === 'hidden');\n"
+            harness += "check(readHidden.call(sandbox.document) === true);\n"
             harness += "listeners[0]({stopImmediatePropagation() { stopped++; }}); check(stopped === 1 && listeners.length === 2);\n"
             test.write_text(harness)
             subprocess.run(["node", str(test)], check=True, capture_output=True, text=True)

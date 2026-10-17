@@ -7,18 +7,26 @@
     let enabled = false;
     const values = new Map([['hidden', false], ['visibilityState', 'visible']]);
     for (const [name, visibleValue] of values) {
-      let prototype = document;
+      let prototype = Object.getPrototypeOf(document);
       let original;
       while (prototype && !original) {
         original = Object.getOwnPropertyDescriptor(prototype, name);
-        prototype = Object.getPrototypeOf(prototype);
+        if (!original) prototype = Object.getPrototypeOf(prototype);
       }
       if (!original || typeof original.get !== 'function') continue;
-      const readOriginal = original.get.bind(document);
+      const readOriginal = original.get;
+      function readVisibility() {
+        return enabled && this === document
+          ? visibleValue : Reflect.apply(readOriginal, this, []);
+      }
+      try {
+        // Some players read the prototype's getter instead of document's property.
+        Object.defineProperty(prototype, name, {...original, get: readVisibility});
+      } catch (_) { /* A frozen prototype can still leave the instance configurable. */ }
       try {
         Object.defineProperty(document, name, {
           configurable: true,
-          get: () => enabled ? visibleValue : readOriginal(),
+          get: readVisibility,
         });
       } catch (_) { /* A site may have made its property non-configurable. */ }
     }
