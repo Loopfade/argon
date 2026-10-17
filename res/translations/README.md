@@ -1,13 +1,30 @@
 # Russian Android settings
 
-`ru.json` adds translations for downstream settings and the restored local
-password manager to Chromium's existing Russian XTB catalogs. Other languages
-continue to use their upstream translations.
+`ru.json` adds translations for downstream settings, the restored local
+password manager and missing Android messages to Chromium's Russian XTB
+catalogs. Conditional variants can share a message name; each variant records
+its exact English text and meaning. Other languages keep their upstream
+translations.
 
 `scripts/apply_scoped_ca.py` validates the pinned English text, message meaning
 and placeholder names before updating any files. The message IDs follow
 Chromium GRIT's fingerprint algorithm; existing translations are preserved and
 conflicting values fail preparation. Reapplying the overlay is idempotent.
+
+`bundles.json` lists the pinned resource bundles and all their included source
+files. Vanadium and Titanium rename the browser in the English messages and
+Russian catalogs, but leave the catalogs' numeric IDs based on the original
+Chrome/Chromium English. The overlay recovers these existing Russian messages
+under the IDs of the renamed source. Original IDs remain available. Different
+candidate translations require an explicit reviewed entry in `ru.json`.
+Browser references use Argon; upstream products such as Chrome Web Store and
+Chrome Root Store retain their names.
+
+Android home-screen widget names are translated separately in
+`chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_widget_strings.xml`.
+The bundled extension has its own source-only localization patch described in
+`extensions/localization/README.md`; these native resource changes do not
+replace its signed CRX.
 
 When updating Chromium or Titanium, review changed English text and meaning
 before updating the corresponding entry. Keep all `<ph name="..."/>` placeholders,

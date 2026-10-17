@@ -1,0 +1,237 @@
+[
+  {
+    "root": "chrome/android/features/tab_ui/java/strings/android_chrome_tab_ui_strings.grd",
+    "catalog": "chrome/android/features/tab_ui/java/strings/translations/android_chrome_tab_ui_strings_ru.xtb",
+    "sources": [
+      "chrome/android/features/tab_ui/java/strings/android_chrome_tab_ui_strings.grd"
+    ]
+  },
+  {
+    "root": "chrome/android/webapk/strings/android_webapk_strings.grd",
+    "catalog": "chrome/android/webapk/strings/translations/android_webapk_strings_ru.xtb",
+    "sources": [
+      "chrome/android/webapk/strings/android_webapk_strings.grd"
+    ]
+  },
+  {
+    "root": "chrome/app/chromium_strings.grd",
+    "catalog": "chrome/app/resources/chromium_strings_ru.xtb",
+    "sources": [
+      "chrome/app/chromium_strings.grd",
+      "chrome/app/settings_chromium_strings.grdp"
+    ]
+  },
+  {
+    "root": "chrome/app/generated_resources.grd",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "sources": [
+      "chrome/app/access_code_cast_strings.grdp",
+      "chrome/app/actor_strings.grdp",
+      "chrome/app/app_management_strings.grdp",
+      "chrome/app/bookmarks_strings.grdp",
+      "chrome/app/certificate_manager.grdp",
+      "chrome/app/chromeos_shared_strings.grdp",
+      "chrome/app/chromeos_strings.grdp",
+      "chrome/app/extensions_strings.grdp",
+      "chrome/app/generated_resources.grd",
+      "chrome/app/glic_strings.grdp",
+      "chrome/app/gmc_strings.grdp",
+      "chrome/app/media_live_preview_strings.grdp",
+      "chrome/app/media_router_strings.grdp",
+      "chrome/app/nearby_share_strings.grdp",
+      "chrome/app/notebooks_strings.grdp",
+      "chrome/app/os_settings_search_tag_strings.grdp",
+      "chrome/app/os_settings_strings.grdp",
+      "chrome/app/password_manager_ui_strings.grdp",
+      "chrome/app/printing_strings.grdp",
+      "chrome/app/profiles_strings.grdp",
+      "chrome/app/settings_strings.grdp",
+      "chrome/app/shared_settings_strings.grdp",
+      "chrome/app/sharesheet_strings.grdp",
+      "chrome/app/shortcut_input_strings.grdp",
+      "chrome/app/skills_strings.grdp",
+      "chrome/app/support_tool_strings.grdp",
+      "chrome/app/vr_strings.grdp",
+      "chrome/app/whats_new_strings.grdp"
+    ]
+  },
+  {
+    "root": "chrome/browser/keyboard_accessory/android/internal/java/strings/android_keyboard_accessory_strings.grd",
+    "catalog": "chrome/browser/keyboard_accessory/android/internal/java/strings/translations/android_keyboard_accessory_strings_ru.xtb",
+    "sources": [
+      "chrome/browser/keyboard_accessory/android/internal/java/strings/android_keyboard_accessory_strings.grd"
+    ]
+  },
+  {
+    "root": "chrome/browser/readaloud/android/resources/android_readaloud_strings.grd",
+    "catalog": "chrome/browser/readaloud/android/resources/translations/android_readaloud_strings_ru.xtb",
+    "sources": [
+      "chrome/browser/readaloud/android/resources/android_readaloud_strings.grd"
+    ]
+  },
+  {
+    "root": "chrome/browser/tab_ui/android/java/strings/android_tab_ui_strings.grd",
+    "catalog": "chrome/browser/tab_ui/android/java/strings/translations/android_tab_ui_strings_ru.xtb",
+    "sources": [
+      "chrome/browser/tab_ui/android/java/strings/android_tab_ui_strings.grd"
+    ]
+  },
+  {
+    "root": "chrome/browser/ui/android/strings/android_chrome_strings.grd",
+    "catalog": "chrome/browser/ui/android/strings/translations/android_chrome_strings_ru.xtb",
+    "sources": [
+      "chrome/browser/ui/android/strings/android_chrome_strings.grd",
+      "titanium/chromium_src/chrome/browser/ui/android/strings/android_chrome_ext_strings.grdp"
+    ]
+  },
+  {
+    "root": "components/browser_ui/strings/android/browser_ui_strings.grd",
+    "catalog": "components/browser_ui/strings/android/translations/browser_ui_strings_ru.xtb",
+    "sources": [
+      "components/browser_ui/strings/android/browser_ui_strings.grd",
+      "components/browser_ui/strings/android/site_settings.grdp",
+      "titanium/chromium_src/components/browser_ui/strings/android/site_settings_ext.grdp"
+    ]
+  },
+  {
+    "root": "components/components_chromium_strings.grd",
+    "catalog": "components/strings/components_chromium_strings_ru.xtb",
+    "sources": [
+      "components/components_chromium_strings.grd"
+    ]
+  },
+  {
+    "root": "components/components_strings.grd",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "sources": [
+      "components/android_system_error_page_strings.grdp",
+      "components/arc_strings.grdp",
+      "components/autofill_payments_strings.grdp",
+      "components/autofill_strings.grdp",
+      "components/blocked_content_strings.grdp",
+      "components/bookmark_bar_strings.grdp",
+      "components/bookmark_component_strings.grdp",
+      "components/browsing_data_strings.grdp",
+      "components/collaboration_strings.grdp",
+      "components/commerce_strings.grdp",
+      "components/components_settings_strings.grdp",
+      "components/components_strings.grd",
+      "components/compose_strings.grdp",
+      "components/contextual_cueing_strings.grdp",
+      "components/contextual_tasks_strings.grdp",
+      "components/crash_strings.grdp",
+      "components/dialog_strings.grdp",
+      "components/dom_distiller_strings.grdp",
+      "components/enterprise_strings.grdp",
+      "components/error_page_strings.grdp",
+      "components/external_intents_strings.grdp",
+      "components/facilitated_payments_strings.grdp",
+      "components/find_in_page_strings.grdp",
+      "components/flags_strings.grdp",
+      "components/fullscreen_control_strings.grdp",
+      "components/global_media_controls_strings.grdp",
+      "components/heavy_ad_intervention_strings.grdp",
+      "components/history_clusters_strings.grdp",
+      "components/history_strings.grdp",
+      "components/javascript_dialogs_strings.grdp",
+      "components/live_caption_strings.grdp",
+      "components/login_dialog_strings.grdp",
+      "components/management_strings.grdp",
+      "components/media_message_center_strings.grdp",
+      "components/new_or_sad_tab_strings.grdp",
+      "components/omnibox_pedal_ui_strings.grdp",
+      "components/omnibox_strings.grdp",
+      "components/page_info_strings.grdp",
+      "components/paint_preview_strings.grdp",
+      "components/password_manager_strings.grdp",
+      "components/payments_strings.grdp",
+      "components/pdf_strings.grdp",
+      "components/permissions_strings.grdp",
+      "components/personal_context_strings.grdp",
+      "components/policy_strings.grdp",
+      "components/print_media_strings.grdp",
+      "components/printing_component_strings.grdp",
+      "components/protocol_handler_strings.grdp",
+      "components/reset_password_strings.grdp",
+      "components/saved_tab_groups_strings.grdp",
+      "components/search_engine_choice_strings.grdp",
+      "components/security_interstitials_strings.grdp",
+      "components/send_tab_to_self_strings.grdp",
+      "components/site_settings_strings.grdp",
+      "components/smart_tab_sharing.grdp",
+      "components/ssl_errors_strings.grdp",
+      "components/subresource_filter_strings.grdp",
+      "components/supervised_user_strings.grdp",
+      "components/sync_ui_strings.grdp",
+      "components/tab_groups_strings.grdp",
+      "components/tab_resume_strings.grdp",
+      "components/translate_strings.grdp",
+      "components/undo_strings.grdp",
+      "components/user_data_importer_strings.grdp",
+      "components/user_education_strings.grdp",
+      "components/version_ui_strings.grdp",
+      "components/wallet_strings.grdp",
+      "components/webapps_strings.grdp",
+      "components/webxr_strings.grdp",
+      "titanium/chromium_src/components/site_settings_strings_ext.grdp"
+    ]
+  },
+  {
+    "root": "components/media_router/browser/android/java/strings/android_chrome_media_router_strings.grd",
+    "catalog": "components/media_router/browser/android/java/strings/translations/android_chrome_media_router_strings_ru.xtb",
+    "sources": [
+      "components/media_router/browser/android/java/strings/android_chrome_media_router_strings.grd"
+    ]
+  },
+  {
+    "root": "components/omnibox/resources/omnibox_pedal_synonyms.grd",
+    "catalog": "components/omnibox/resources/translations/omnibox_pedal_synonyms_ru.xtb",
+    "sources": [
+      "components/omnibox/resources/omnibox_pedal_synonyms.grd"
+    ]
+  },
+  {
+    "root": "components/permissions/android/permissions_android_strings.grd",
+    "catalog": "components/permissions/android/translations/permissions_android_strings_ru.xtb",
+    "sources": [
+      "components/permissions/android/permissions_android_strings.grd"
+    ]
+  },
+  {
+    "root": "components/privacy_sandbox_strings.grd",
+    "catalog": "components/strings/privacy_sandbox_strings_ru.xtb",
+    "sources": [
+      "components/privacy_sandbox_strings.grd"
+    ]
+  },
+  {
+    "root": "components/webapps/browser/android/android_webapps_strings.grd",
+    "catalog": "components/webapps/browser/android/translations/android_webapps_strings_ru.xtb",
+    "sources": [
+      "components/webapps/browser/android/android_webapps_strings.grd"
+    ]
+  },
+  {
+    "root": "extensions/strings/extensions_strings.grd",
+    "catalog": "extensions/strings/extensions_strings_ru.xtb",
+    "sources": [
+      "extensions/strings/extensions_chromium_strings.grdp",
+      "extensions/strings/extensions_google_chrome_strings.grdp",
+      "extensions/strings/extensions_strings.grd"
+    ]
+  },
+  {
+    "root": "ui/android/java/strings/android_ui_strings.grd",
+    "catalog": "ui/android/java/strings/translations/android_ui_strings_ru.xtb",
+    "sources": [
+      "ui/android/java/strings/android_ui_strings.grd"
+    ]
+  },
+  {
+    "root": "ui/strings/ui_strings.grd",
+    "catalog": "ui/strings/translations/ui_strings_ru.xtb",
+    "sources": [
+      "ui/strings/ui_strings.grd"
+    ]
+  }
+]

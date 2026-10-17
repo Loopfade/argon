@@ -38,6 +38,9 @@ class RussianTranslationTests(unittest.TestCase):
                                         return_value=self.groups)
         self.mock_groups.start()
         self.addCleanup(self.mock_groups.stop)
+        self.mock_bundles = patch.object(localization, "russian_resource_bundles", return_value=[])
+        self.mock_bundles.start()
+        self.addCleanup(self.mock_bundles.stop)
 
     def test_translations_preserve_existing_entries_and_are_idempotent(self):
         writes = localization.russian_translation_writes(self.src)
@@ -75,6 +78,56 @@ class RussianTranslationTests(unittest.TestCase):
         self.catalog.write_text(writes[self.catalog].replace("Здравствуйте", "Привет"))
         with self.assertRaisesRegex(ValueError, "Conflicting Russian translation"):
             localization.russian_translation_writes(self.src)
+
+    def test_branding_reconnects_legacy_russian_ids_and_keeps_the_original(self):
+        self.source.write_text(
+            '<grit-part><message name="IDS_BRANDING">Open Titanium settings</message></grit-part>'
+        )
+        original_id = localization.grit_message_id("Open Chromium settings")
+        current_id = localization.grit_message_id("Open Titanium settings")
+        self.catalog.write_text(
+            '<translationbundle lang="ru">'
+            f'<translation id="{original_id}">Открыть настройки Titanium</translation>'
+            '</translationbundle>'
+        )
+        bundles = [{"catalog": "messages_ru.xtb", "sources": ["messages.grdp"]}]
+        with patch.object(localization, "russian_translation_groups", return_value=[]), \
+             patch.object(localization, "russian_resource_bundles", return_value=bundles):
+            writes = localization.russian_translation_writes(self.src)
+            self.catalog.write_text(writes[self.catalog])
+            self.assertEqual(localization.russian_translation_writes(self.src), writes)
+        tree = ET.parse(self.catalog)
+        self.assertEqual(tree.find(f"translation[@id='{original_id}']").text,
+                         "Открыть настройки Titanium")
+        self.assertEqual(tree.find(f"translation[@id='{current_id}']").text,
+                         "Открыть настройки Argon")
+
+    def test_branding_does_not_guess_between_different_russian_translations(self):
+        self.source.write_text(
+            '<grit-part><message name="IDS_BRANDING">Open Titanium settings</message></grit-part>'
+        )
+        entries = [(localization.grit_message_id("Open Chrome settings"), "Открыть настройки"),
+                   (localization.grit_message_id("Open Chromium settings"), "Перейти к настройкам")]
+        self.catalog.write_text('<translationbundle lang="ru">' + ''.join(
+            f'<translation id="{identifier}">{value}</translation>'
+            for identifier, value in entries
+        ) + '</translationbundle>')
+        bundles = [{"catalog": "messages_ru.xtb", "sources": ["messages.grdp"]}]
+        with patch.object(localization, "russian_translation_groups", return_value=[]), \
+             patch.object(localization, "russian_resource_bundles", return_value=bundles):
+            with self.assertRaisesRegex(ValueError, "Ambiguous branding translation"):
+                localization.russian_translation_writes(self.src)
+
+    def test_brand_names_and_multiline_message_identity_are_preserved(self):
+        self.assertEqual(localization.russian_browser_name(
+            "Интернет-магазина Titanium; Titanium Web Store; Titanium Root Store; "
+            "Titanium Root Program; Titanium OS Flex; Titanium Enterprise Connectors; "
+            "браузер Titanium"),
+            "Интернет-магазина Chrome; Chrome Web Store; Chrome Root Store; "
+            "Chrome Root Program; ChromeOS Flex; Chrome Enterprise Connectors; "
+            "браузер Argon")
+        message = ET.fromstring('<message>One line\nsecond line</message>')
+        self.assertEqual(localization.presentable_message(message), "One line\nsecond line")
 
 
 if __name__ == "__main__":

@@ -32,6 +32,11 @@ TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
 ))
+TRANSLATION_PATHS += tuple(dict.fromkeys(
+    Path(path) for bundle in patch.russian_resource_bundles()
+    for path in (*bundle["sources"], bundle["catalog"])
+    if Path(path) not in TRANSLATION_PATHS
+))
 BASE_PATHS += tuple(path for path in TRANSLATION_PATHS
                     if not str(path).startswith("titanium/"))
 EXTENSION_PATHS = (

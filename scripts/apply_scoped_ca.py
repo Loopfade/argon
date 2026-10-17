@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 from collections import Counter
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -254,6 +255,7 @@ def patch_titanium_chrome_resources(text: str) -> str:
         '\n  "java/res/raw/argon_root_ca.pem",'
         '\n  "java/res/values/argon_about_strings.xml",'
         '\n  "java/res/values-ru/argon_about_strings.xml",'
+        '\n  "java/res/values-ru/argon_widget_strings.xml",'
     )
     return replace_once(text, anchor, anchor + "\n" + addition)
 
@@ -356,14 +358,38 @@ def russian_translation_groups() -> list[dict]:
     return json.loads((ROOT / "res/translations/ru.json").read_text("utf-8"))
 
 
+def russian_translation_entries(group):
+    for name, values in group["messages"].items():
+        for value in values if isinstance(values, list) else [values]:
+            yield name, value
+
+
+def russian_browser_name(text: str) -> str:
+    # These are upstream services, not products maintained by this fork.
+    for product in ("Web Store", "Root Store", "Root Program", "Enterprise Connectors"):
+        text = text.replace("Titanium " + product, "Chrome " + product)
+    text = text.replace("Titanium OS Flex", "ChromeOS Flex")
+    text = re.sub(r"([Ии]нтернет-магазин(?:а|е|ом|у)? )Titanium\b", r"\1Chrome", text)
+    return text.replace("Titanium", "Argon")
+
+
 def presentable_message(message: ET.Element) -> str:
     # GRIT fingerprints placeholder names, not their implementation or examples.
     parts = [message.text or ""]
     for child in message:
         if child.tag != "ph":
             raise ValueError(f"Unexpected message markup: {child.tag}")
-        parts.extend((child.attrib["name"], child.tail or ""))
-    return " ".join("".join(parts).split())
+        parts.extend((child.attrib["name"].upper(), child.tail or ""))
+    text = "".join(parts).strip()
+    if text.startswith("'''"):
+        text = text[3:]
+    if text.endswith("'''"):
+        text = text[:-3]
+    return text.strip()
+
+
+def russian_resource_bundles() -> list[dict]:
+    return json.loads((ROOT / "res/translations/bundles.json").read_text("utf-8"))
 
 
 def grit_message_id(text: str, meaning: str = "") -> str:
@@ -398,15 +424,18 @@ def russian_translation_writes(src: Path) -> dict[Path, str]:
             additions[catalog] = {
                 element.attrib["id"]: element for element in tree
             }
-        for name, translation in group["messages"].items():
+        for name, translation in russian_translation_entries(group):
             candidates = messages.get(name, [])
-            if len(candidates) != 1:
-                raise ValueError(f"Expected exactly one source message: {name}")
+            if not candidates:
+                raise ValueError(f"Missing source message: {name}")
+            candidates = [candidate for candidate in candidates if (
+                presentable_message(candidate), candidate.attrib.get("meaning", "")
+            ) == (translation["english"], translation["meaning"])]
+            if not candidates:
+                raise ValueError(f"Russian translation source changed: {name}")
             message = candidates[0]
             english = presentable_message(message)
             meaning = message.attrib.get("meaning", "")
-            if (english, meaning) != (translation["english"], translation["meaning"]):
-                raise ValueError(f"Russian translation source changed: {name}")
             identifier = grit_message_id(english, meaning)
             element = ET.fromstring(
                 f'<translation id="{identifier}">{translation["russian"]}</translation>'
@@ -422,6 +451,49 @@ def russian_translation_writes(src: Path) -> dict[Path, str]:
             if existing is not None and presentable_message(existing) != presentable_message(element):
                 raise ValueError(f"Conflicting Russian translation: {name}")
             additions[catalog][identifier] = element
+    # Vanadium's branding patches replace Chrome/Chromium in both languages,
+    # but retain XTB IDs computed from the original English. Titanium's second
+    # rename changes the IDs again. Reconnect those existing Russian messages.
+    for bundle in russian_resource_bundles():
+        catalog = src / bundle["catalog"]
+        if catalog not in catalogs:
+            catalogs[catalog] = catalog.read_text("utf-8")
+            tree = ET.fromstring(catalogs[catalog])
+            if tree.tag != "translationbundle" or tree.attrib.get("lang") != "ru":
+                raise ValueError(f"Expected a Russian XTB catalog: {catalog}")
+            additions[catalog] = {element.attrib["id"]: element for element in tree}
+        for source in bundle["sources"]:
+            for message in ET.parse(src / source).iter("message"):
+                if (message.attrib.get("translateable") == "false"
+                        or message.attrib.get("use_name_for_id") == "true"):
+                    continue
+                english = presentable_message(message)
+                if "Titanium" not in english:
+                    continue
+                meaning = message.attrib.get("meaning", "")
+                identifier = grit_message_id(english, meaning)
+                if identifier in additions[catalog]:
+                    continue
+                candidates = [additions[catalog][old_id] for brand in (
+                    "Chrome", "Chromium", "Google Chrome"
+                ) if (old_id := grit_message_id(
+                    english.replace("Titanium", brand), meaning
+                )) in additions[catalog]]
+                if not candidates:
+                    continue
+                if len({presentable_message(item) for item in candidates}) != 1:
+                    raise ValueError(
+                        f'Ambiguous branding translation: {message.attrib["name"]}'
+                    )
+                element = copy.deepcopy(candidates[0])
+                element.attrib["id"] = identifier
+                element.tail = None
+                for child in element.iter():
+                    if child.text:
+                        child.text = russian_browser_name(child.text)
+                    if child.tail:
+                        child.tail = russian_browser_name(child.tail)
+                additions[catalog][identifier] = element
     writes = {}
     for catalog, text in catalogs.items():
         existing = {element.attrib["id"] for element in ET.fromstring(text)}

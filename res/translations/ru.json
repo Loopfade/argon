@@ -252,6 +252,21 @@
         "english": "Export bookmarks",
         "meaning": "",
         "russian": "Экспортировать закладки"
+      },
+      "IDS_LIGHTWEIGHT_FRE_ASSOCIATED_APP_TOS": {
+        "english": "APP_NAME will open in Titanium. By continuing, you agree to the BEGIN_LINK1Google Terms of ServiceEND_LINK1, and the BEGIN_LINK2Titanium and ChromeOS Additional Terms of ServiceEND_LINK2.",
+        "meaning": "",
+        "russian": "<ph name=\"APP_NAME\"/> откроется в Argon. Продолжая, вы принимаете <ph name=\"BEGIN_LINK1\"/>Условия использования Google<ph name=\"END_LINK1\"/> и <ph name=\"BEGIN_LINK2\"/>Дополнительные условия использования Chrome и ChromeOS<ph name=\"END_LINK2\"/>."
+      },
+      "IDS_LIGHTWEIGHT_FRE_ASSOCIATED_APP_TOS_AND_PRIVACY_CHILD_ACCOUNT": {
+        "english": "APP_NAME will open in Titanium. By continuing, you agree to the BEGIN_LINK1Google Terms of ServiceEND_LINK1, and the BEGIN_LINK2Titanium and ChromeOS Additional Terms of ServiceEND_LINK2. The BEGIN_LINK3Privacy PolicyEND_LINK3 also applies.",
+        "meaning": "",
+        "russian": "<ph name=\"APP_NAME\"/> откроется в Argon. Продолжая, вы принимаете <ph name=\"BEGIN_LINK1\"/>Условия использования Google<ph name=\"END_LINK1\"/> и <ph name=\"BEGIN_LINK2\"/>Дополнительные условия использования Chrome и ChromeOS<ph name=\"END_LINK2\"/>. Также применяется <ph name=\"BEGIN_LINK3\"/>Политика конфиденциальности<ph name=\"END_LINK3\"/>."
+      },
+      "IDS_STORAGE_MANAGEMENT_ACTIVITY_LABEL": {
+        "english": "APP_NAME storage",
+        "meaning": "",
+        "russian": "Хранилище <ph name=\"APP_NAME\"/>"
       }
     }
   },
@@ -263,7 +278,60 @@
         "english": "To use another autofill service in Titanium, choose your autofill provider in Android settings",
         "meaning": "",
         "russian": "Чтобы использовать другую службу автозаполнения в Argon, выберите её в настройках Android"
-      }
+      },
+      "IDS_AUTOFILL_MANAGE_ADDRESSES": [
+        {
+          "english": "Manage addresses...",
+          "meaning": "Manage addresses in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление адресами…"
+        },
+        {
+          "english": "Manage Addresses...",
+          "meaning": "Manage addresses in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление адресами…"
+        }
+      ],
+      "IDS_AUTOFILL_MANAGE_PAYMENT_METHODS": [
+        {
+          "english": "Manage payment methods...",
+          "meaning": "Manage the payment methods in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление способами оплаты…"
+        },
+        {
+          "english": "Manage Payment Methods...",
+          "meaning": "Manage the payment methods in the user profile that can be used by Titanium Autofill.",
+          "russian": "Управление способами оплаты…"
+        }
+      ],
+      "IDS_AUTOFILL_MANAGE_LOYALTY_CARDS": [
+        {
+          "english": "Manage loyalty cards...",
+          "meaning": "Manage loyalty cards in the user wallet that can be used by Titanium Autofill.",
+          "russian": "Управление картами постоянного клиента…"
+        },
+        {
+          "english": "Manage Loyalty Cards...",
+          "meaning": "Manage loyalty cards in the user wallet that can be used by Titanium Autofill.",
+          "russian": "Управление картами постоянного клиента…"
+        }
+      ],
+      "IDS_AUTOFILL_THIRD_PARTY_FILLING_DEFAULT_DESCRIPTION": {
+        "english": "Use Google Password Manager and Titanium Autofill to save and fill passwords, payment methods, and addresses",
+        "meaning": "",
+        "russian": "Использовать Менеджер паролей Google и автозаполнение Argon для сохранения и заполнения паролей, способов оплаты и адресов"
+      },
+      "IDS_AUTOFILL_AI_FILLING_REAUTH": [
+        {
+          "english": "Titanium is trying to fill your sensitive info on APP_NAME.",
+          "meaning": "",
+          "russian": "Argon пытается подставить конфиденциальную информацию на странице <ph name=\"APP_NAME\"/>."
+        },
+        {
+          "english": "Titanium browser is trying to fill your sensitive info on APP_NAME.",
+          "meaning": "",
+          "russian": "Argon пытается подставить конфиденциальную информацию на странице <ph name=\"APP_NAME\"/>."
+        }
+      ]
     }
   },
   {
@@ -416,6 +484,147 @@
         "english": "javascript JIT",
         "meaning": "",
         "russian": "JIT-компиляция JavaScript"
+      }
+    }
+  },
+  {
+    "source": "chrome/app/chromium_strings.grd",
+    "catalog": "chrome/app/resources/chromium_strings_ru.xtb",
+    "messages": {
+      "IDS_SAFETY_CHECK_EXTENSIONS_POLICY_VIOLATION": {
+        "english": "This extension violates the Titanium Web Store policy, and might be unsafe. Remove it from Titanium so it can no longer see and change your data on sites you visit, including your personal info.",
+        "meaning": "",
+        "russian": "Это расширение нарушает правила Интернет-магазина Chrome и может быть небезопасным. Удалите его из Argon, чтобы оно больше не могло просматривать и изменять данные на посещаемых сайтах, включая личную информацию."
+      }
+    }
+  },
+  {
+    "source": "chrome/app/glic_strings.grdp",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "messages": {
+      "IDS_SETTINGS_GLIC_INLINE_CUE_MENU_PREVIEW_TEXT": {
+        "english": "Titanium is made possible by the Titanium open source project and other BEGIN_HIGHLIGHTopen sourceEND_HIGHLIGHT software.",
+        "meaning": "",
+        "russian": "Argon создан на основе проекта Chromium и другого программного обеспечения с <ph name=\"BEGIN_HIGHLIGHT\"/>открытым исходным кодом<ph name=\"END_HIGHLIGHT\"/>."
+      }
+    }
+  },
+  {
+    "source": "chrome/app/profiles_strings.grdp",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "messages": {
+      "IDS_AVATAR_BUTTON_SIGNIN_PAUSED": {
+        "english": "Verify it's you",
+        "meaning": "The account is signed in on Titanium but signed out on the Web.",
+        "russian": "Подтвердите, что это вы"
+      }
+    }
+  },
+  {
+    "source": "chrome/app/generated_resources.grd",
+    "catalog": "chrome/app/resources/generated_resources_ru.xtb",
+    "messages": {
+      "IDS_NTP_CUSTOMIZE_CHROME_COLOR_SCHEME_MODE_LIGHT_LABEL": {
+        "english": "Light",
+        "meaning": "Titanium browser light color scheme mode.",
+        "russian": "Светлая"
+      },
+      "IDS_NTP_CUSTOMIZE_CHROME_COLOR_SCHEME_MODE_DARK_LABEL": {
+        "english": "Dark",
+        "meaning": "Titanium browser dark color scheme mode.",
+        "russian": "Тёмная"
+      },
+      "IDS_SAVE_TO_DRIVE_FOLDER_NAME": {
+        "english": "Saved from Titanium",
+        "meaning": "Name of the folder in Drive where files saved from Titanium are stored. Please use the short version of the branded term for Titanium i.e. Titanium",
+        "russian": "Сохранено из Argon"
+      }
+    }
+  },
+  {
+    "source": "components/browser_ui/strings/android/site_settings.grdp",
+    "catalog": "components/browser_ui/strings/android/translations/browser_ui_strings_ru.xtb",
+    "messages": {
+      "IDS_ADS_PERMISSION_TITLE": {
+        "english": "Ads",
+        "meaning": "",
+        "russian": "Реклама"
+      }
+    }
+  },
+  {
+    "source": "components/password_manager_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_PASSWORD_MANAGER_LEAK_HELP_MESSAGE": {
+        "english": "When you use a password, Titanium warns you if it has been published online. When doing this, your passwords and usernames are encrypted, so they can’t be read by anyone, including Google.",
+        "meaning": "",
+        "russian": "Argon предупреждает, если используемый вами пароль был опубликован в интернете. При этом имена пользователей и сами пароли зашифрованы и никому не видны, даже сотрудникам Google."
+      }
+    }
+  },
+  {
+    "source": "components/security_interstitials_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SSL_NONOVERRIDABLE_MORE": {
+        "english": "SITE normally uses encryption to protect your information. When Titanium tried to connect to SITE this time, the website sent back unusual and incorrect credentials. This may happen when an attacker is trying to pretend to be SITE, or a Wi-Fi sign-in screen has interrupted the connection. Your information is still secure because Titanium stopped the connection before any data was exchanged.",
+        "meaning": "",
+        "russian": "На сайте <ph name=\"SITE\" /> для защиты ваших данных обычно используется шифрование. Однако учетные данные, которые мы получили от сайта <ph name=\"SITE\" /> сейчас, отличаются от тех, которые он отправляет обычно. Вероятно, вредоносный сайт пытается выдать себя за <ph name=\"SITE\" />, либо страница подключения к сети Wi-Fi прервала соединение. Ваша информация по-прежнему в безопасности, так как браузер Argon разорвал соединение до того, как произошел обмен данными."
+      }
+    }
+  },
+  {
+    "source": "components/site_settings_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SITE_SETTINGS_TYPE_ADS_2": {
+        "english": "Ads",
+        "meaning": "",
+        "russian": "Реклама"
+      },
+      "IDS_SITE_SETTINGS_TYPE_ADS_MID_SENTENCE_2": {
+        "english": "ads",
+        "meaning": "",
+        "russian": "реклама"
+      }
+    }
+  },
+  {
+    "source": "components/components_chromium_strings.grd",
+    "catalog": "components/strings/components_chromium_strings_ru.xtb",
+    "messages": {
+      "IDS_VERSION_UI_LICENSE": {
+        "english": "Titanium is made possible by the BEGIN_LINK_CHROMIUMTitaniumEND_LINK_CHROMIUM open source project and other BEGIN_LINK_OSSopen source softwareEND_LINK_OSS.",
+        "meaning": "",
+        "russian": "Argon создан на основе проекта <ph name=\"BEGIN_LINK_CHROMIUM\"/>Chromium<ph name=\"END_LINK_CHROMIUM\"/> и другого <ph name=\"BEGIN_LINK_OSS\"/>программного обеспечения с открытым исходным кодом<ph name=\"END_LINK_OSS\"/>."
+      },
+      "IDS_VERSION_UI_LICENSE_CHROMIUM": {
+        "english": "Titanium is made possible by the BEGIN_LINK_CHROMIUMTitaniumEND_LINK_CHROMIUM open source project.",
+        "meaning": "",
+        "russian": "Argon создан на основе проекта <ph name=\"BEGIN_LINK_CHROMIUM\"/>Chromium<ph name=\"END_LINK_CHROMIUM\"/> с открытым исходным кодом."
+      }
+    }
+  },
+  {
+    "source": "components/autofill_payments_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_PAYMENTS_AUTOFILL_SETTINGS_TOGGLE_MANDATORY_REAUTH": {
+        "english": "Titanium is trying to modify settings for filling payment methods.",
+        "meaning": "",
+        "russian": "Argon пытается изменить настройки автозаполнения платёжных данных."
+      }
+    }
+  },
+  {
+    "source": "components/search_engine_choice_strings.grdp",
+    "catalog": "components/strings/components_strings_ru.xtb",
+    "messages": {
+      "IDS_SEARCH_ENGINE_CHOICE_INFO_DIALOG_BODY_FIRST_PARAGRAPH": {
+        "english": "Based on a law in your region, Titanium asks you to choose your default search engine. These search engines are popular in your region and are shown in random order.",
+        "meaning": "",
+        "russian": "В соответствии с законом вашей страны Argon просит выбрать поисковую систему по умолчанию. Предложенные варианты популярны в вашем регионе. Они расположены в случайном порядке."
       }
     }
   }
