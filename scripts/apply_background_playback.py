@@ -47,6 +47,8 @@ def patch_locales(text):
 if (is_android) {
   platform_pak_locales = [ "en-US", "ru" ]
   extended_locales = []
+  # XTB catalogs must still exclude automatically generated pseudolocales.
+  all_chrome_locales -= pseudolocales
   pseudolocales = []
   # en-US uses Android's unqualified values/ resources.
   android_bundle_locales_as_resources = [ "ru" ]
