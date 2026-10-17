@@ -28,11 +28,18 @@ BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
               patch.OMNIBOX_GN, SEARCHBOX_PATH)
+TRANSLATION_PATHS = tuple(dict.fromkeys(
+    Path(group[key]) for group in patch.russian_translation_groups()
+    for key in ("source", "catalog")
+))
+BASE_PATHS += tuple(path for path in TRANSLATION_PATHS
+                    if not str(path).startswith("titanium/"))
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
     patch.TITANIUM_PRIVACY_PREFERENCES,
-)
+) + tuple(path for path in TRANSLATION_PATHS
+          if str(path).startswith("titanium/"))
 
 DIALOG_PATH = Path(
     "chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc"
@@ -189,7 +196,7 @@ def main():
             raise ValueError("Argon patch is not idempotent on the pinned upstream")
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and idempotent Argon CA/JNI/About patches')
+          'and idempotent Argon CA/JNI/About/Russian translation patches')
 
 
 if __name__ == "__main__":
