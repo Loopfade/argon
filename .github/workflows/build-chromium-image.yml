@@ -24,6 +24,7 @@ on:
       - 'scripts/image_source_inputs.py'
       - '.github/ci/prune-prepared-images.py'
       - 'scripts/apply_scoped_ca.py'
+      - 'scripts/apply_background_playback.py'
       - 'scripts/fetch_pinned_extension.py'
       - 'scripts/fetch_pinned_filter_lists.py'
       - 'scripts/preflight.py'

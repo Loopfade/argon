@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="argon_background_title">Background playback</string>
+    <string name="argon_background_description">Listen to videos from selected sites with the screen off. Tap a site to edit its rule.</string>
+    <string name="argon_background_enable">Enable mode</string>
+    <string name="argon_background_master_description">When enabled, only your allowed sites can play in the background. When disabled, the browser works as usual.</string>
+    <string name="argon_background_sites">Your sites</string>
+    <string name="argon_background_empty">No sites yet. Add the sites you want to listen to.</string>
+    <string name="argon_background_add_site">Add site</string>
+    <string name="argon_background_headphones">Pause when headphones change</string>
+    <string name="argon_background_headphones_description">Pause when connecting, disconnecting or switching audio output. Resume manually.</string>
+    <string name="argon_background_reset_description">One limit is shared by a site\'s tabs for the whole background session, including time with the screen off. Pausing or waking the screen does not reset it. Return to the site to reset the limit. Some sites may still restrict playback.</string>
+    <string name="argon_background_limit">Limit: %1$s</string>
+    <string name="argon_background_limit_disabled">Limit: %1$s · Disabled</string>
+    <string name="argon_background_toggle_site">Allow background playback for %1$s</string>
+    <string name="argon_background_rule_title">Site rule</string>
+    <string name="argon_background_domain">Site domain</string>
+    <string name="argon_background_domain_hint">Enter a domain without https:// or a path, for example youtube.com.</string>
+    <string name="argon_background_allow_site">Allow background playback</string>
+    <string name="argon_background_subdomains">Include subdomains</string>
+    <string name="argon_background_time_limit">Time limit, in minutes</string>
+    <string name="argon_background_time_description">From 1 minute to 2 hours. Playback pauses when the limit expires.</string>
+    <string name="argon_background_save">Save</string>
+    <string name="argon_background_delete">Delete rule</string>
+    <string name="argon_background_delete_description">Delete the background playback rule for %1$s?</string>
+    <string name="argon_background_invalid_domain">Enter a valid site domain without a scheme, path or wildcard.</string>
+    <string name="argon_background_duplicate">This site already has a rule. Edit the existing rule.</string>
+    <string name="argon_background_too_many">You can add up to 100 sites.</string>
+    <plurals name="argon_background_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="argon_background_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+</resources>

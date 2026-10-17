@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="argon_background_title">Воспроизведение в фоне</string>
+    <string name="argon_background_description">Слушайте видео с выбранных сайтов при выключенном экране. Нажмите на сайт, чтобы изменить правило.</string>
+    <string name="argon_background_enable">Включить режим</string>
+    <string name="argon_background_master_description">В этом режиме воспроизведение в фоне разрешено только для выбранных сайтов. Когда режим выключен, браузер работает как обычно.</string>
+    <string name="argon_background_sites">Ваши сайты</string>
+    <string name="argon_background_empty">Список пуст. Добавьте сайты, которые хотите слушать.</string>
+    <string name="argon_background_add_site">Добавить сайт</string>
+    <string name="argon_background_headphones">Пауза при смене наушников</string>
+    <string name="argon_background_headphones_description">При подключении, отключении или смене аудиоустройства воспроизведение ставится на паузу. Возобновите его вручную.</string>
+    <string name="argon_background_reset_description">Один лимит действует для всех вкладок сайта на весь фоновый сеанс, включая время с выключенным экраном. Пауза и включение экрана не сбрасывают таймер. Чтобы обновить лимит, вернитесь на сам сайт. Некоторые сайты могут ограничивать воспроизведение.</string>
+    <string name="argon_background_limit">Лимит: %1$s</string>
+    <string name="argon_background_limit_disabled">Лимит: %1$s · Отключено</string>
+    <string name="argon_background_toggle_site">Разрешить воспроизведение в фоне для %1$s</string>
+    <string name="argon_background_rule_title">Правило сайта</string>
+    <string name="argon_background_domain">Домен сайта</string>
+    <string name="argon_background_domain_hint">Введите домен без https:// и пути, например youtube.com.</string>
+    <string name="argon_background_allow_site">Разрешить воспроизведение в фоне</string>
+    <string name="argon_background_subdomains">Включая поддомены</string>
+    <string name="argon_background_time_limit">Лимит времени, в минутах</string>
+    <string name="argon_background_time_description">От 1 минуты до 2 часов. После истечения лимита воспроизведение остановится.</string>
+    <string name="argon_background_save">Сохранить</string>
+    <string name="argon_background_delete">Удалить правило</string>
+    <string name="argon_background_delete_description">Удалить правило фонового воспроизведения для %1$s?</string>
+    <string name="argon_background_invalid_domain">Введите корректный домен сайта без схемы, пути и подстановочных знаков.</string>
+    <string name="argon_background_duplicate">Для этого сайта уже есть правило. Измените существующее.</string>
+    <string name="argon_background_too_many">Можно добавить до 100 сайтов.</string>
+    <plurals name="argon_background_minutes">
+        <item quantity="one">%d минута</item>
+        <item quantity="few">%d минуты</item>
+        <item quantity="many">%d минут</item>
+        <item quantity="other">%d минуты</item>
+    </plurals>
+    <plurals name="argon_background_hours">
+        <item quantity="one">%d час</item>
+        <item quantity="few">%d часа</item>
+        <item quantity="many">%d часов</item>
+        <item quantity="other">%d часа</item>
+    </plurals>
+</resources>

@@ -85,6 +85,7 @@ case "${1:-}" in
     source "$SCRIPT_DIR/patch.sh"
 
     python3 "$SCRIPT_DIR/scripts/apply_scoped_ca.py" --chromium-src "$PWD"
+    python3 "$SCRIPT_DIR/scripts/apply_background_playback.py" --chromium-src "$PWD"
     touch "$SCRIPT_DIR/.build/argon-patched"
     ;;
   validate)

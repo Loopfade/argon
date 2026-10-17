@@ -22,6 +22,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import apply_scoped_ca as patch
+import apply_background_playback as background
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
@@ -39,6 +40,8 @@ TRANSLATION_PATHS += tuple(dict.fromkeys(
 ))
 BASE_PATHS += tuple(path for path in TRANSLATION_PATHS
                     if not str(path).startswith("titanium/"))
+BASE_PATHS += tuple(path for path in background.INPUT_PATHS
+                    if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
@@ -175,6 +178,7 @@ def main():
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         patch.apply(src, product_name=False)
+        background.apply(src)
         verify_omnibox_icon_dependency(
             (src / patch.OMNIBOX_GN).read_text(),
             (src / SEARCHBOX_PATH).read_text(),
@@ -195,13 +199,14 @@ def main():
         before = {path: path.read_bytes() for path in src.rglob("*")
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
         patch.apply(src, product_name=False)
+        background.apply(src)
         after = {path: path.read_bytes() for path in src.rglob("*")
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
             raise ValueError("Argon patch is not idempotent on the pinned upstream")
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and idempotent Argon CA/JNI/About/Russian translation patches')
+          'and idempotent Argon CA/JNI/About/Russian translation/background playback patches')
 
 
 if __name__ == "__main__":
