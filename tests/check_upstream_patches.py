@@ -31,10 +31,14 @@ import apply_background_playback as background
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 LOCALE_CONSUMER = Path("components/strings/BUILD.gn")
+MEDIA_API_ROOT = Path("content/public/android/java/src/org/chromium/content_public/browser")
+WEB_CONTENTS_OBSERVER = MEDIA_API_ROOT / "WebContentsObserver.java"
+MEDIA_SESSION_OBSERVER = MEDIA_API_ROOT / "MediaSessionObserver.java"
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
-              patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER)
+              patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
+              WEB_CONTENTS_OBSERVER, MEDIA_SESSION_OBSERVER)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
@@ -138,6 +142,29 @@ def verify_omnibox_icon_dependency(build_file, searchbox_source):
     required = '  if (!is_ios) {\n    deps += [ ":vector_icons" ]\n  }'
     if required not in browser[1]:
         raise ValueError("Omnibox vector icons must be dependencies on Android without VR")
+
+
+def verify_background_media_observer_api(src):
+    # The controller regression substitutes platform services. Check the real
+    # pinned API too, including cleanup via observe(null), not a destroy method.
+    signatures = {
+        WEB_CONTENTS_OBSERVER: (
+            "public WebContentsObserver(@Nullable WebContents webContents)",
+            "public void mediaSessionCreated(MediaSession mediaSession)",
+            "public void webContentsDestroyed()",
+            "public final void observe(@Nullable WebContents webContents)",
+        ),
+        MEDIA_SESSION_OBSERVER: (
+            "protected MediaSessionObserver(MediaSession mediaSession)",
+            "public final @Nullable MediaSession getMediaSession()",
+            "public final void stopObserving()",
+        ),
+    }
+    for path, required in signatures.items():
+        source = (src / path).read_text()
+        for signature in required:
+            if signature not in source:
+                raise ValueError(f"Background playback observer API changed: {path}: {signature}")
 
 
 def obtain_pinned_gn(directory, deps_text):
@@ -375,6 +402,7 @@ def main():
         # Validate the dialog after Vanadium patches, matching build.sh ordering:
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
+        verify_background_media_observer_api(src)
         patch.apply(src, product_name=False)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
@@ -407,7 +435,7 @@ def main():
         verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and idempotent Argon CA/JNI/About/Russian translation/background playback '
+          'and background media observer API; idempotent Argon CA/JNI/About/Russian translation/background playback '
           'patches; pinned GN catalog, XTB consumer and two-language packaging checks '
           '(Android/desktop, official/development)')
 

@@ -26,6 +26,7 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.content_public.browser.MediaSession;
 import org.chromium.content_public.browser.MediaSessionObserver;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.WebContentsObserver;
 import org.chromium.url.GURL;
 
 import java.io.BufferedReader;
@@ -79,8 +80,8 @@ public final class ArgonBackgroundPlaybackController {
     private static final class State {
         final Tab tab;
         final WebContents contents;
-        final MediaSession session;
         @Nullable MediaSessionObserver observer;
+        @Nullable WebContentsObserver contentsObserver;
         boolean controllable;
         boolean playing;
         boolean wasForeground;
@@ -91,7 +92,6 @@ public final class ArgonBackgroundPlaybackController {
         State(Tab tab, WebContents contents) {
             this.tab = tab;
             this.contents = contents;
-            session = MediaSession.fromWebContents(contents);
         }
     }
 
@@ -169,12 +169,38 @@ public final class ArgonBackgroundPlaybackController {
     }
 
     private void track(Tab tab) {
-        if (tab.isOffTheRecord() || tab.isDestroyed() || mTabs.containsKey(tab)) return;
+        if (mDestroyed || tab.isOffTheRecord() || tab.isDestroyed() || mTabs.containsKey(tab)) return;
         WebContents contents = tab.getWebContents();
         if (contents == null || contents.isDestroyed()) return;
         State state = new State(tab, contents);
         mTabs.put(tab, state);
-        state.observer = new MediaSessionObserver(state.session) {
+        // Chromium creates media sessions lazily. Observe creation before querying
+        // the existing session so tabs without media remain safe at startup.
+        state.contentsObserver = new WebContentsObserver(contents) {
+            @Override
+            public void mediaSessionCreated(MediaSession session) {
+                observeMediaSession(state, session);
+            }
+
+            @Override
+            public void webContentsDestroyed() {
+                if (mTabs.get(tab) == state) untrack(tab);
+            }
+        };
+        observeMediaSession(state, MediaSession.fromWebContents(contents));
+        refresh();
+    }
+
+    private void observeMediaSession(State state, @Nullable MediaSession session) {
+        if (session == null || mDestroyed || mTabs.get(state.tab) != state) return;
+        MediaSessionObserver previous = state.observer;
+        if (previous != null) {
+            if (previous.getMediaSession() == session) return;
+            previous.stopObserving();
+        }
+        state.playing = false;
+        state.controllable = false;
+        state.observer = new MediaSessionObserver(session) {
             @Override
             public void mediaSessionStateChanged(boolean controllable, boolean suspended) {
                 state.controllable = controllable;
@@ -187,14 +213,16 @@ public final class ArgonBackgroundPlaybackController {
             public void mediaSessionDestroyed() {
                 state.playing = false;
                 state.controllable = false;
+                mHandler.post(mTick);
             }
         };
-        refresh();
     }
 
     private void untrack(Tab tab) {
         State state = mTabs.remove(tab);
-        if (state != null && state.observer != null) state.observer.stopObserving();
+        if (state == null) return;
+        if (state.observer != null) state.observer.stopObserving();
+        if (state.contentsObserver != null) state.contentsObserver.observe(null);
     }
 
     private boolean isForeground(Tab tab) {
