@@ -2,7 +2,9 @@
 
 Platform adapters model Chromium's theme without seekBarPreferenceStyle: a
 generic row has no seekbar_value. Like AndroidX, binding a SeekBarPreference
-dereferences that view. This is a host regression test, not an Android UI test.
+dereferences that view. Resources are exposed through org.chromium.chrome.R,
+as in chrome_java; no androidx.preference.R is provided on its compile classpath.
+This is a host regression test, not an Android UI test.
 """
 from pathlib import Path
 import shutil
@@ -56,12 +58,8 @@ public class SwitchCompat {
   public void setOnCheckedChangeListener(Change c) {}
   public void setChecked(boolean v) {} public void setContentDescription(String v) {}
 }''',
-    "androidx/preference/R.java": '''package androidx.preference;
-public class R {
-  public static class layout { public static final int preference_widget_seekbar_material = 1; }
-  public static class id { public static final int seekbar = 1, seekbar_value = 2; }
-}''',
     "androidx/preference/PreferenceViewHolder.java": '''package androidx.preference;
+import org.chromium.chrome.R;
 public class PreferenceViewHolder {
   private final java.util.Map<Integer, android.view.View> views = new java.util.HashMap<>();
   public PreferenceViewHolder(int layout) {
@@ -121,6 +119,7 @@ public class SwitchPreferenceCompat extends Preference {
   public void setChecked(boolean v) {}
 }''',
     "androidx/preference/SeekBarPreference.java": '''package androidx.preference;
+import org.chromium.chrome.R;
 public class SeekBarPreference extends Preference {
   private int min, max, value; private boolean show;
   public SeekBarPreference(android.content.Context c) { super(c); }
@@ -204,8 +203,10 @@ public class ArgonBackgroundPlaybackStore {
 class BackgroundPlaybackSettingsTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("java"), "JDK required for settings regression test")
     def test_add_and_edit_bind_and_save_with_chromium_preference_theme(self):
-        resources = {"string": [], "plurals": [], "layout": ["argon_background_rule_switch"],
-                     "id": ["argon_background_rule_enabled"], "drawable": ["argon_certificate_add"]}
+        resources = {"string": [], "plurals": [],
+                     "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material"],
+                     "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value"],
+                     "drawable": ["argon_certificate_add"]}
         for node in ET.parse(OVERLAY / "res/values/argon_background_playback_strings.xml").getroot():
             resources[node.tag].append(node.attrib["name"])
         r_source = "package org.chromium.chrome; public class R {\n"
