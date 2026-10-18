@@ -75,6 +75,12 @@ class FullBuildTests(unittest.TestCase):
         self.assertEqual([build["arch"] for build in builds], ["arm"])
         self.assertEqual(builds[0]["fingerprint"], outputs["fingerprint_arm"])
 
+    def test_cold_build_schedules_both_architectures_with_distinct_identities(self):
+        outputs = self.plan([None, None])
+        builds = json.loads(outputs["matrix"])["include"]
+        self.assertEqual([build["arch"] for build in builds], ["arm64", "arm"])
+        self.assertNotEqual(builds[0]["fingerprint"], builds[1]["fingerprint"])
+
     def fixture_artifact(self):
         lock = json.loads((ROOT / "build-lock.json").read_text())
         self.apk = self.root / f"Argon-{lock['chromium_version']}-release-arm64-v8a.apk"

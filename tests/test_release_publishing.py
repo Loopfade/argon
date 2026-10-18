@@ -216,8 +216,10 @@ class ReleasePublishingTests(unittest.TestCase):
         image_workflow = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
         image_trigger = image_workflow.split("\npermissions:", 1)[0]
         self.assertNotIn("workflow_run:", image_trigger)
+        self.assertNotIn("workflow_dispatch:", image_trigger)
+        self.assertIn("workflow_call:", image_trigger)
 
-        build_workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        build_workflow = (ROOT / ".github/workflows/build-all.yml").read_text()
         trigger = build_workflow.split("\npermissions:", 1)[0]
         self.assertIn("workflow_dispatch:", trigger)
         self.assertNotIn("pull_request:", trigger)
@@ -232,9 +234,9 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertNotIn("workflow_dispatch:", trigger)
         self.assertNotIn("workflow_run:", trigger)
 
-        build = (ROOT / ".github/workflows/build.yml").read_text()
+        build = (ROOT / ".github/workflows/build-all.yml").read_text()
         self.assertIn("needs.build.result == 'success'", build)
-        self.assertIn("github.event_name == 'workflow_dispatch'", build)
+        self.assertIn("workflow_dispatch:", build)
         self.assertIn("inputs.signing == 'release'", build)
         self.assertIn("uses: ./.github/workflows/publish-release.yml", build)
         self.assertIn("run_id: ${{ github.run_id }}", build)
@@ -247,19 +249,12 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertNotIn("push|workflow_run) ;;", publisher)
 
     def test_build_workflows_are_started_manually_and_validation_covers_pull_requests(self):
-        workflow = (ROOT / ".github/workflows/build.yml").read_text()
+        workflow = (ROOT / ".github/workflows/build-all.yml").read_text()
         trigger = workflow.split("\npermissions:", 1)[0]
         self.assertNotIn("pull_request:", trigger)
         self.assertIn("pull_request:", (ROOT / ".github/workflows/validate.yml").read_text())
         self.assertNotIn("push:", trigger)
         self.assertIn("workflow_dispatch:", trigger)
-
-    def test_primary_build_runs_both_arm_architectures_in_parallel(self):
-        workflow = (ROOT / ".github/workflows/build.yml").read_text()
-        self.assertIn("fail-fast: false", workflow)
-        self.assertIn("arch: [arm64, arm]", workflow)
-        self.assertIn("matrix.arch", workflow)
-        self.assertNotIn("One ABI per run", workflow)
 
     def test_release_contains_both_arm_apks_and_checksums(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
