@@ -29,15 +29,19 @@ public class Bundle extends java.util.HashMap<String, Object> {
   public void putBoolean(String k, boolean v) { put(k, v); }
 }''',
     "android/text/InputType.java": '''package android.text;
-public class InputType { public static final int TYPE_CLASS_TEXT = 1, TYPE_TEXT_VARIATION_URI = 16; }''',
+public class InputType { public static final int TYPE_CLASS_TEXT = 1, TYPE_TEXT_VARIATION_URI = 16,
+  TYPE_TEXT_FLAG_NO_SUGGESTIONS = 524288; }''',
+    "android/view/inputmethod/EditorInfo.java": '''package android.view.inputmethod;
+public class EditorInfo { public static final int IME_ACTION_DONE = 6, IME_FLAG_NO_PERSONALIZED_LEARNING = 16777216; }''',
     "android/view/View.java": '''package android.view;
 public class View { public static final int VISIBLE = 0, GONE = 8;
   public void setVisibility(int value) {} }''',
     "android/widget/EditText.java": '''package android.widget;
 public class EditText {
-  private String text = ""; private int inputType; private boolean singleLine;
+  private String text = ""; private int inputType, imeOptions; private boolean singleLine;
   public void setInputType(int value) { inputType = value; } public int getInputType() { return inputType; }
   public void setSingleLine(boolean v) { singleLine = v; } public boolean isSingleLine() { return singleLine; }
+  public void setImeOptions(int v) { imeOptions=v; } public int getImeOptions() { return imeOptions; }
   public void setText(CharSequence value) { text = value.toString(); } public CharSequence getText() { return text; }
 }''',
     "android/widget/Toast.java": '''package android.widget;
@@ -51,6 +55,7 @@ public class AlertDialog {
   public static class Builder {
     public Builder(android.content.Context c) {}
     public Builder setTitle(int v) { return this; }
+    public Builder setTitle(String v) { return this; }
     public Builder setMessage(String v) { return this; }
     public Builder setNegativeButton(int v, Click c) { return this; }
     public Builder setPositiveButton(int v, Click c) { return this; }
@@ -79,13 +84,17 @@ public class PreferenceViewHolder {
 public class Preference {
   public interface Change { boolean accept(Preference p, Object value); }
   public interface Click { boolean accept(Preference p); }
-  private Change change; private Click click; private int layout;
+  private Change change; private Click click; private int layout; private boolean enabled=true;
+  private String key; private CharSequence summary;
   private int title; private String fragment; private final android.os.Bundle extras = new android.os.Bundle();
   public Preference(android.content.Context c) {}
-  public void setKey(String v) {} public void setPersistent(boolean v) {}
+  public void setKey(String v) { key=v; } public String getKey() { return key; } public void setPersistent(boolean v) {}
   public void setTitle(int v) { title = v; } public void setTitle(String v) {}
   public int getTitleId() { return title; }
-  public void setSummary(int v) {} public void setSummary(String v) {} public void setIcon(int v) {}
+  public void setSummary(int v) { summary=Integer.toString(v); } public void setSummary(String v) { summary=v; }
+  public CharSequence getSummary() { return summary; } public void setIcon(int v) {}
+  public void setSingleLineTitle(boolean v) {} public void setEnabled(boolean v) { enabled=v; }
+  public boolean isEnabled() { return enabled; }
   public void setSelectable(boolean v) {} public void setWidgetLayoutResource(int v) {}
   public void setFragment(String v) { fragment = v; } public String getFragment() { return fragment; }
   public android.os.Bundle getExtras() { return extras; }
@@ -220,7 +229,9 @@ public class ArgonBackgroundPlaybackStore {
   public static ArgonBackgroundPlaybackStore get() { return instance; }
   public void reload() {}
   public void save(java.util.List<ArgonBackgroundPlaybackPolicy.Rule> rules) { policy.configure(policy.isEnabled(), rules); }
-  public static String normalizeHost(String host) { return host.trim().toLowerCase(java.util.Locale.ROOT); }
+  public static String normalizeHost(String host) {
+    host=host.trim().toLowerCase(java.util.Locale.ROOT); return host.isEmpty() ? null : host;
+  }
   public static class Preferences {
     public Preferences edit() { return this; } public Preferences putBoolean(String k, boolean v) { return this; }
     public void apply() {}

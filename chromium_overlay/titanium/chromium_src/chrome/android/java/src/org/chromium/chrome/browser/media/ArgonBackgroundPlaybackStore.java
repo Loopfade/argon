@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import org.chromium.base.ContextUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.url.GURL;
 
 import java.util.ArrayList;
@@ -83,10 +84,27 @@ public final class ArgonBackgroundPlaybackStore {
 
     public static @Nullable String normalizeHost(String value) {
         String host = value.trim();
-        if (host.endsWith(".")) host = host.substring(0, host.length() - 1);
         if (host.isEmpty() || host.matches("(?s).*[\\s/:@?#%*\\\\\\[\\]].*")) return null;
-        GURL url = new GURL("https://" + host + "/");
-        if (!url.isValid() || !url.getHost().contains(".")) return null;
-        return url.getHost();
+        host = canonicalHost(new GURL("https://" + host + "/"));
+        if (host == null) return null;
+        // Like certificate-domain settings, accept sites rather than IPs or entire
+        // public/private registries (co.uk, github.io, etc.). Keep the full host.
+        String registered = UrlUtilities.getDomainAndRegistry("https://" + host + "/", true);
+        return registered == null || registered.isEmpty() ? null : host;
+    }
+
+    /** Use the same canonical domain for saved rules and live page URLs. */
+    public static String hostFromUrl(GURL url) {
+        String host = canonicalHost(url);
+        return host == null ? "" : host;
+    }
+
+    private static @Nullable String canonicalHost(GURL url) {
+        if (!url.isValid() || !"https".equals(url.getScheme())) return null;
+        String host = url.getHost();
+        // GURL canonicalizes Unicode dot variants but retains a terminal DNS root dot.
+        if (host.endsWith(".")) host = host.substring(0, host.length() - 1);
+        if (!host.contains(".") || host.startsWith(".") || host.endsWith(".") || host.contains("..")) return null;
+        return host;
     }
 }

@@ -60,6 +60,50 @@ public final class ArgonBackgroundPlaybackPolicyTest {
             catch (IllegalArgumentException expected) { rejected = true; }
             check(rejected, "Invalid duration rejected: " + invalid);
         }
+        var scopes = new ArgonBackgroundPlaybackPolicy();
+        var parent = rule("example.test", 60, true);
+        var child = new ArgonBackgroundPlaybackPolicy.Rule("video.example.test", 1, false, false);
+        var sibling = rule("news.example.test", 30, true);
+        scopes.configure(true, List.of(parent, child, sibling));
+        check(scopes.getOverlappingRules(parent, parent.host).size() == 2,
+                "A parent with subdomains must report both child intersections");
+        check(scopes.getOverlappingRules(child, child.host).equals(List.of(parent)),
+                "An exact child overlaps its covering parent, not its sibling");
+        check(!scopes.mayPlay(child.host, false, 0, true), "A disabled child is an explicit exception");
+        check(scopes.mayPlay("www." + child.host, false, 0, true),
+                "An exact child exception must not cover deeper subdomains");
+        check(scopes.getCoveringRules(child.host, child.host).equals(List.of(parent)),
+                "Deleting a child must expose its matching parent rule");
+        var exactParent = new ArgonBackgroundPlaybackPolicy.Rule(parent.host, 60, true, false);
+        check(scopes.getOverlappingRules(exactParent, parent.host).isEmpty(),
+                "Turning subdomains off must remove parent-child intersections");
+        var renamed = rule("fresh.example.test", 60, true);
+        check(scopes.getOverlappingRules(renamed, parent.host).isEmpty(),
+                "A rename preview must exclude the original rule being replaced");
+        var middle = rule("section.example.test", 10, false);
+        scopes.configure(true, List.of(parent, rule("deep.section.example.test", 1, true), middle));
+        check(scopes.getCoveringRules("deep.section.example.test", "deep.section.example.test")
+                .equals(List.of(middle, parent)), "Deletion fallback must use the most specific remaining rule first");
+        var reassigned = new ArgonBackgroundPlaybackPolicy();
+        var broad = rule("example.test", 1, true);
+        var narrow = rule("video.example.test", 1, true);
+        reassigned.configure(true, List.of(broad, narrow));
+        check(reassigned.mayPlay(narrow.host, false, 1_000, true), "The child background session starts once");
+        check(!reassigned.mayPlay(narrow.host, false, 61_000, true), "The child deadline expires");
+        reassigned.configure(true, List.of(broad));
+        check(!reassigned.mayPlay(narrow.host, false, 61_000, true),
+                "Deleting a child must not renew the same site's elapsed budget through its parent");
+        reassigned.onForegroundVisit(narrow.host);
+        check(reassigned.mayPlay(narrow.host, false, 62_000, true), "An actual site visit resets the replacement rule budget");
+        reassigned.configure(true, List.of(broad, narrow));
+        check(reassigned.mayPlay(narrow.host, false, 62_000, true),
+                "A genuine visit while a child was absent must reset its historical deadline too");
+        var addedException = new ArgonBackgroundPlaybackPolicy();
+        addedException.configure(true, List.of(broad));
+        check(addedException.mayPlay(narrow.host, false, 1_000, true), "The parent initially controls this site");
+        addedException.configure(true, List.of(broad, narrow));
+        check(!addedException.mayPlay(narrow.host, false, 61_000, true),
+                "Adding an overlapping child must inherit an existing session's elapsed budget");
         System.out.println("PASS: production playback budgets, domain scope and resets");
     }
 }

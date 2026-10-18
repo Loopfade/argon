@@ -211,6 +211,9 @@ public class ArgonBackgroundPlaybackStore {
   public final ArgonBackgroundPlaybackPolicy policy = new ArgonBackgroundPlaybackPolicy();
   public final Preferences preferences = new Preferences();
   public void reload() {}
+  public static String hostFromUrl(org.chromium.url.GURL url) {
+    return "https".equals(url.getScheme()) ? url.getHost() : "";
+  }
   public static class Preferences implements android.content.SharedPreferences {
     public final java.util.List<OnSharedPreferenceChangeListener> listeners = new java.util.ArrayList<>();
     public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener l) { listeners.add(l); }

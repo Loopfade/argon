@@ -239,7 +239,7 @@ public final class ArgonBackgroundPlaybackController {
         for (State state : new ArrayList<>(mTabs.values())) {
             if (state.contents.isDestroyed() || state.tab.isDestroyed()) continue;
             GURL url = state.tab.getUrl();
-            String host = "https".equals(url.getScheme()) ? url.getHost() : "";
+            String host = ArgonBackgroundPlaybackStore.hostFromUrl(url);
             boolean foreground = isForeground(state.tab);
             if (foreground && (!state.wasForeground || !state.host.equals(host))) {
                 mStore.policy.onForegroundVisit(host);

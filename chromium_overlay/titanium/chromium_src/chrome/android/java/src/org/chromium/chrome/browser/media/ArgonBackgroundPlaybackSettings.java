@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.media;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Toast;
 
 import androidx.appcompat.widget.SwitchCompat;
@@ -29,6 +30,7 @@ import org.chromium.components.url_formatter.SchemeDisplay;
 import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.url.GURL;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Settings > Background playback. There are no preconfigured sites. */
@@ -54,8 +56,18 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext());
         setPreferenceScreen(screen);
         Preference explanation = new Preference(requireContext());
-        explanation.setSummary(R.string.argon_background_description);
-        explanation.setSelectable(false);
+        explanation.setKey("argon_background_explanation");
+        explanation.setTitle(store.policy.isEnabled() ? R.string.argon_background_state_enabled
+                : R.string.argon_background_state_disabled);
+        explanation.setSingleLineTitle(false);
+        explanation.setSummary(getString(store.policy.isEnabled()
+                ? R.string.argon_background_description : R.string.argon_background_description_disabled)
+                + "\n\n" + getString(R.string.argon_background_more));
+        explanation.setOnPreferenceClickListener(ignored -> {
+            showDetails(this, getString(R.string.argon_background_title),
+                    getString(R.string.argon_background_details_description));
+            return true;
+        });
         screen.addPreference(explanation);
 
         SwitchPreferenceCompat master = new SwitchPreferenceCompat(requireContext());
@@ -66,6 +78,7 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         master.setOnPreferenceChangeListener((preference, value) -> {
             store.preferences.edit().putBoolean(ArgonBackgroundPlaybackStore.ENABLED, (Boolean) value).apply();
             store.reload();
+            rebuild();
             return true;
         });
         screen.addPreference(master);
@@ -73,6 +86,11 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         PreferenceCategory sites = new PreferenceCategory(requireContext());
         sites.setTitle(R.string.argon_background_sites);
         screen.addPreference(sites);
+        Preference add = new Preference(requireContext());
+        add.setTitle(R.string.argon_background_add_site);
+        add.setIcon(R.drawable.argon_certificate_add);
+        add.setFragment(RuleEditor.class.getName());
+        sites.addPreference(add);
         for (var rule : store.policy.getRules()) sites.addPreference(new RulePreference(rule));
         if (store.policy.getRules().isEmpty()) {
             Preference empty = new Preference(requireContext());
@@ -80,11 +98,6 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             empty.setSelectable(false);
             sites.addPreference(empty);
         }
-        Preference add = new Preference(requireContext());
-        add.setTitle(R.string.argon_background_add_site);
-        add.setIcon(R.drawable.argon_certificate_add);
-        add.setFragment(RuleEditor.class.getName());
-        sites.addPreference(add);
 
         Preference help = new Preference(requireContext());
         help.setSummary(R.string.argon_background_reset_description);
@@ -100,6 +113,7 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             mRule = rule;
             setKey("argon_background_site_" + rule.host);
             setTitle(displayHost(rule.host));
+            setSingleLineTitle(false);
             setSummary(summary(rule));
             setWidgetLayoutResource(R.layout.argon_background_rule_switch);
             setFragment(RuleEditor.class.getName());
@@ -118,20 +132,21 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
                 var store = ArgonBackgroundPlaybackStore.get();
                 List<ArgonBackgroundPlaybackPolicy.Rule> rules = store.policy.getRules();
                 for (int i = 0; i < rules.size(); i++) {
-                    if (!rules.get(i).host.equals(mRule.host)) continue;
-                    mRule = new ArgonBackgroundPlaybackPolicy.Rule(mRule.host, mRule.minutes, checked, mRule.subdomains);
+                    var current = rules.get(i);
+                    if (!current.host.equals(mRule.host)) continue;
+                    // Another settings screen may have edited this rule since binding.
+                    mRule = new ArgonBackgroundPlaybackPolicy.Rule(current.host, current.minutes, checked, current.subdomains);
                     rules.set(i, mRule);
                     store.save(rules);
-                    setSummary(summary(mRule));
+                    rebuild();
                     break;
                 }
             });
         }
 
         private String summary(ArgonBackgroundPlaybackPolicy.Rule rule) {
-            String duration = duration(rule.minutes);
-            return getString(rule.enabled ? R.string.argon_background_limit
-                    : R.string.argon_background_limit_disabled, duration);
+            return ruleSummary(ArgonBackgroundPlaybackSettings.this,
+                    ArgonBackgroundPlaybackStore.get().policy, rule, rule.host);
         }
     }
 
@@ -140,10 +155,76 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
                 SchemeDisplay.OMIT_HTTP_AND_HTTPS);
     }
 
-    private String duration(int minutes) {
+    private static String duration(ChromeBaseSettingsFragment page, int minutes) {
         return minutes % 60 == 0
-                ? getResources().getQuantityString(R.plurals.argon_background_hours, minutes / 60, minutes / 60)
-                : getResources().getQuantityString(R.plurals.argon_background_minutes, minutes, minutes);
+                ? page.getResources().getQuantityString(R.plurals.argon_background_hours, minutes / 60, minutes / 60)
+                : page.getResources().getQuantityString(R.plurals.argon_background_minutes, minutes, minutes);
+    }
+
+    private static String scope(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy.Rule rule) {
+        return page.getString(rule.subdomains ? R.string.argon_background_scope_subdomains
+                : R.string.argon_background_scope_exact);
+    }
+
+    private static String ruleState(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy.Rule rule) {
+        return page.getString(rule.enabled ? R.string.argon_background_rule_allowed : R.string.argon_background_rule_blocked);
+    }
+
+    private static String ruleSummary(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy policy,
+            ArgonBackgroundPlaybackPolicy.Rule rule, String replacedHost) {
+        String summary = page.getString(R.string.argon_background_rule_summary,
+                ruleState(page, rule), duration(page, rule.minutes), scope(page, rule));
+        int overlaps = policy.getOverlappingRules(rule, replacedHost).size();
+        if (overlaps > 0) summary += "\n" + page.getString(R.string.argon_background_overlap_count, overlaps);
+        if (!policy.isEnabled()) summary += "\n" + page.getString(R.string.argon_background_rule_inactive);
+        return summary;
+    }
+
+    private static String ruleNames(ChromeBaseSettingsFragment page, List<ArgonBackgroundPlaybackPolicy.Rule> rules) {
+        List<String> labels = new ArrayList<>();
+        for (var rule : rules) {
+            labels.add("• " + page.getString(R.string.argon_background_overlap_rule, displayHost(rule.host),
+                    ruleState(page, rule), duration(page, rule.minutes), scope(page, rule)));
+        }
+        return String.join("\n", labels);
+    }
+
+    private static String ruleDetails(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy policy,
+            ArgonBackgroundPlaybackPolicy.Rule rule, String replacedHost) {
+        String message = page.getString(R.string.argon_background_rule_details_description,
+                displayHost(rule.host), ruleState(page, rule), scope(page, rule), duration(page, rule.minutes));
+        if (!policy.isEnabled()) message += "\n\n" + page.getString(R.string.argon_background_description_disabled);
+        List<ArgonBackgroundPlaybackPolicy.Rule> overlaps = policy.getOverlappingRules(rule, replacedHost);
+        message += "\n\n" + (overlaps.isEmpty() ? page.getString(R.string.argon_background_no_overlaps)
+                : page.getString(R.string.argon_background_overlap_description, ruleNames(page, overlaps)));
+        message += "\n\n" + page.getString(R.string.argon_background_rule_priority);
+        if (!rule.host.equals(displayHost(rule.host))) {
+            message += "\n\n" + page.getString(R.string.argon_background_domain_ascii, rule.host);
+        }
+        return message;
+    }
+
+    private static void showDetails(ChromeBaseSettingsFragment page, String title, String message) {
+        new AlertDialog.Builder(page.requireContext()).setTitle(title).setMessage(message)
+                .setPositiveButton(R.string.argon_background_close, null).show();
+    }
+
+    private static String removalDescription(ChromeBaseSettingsFragment page, String host) {
+        var policy = ArgonBackgroundPlaybackStore.get().policy;
+        String message = page.getString(R.string.argon_background_delete_description, displayHost(host));
+        var covering = policy.getCoveringRules(host, host);
+        message += "\n\n" + (covering.isEmpty()
+                ? page.getString(R.string.argon_background_delete_uncovered, displayHost(host))
+                : page.getString(R.string.argon_background_delete_covered, displayHost(host),
+                        ruleNames(page, covering.subList(0, 1))));
+        List<ArgonBackgroundPlaybackPolicy.Rule> children = new ArrayList<>();
+        for (var rule : policy.getRules()) {
+            if (!rule.host.equals(host) && rule.host.endsWith("." + host)) children.add(rule);
+        }
+        if (!children.isEmpty()) {
+            message += "\n\n" + page.getString(R.string.argon_background_delete_children, ruleNames(page, children));
+        }
+        return message;
     }
 
     @Override
@@ -164,6 +245,8 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         private int mMinutes = 60;
         private boolean mEnabled = true;
         private boolean mSubdomains = true;
+        private @Nullable Preference mDescription;
+        private @Nullable Preference mSave;
 
         @Override
         public void onCreatePreferences(@Nullable Bundle saved, @Nullable String rootKey) {
@@ -188,6 +271,20 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext());
             setPreferenceScreen(screen);
 
+            mDescription = new Preference(requireContext());
+            mDescription.setTitle(R.string.argon_background_rule_details);
+            mDescription.setSingleLineTitle(false);
+            mDescription.setOnPreferenceClickListener(ignored -> {
+                String domain = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
+                if (domain != null) {
+                    var rule = new ArgonBackgroundPlaybackPolicy.Rule(domain, mMinutes, mEnabled, mSubdomains);
+                    showDetails(this, getString(R.string.argon_background_rule_details_for, displayHost(domain)),
+                            ruleDetails(this, ArgonBackgroundPlaybackStore.get().policy, rule, mOriginalHost));
+                }
+                return true;
+            });
+            screen.addPreference(mDescription);
+
             EditTextPreference host = new EditTextPreference(requireContext());
             host.setKey("argon_background_domain");
             host.setPersistent(false);
@@ -201,19 +298,21 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             host.setText(mHost);
             host.setSummary(mHost.isEmpty() ? getString(R.string.argon_background_domain_hint) : mHost);
             host.setOnBindEditTextListener(input -> {
-                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
                 input.setSingleLine(true);
+                input.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);
             });
             host.setOnPreferenceChangeListener((preference, value) -> {
                 mHost = (String) value;
                 host.setSummary(mHost);
+                refreshDescription();
                 return true;
             });
             screen.addPreference(host);
             screen.addPreference(toggle(R.string.argon_background_allow_site, mEnabled,
-                    value -> mEnabled = value));
+                    value -> { mEnabled = value; refreshDescription(); }));
             screen.addPreference(toggle(R.string.argon_background_subdomains, mSubdomains,
-                    value -> mSubdomains = value));
+                    value -> { mSubdomains = value; refreshDescription(); }));
 
             SeekBarPreference limit = new SeekBarPreference(requireContext());
             // Chromium's PreferenceTheme does not define seekBarPreferenceStyle.
@@ -230,10 +329,12 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             limit.setValue(mMinutes);
             limit.setOnPreferenceChangeListener((preference, value) -> {
                 mMinutes = (Integer) value;
+                refreshDescription();
                 return true;
             });
             screen.addPreference(limit);
             Preference save = new Preference(requireContext());
+            mSave = save;
             save.setTitle(R.string.argon_background_save);
             save.setOnPreferenceClickListener(preference -> { save(); return true; });
             screen.addPreference(save);
@@ -243,7 +344,7 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
                 remove.setOnPreferenceClickListener(preference -> {
                     new AlertDialog.Builder(requireContext())
                             .setTitle(R.string.argon_background_delete)
-                            .setMessage(getString(R.string.argon_background_delete_description, displayHost(mOriginalHost)))
+                            .setMessage(removalDescription(this, mOriginalHost))
                             .setNegativeButton(android.R.string.cancel, null)
                             .setPositiveButton(R.string.argon_background_delete, (dialog, which) -> {
                                 var store = ArgonBackgroundPlaybackStore.get();
@@ -256,6 +357,43 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
                 });
                 screen.addPreference(remove);
             }
+            refreshDescription();
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            ArgonBackgroundPlaybackStore.get().reload();
+            refreshDescription();
+        }
+
+        private void refreshDescription() {
+            Preference description = mDescription;
+            Preference save = mSave;
+            if (description == null || save == null) return;
+            String host = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
+            int error = validationError(host);
+            save.setEnabled(error == 0);
+            save.setSummary(error == 0 ? getString(R.string.argon_background_save_description) : getString(error));
+            description.setSelectable(error == 0);
+            if (error != 0 || host == null) {
+                description.setSummary(mHost.trim().isEmpty()
+                        ? getString(R.string.argon_background_domain_hint) : getString(error));
+                return;
+            }
+            var rule = new ArgonBackgroundPlaybackPolicy.Rule(host, mMinutes, mEnabled, mSubdomains);
+            description.setSummary(ruleSummary(this, ArgonBackgroundPlaybackStore.get().policy, rule, mOriginalHost)
+                    + "\n\n" + getString(R.string.argon_background_more));
+        }
+
+        private int validationError(@Nullable String host) {
+            if (host == null) return R.string.argon_background_invalid_domain;
+            var rules = ArgonBackgroundPlaybackStore.get().policy.getRules();
+            rules.removeIf(rule -> rule.host.equals(mOriginalHost));
+            for (var rule : rules) {
+                if (rule.host.equals(host)) return R.string.argon_background_duplicate;
+            }
+            return rules.size() >= ArgonBackgroundPlaybackPolicy.MAX_SITES ? R.string.argon_background_too_many : 0;
         }
 
         private interface BooleanChange { void accept(boolean value); }
@@ -274,16 +412,11 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
 
         private void save() {
             String host = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
-            if (host == null) { error(R.string.argon_background_invalid_domain); return; }
+            int error = validationError(host);
+            if (error != 0 || host == null) { refreshDescription(); error(error); return; }
             var store = ArgonBackgroundPlaybackStore.get();
             var rules = store.policy.getRules();
             rules.removeIf(rule -> rule.host.equals(mOriginalHost));
-            for (var rule : rules) {
-                if (rule.host.equals(host)) { error(R.string.argon_background_duplicate); return; }
-            }
-            if (rules.size() >= ArgonBackgroundPlaybackPolicy.MAX_SITES) {
-                error(R.string.argon_background_too_many); return;
-            }
             rules.add(new ArgonBackgroundPlaybackPolicy.Rule(host, mMinutes, mEnabled, mSubdomains));
             store.save(rules);
             close();

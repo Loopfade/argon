@@ -26,7 +26,8 @@ class BackgroundPlaybackTests(unittest.TestCase):
                            check=True, capture_output=True, text=True)
             result = subprocess.run(["java", "-cp", directory,
                                     "org.chromium.chrome.browser.media.ArgonBackgroundPlaybackPolicyTest"],
-                                   check=True, capture_output=True, text=True)
+                                   capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("PASS: production playback budgets", result.stdout)
 
     def test_two_interface_languages_have_identical_keys_and_placeholders(self):

@@ -69,7 +69,7 @@ public final class ArgonBackgroundPlaybackSettingsTest {
         EditTextPreference host = (EditTextPreference)
                 row(editor.getPreferenceScreen(), R.string.argon_background_domain);
         EditText input = host.openDialog();
-        check(input.getInputType() == (InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI)
+        check(input.getInputType() == (InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
                 && input.isSingleLine(), "The domain dialog must apply its input settings");
         input.setText("discarded.example");
         host.closeDialog(false);
@@ -89,7 +89,9 @@ public final class ArgonBackgroundPlaybackSettingsTest {
         // Exercise the same screen via the saved site's own fragment/extras.
         settings.onResume();
         Preference site = row(settings.getPreferenceScreen(), R.string.argon_background_sites);
-        Preference existing = ((PreferenceScreen) site).rows.get(0);
+        Preference existing = ((PreferenceScreen) site).rows.stream()
+                .filter(p -> "video.example".equals(p.getExtras().getString("host", "")))
+                .findFirst().orElseThrow();
         editor = (ArgonBackgroundPlaybackSettings.RuleEditor)
                 Class.forName(existing.getFragment()).getDeclaredConstructor().newInstance();
         editor.setArguments(existing.getExtras());

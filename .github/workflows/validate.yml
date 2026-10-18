@@ -73,6 +73,8 @@ jobs:
           for script in .github/ci/*.sh; do bash -n "$script"; done
       - name: Check CA and JNI patches against pinned upstream sources
         run: python3 tests/check_upstream_patches.py
+      - name: Check background playback from domain input to live media rules
+        run: python3 tests/check_background_playback_flow.py
       - name: Obtain pinned BoringSSL
         run: |
           revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')
