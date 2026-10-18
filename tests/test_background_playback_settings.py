@@ -1,8 +1,8 @@
 """Exercise the production rule editor with the AndroidX row binding contract.
 
-Platform adapters model Chromium's theme without seekBarPreferenceStyle: a
-generic row has no seekbar_value. Like AndroidX, binding a SeekBarPreference
-dereferences that view. Resources are exposed through org.chromium.chrome.R,
+Platform adapters model Chromium's theme without the AndroidX seekbar and edit
+dialog styles. A generic row has no seekbar_value, and a generic dialog lacks
+android.R.id.edit. Resources are exposed through org.chromium.chrome.R,
 as in chrome_java; no androidx.preference.R is provided on its compile classpath.
 This is a host regression test, not an Android UI test.
 """
@@ -34,12 +34,17 @@ public class InputType { public static final int TYPE_CLASS_TEXT = 1, TYPE_TEXT_
 public class View { public static final int VISIBLE = 0, GONE = 8;
   public void setVisibility(int value) {} }''',
     "android/widget/EditText.java": '''package android.widget;
-public class EditText { public void setInputType(int value) {} public void setSingleLine(boolean v) {} }''',
+public class EditText {
+  private String text = ""; private int inputType; private boolean singleLine;
+  public void setInputType(int value) { inputType = value; } public int getInputType() { return inputType; }
+  public void setSingleLine(boolean v) { singleLine = v; } public boolean isSingleLine() { return singleLine; }
+  public void setText(CharSequence value) { text = value.toString(); } public CharSequence getText() { return text; }
+}''',
     "android/widget/Toast.java": '''package android.widget;
 public class Toast { public static final int LENGTH_LONG = 1;
   public static Toast makeText(android.content.Context c, int message, int length) { return new Toast(); }
   public void show() {} }''',
-    "android/R.java": "package android; public class R { public static class string { public static final int cancel = 1; } }",
+    "android/R.java": "package android; public class R { public static class string { public static final int cancel = 1, ok = 2; } }",
     "android/app/AlertDialog.java": '''package android.app;
 public class AlertDialog {
   public interface Click { void accept(Object dialog, int which); }
@@ -88,6 +93,7 @@ public class Preference {
   public void setOnPreferenceChangeListener(Change c) { change = c; }
   public void setOnPreferenceClickListener(Click c) { click = c; }
   public boolean change(Object value) { return change.accept(this, value); }
+  public boolean callChangeListener(Object value) { return change == null || change(value); }
   public void click() { click.accept(this); }
   public void onBindViewHolder(PreferenceViewHolder h) {}
   public void bind() { onBindViewHolder(new PreferenceViewHolder(layout)); }
@@ -107,11 +113,34 @@ public class PreferenceManager {
   public PreferenceScreen createPreferenceScreen(android.content.Context c) { return new PreferenceScreen(c); }
 }''',
     "androidx/preference/EditTextPreference.java": '''package androidx.preference;
+import org.chromium.chrome.R;
 public class EditTextPreference extends Preference {
-  public interface Bind { void accept(android.widget.EditText input); }
+  public interface OnBindEditTextListener { void onBindEditText(android.widget.EditText input); }
+  private String text = ""; private OnBindEditTextListener listener;
+  private int dialogLayout, positive, negative = android.R.string.cancel;
+  private android.widget.EditText input;
   public EditTextPreference(android.content.Context c) { super(c); }
   public void setDialogTitle(int v) {} public void setDialogMessage(int v) {}
-  public void setText(String v) {} public void setOnBindEditTextListener(Bind b) {}
+  public void setDialogLayoutResource(int value) { dialogLayout = value; }
+  public int getDialogLayoutResource() { return dialogLayout; }
+  public void setPositiveButtonText(int value) { positive = value; }
+  public void setNegativeButtonText(int value) { negative = value; }
+  public void setText(String value) { text = value; } public String getText() { return text; }
+  public void setOnBindEditTextListener(OnBindEditTextListener value) { listener = value; }
+  public OnBindEditTextListener getOnBindEditTextListener() { return listener; }
+  public android.widget.EditText openDialog() {
+    input = dialogLayout == R.layout.preference_dialog_edittext ? new android.widget.EditText() : null;
+    if (input == null) throw new IllegalStateException(
+        "Dialog view must contain an EditText with id @android:id/edit");
+    input.setText(text);
+    if (listener != null) listener.onBindEditText(input);
+    return input;
+  }
+  public void closeDialog(boolean accept) {
+    if ((accept ? positive : negative) == 0) throw new AssertionError("Missing dialog button");
+    if (accept && callChangeListener(input.getText().toString())) setText(input.getText().toString());
+    input = null;
+  }
 }''',
     "androidx/preference/SwitchPreferenceCompat.java": '''package androidx.preference;
 public class SwitchPreferenceCompat extends Preference {
@@ -190,7 +219,7 @@ public class ArgonBackgroundPlaybackStore {
   public final Preferences preferences = new Preferences();
   public static ArgonBackgroundPlaybackStore get() { return instance; }
   public void reload() {}
-  public void save(java.util.List<ArgonBackgroundPlaybackPolicy.Rule> rules) { policy.configure(true, rules); }
+  public void save(java.util.List<ArgonBackgroundPlaybackPolicy.Rule> rules) { policy.configure(policy.isEnabled(), rules); }
   public static String normalizeHost(String host) { return host.trim().toLowerCase(java.util.Locale.ROOT); }
   public static class Preferences {
     public Preferences edit() { return this; } public Preferences putBoolean(String k, boolean v) { return this; }
@@ -204,7 +233,8 @@ class BackgroundPlaybackSettingsTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("java"), "JDK required for settings regression test")
     def test_add_and_edit_bind_and_save_with_chromium_preference_theme(self):
         resources = {"string": [], "plurals": [],
-                     "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material"],
+                     "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material",
+                                "preference_dialog_edittext"],
                      "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value"],
                      "drawable": ["argon_certificate_add"]}
         for node in ET.parse(OVERLAY / "res/values/argon_background_playback_strings.xml").getroot():

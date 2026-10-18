@@ -66,8 +66,12 @@ Validation uses the production Java policy with deterministic timestamps, a
 JavaScript compatibility test, a host-side rule-editor regression with the
 AndroidX row binding contract, matching Russian/English resource keys and
 placeholders, and the pinned-source integration with repeated overlay
-application. The editor check covers adding, editing, restoring and saving a
-site with Chromium's theme lacking `seekBarPreferenceStyle`; its time-limit
+application. The editor check covers opening, confirming and cancelling the
+domain dialog, adding, editing, restoring and saving a site with the master
+mode both enabled and disabled. The domain dialog explicitly selects the
+AndroidX edit layout and both buttons because Chromium's preference theme does
+not supply the EditTextPreference dialog style. With `seekBarPreferenceStyle`
+also absent, its time-limit
 row explicitly uses AndroidX's Material seekbar layout through Chromium's merged
 `org.chromium.chrome.R`. The host compile check exposes this resource namespace
 without an artificial `androidx.preference.R`. These checks do not

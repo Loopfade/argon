@@ -194,6 +194,10 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             host.setTitle(R.string.argon_background_domain);
             host.setDialogTitle(R.string.argon_background_domain);
             host.setDialogMessage(R.string.argon_background_domain_hint);
+            // Chromium's PreferenceTheme has no EditTextPreference dialog style.
+            host.setDialogLayoutResource(R.layout.preference_dialog_edittext);
+            host.setPositiveButtonText(android.R.string.ok);
+            host.setNegativeButtonText(android.R.string.cancel);
             host.setText(mHost);
             host.setSummary(mHost.isEmpty() ? getString(R.string.argon_background_domain_hint) : mHost);
             host.setOnBindEditTextListener(input -> {
