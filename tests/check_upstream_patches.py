@@ -33,12 +33,20 @@ SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 LOCALE_CONSUMER = Path("components/strings/BUILD.gn")
 MEDIA_API_ROOT = Path("content/public/android/java/src/org/chromium/content_public/browser")
 WEB_CONTENTS_OBSERVER = MEDIA_API_ROOT / "WebContentsObserver.java"
+WEB_CONTENTS = MEDIA_API_ROOT / "WebContents.java"
 MEDIA_SESSION_OBSERVER = MEDIA_API_ROOT / "MediaSessionObserver.java"
+APPLICATION_STATUS = Path("base/android/java/src/org/chromium/base/ApplicationStatus.java")
+TAB_OBSERVER = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java")
+TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java")
+TAB_OBSCURING = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObscuringHandler.java")
+SCRIM_MANAGER = Path("components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/scrim/ScrimManager.java")
+ROOT_UI = Path("chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java")
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
               patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
-              WEB_CONTENTS_OBSERVER, MEDIA_SESSION_OBSERVER)
+              WEB_CONTENTS_OBSERVER, WEB_CONTENTS, MEDIA_SESSION_OBSERVER,
+              APPLICATION_STATUS, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
@@ -148,9 +156,16 @@ def verify_background_media_observer_api(src):
     # The controller regression substitutes platform services. Check the real
     # pinned API too, including cleanup via observe(null), not a destroy method.
     signatures = {
+        WEB_CONTENTS: (
+            "GURL getLastCommittedUrl()",
+            "void suspendAllMediaPlayers()",
+        ),
         WEB_CONTENTS_OBSERVER: (
             "public WebContentsObserver(@Nullable WebContents webContents)",
             "public void mediaSessionCreated(MediaSession mediaSession)",
+            "public void primaryPageChanged(Page page)",
+            "public void mediaStartedPlaying(int id, boolean hasAudio, boolean hasVideo)",
+            "public void mediaStoppedPlaying(int id)",
             "public void webContentsDestroyed()",
             "public final void observe(@Nullable WebContents webContents)",
         ),
@@ -158,6 +173,31 @@ def verify_background_media_observer_api(src):
             "protected MediaSessionObserver(MediaSession mediaSession)",
             "public final @Nullable MediaSession getMediaSession()",
             "public final void stopObserving()",
+        ),
+        APPLICATION_STATUS: (
+            "public interface WindowFocusChangedListener",
+            "public static void registerWindowFocusChangedListener(WindowFocusChangedListener listener)",
+            "public static void unregisterWindowFocusChangedListener(WindowFocusChangedListener listener)",
+        ),
+        TAB_OBSERVER: (
+            "default void onLoadStopped(Tab tab, boolean toDifferentDocument)",
+            "default void onInteractabilityChanged(Tab tab, boolean isInteractable)",
+        ),
+        TAB_IMPL: (
+            "public boolean isUserInteractable()",
+            "!mIsHidden && !isFrozen() && mIsViewAttachedToWindow && !isDetachedFromActivity()",
+        ),
+        TAB_OBSCURING: (
+            "public boolean isTabContentObscured()",
+            "public void addObserver(Observer observer)",
+            "public void removeObserver(Observer observer)",
+        ),
+        SCRIM_MANAGER: (
+            "public NonNullObservableSupplier<Boolean> getScrimVisibilitySupplier()",
+        ),
+        ROOT_UI: (
+            "public TabObscuringHandler getTabObscuringHandler()",
+            "public ScrimManager getScrimManager()",
         ),
     }
     for path, required in signatures.items():

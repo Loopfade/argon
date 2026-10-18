@@ -55,6 +55,18 @@ class BackgroundPlaybackTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     transform("unexpected upstream source")
 
+    def test_activity_patch_upgrades_visibility_hooks_without_duplicate_attachment(self):
+        original = "            super.finishNativeInitialization();\n    public void onDestroyInternal() {\n"
+        updated = background.patch_activity(original)
+        self.assertEqual(background.patch_activity(updated), updated)
+        self.assertEqual(updated.count(background.PACKAGE + ".attach("), 1)
+        legacy = original.replace("super.finishNativeInitialization();",
+            "super.finishNativeInitialization();\n            " + background.PACKAGE
+            + ".attach(this, assertNonNull(mTabModelSelector));")
+        self.assertEqual(background.patch_activity(legacy), updated)
+        self.assertIn("mRootUiCoordinator.getTabObscuringHandler()", updated)
+        self.assertIn("getScrimVisibilitySupplier()", updated)
+
     def test_locale_patch_upgrades_prepared_sources_and_remains_idempotent(self):
         prefix = 'platform_pak_locales = [ "en-US", "ru", "de" ]\n'
         suffix = 'locales_without_pseudolocales = platform_pak_locales - pseudolocales\n'
@@ -109,6 +121,8 @@ function check(value) { if (!value) throw Error('Visibility shim regression'); }
         with tempfile.TemporaryDirectory() as directory:
             test = Path(directory) / "test.cjs"
             import json
+            harness += "\nvm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "false")) + ", sandbox);\n"
+            harness += "check(listeners.length === 0 && sandbox.document.hidden === true && !Object.hasOwn(sandbox.window, '__argonBackgroundPlaybackVisibility'));\n"
             harness += "\nvm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "true")) + ", sandbox);\n"
             harness += "check(sandbox.document.hidden === false && sandbox.document.visibilityState === 'visible');\n"
             harness += "const readHidden = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden').get; check(readHidden.call(sandbox.document) === false);\n"

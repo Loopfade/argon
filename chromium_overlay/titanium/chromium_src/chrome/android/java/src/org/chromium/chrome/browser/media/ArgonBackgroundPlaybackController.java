@@ -16,15 +16,19 @@ import android.os.PowerManager;
 import android.os.SystemClock;
 
 import org.chromium.base.ApplicationStatus;
+import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.content_public.browser.MediaSession;
 import org.chromium.content_public.browser.MediaSessionObserver;
+import org.chromium.content_public.browser.Page;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
 import org.chromium.url.GURL;
@@ -35,7 +39,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /** Uses Chromium's existing player, audio focus, media notification and lock-screen controls. */
 @NullMarked
@@ -47,6 +53,10 @@ public final class ArgonBackgroundPlaybackController {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Map<Tab, State> mTabs = new HashMap<>();
     private final TabModelSelectorTabObserver mObserver;
+    private final TabObscuringHandler mObscuringHandler;
+    private final NonNullObservableSupplier<Boolean> mScrimVisible;
+    private final TabObscuringHandler.Observer mObscuringObserver = (content, toolbar) -> refresh();
+    private final Callback<Boolean> mScrimObserver = visible -> refresh();
     private final @Nullable PowerManager mPower = mContext.getSystemService(PowerManager.class);
     private final @Nullable KeyguardManager mKeyguard = mContext.getSystemService(KeyguardManager.class);
     private final String mScript;
@@ -69,6 +79,7 @@ public final class ArgonBackgroundPlaybackController {
                 refresh();
                 mHandler.postDelayed(mTick, 200);
             };
+    private final ApplicationStatus.WindowFocusChangedListener mFocusListener;
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -82,7 +93,8 @@ public final class ArgonBackgroundPlaybackController {
         final WebContents contents;
         @Nullable MediaSessionObserver observer;
         @Nullable WebContentsObserver contentsObserver;
-        boolean controllable;
+        final Set<Integer> players = new HashSet<>();
+        boolean sessionPlaying;
         boolean playing;
         boolean wasForeground;
         boolean documentReady = true;
@@ -95,9 +107,11 @@ public final class ArgonBackgroundPlaybackController {
         }
     }
 
-    public static void attach(Activity activity, TabModelSelector selector) {
+    public static void attach(Activity activity, TabModelSelector selector,
+            TabObscuringHandler obscuringHandler, NonNullObservableSupplier<Boolean> scrimVisible) {
         if (!sControllers.containsKey(activity)) {
-            sControllers.put(activity, new ArgonBackgroundPlaybackController(activity, selector));
+            sControllers.put(activity, new ArgonBackgroundPlaybackController(
+                    activity, selector, obscuringHandler, scrimVisible));
         }
     }
 
@@ -106,8 +120,14 @@ public final class ArgonBackgroundPlaybackController {
         if (controller != null) controller.destroy();
     }
 
-    private ArgonBackgroundPlaybackController(Activity activity, TabModelSelector selector) {
+    private ArgonBackgroundPlaybackController(Activity activity, TabModelSelector selector,
+            TabObscuringHandler obscuringHandler, NonNullObservableSupplier<Boolean> scrimVisible) {
         mActivity = activity;
+        mObscuringHandler = obscuringHandler;
+        mScrimVisible = scrimVisible;
+        mFocusListener = (changedActivity, hasFocus) -> {
+            if (changedActivity == mActivity) refresh();
+        };
         mScript = readScript();
         mObserver = new TabModelSelectorTabObserver(selector) {
             @Override
@@ -132,7 +152,6 @@ public final class ArgonBackgroundPlaybackController {
                 State state = mTabs.get(tab);
                 if (state != null) {
                     state.documentReady = false;
-                    state.override = null;
                 }
             }
 
@@ -140,6 +159,19 @@ public final class ArgonBackgroundPlaybackController {
             public void onPageLoadFinished(Tab tab, GURL url) {
                 track(tab);
                 State state = mTabs.get(tab);
+                if (state != null) {
+                    state.documentReady = true;
+                    // A successful load has a new document, even on the same host.
+                    state.override = null;
+                }
+                refresh();
+            }
+
+            @Override
+            public void onLoadStopped(Tab tab, boolean toDifferentDocument) {
+                State state = mTabs.get(tab);
+                // Aborted/failed loads need not send onPageLoadFinished. The old
+                // document may still be alive and must keep receiving rule changes.
                 if (state != null) state.documentReady = true;
                 refresh();
             }
@@ -166,6 +198,9 @@ public final class ArgonBackgroundPlaybackController {
         ContextUtils.registerNonExportedBroadcastReceiver(mContext, mReceiver, filter);
         mStore.preferences.registerOnSharedPreferenceChangeListener(mPreferences);
         ApplicationStatus.registerStateListenerForActivity(mActivityListener, activity);
+        ApplicationStatus.registerWindowFocusChangedListener(mFocusListener);
+        mObscuringHandler.addObserver(mObscuringObserver);
+        mScrimVisible.addSyncObserverAndPostIfNonNull(mScrimObserver);
     }
 
     private void track(Tab tab) {
@@ -183,12 +218,41 @@ public final class ArgonBackgroundPlaybackController {
             }
 
             @Override
+            public void primaryPageChanged(Page page) {
+                if (mTabs.get(tab) != state) return;
+                // BFCache/prerender activation can change the primary document
+                // without a normal page-load pair. Reapply its current rule.
+                state.documentReady = true;
+                state.override = null;
+                refresh();
+            }
+
+            @Override
+            public void mediaStartedPlaying(int id, boolean hasAudio, boolean hasVideo) {
+                if (mTabs.get(tab) != state || (!hasAudio && !hasVideo)) return;
+                // Native players can run without a controllable MediaSession.
+                state.players.add(id);
+                state.playing = true;
+                mHandler.post(mTick);
+            }
+
+            @Override
+            public void mediaStoppedPlaying(int id) {
+                if (mTabs.get(tab) != state) return;
+                state.players.remove(id);
+                state.playing = state.sessionPlaying || !state.players.isEmpty();
+                mHandler.post(mTick);
+            }
+
+            @Override
             public void webContentsDestroyed() {
                 if (mTabs.get(tab) == state) untrack(tab);
             }
         };
         observeMediaSession(state, MediaSession.fromWebContents(contents));
-        refresh();
+        // Initial registrations arrive in a batch. Enforce only after all tabs,
+        // including the foreground tab which can reset their shared budget, exist.
+        mHandler.post(mTick);
     }
 
     private void observeMediaSession(State state, @Nullable MediaSession session) {
@@ -198,21 +262,21 @@ public final class ArgonBackgroundPlaybackController {
             if (previous.getMediaSession() == session) return;
             previous.stopObserving();
         }
-        state.playing = false;
-        state.controllable = false;
+        state.sessionPlaying = false;
+        state.playing = !state.players.isEmpty();
         state.observer = new MediaSessionObserver(session) {
             @Override
             public void mediaSessionStateChanged(boolean controllable, boolean suspended) {
-                state.controllable = controllable;
-                state.playing = controllable && !suspended;
+                state.sessionPlaying = controllable && !suspended;
+                state.playing = state.sessionPlaying || !state.players.isEmpty();
                 // Also checks Play from the notification or headphones after a deadline.
                 mHandler.post(mTick);
             }
 
             @Override
             public void mediaSessionDestroyed() {
-                state.playing = false;
-                state.controllable = false;
+                state.sessionPlaying = false;
+                state.playing = !state.players.isEmpty();
                 mHandler.post(mTick);
             }
         };
@@ -228,17 +292,15 @@ public final class ArgonBackgroundPlaybackController {
     private boolean isForeground(Tab tab) {
         return mPower != null && mPower.isInteractive()
                 && (mKeyguard == null || !mKeyguard.isKeyguardLocked())
-                && mActivity.hasWindowFocus() && tab.isUserInteractable();
+                && mActivity.hasWindowFocus() && tab.isUserInteractable()
+                && !mObscuringHandler.isTabContentObscured() && !mScrimVisible.get();
     }
 
-    private void refresh() {
-        if (mDestroyed) return;
-        mHandler.removeCallbacks(mTick);
-        long now = SystemClock.elapsedRealtime();
-        boolean playing = false;
+    private void updateForegroundVisits() {
         for (State state : new ArrayList<>(mTabs.values())) {
             if (state.contents.isDestroyed() || state.tab.isDestroyed()) continue;
-            GURL url = state.tab.getUrl();
+            // A visible/pending address is not the document producing this media.
+            GURL url = state.contents.getLastCommittedUrl();
             String host = ArgonBackgroundPlaybackStore.hostFromUrl(url);
             boolean foreground = isForeground(state.tab);
             if (foreground && (!state.wasForeground || !state.host.equals(host))) {
@@ -246,14 +308,29 @@ public final class ArgonBackgroundPlaybackController {
             }
             state.wasForeground = foreground;
             state.host = host;
-            boolean allowed = mStore.policy.mayPlay(host, foreground, now, state.controllable);
+        }
+    }
+
+    private void refresh() {
+        if (mDestroyed) return;
+        mHandler.removeCallbacks(mTick);
+        // Budgets are process-wide. Collect real visits in every window before
+        // enforcing any tab, independent of map/receiver/registration order.
+        for (var controller : new ArrayList<>(sControllers.values())) {
+            controller.updateForegroundVisits();
+        }
+        long now = SystemClock.elapsedRealtime();
+        boolean playing = false;
+        for (State state : new ArrayList<>(mTabs.values())) {
+            if (state.contents.isDestroyed() || state.tab.isDestroyed()) continue;
+            String host = state.host;
+            boolean allowed = mStore.policy.mayPlay(host, state.wasForeground, now, state.playing);
             if (!allowed && state.playing) pause(state);
             boolean override = mStore.policy.isEnabled()
                     && mStore.policy.isSiteEnabled(host) && allowed;
-            if (state.documentReady && (state.override == null || state.override != override)) {
-                boolean needsScript = override || Boolean.TRUE.equals(state.override);
+            if ((state.documentReady || !override) && (state.override == null || state.override != override)) {
                 state.override = override;
-                if (needsScript && !mScript.isEmpty() && !host.isEmpty()) {
+                if (!mScript.isEmpty() && !host.isEmpty()) {
                     state.contents.evaluateJavaScript(
                             mScript.replace("ARGON_OVERRIDE_ACTIVE", Boolean.toString(override)), null);
                 }
@@ -265,8 +342,10 @@ public final class ArgonBackgroundPlaybackController {
     }
 
     private void pause(State state) {
-        if (state.contents.isDestroyed() || !state.controllable) return;
+        if (state.contents.isDestroyed() || !state.playing) return;
         state.playing = false;
+        state.sessionPlaying = false;
+        state.players.clear();
         // UI suspend can be intercepted (and ignored) by the site's pause handler.
         // This public Chromium API suspends the media players directly and preserves position.
         state.contents.suspendAllMediaPlayers();
@@ -293,5 +372,8 @@ public final class ArgonBackgroundPlaybackController {
         mContext.unregisterReceiver(mReceiver);
         mStore.preferences.unregisterOnSharedPreferenceChangeListener(mPreferences);
         ApplicationStatus.unregisterActivityStateListener(mActivityListener);
+        ApplicationStatus.unregisterWindowFocusChangedListener(mFocusListener);
+        mObscuringHandler.removeObserver(mObscuringObserver);
+        mScrimVisible.removeObserver(mScrimObserver);
     }
 }

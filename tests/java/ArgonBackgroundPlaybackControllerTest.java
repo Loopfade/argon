@@ -39,9 +39,10 @@ public final class ArgonBackgroundPlaybackControllerTest {
         WebContents contents = new WebContents();
         Tab tab = new Tab(contents);
         selector.tabs.add(tab);
-        ArgonBackgroundPlaybackController.attach(activity, selector);
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         check(contents.observers.size() == 1, "Startup must wait for one session-creation event");
+        Handler.runPending();
         check(Handler.pendingCount() == 0, "A tab without media must not start a polling timer");
 
         // First media can appear long after startup; no page navigation is required.
@@ -75,8 +76,9 @@ public final class ArgonBackgroundPlaybackControllerTest {
         contents.session = first;
         Tab tab = new Tab(contents);
         selector.tabs.add(tab);
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         check(first.observers.size() == 1, "Existing media must be observed immediately");
+        Handler.runPending();
 
         first.destroy();
         contents.session = null;
@@ -123,7 +125,8 @@ public final class ArgonBackgroundPlaybackControllerTest {
         closed.destroyed = true;
         Tab normal = new Tab(new WebContents());
         selector.tabs.addAll(List.of(incognito, frozen, new Tab(destroyed), closed, normal));
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
         check(incognito.contents.observers.isEmpty() && destroyed.observers.isEmpty()
                 && closed.contents.observers.isEmpty(), "Excluded tabs must not acquire observers");
         check(normal.contents.observers.size() == 1, "Normal tab was not registered");
@@ -142,6 +145,7 @@ public final class ArgonBackgroundPlaybackControllerTest {
         excludedAndClosedTabs();
         check(ContextUtils.context.receivers.isEmpty(), "Receiver leaked after controller destruction");
         check(ApplicationStatus.listeners.isEmpty(), "Activity listener leaked after destruction");
+        check(ApplicationStatus.focusListeners.isEmpty(), "Focus listener leaked after destruction");
         check(ArgonBackgroundPlaybackStore.get().preferences.listeners.isEmpty(),
                 "Preference listener leaked after destruction");
         System.out.println("PASS: production controller startup and media lifecycle");

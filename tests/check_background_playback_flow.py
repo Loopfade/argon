@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -216,6 +217,8 @@ public class SystemClock { public static long now;
         "android/app/Activity.java": '''package android.app;
 public class Activity extends android.content.Context {
   public boolean focused = true; public int backs;
+  public final org.chromium.chrome.browser.tab.TabObscuringHandler obscuring = new org.chromium.chrome.browser.tab.TabObscuringHandler();
+  public final org.chromium.base.supplier.NonNullObservableSupplier<Boolean> scrim = new org.chromium.base.supplier.NonNullObservableSupplier<>(false);
   public boolean hasWindowFocus() { return focused; }
   public Activity getOnBackPressedDispatcher() { return this; } public void onBackPressed() { backs++; }
 }''',
@@ -367,6 +370,7 @@ public class PreferenceDialogFragmentCompat {
     result["org/chromium/chrome/browser/tab/Tab.java"] = result[
         "org/chromium/chrome/browser/tab/Tab.java"].replace(
             "  public boolean incognito, destroyed;", "  public boolean incognito,destroyed,interactable=true;\n"
+            "  public int hash,group; public int hashCode() { return hash; }\n"
             "  public String url=\"https://video.example/\";").replace(
             "isUserInteractable() { return true; }", "isUserInteractable() { return interactable; }").replace(
             'new org.chromium.url.GURL("https://video.example/")', "new org.chromium.url.GURL(url)")
@@ -374,7 +378,7 @@ public class PreferenceDialogFragmentCompat {
         "org/chromium/content_public/browser/WebContents.java"].replace(
             "  public int pauses;", "  public int pauses; public final java.util.List<String> scripts=new java.util.ArrayList<>();").replace(
             "evaluateJavaScript(String script, Object callback) {}", "evaluateJavaScript(String script,Object callback) { scripts.add(script); }").replace(
-            "suspendAllMediaPlayers() { pauses++; }", "suspendAllMediaPlayers() { pauses++; session.suspended=true; }")
+            "suspendAllMediaPlayers() { pauses++; }", "suspendAllMediaPlayers() { pauses++; if(session!=null) session.suspended=true; }")
     preference = result["androidx/preference/Preference.java"]
     preference = preference.replace("public Preference(android.content.Context c) {}", """
   private int widget;
@@ -464,7 +468,7 @@ def main():
         compiler = ["javac"] if shutil.which("javac") else ["java", "-m", "jdk.compiler/com.sun.tools.javac.Main"]
         subprocess.run([*compiler, "-cp", str(deps["android-json.jar"]), "-d", directory, *map(str, sources)], check=True)
         subprocess.run(["java", "-cp", directory + ":" + str(deps["android-json.jar"]),
-                        "org.chromium.chrome.browser.media.ArgonBackgroundPlaybackFlowTest"], check=True)
+                        "org.chromium.chrome.browser.media.ArgonBackgroundPlaybackFlowTest", *sys.argv[1:]], check=True)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,8 @@ ADAPTERS = {
     "android/app/Activity.java": '''package android.app;
 public class Activity extends android.content.Context {
   public boolean focused = true;
+  public final org.chromium.chrome.browser.tab.TabObscuringHandler obscuring = new org.chromium.chrome.browser.tab.TabObscuringHandler();
+  public final org.chromium.base.supplier.NonNullObservableSupplier<Boolean> scrim = new org.chromium.base.supplier.NonNullObservableSupplier<>(false);
   public boolean hasWindowFocus() { return focused; }
 }''',
     "android/app/KeyguardManager.java": '''package android.app;
@@ -92,9 +94,29 @@ public class ContextUtils {
     "org/chromium/base/ApplicationStatus.java": '''package org.chromium.base;
 public class ApplicationStatus {
   public interface ActivityStateListener { void onActivityStateChange(android.app.Activity a, int state); }
+  public interface WindowFocusChangedListener { void onWindowFocusChanged(android.app.Activity a, boolean focused); }
   public static final java.util.List<ActivityStateListener> listeners = new java.util.ArrayList<>();
+  public static final java.util.List<WindowFocusChangedListener> focusListeners = new java.util.ArrayList<>();
   public static void registerStateListenerForActivity(ActivityStateListener l, android.app.Activity a) { listeners.add(l); }
   public static void unregisterActivityStateListener(ActivityStateListener l) { listeners.remove(l); }
+  public static void registerWindowFocusChangedListener(WindowFocusChangedListener l) { focusListeners.add(l); }
+  public static void unregisterWindowFocusChangedListener(WindowFocusChangedListener l) { focusListeners.remove(l); }
+}''',
+    "org/chromium/base/Callback.java": '''package org.chromium.base;
+public interface Callback<T> { void onResult(T result); }''',
+    "org/chromium/base/supplier/NonNullObservableSupplier.java": '''package org.chromium.base.supplier;
+public class NonNullObservableSupplier<T> {
+  private T value;
+  public final java.util.List<org.chromium.base.Callback<T>> observers=new java.util.ArrayList<>();
+  public NonNullObservableSupplier(T v) { value=v; }
+  public T get() { return value; }
+  public void set(T v) { value=v; for(var o:java.util.List.copyOf(observers)) o.onResult(v); }
+  public void addSyncObserverAndPostIfNonNull(org.chromium.base.Callback<T> o) {
+    observers.add(o); new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+      if(observers.contains(o)) o.onResult(value);
+    });
+  }
+  public void removeObserver(org.chromium.base.Callback<T> o) { observers.remove(o); }
 }''',
     "org/chromium/build/annotations/NullMarked.java": '''package org.chromium.build.annotations;
 public @interface NullMarked {}''',
@@ -114,7 +136,9 @@ public class GURL {
 public class Tab {
   public org.chromium.content_public.browser.WebContents contents;
   public boolean incognito, destroyed;
-  public Tab(org.chromium.content_public.browser.WebContents c) { contents = c; }
+  public Tab(org.chromium.content_public.browser.WebContents c) {
+    contents = c; if(c!=null) c.urlSupplier=this::getUrl;
+  }
   public boolean isOffTheRecord() { return incognito; }
   public boolean isDestroyed() { return destroyed; }
   public boolean isUserInteractable() { return true; }
@@ -125,6 +149,18 @@ public class Tab {
 public class TabModelSelector {
   public final java.util.List<org.chromium.chrome.browser.tab.Tab> tabs = new java.util.ArrayList<>();
   public TabModelSelectorTabObserver observer;
+}''',
+    "org/chromium/chrome/browser/tab/TabObscuringHandler.java": '''package org.chromium.chrome.browser.tab;
+public class TabObscuringHandler {
+  public interface Observer { void updateObscured(boolean content,boolean toolbar); }
+  public boolean obscured;
+  public final java.util.List<Observer> observers=new java.util.ArrayList<>();
+  public boolean isTabContentObscured() { return obscured; }
+  public void addObserver(Observer o) { observers.add(o); }
+  public void removeObserver(Observer o) { observers.remove(o); }
+  public void setObscured(boolean value) { obscured=value;
+    for(var o:java.util.List.copyOf(observers)) o.updateObscured(value,value);
+  }
 }''',
     "org/chromium/chrome/browser/tabmodel/TabModelSelectorTabObserver.java": '''package org.chromium.chrome.browser.tabmodel;
 import org.chromium.chrome.browser.tab.Tab;
@@ -139,6 +175,7 @@ public class TabModelSelectorTabObserver {
   public void onContentChanged(Tab tab) {}
   public void onPageLoadStarted(Tab tab, org.chromium.url.GURL url) {}
   public void onPageLoadFinished(Tab tab, org.chromium.url.GURL url) {}
+  public void onLoadStopped(Tab tab, boolean toDifferentDocument) {}
   public void onUrlUpdated(Tab tab) {}
   public void onInteractabilityChanged(Tab tab, boolean interactable) {}
   public void onDestroyed(Tab tab) {}
@@ -176,6 +213,9 @@ public abstract class MediaSessionObserver {
     "org/chromium/content_public/browser/WebContents.java": '''package org.chromium.content_public.browser;
 public class WebContents {
   public MediaSession session;
+  public org.chromium.url.GURL committedUrl;
+  public java.util.function.Supplier<org.chromium.url.GURL> urlSupplier = () -> new org.chromium.url.GURL("https://video.example/");
+  public org.chromium.url.GURL getLastCommittedUrl() { return committedUrl!=null ? committedUrl : urlSupplier.get(); }
   public boolean destroyed;
   public int pauses;
   public final java.util.List<WebContentsObserver> observers = new java.util.ArrayList<>();
@@ -202,8 +242,13 @@ public class WebContentsObserver {
     if (contents != null) contents.observers.add(this);
   }
   public void mediaSessionCreated(MediaSession session) {}
+  public void primaryPageChanged(Page page) {}
+  public void mediaStartedPlaying(int id, boolean hasAudio, boolean hasVideo) {}
+  public void mediaStoppedPlaying(int id) {}
   public void webContentsDestroyed() {}
 }''',
+    "org/chromium/content_public/browser/Page.java": '''package org.chromium.content_public.browser;
+public class Page {}''',
     PACKAGE + "ArgonBackgroundPlaybackStore.java": '''package org.chromium.chrome.browser.media;
 public class ArgonBackgroundPlaybackStore {
   private static final ArgonBackgroundPlaybackStore instance = new ArgonBackgroundPlaybackStore();

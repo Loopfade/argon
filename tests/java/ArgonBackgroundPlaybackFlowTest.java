@@ -18,12 +18,15 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.SeekBarPreference;
 
 import org.chromium.base.ContextUtils;
+import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
 import org.chromium.chrome.PlaybackTestResources;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.content_public.browser.MediaSession;
+import org.chromium.content_public.browser.Page;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.url.GURL;
 import org.json.JSONArray;
 
 import java.util.ArrayList;
@@ -395,6 +398,373 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Handler.runPending();
     }
 
+    private static void focus(Activity activity, boolean value) {
+        activity.focused = value;
+        for (var listener : List.copyOf(ApplicationStatus.focusListeners)) {
+            listener.onWindowFocusChanged(activity, value);
+        }
+        Handler.runPending();
+    }
+
+    private static void foregroundBeforeEnforcement() throws Exception {
+        for (boolean foregroundFirst : new boolean[] {false, true}) {
+            fresh(true);
+            add("order.test", 1);
+            Activity activity = new Activity();
+            activity.focused = false;
+            TabModelSelector selector = new TabModelSelector();
+            Tab background = playing(selector, "https://order.test/");
+            Tab selected = playing(selector, "https://www.order.test/");
+            background.hash = foregroundFirst ? 1 : 0;
+            selected.hash = foregroundFirst ? 0 : 1;
+            ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+            Handler.runPending();
+            SystemClock.now = 60_000;
+            activity.focused = true;
+            selected.interactable = true;
+            selector.observer.onInteractabilityChanged(selected, true);
+            Handler.runPending();
+            check(background.contents.pauses == 0 && selected.contents.pauses == 0,
+                    "A real foreground visit must reset the shared budget before any tab is stopped, in either map order");
+            ArgonBackgroundPlaybackController.detach(activity);
+        }
+        var store = fresh(true);
+        add("startup.test", 1);
+        store.policy.mayPlay("startup.test", false, 0, true);
+        SystemClock.now = 60_000;
+        Activity activity = new Activity();
+        TabModelSelector selector = new TabModelSelector();
+        Tab background = playing(selector, "https://startup.test/");
+        Tab selected = playing(selector, "https://startup.test/");
+        selected.interactable = true;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        check(background.contents.pauses == 0, "Initial registration must collect the selected tab before enforcing expired shared budgets");
+        ArgonBackgroundPlaybackController.detach(activity);
+
+        fresh(true);
+        add("windows.test", 1);
+        Activity first = new Activity(), second = new Activity();
+        first.focused = second.focused = false;
+        TabModelSelector firstSelector = new TabModelSelector(), secondSelector = new TabModelSelector();
+        background = playing(firstSelector, "https://windows.test/");
+        selected = playing(secondSelector, "https://windows.test/");
+        ArgonBackgroundPlaybackController.attach(first, firstSelector, first.obscuring, first.scrim);
+        ArgonBackgroundPlaybackController.attach(second, secondSelector, second.obscuring, second.scrim);
+        Handler.runPending();
+        SystemClock.now = 60_000;
+        second.focused = true;
+        selected.interactable = true;
+        screenEvent();
+        check(background.contents.pauses == 0 && selected.contents.pauses == 0,
+                "Foreground visits in another window must also be processed before enforcing the shared budget");
+        ArgonBackgroundPlaybackController.detach(first);
+        ArgonBackgroundPlaybackController.detach(second);
+    }
+
+    private static void focusWithoutActivityTransition() throws Exception {
+        fresh(true);
+        add("focus.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        Tab tab = playing(selector, "https://focus.test/");
+        tab.interactable = true;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        SystemClock.now = 60_000;
+        Handler.runPending();
+        check(tab.contents.pauses == 1, "The initial budget must expire before the focus-only visit");
+        SystemClock.now = 61_000;
+        focus(activity, true);
+        check(tab.contents.pauses == 1, "A foreground visit must not start playback automatically");
+        focus(activity, false);
+        play(tab);
+        check(tab.contents.pauses == 1, "A focus-only site visit must renew the budget even with no media polling or Activity transition");
+        SystemClock.now = 121_000;
+        Handler.runPending();
+        check(tab.contents.pauses == 2, "The renewed focus-only budget must still expire");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void nativePlayersWithoutControllableSession() throws Exception {
+        fresh(true);
+        add("player.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        Tab allowed = new Tab(new WebContents()), denied = new Tab(new WebContents());
+        allowed.url = "https://player.test/";
+        denied.url = "https://unlisted.test/";
+        selector.tabs.addAll(List.of(allowed, denied));
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        for (var observer : List.copyOf(denied.contents.observers)) observer.mediaStartedPlaying(7, true, false);
+        Handler.runPending();
+        check(denied.contents.pauses == 1, "An unlisted native player must be stopped even before a controllable media session exists");
+        for (var observer : List.copyOf(allowed.contents.observers)) observer.mediaStartedPlaying(1, true, true);
+        Handler.runPending();
+        for (var observer : List.copyOf(allowed.contents.observers)) observer.mediaStartedPlaying(2, true, false);
+        for (var observer : List.copyOf(allowed.contents.observers)) observer.mediaStoppedPlaying(1);
+        Handler.runPending();
+        SystemClock.now = 60_000;
+        Handler.runPending();
+        check(allowed.contents.pauses == 1, "A second native player must retain deadline enforcement after the first player stops");
+        for (var observer : List.copyOf(allowed.contents.observers)) observer.mediaStartedPlaying(2, true, false);
+        Handler.runPending();
+        check(allowed.contents.pauses == 2, "Restarting a native player must not bypass an expired budget");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void pausedBeforeBackground() throws Exception {
+        fresh(true);
+        add("paused.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        Tab tab = playing(selector, "https://paused.test/");
+        tab.contents.session.suspended = true;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        SystemClock.now = 120_000;
+        play(tab);
+        check(tab.contents.pauses == 0, "A paused session must not consume the budget before its first background playback");
+        SystemClock.now = 180_000;
+        Handler.runPending();
+        check(tab.contents.pauses == 1, "Once started, background playback must use its full selected budget");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void stoppedNavigation() throws Exception {
+        fresh(true);
+        add("navigation.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        Tab tab = playing(selector, "https://navigation.test/");
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        selector.observer.onPageLoadStarted(tab, tab.getUrl());
+        row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(false);
+        selector.observer.onLoadStopped(tab, true);
+        check(tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](false)"),
+                "Stopping or cancelling navigation must not leave the previous document's visibility override enabled");
+        row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(true);
+        check(tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](true)"),
+                "Rules must become applicable again after a cancelled load, without requiring another successful navigation");
+        int scripts = tab.contents.scripts.size();
+        selector.observer.onPageLoadStarted(tab, tab.getUrl());
+        selector.observer.onPageLoadFinished(tab, tab.getUrl());
+        check(tab.contents.scripts.size() == scripts + 1,
+                "A successful same-host reload must apply the shim to its new document");
+        selector.observer.onPageLoadStarted(tab, tab.getUrl());
+        tab.url = "https://unlisted.test/";
+        selector.observer.onUrlUpdated(tab);
+        check(tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](false)"),
+                "Navigating to an unlisted host must revoke the old document's override while loading");
+        play(tab);
+        check(tab.contents.pauses == 2, "An unlisted destination must not inherit the previous domain's permission");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void selectPage(TabModelSelector selector, Tab selected) {
+        // TabImpl's interactability is false for a hidden/detached/frozen tab.
+        // A group card or tab overview shows no interactable page at all.
+        for (Tab tab : selector.tabs) {
+            if (tab.interactable) {
+                tab.interactable = false;
+                selector.observer.onInteractabilityChanged(tab, false);
+            }
+        }
+        if (selected != null) {
+            selected.interactable = true;
+            selector.observer.onInteractabilityChanged(selected, true);
+        }
+        Handler.runPending();
+    }
+
+    private static void screenOffTabGroups() throws Exception {
+        fresh(true);
+        add("group.test", 1);
+        add("private.group.test", 1);
+        var exception = open("private.group.test");
+        row(exception.getPreferenceScreen(), R.string.argon_background_allow_site).change(false);
+        save(exception);
+        add("independent.test", 2);
+        Activity activity = new Activity();
+        TabModelSelector selector = new TabModelSelector();
+        Tab main = playing(selector, "https://group.test/watch");
+        Tab sibling = playing(selector, "https://video.group.test/watch");
+        Tab blocked = playing(selector, "https://private.group.test/watch");
+        Tab independent = playing(selector, "https://independent.test/watch");
+        main.group = sibling.group = blocked.group = independent.group = 1;
+        ContextUtils.context.power.interactive = false;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        check(blocked.contents.pauses == 1 && independent.contents.pauses == 0,
+                "Membership in an allowed tab's group must not override another domain's permission");
+        SystemClock.now = 10_000;
+        sibling.group = 2;
+        java.util.Collections.reverse(selector.tabs);
+        screenEvent();
+        SystemClock.now = 15_000;
+        sibling.url = "https://other.group.test/next";
+        selector.observer.onUrlUpdated(sibling);
+        SystemClock.now = 20_000;
+        sibling.url = "https://private.group.test/";
+        selector.observer.onUrlUpdated(sibling);
+        check(sibling.contents.pauses == 1, "Background navigation inside a group must apply the destination's disabled exception");
+        SystemClock.now = 21_000;
+        sibling.url = "https://video.group.test/again";
+        selector.observer.onUrlUpdated(sibling);
+        play(sibling);
+        SystemClock.now = 60_000;
+        Handler.runPending();
+        check(main.contents.pauses == 1 && sibling.contents.pauses == 2 && independent.contents.pauses == 0,
+                "Moving/reordering grouped tabs and navigating within a rule must retain its shared deadline and independent site budgets");
+        SystemClock.now = 61_000;
+        ContextUtils.context.power.interactive = true;
+        ContextUtils.context.keyguard.locked = true;
+        selectPage(selector, main);
+        screenEvent();
+        play(main);
+        check(main.contents.pauses == 2, "Selecting a grouped tab while locked must not reset a budget");
+        SystemClock.now = 62_000;
+        ContextUtils.context.keyguard.locked = false;
+        selectPage(selector, null);
+        focus(activity, true);
+        play(main);
+        check(main.contents.pauses == 3, "Opening the group overview must not count as visiting its hidden sites");
+        SystemClock.now = 63_000;
+        selectPage(selector, blocked);
+        play(main);
+        check(main.contents.pauses == 4, "Visiting a disabled specific exception must not reset its broader parent rule");
+        play(blocked);
+        check(blocked.contents.pauses == 1, "An explicitly selected foreground page must retain ordinary foreground playback");
+        SystemClock.now = 64_000;
+        ContextUtils.context.power.interactive = false;
+        screenEvent();
+        check(blocked.contents.pauses == 2, "Screen-off must immediately reapply the selected tab's disabled exception");
+        SystemClock.now = 65_000;
+        ContextUtils.context.power.interactive = true;
+        selectPage(selector, main);
+        check(main.contents.pauses == 4 && sibling.contents.pauses == 2,
+                "Visiting an allowed group page must not automatically start its paused siblings");
+        ContextUtils.context.power.interactive = false;
+        screenEvent();
+        play(main);
+        play(sibling);
+        sibling.group = main.group;
+        SystemClock.now = 120_000;
+        Handler.runPending();
+        check(main.contents.pauses == 4 && sibling.contents.pauses == 2 && independent.contents.pauses == 1,
+                "Returning to one group's site must leave the other site's original timer unchanged");
+        SystemClock.now = 125_000;
+        Handler.runPending();
+        check(main.contents.pauses == 5 && sibling.contents.pauses == 3,
+                "A real visit must renew the shared rule once across groups and enforce its new screen-off deadline");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void pendingNavigationIsNotAVisit() throws Exception {
+        var store = fresh(true);
+        add("committed.test", 1);
+        store.policy.mayPlay("committed.test", false, 0, true);
+        SystemClock.now = 60_000;
+        Activity activity = new Activity();
+        TabModelSelector selector = new TabModelSelector();
+        Tab tab = playing(selector, "https://unlisted.test/current");
+        tab.interactable = true;
+        tab.contents.committedUrl = new GURL(tab.url);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        tab.url = "https://committed.test/pending";
+        selector.observer.onUrlUpdated(tab);
+        ContextUtils.context.power.interactive = false;
+        screenEvent();
+        check(tab.contents.pauses == 1, "A pending allowed URL must not grant permission to the currently playing unlisted document");
+        tab.contents.committedUrl = new GURL(tab.url);
+        selector.observer.onUrlUpdated(tab);
+        play(tab);
+        check(tab.contents.pauses == 2, "A pending navigation must not renew an expired destination budget before the page commits");
+        ContextUtils.context.power.interactive = true;
+        screenEvent();
+        ContextUtils.context.power.interactive = false;
+        screenEvent();
+        play(tab);
+        check(tab.contents.pauses == 2, "An actual committed foreground visit must renew the destination budget");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void obscuredGroupPageIsNotAVisit() throws Exception {
+        fresh(true);
+        add("obscured.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        Tab tab = playing(selector, "https://obscured.test/");
+        tab.interactable = true;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        SystemClock.now = 60_000;
+        Handler.runPending();
+        check(tab.contents.pauses == 1, "The original group budget must expire before the obscured visit");
+        activity.obscuring.setObscured(true);
+        focus(activity, true);
+        focus(activity, false);
+        play(tab);
+        check(tab.contents.pauses == 2,
+                "A group dialog overlay must not renew its underlying page's budget even when TabImpl remains interactable");
+        focus(activity, true);
+        activity.obscuring.setObscured(false);
+        focus(activity, false);
+        play(tab);
+        check(tab.contents.pauses == 2, "Dismissing the group dialog onto an actual visible site must renew its budget");
+        SystemClock.now = 120_000;
+        Handler.runPending();
+        check(tab.contents.pauses == 3, "The renewed overlay budget must still expire");
+        // The actual group dialog uses RootUiCoordinator's ScrimManager,
+        // independently of the tab-obscuring token used by other overlays.
+        activity.scrim.set(true);
+        focus(activity, true);
+        focus(activity, false);
+        play(tab);
+        check(tab.contents.pauses == 4, "The group dialog scrim must also prevent a false foreground visit");
+        focus(activity, true);
+        activity.scrim.set(false);
+        focus(activity, false);
+        play(tab);
+        check(tab.contents.pauses == 4, "Dismissing the last group scrim must restore real foreground visit handling");
+        ArgonBackgroundPlaybackController.detach(activity);
+        check(activity.obscuring.observers.isEmpty() && activity.scrim.observers.isEmpty(),
+                "The group visibility observers must be released with their window");
+    }
+
+    private static void restoredDocumentReceivesCurrentRules() throws Exception {
+        fresh(true);
+        add("cached.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        Tab tab = playing(selector, "https://cached.test/");
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        tab.url = "https://unlisted.test/";
+        selector.observer.onUrlUpdated(tab);
+        row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(false);
+        int scripts = tab.contents.scripts.size();
+        tab.url = "https://cached.test/";
+        selector.observer.onUrlUpdated(tab);
+        // BFCache restores and prerender activations replace the primary page
+        // without requiring onPageLoadStarted/onPageLoadFinished.
+        for (var observer : List.copyOf(tab.contents.observers)) observer.primaryPageChanged(new Page());
+        Handler.runPending();
+        check(tab.contents.scripts.size() > scripts
+                && tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](false)"),
+                "A restored cached document must receive current disabled rules instead of retaining its old enabled visibility shim");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
     private static void liveApplication() throws Exception {
         var store = fresh(false);
         add("video.example", 1);
@@ -413,7 +783,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Tab http = playing(selector, "http://video.example/");
         Tab privateTab = playing(selector, "https://video.example/");
         privateTab.incognito = true;
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         check(main.contents.pauses == 0 && denied.contents.pauses == 0, "Disabled mode must retain normal browser behavior");
         SystemClock.now = 1_000;
@@ -459,7 +829,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(main.contents.scripts.get(main.contents.scripts.size() - 1).contains("window[slot](false)"), "Disabling a rule must reverse its visibility override");
         int pauses = main.contents.pauses;
         row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(false);
-        check(main.contents.pauses == pauses + 1, "Turning the mode off must pause its background session once");
+        check(main.contents.pauses == pauses, "Turning the mode off must leave an already suspended player stopped");
         pauses = main.contents.pauses;
         play(main);
         check(main.contents.pauses == pauses, "Disabled mode must stop intercepting future Play actions");
@@ -473,7 +843,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
         Tab tab = playing(selector, "https://budget.example/");
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         SystemClock.now = 30_000;
         Preference quickRule = site(settings().getPreferenceScreen(), "budget.example");
@@ -509,7 +879,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
         Tab tab = playing(selector, "https://video.example./");
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         check(tab.contents.pauses == 0, "An HTTPS URL with a DNS root dot must match the saved canonical rule");
         ArgonBackgroundPlaybackController.detach(activity);
@@ -523,10 +893,10 @@ public final class ArgonBackgroundPlaybackFlowTest {
         TabModelSelector firstSelector = new TabModelSelector(), secondSelector = new TabModelSelector();
         Tab first = playing(firstSelector, "https://windows.example/");
         Tab second = playing(secondSelector, "https://www.windows.example/");
-        ArgonBackgroundPlaybackController.attach(firstActivity, firstSelector);
+        ArgonBackgroundPlaybackController.attach(firstActivity, firstSelector, firstActivity.obscuring, firstActivity.scrim);
         Handler.runPending();
         SystemClock.now = 20_000;
-        ArgonBackgroundPlaybackController.attach(secondActivity, secondSelector);
+        ArgonBackgroundPlaybackController.attach(secondActivity, secondSelector, secondActivity.obscuring, secondActivity.scrim);
         Handler.runPending();
         var editor = open("windows.example");
         row(editor.getPreferenceScreen(), R.string.argon_background_delete).click();
@@ -556,7 +926,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
         Tab tab = playing(selector, "https://video.overlap.test/");
-        ArgonBackgroundPlaybackController.attach(activity, selector);
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         SystemClock.now = 60_000;
         Handler.runPending();
@@ -586,6 +956,21 @@ public final class ArgonBackgroundPlaybackFlowTest {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length > 0) {
+            switch (args[0]) {
+                case "order": foregroundBeforeEnforcement(); break;
+                case "focus": focusWithoutActivityTransition(); break;
+                case "players": nativePlayersWithoutControllableSession(); break;
+                case "paused": pausedBeforeBackground(); break;
+                case "navigation": stoppedNavigation(); break;
+                case "groups": screenOffTabGroups(); break;
+                case "pending": pendingNavigationIsNotAVisit(); break;
+                case "occlusion": obscuredGroupPageIsNotAVisit(); break;
+                case "cache": restoredDocumentReceivesCurrentRules(); break;
+                default: throw new AssertionError("Unknown regression: " + args[0]);
+            }
+            return;
+        }
         try {
             new androidx.preference.SeekBarPreference(new android.content.Context()).bind();
             throw new AssertionError("The generic theme fixture must reproduce the missing seekbar value");
@@ -617,10 +1002,21 @@ public final class ArgonBackgroundPlaybackFlowTest {
         editLiveBudget();
         multipleWindowsAndDeletion();
         liveOverlapReassignment();
-        System.out.println("PASS: saved rules reach live media sessions, exact deadlines, screen locks, rule edits and master switches");
+        foregroundBeforeEnforcement();
+        focusWithoutActivityTransition();
+        nativePlayersWithoutControllableSession();
+        pausedBeforeBackground();
+        stoppedNavigation();
+        pendingNavigationIsNotAVisit();
+        obscuredGroupPageIsNotAVisit();
+        restoredDocumentReceivesCurrentRules();
+        System.out.println("PASS: saved rules reach live media sessions, native players, exact deadlines, focus changes, navigation and master switches");
+        screenOffTabGroups();
+        System.out.println("PASS: screen-off grouped tabs keep domain permissions, shared/independent budgets and genuine foreground resets across windows");
         canonicalDomain();
         System.out.println("PASS: canonical domains match between input, persistent rules and page URLs");
         check(Handler.pendingCount() == 0 && ContextUtils.context.receivers.isEmpty()
-                && ContextUtils.context.preferences.listeners.isEmpty(), "Flow checks left active controller work");
+                && ContextUtils.context.preferences.listeners.isEmpty() && ApplicationStatus.focusListeners.isEmpty(),
+                "Flow checks left active controller work");
     }
 }

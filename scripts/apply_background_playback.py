@@ -61,9 +61,15 @@ def replace_once(text, anchor, replacement):
 
 
 def patch_activity(text):
+    old = f"{PACKAGE}.attach(this, assertNonNull(mTabModelSelector));"
+    new = (f"{PACKAGE}.attach(this, assertNonNull(mTabModelSelector),\n"
+           "                    mRootUiCoordinator.getTabObscuringHandler(),\n"
+           "                    mRootUiCoordinator.getScrimManager().getScrimVisibilitySupplier());")
+    if old in text:
+        text = replace_once(text, old, new)
     text = replace_once(text, "            super.finishNativeInitialization();",
         "            super.finishNativeInitialization();\n"
-        f"            {PACKAGE}.attach(this, assertNonNull(mTabModelSelector));")
+        f"            {new}")
     return replace_once(text, "    public void onDestroyInternal() {",
         f"    public void onDestroyInternal() {{\n        {PACKAGE}.detach(this);")
 

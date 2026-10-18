@@ -3,6 +3,8 @@
 // Compatibility only. Permissions and elapsed-time budgets remain in browser code.
 (() => {
   const slot = '__argonBackgroundPlaybackVisibility';
+  // New/unlisted documents need no hooks; restored documents may already have them.
+  if (!ARGON_OVERRIDE_ACTIVE && !Object.hasOwn(window, slot)) return;
   if (!Object.hasOwn(window, slot)) {
     let enabled = false;
     const values = new Map([['hidden', false], ['visibilityState', 'visible']]);
