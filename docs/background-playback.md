@@ -68,6 +68,8 @@ AndroidX row binding contract, matching Russian/English resource keys and
 placeholders, and the pinned-source integration with repeated overlay
 application. The editor check covers adding, editing, restoring and saving a
 site with Chromium's theme lacking `seekBarPreferenceStyle`; its time-limit
-row explicitly uses AndroidX's Material seekbar layout. These checks do not
+row explicitly uses AndroidX's Material seekbar layout through Chromium's merged
+`org.chromium.chrome.R`. The host compile check exposes this resource namespace
+without an artificial `androidx.preference.R`. These checks do not
 replace an Android build or on-device testing
 of screen locks, Bluetooth/wired headsets, media notifications and process death.

@@ -214,7 +214,8 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             SeekBarPreference limit = new SeekBarPreference(requireContext());
             // Chromium's PreferenceTheme does not define seekBarPreferenceStyle.
             // The generic row lacks seekbar_value and crashes during AndroidX binding.
-            limit.setLayoutResource(androidx.preference.R.layout.preference_widget_seekbar_material);
+            // chrome_java exposes dependency resources through org.chromium.chrome.R.
+            limit.setLayoutResource(R.layout.preference_widget_seekbar_material);
             limit.setPersistent(false);
             limit.setTitle(R.string.argon_background_time_limit);
             limit.setSummary(R.string.argon_background_time_description);
