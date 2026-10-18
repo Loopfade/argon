@@ -7,7 +7,7 @@ on:
       - '.github/workflows/update-dashboard.yml'
       - '.github/ci/update-dashboard.py'
   workflow_run:
-    workflows: [Build Argon]
+    workflows: [Build Argon, 'Build Argon (full pipeline)']
     types: [completed]
   workflow_dispatch:
 

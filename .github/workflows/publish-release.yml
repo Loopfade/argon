@@ -174,11 +174,17 @@ jobs:
           run_json=$(gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN_ID")
           run_repo=$(jq -er '.repository.full_name' <<<"$run_json")
           run_name=$(jq -er '.name' <<<"$run_json")
+          run_path=$(jq -r '.path // empty' <<<"$run_json")
           run_event=$(jq -er '.event' <<<"$run_json")
           run_head_branch=$(jq -er '.head_branch' <<<"$run_json")
           run_head_sha=$(jq -er '.head_sha' <<<"$run_json")
 
-          [[ "$run_repo" == "$GH_REPO" && "$run_name" == "Build Argon" &&
+          [[ "$run_name" == "Build Argon" ||
+             ( "$run_name" == 'Build Argon (full pipeline)' && "$run_path" == .github/workflows/build-all.yml ) ]] || {
+            echo "Publication requires a trusted Build Argon workflow."
+            exit 1
+          }
+          [[ "$run_repo" == "$GH_REPO" &&
              "$run_head_branch" == main && "$run_head_sha" == "$source_sha" ]] || {
             echo "Publication source does not match this trusted main Build Argon run." >&2
             exit 1
