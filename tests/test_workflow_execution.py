@@ -58,11 +58,13 @@ elif args[0] == "api":
     elif "/actions/runs/42/artifacts" in url:
         print('[{"artifacts":[]}]')
     elif "/actions/runs/42" in url:
-        print(json.dumps({"id":42, "name":os.environ.get("FIXTURE_RUN_NAME", "Build Argon"),
-                          "path":os.environ.get("FIXTURE_RUN_PATH", ".github/workflows/build.yml"), "event":"workflow_dispatch",
+        print(json.dumps({"id":42, "name":os.environ.get("FIXTURE_RUN_NAME", "Full Argon build (release)"),
+                          "path":os.environ.get("FIXTURE_RUN_PATH", ".github/workflows/build-all.yml"),
+                          "event":os.environ.get("FIXTURE_RUN_EVENT", "workflow_dispatch"),
                           "status":"completed", "conclusion":"success",
-                          "head_sha":"a"*40, "head_branch":"main",
-                          "repository":{"full_name":os.environ["GH_REPO"]}}))
+                          "head_sha":os.environ.get("FIXTURE_RUN_SHA", "a"*40),
+                          "head_branch":os.environ.get("FIXTURE_RUN_BRANCH", "main"),
+                          "repository":{"full_name":os.environ.get("FIXTURE_RUN_REPOSITORY", os.environ["GH_REPO"])}}))
     elif "/contents/dashboard-data.json" in url:
         print('{"sha":"existing-snapshot-sha"}')
     else:
@@ -175,15 +177,38 @@ class WorkflowExecutionTests(unittest.TestCase):
 
     def test_full_pipeline_can_publish_only_from_its_trusted_workflow_path(self):
         self.prepare_provenance()
-        self.env.update(FIXTURE_RUN_NAME="Build Argon (full pipeline)",
-                        FIXTURE_RUN_PATH=".github/workflows/build-all.yml")
-        accepted = self.select_revision()
-        self.assertEqual(accepted.returncode, 0, accepted.stderr)
-        self.env["FIXTURE_RUN_PATH"] = ".github/workflows/untrusted.yml"
-        shutil.rmtree(self.root / "public-assets")
-        rejected = self.select_revision()
-        self.assertNotEqual(rejected.returncode, 0)
-        self.assertIn("trusted Build Argon workflow", rejected.stdout)
+        for title, path, trusted in (
+            ("Full Argon build (release)", ".github/workflows/build-all.yml", True),
+            ("Renamed build run", ".github/workflows/build-all.yml", True),
+            ("Build Argon", ".github/workflows/untrusted.yml", False),
+            ("Build Argon (full pipeline)", ".github/workflows/untrusted.yml", False),
+            ("Full Argon build (release)", ".github/workflows/build.yml", False),
+            ("Full Argon build (release)", "", False),
+        ):
+            with self.subTest(title=title, path=path):
+                self.env.update(FIXTURE_RUN_NAME=title, FIXTURE_RUN_PATH=path)
+                shutil.rmtree(self.root / "public-assets", ignore_errors=True)
+                result = self.select_revision()
+                if trusted:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("trusted Build Argon workflow", result.stdout)
+        self.assertFalse(any(call[0] == "release" for call in self.calls()))
+
+    def test_trusted_path_still_requires_the_matching_repository_main_sha_and_manual_event(self):
+        self.prepare_provenance()
+        original_env = dict(self.env)
+        for name, value in (("FIXTURE_RUN_REPOSITORY", "foreign/argon"),
+                            ("FIXTURE_RUN_BRANCH", "topic"),
+                            ("FIXTURE_RUN_SHA", "b" * 40),
+                            ("FIXTURE_RUN_EVENT", "pull_request")):
+            with self.subTest(field=name):
+                self.env = {**original_env, name: value}
+                shutil.rmtree(self.root / "public-assets", ignore_errors=True)
+                result = self.select_revision()
+                self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any(call[0] == "release" for call in self.calls()))
 
     def test_revision_selection_includes_later_inventory_pages(self):
         self.prepare_provenance()

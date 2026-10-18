@@ -96,9 +96,9 @@ def build_snapshot(repository, event, trigger):
             continue
         path = f"repos/{repository}/actions/runs/{run_id}"
         raw_run = api(path)
-        trusted_build = (raw_run.get("name") == "Build Argon" or (
-            raw_run.get("name") == "Build Argon (full pipeline)"
-            and raw_run.get("path") == ".github/workflows/build-all.yml"))
+        # Keep historical published builds while allowing run-name to vary.
+        trusted_build = raw_run.get("path") in (
+            ".github/workflows/build.yml", ".github/workflows/build-all.yml")
         if (not trusted_build or raw_run.get("event") != "workflow_dispatch"
                 or raw_run.get("conclusion") != "success"):
             continue

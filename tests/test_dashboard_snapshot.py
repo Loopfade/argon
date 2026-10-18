@@ -22,6 +22,7 @@ class DashboardSnapshotTests(unittest.TestCase):
         release = {"draft": False, "published_at": "2026-10-05T13:01:00Z",
                    "body": "Build Argon run #42", "target_commitish": "a" * 40, "assets": []}
         run = {"id": 42, "name": "Build Argon", "event": "workflow_dispatch", "conclusion": "success",
+               "path": ".github/workflows/build.yml",
                "head_sha": "a" * 40, "run_attempt": 2, "run_started_at": "2026-10-05T10:00:00Z"}
         responses = {
             "repos/fixture/argon/releases?per_page=20": [release],
@@ -57,6 +58,24 @@ class DashboardSnapshotTests(unittest.TestCase):
         with patch.object(dashboard, "api", return_value=self.fixture()["repos/fixture/argon/releases?per_page=20"]) as api:
             self.assertIsNone(dashboard.build_snapshot("fixture/argon", "workflow_run", "99"))
         self.assertEqual(api.call_count, 1)
+
+    def test_full_pipeline_snapshot_uses_workflow_path_independently_of_run_title(self):
+        for title in ("Full Argon build (release)", "Renamed build run"):
+            with self.subTest(title=title):
+                responses = self.fixture()
+                responses["repos/fixture/argon/actions/runs/42"].update(
+                    name=title, path=".github/workflows/build-all.yml")
+                with patch.object(dashboard, "api", side_effect=lambda path, **kw: responses[path]):
+                    snapshot = dashboard.build_snapshot("fixture/argon", "workflow_run", "42")
+                self.assertEqual(snapshot["latest"]["id"], 42)
+
+    def test_matching_run_title_cannot_select_an_untrusted_workflow(self):
+        responses = self.fixture()
+        responses["repos/fixture/argon/actions/runs/42"]["path"] = ".github/workflows/untrusted.yml"
+        with patch.object(dashboard, "api", side_effect=lambda path, **kw: responses[path]) as api:
+            snapshot = dashboard.build_snapshot("fixture/argon", "workflow_run", "42")
+        self.assertIsNone(snapshot)
+        self.assertEqual(api.call_count, 2)
 
     def test_timestamp_only_change_never_commits_or_dispatches(self):
         snapshot = {"generated_at": "now", "builds": [{"run": {"id": 42}}]}
