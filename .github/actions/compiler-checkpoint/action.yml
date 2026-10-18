@@ -1,0 +1,33 @@
+name: Save compiler progress without stopping Ninja
+description: Wait up to one hour, then save a consistent snapshot of the live compiler cache
+inputs:
+  number:
+    description: Checkpoint number within this attempt
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Stream continuous build progress
+      id: progress
+      shell: bash
+      run: python3 .github/ci/continuous-build.py wait --minutes 60
+    - name: Snapshot compiler cache while Ninja continues
+      if: steps.progress.outputs.done != 'true'
+      shell: bash
+      run: python3 .github/ci/continuous-build.py snapshot --source "$CCACHE_LIVE_DIR" --destination "$CCACHE_DIR"
+    - name: Preserve compiler progress
+      id: save
+      if: steps.progress.outputs.done != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/ccache
+        key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-continuous-${{ inputs.number }}
+    - name: Remove superseded snapshots only after confirmed upload
+      if: steps.save.outcome == 'success'
+      continue-on-error: true
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        CURRENT_CACHE_KEY: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-continuous-${{ inputs.number }}
+      run: python3 .github/ci/prune-compiler-cache.py "$CURRENT_CACHE_KEY"

@@ -58,7 +58,8 @@ elif args[0] == "api":
     elif "/actions/runs/42/artifacts" in url:
         print('[{"artifacts":[]}]')
     elif "/actions/runs/42" in url:
-        print(json.dumps({"id":42, "name":"Build Argon", "event":"workflow_dispatch",
+        print(json.dumps({"id":42, "name":os.environ.get("FIXTURE_RUN_NAME", "Build Argon"),
+                          "path":os.environ.get("FIXTURE_RUN_PATH", ".github/workflows/build.yml"), "event":"workflow_dispatch",
                           "status":"completed", "conclusion":"success",
                           "head_sha":"a"*40, "head_branch":"main",
                           "repository":{"full_name":os.environ["GH_REPO"]}}))
@@ -171,6 +172,18 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"tag=v{VERSION}-1\n", (self.root / "output").read_text())
         self.assertFalse(any(call[0] == "release" for call in self.calls()))
+
+    def test_full_pipeline_can_publish_only_from_its_trusted_workflow_path(self):
+        self.prepare_provenance()
+        self.env.update(FIXTURE_RUN_NAME="Build Argon (full pipeline)",
+                        FIXTURE_RUN_PATH=".github/workflows/build-all.yml")
+        accepted = self.select_revision()
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        self.env["FIXTURE_RUN_PATH"] = ".github/workflows/untrusted.yml"
+        shutil.rmtree(self.root / "public-assets")
+        rejected = self.select_revision()
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn("trusted Build Argon workflow", rejected.stdout)
 
     def test_revision_selection_includes_later_inventory_pages(self):
         self.prepare_provenance()

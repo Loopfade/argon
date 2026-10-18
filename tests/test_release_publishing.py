@@ -220,7 +220,7 @@ class ReleasePublishingTests(unittest.TestCase):
         build_workflow = (ROOT / ".github/workflows/build.yml").read_text()
         trigger = build_workflow.split("\npermissions:", 1)[0]
         self.assertIn("workflow_dispatch:", trigger)
-        self.assertIn("pull_request:", trigger)
+        self.assertNotIn("pull_request:", trigger)
         self.assertNotIn("push:", trigger)
         self.assertNotIn("workflow_run:", trigger)
         self.assertNotIn("workflows: [Build prepared Chromium image]", trigger)
@@ -246,11 +246,11 @@ class ReleasePublishingTests(unittest.TestCase):
         self.assertIn('[[ "$run_event" == workflow_dispatch ]]', publisher)
         self.assertNotIn("push|workflow_run) ;;", publisher)
 
-    def test_release_policy_changes_are_checked_in_pull_requests_without_auto_main_build(self):
+    def test_build_workflows_are_started_manually_and_validation_covers_pull_requests(self):
         workflow = (ROOT / ".github/workflows/build.yml").read_text()
         trigger = workflow.split("\npermissions:", 1)[0]
-        self.assertIn("'.github/workflows/publish-release.yml'", trigger)
-        self.assertIn("'scripts/release_policy.py'", trigger)
+        self.assertNotIn("pull_request:", trigger)
+        self.assertIn("pull_request:", (ROOT / ".github/workflows/validate.yml").read_text())
         self.assertNotIn("push:", trigger)
         self.assertIn("workflow_dispatch:", trigger)
 

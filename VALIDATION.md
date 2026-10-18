@@ -4,6 +4,19 @@
 подготовку Chromium, ручную релизную сборку двух Android ARM-архитектур,
 автоматическое продолжение долгих jobs, публикацию Release и dashboard.
 
+## Полный ручной цикл
+
+Основная точка входа — **Build Argon (full pipeline)**
+(`.github/workflows/build-all.yml`). Один **Run workflow** в `main` проверяет
+готовые APK, при необходимости подготавливает образ и собирает недостающие
+архитектуры. Компиляция непрерывная, с часовыми снимками ccache; release
+публикуется после проверки обоих APK. [Параметры, правила переиспользования
+и продолжения](docs/build-pipeline.md).
+
+Описанные ниже `build.yml` и его 20-минутные checkpoints относятся к прежнему
+ручному workflow, оставленному для диагностики. Новый полный цикл использует
+`build-unified-arch.yml` и не прерывает Ninja на промежуточных сохранениях.
+
 ## Закреплённые входы
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
@@ -57,10 +70,9 @@ Validation:
 
 ## Подготовленный Chromium image
 
-Workflow `.github/workflows/build-chromium-image.yml` автоматически
-запускается на push в `main`, когда меняются входы подготовленного Chromium:
-pins, patches, overlays, extensions, ресурсы, GN/build scripts и связанные
-файлы. Его также можно запустить вручную.
+Workflow `.github/workflows/build-chromium-image.yml` вызывается полным
+ручным циклом через `workflow_call` или запускается отдельно вручную. Push
+его не запускает. Образ с совпадающим отпечатком входов переиспользуется.
 
 Workflow подготавливает закреплённые Chromium sources/toolchain и публикует
 OCI image в GHCR. Один совместимый prepared image используется обеими
@@ -84,12 +96,8 @@ Gate сравнивает Git-объекты файлов подготовки �
 
 ## Build Argon: запуск и архитектуры
 
-Workflow `.github/workflows/build.yml` имеет два типа запуска:
-
-- в `main` — только ручной `workflow_dispatch`;
-- в pull request — автоматически, если PR меняет хотя бы один путь из
-  `pull_request.paths` в `build.yml` (build workflow, reusable build/
-  continuation/publisher, `.github/ci/**` или signing/release scripts).
+Прежний workflow `.github/workflows/build.yml` запускается только вручную
+через `workflow_dispatch`. Pull request проверяется отдельным `validate.yml`.
 
 Push в `main` и завершение prepared-image workflow сами по себе
 `Build Argon` не запускают.
@@ -269,12 +277,11 @@ CI не заменяет проверки на реальном Android-устр
 
 ## Что запускается при изменениях
 
-- Prepared Chromium inputs → автоматически запускается
-  `Build prepared Chromium image`.
+- Prepared Chromium inputs → учитываются при следующем ручном запуске;
+  автоматической подготовки образа нет.
 - Push в `main` → **не запускает релизный `Build Argon`**.
 - Релизный `Build Argon` в `main` → запускается только вручную.
-- Pull request, меняющий путь из `pull_request.paths` в `build.yml` →
-  автоматически запускает тестовый `Build Argon` без публикации релиза.
+- Pull request → обычная validation; сборка APK автоматически не запускается.
 - `README.md` и `VALIDATION.md` → не запускают APK или prepared-image
   build; для них выполняется обычная validation.
 - Dashboard-only файлы и workflows snapshot/deploy → не запускают

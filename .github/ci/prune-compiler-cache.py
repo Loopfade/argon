@@ -78,6 +78,9 @@ def main():
                 if args.remove_old_versions else
                 obsolete_caches(caches, args.replacement_key, prefix, ref))
     if obsolete is None:
+        if os.environ.get("GITHUB_OUTPUT"):
+            with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+                output.write("verified=false\n")
         print("::warning::Replacement cache is not confirmed; keeping previous snapshots.")
         return
     for entry in obsolete:
@@ -85,6 +88,9 @@ def main():
             "gh", "cache", "delete", str(entry["id"]), "--repo", repository,
         ], check=True)
     if args.replacement_key:
+        if os.environ.get("GITHUB_OUTPUT"):
+            with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+                output.write("verified=true\n")
         print(f"Verified {args.replacement_key}; removed {len(obsolete)} older snapshots.")
     else:
         print(f"Removed {len(obsolete)} old-version compiler-cache snapshots.")

@@ -11,7 +11,7 @@ REPOSITORY = r"ghcr\.io/[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*"
 TAG = "branch-main"
 
 
-def resolve(image: str) -> str:
+def resolve(image: str, capture_errors=False) -> str:
     image = image.lower()
     if re.fullmatch(REPOSITORY + "@" + DIGEST, image):
         return image
@@ -28,9 +28,12 @@ def resolve(image: str) -> str:
         )
 
     # Inspect only the registry manifest, without downloading Chromium layers.
+    options = {"text": True}
+    if capture_errors:
+        options["stderr"] = subprocess.PIPE
     manifest = json.loads(subprocess.check_output(
         ["docker", "buildx", "imagetools", "inspect", tag,
-         "--format", "{{json .Manifest}}"], text=True,
+         "--format", "{{json .Manifest}}"], **options,
     ))
     digest = manifest.get("digest", "")
     if not isinstance(digest, str) or not re.fullmatch(DIGEST, digest):

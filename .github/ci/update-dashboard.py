@@ -96,7 +96,10 @@ def build_snapshot(repository, event, trigger):
             continue
         path = f"repos/{repository}/actions/runs/{run_id}"
         raw_run = api(path)
-        if (raw_run.get("name") != "Build Argon" or raw_run.get("event") != "workflow_dispatch"
+        trusted_build = (raw_run.get("name") == "Build Argon" or (
+            raw_run.get("name") == "Build Argon (full pipeline)"
+            and raw_run.get("path") == ".github/workflows/build-all.yml"))
+        if (not trusted_build or raw_run.get("event") != "workflow_dispatch"
                 or raw_run.get("conclusion") != "success"):
             continue
         run_sha, release_sha = raw_run["head_sha"], release["target_commitish"]

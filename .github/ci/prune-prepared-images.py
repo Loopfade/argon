@@ -22,10 +22,10 @@ def publication_active(repository, current_run):
     return bool(active_runs([run for page in result for run in page["workflow_runs"]], current_run))
 
 
-def consumers_active(repository):
-    for workflow in ("build.yml", "validate.yml"):
+def consumers_active(repository, exclude_run=None):
+    for workflow in ("build.yml", "build-all.yml", "validate.yml"):
         result = pages(f"repos/{repository}/actions/workflows/{workflow}/runs?per_page=100")
-        if active_runs([run for page in result for run in page["workflow_runs"]]):
+        if active_runs([run for page in result for run in page["workflow_runs"]], exclude_run):
             return True
     return False
 
@@ -38,9 +38,9 @@ def retained_version(versions, tag):
     return tagged[0]["id"]
 
 
-def prune(repository, current_run, package_path, tag):
+def prune(repository, current_run, package_path, tag, exclude_consumer=None):
     def busy():
-        return publication_active(repository, current_run) or consumers_active(repository)
+        return publication_active(repository, current_run) or consumers_active(repository, exclude_consumer)
 
     if busy():
         print("::notice::Argon build or image publication is active; retaining previous digests.")
@@ -65,6 +65,8 @@ def prune(repository, current_run, package_path, tag):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check-publication", action="store_true")
+    parser.add_argument("--ignore-current-consumer", action="store_true",
+                        help="Only use after every build/publish job in this run has finished")
     args = parser.parse_args()
     repository = os.environ["GH_REPO"]
     current_run = os.environ["CURRENT_RUN_ID"]
@@ -74,7 +76,8 @@ def main():
             stream.write(f"apply={str(safe).lower()}\n")
         return
     owner, package = os.environ["OWNER"], os.environ["PACKAGE"]
-    prune(repository, current_run, f"/users/{owner}/packages/container/{package}/versions", os.environ["KEEP_TAG"])
+    prune(repository, current_run, f"/users/{owner}/packages/container/{package}/versions", os.environ["KEEP_TAG"],
+          exclude_consumer=current_run if args.ignore_current_consumer else None)
 
 
 if __name__ == "__main__":
