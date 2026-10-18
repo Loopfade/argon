@@ -7,7 +7,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -81,11 +83,12 @@ class FullBuildTests(unittest.TestCase):
         self.assertEqual([build["arch"] for build in builds], ["arm64", "arm"])
         self.assertNotEqual(builds[0]["fingerprint"], builds[1]["fingerprint"])
 
-    def fixture_artifact(self):
+    def fixture_artifact(self, arch="arm64"):
         lock = json.loads((ROOT / "build-lock.json").read_text())
-        self.apk = self.root / f"Argon-{lock['chromium_version']}-release-arm64-v8a.apk"
+        abi = pipeline.TARGET_ABIS[arch]
+        self.apk = self.root / f"Argon-{lock['chromium_version']}-release-{abi}.apk"
         with zipfile.ZipFile(self.apk, "w") as zipped:
-            zipped.writestr("lib/arm64-v8a/libchrome.so", b"native library")
+            zipped.writestr(f"lib/{abi}/libchrome.so", b"native library")
         digest = hashlib.sha256(self.apk.read_bytes()).hexdigest()
         (self.root / (self.apk.name + ".sha256")).write_text(f"{digest}  {self.apk.name}\n")
         self.certificate = hashlib.sha256(b"fixture DER").hexdigest()
@@ -94,13 +97,89 @@ class FullBuildTests(unittest.TestCase):
             + "\n-----END CERTIFICATE-----\n")
         for name in ("Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
             (self.root / name).write_text("license")
-        self.metadata = {"source_commit": self.sha, "target_cpu": "arm64", "abi": "arm64-v8a",
+        self.metadata = {"source_commit": self.sha, "target_cpu": arch, "abi": abi,
                          "signing_mode": "release", "inputs": lock, "apk_sha256": digest,
                          "ca_der_sha256": json.loads((ROOT / "certificates/ministry-ca-lock.json").read_text())["der_sha256"],
                          "pipeline": {"fingerprint": "expected"}}
         self.metadata_path = self.root / "build-info.json"
         self.metadata_path.write_text(json.dumps(self.metadata))
         return lock
+
+    def record_fixture(self, arch):
+        self.fixture_artifact(arch)
+        directory = self.root / "artifacts" / pipeline.TARGET_ABIS[arch]
+        directory.mkdir(parents=True)
+        for path in self.root.iterdir():
+            if path.is_file():
+                path.rename(directory / path.name)
+        self.metadata_path = directory / "build-info.json"
+        self.apk = directory / self.apk.name
+        return directory
+
+    def test_record_binds_both_architectures_without_changing_signed_payloads(self):
+        for arch in ("arm64", "arm"):
+            with self.subTest(arch=arch):
+                directory = self.record_fixture(arch)
+                payloads = {path.name: path.read_bytes() for path in directory.iterdir()
+                            if path.name != "build-info.json"}
+                fingerprint = pipeline.artifact_fingerprint(
+                    self.sha, arch, "release", self.certificate, "prepared")
+                image = "ghcr.io/loopfade/argon-build@sha256:" + "b" * 64
+                with patch.object(pipeline, "ROOT", self.root), \
+                     patch.object(pipeline, "image_fingerprint", return_value="prepared"), \
+                     patch.dict(os.environ, {"GITHUB_SHA": self.sha}):
+                    pipeline.record(arch, "release", fingerprint, self.certificate, image)
+                self.assertEqual(json.loads(self.metadata_path.read_text()), {
+                    **self.metadata, "pipeline": {"fingerprint": fingerprint,
+                        "prepared_inputs": "prepared", "image": image,
+                        "certificate_sha256": self.certificate}})
+                self.assertEqual(payloads, {path.name: path.read_bytes() for path in directory.iterdir()
+                                           if path.name != "build-info.json"})
+
+    def test_record_rejects_changed_plan_or_key_without_rewriting_metadata(self):
+        self.record_fixture("arm64")
+        before = self.metadata_path.read_bytes()
+        fingerprint = pipeline.artifact_fingerprint(
+            self.sha, "arm64", "release", self.certificate, "prepared")
+        for sha, planned, certificate in (("b" * 40, fingerprint, self.certificate),
+                                          (self.sha, "stale", self.certificate),
+                                          (self.sha, fingerprint, "rotated-key")):
+            with self.subTest(sha=sha, fingerprint=planned, certificate=certificate), \
+                 patch.object(pipeline, "ROOT", self.root), \
+                 patch.object(pipeline, "image_fingerprint", return_value="prepared"), \
+                 patch.dict(os.environ, {"GITHUB_SHA": sha}):
+                with self.assertRaises(ValueError):
+                    pipeline.record("arm64", "release", planned, certificate, "image")
+                self.assertEqual(self.metadata_path.read_bytes(), before)
+
+    def test_workflow_records_in_the_signing_container_with_the_planned_source_sha(self):
+        workflow = (ROOT / ".github/workflows/build-unified-arch.yml").read_text()
+        step = workflow.split("      - name: Bind verified APK to this pipeline plan\n", 1)[1]
+        step = step.split("\n      - name:", 1)[0]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        binary = self.root / "bin/docker"
+        binary.parent.mkdir()
+        binary.write_text(f"#!{sys.executable}\n" + '''import json, os, sys
+with open(os.environ["CAPTURE_DOCKER"], "w") as output:
+    json.dump({"args": sys.argv[1:], "sha": os.environ["GITHUB_SHA"]}, output)
+''')
+        binary.chmod(0o755)
+        captured = self.root / "docker.json"
+        for arch in ("arm64", "arm"):
+            with self.subTest(arch=arch):
+                env = {**os.environ, "PATH": str(binary.parent) + os.pathsep + os.environ["PATH"],
+                       "CAPTURE_DOCKER": str(captured), "GITHUB_SHA": self.sha,
+                       "BUILD_CONTAINER_NAME": "argon-build", "TARGET_ARCH": arch,
+                       "SIGNING_MODE": "release", "BUILD_FINGERPRINT": "planned-fingerprint",
+                       "BUILD_CERTIFICATE": "planned-certificate", "PREPARED_IMAGE": "planned-image"}
+                result = subprocess.run(["bash", "-euo", "pipefail", "-c", script],
+                                        cwd=self.root, env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(captured.read_text()), {"sha": self.sha, "args": [
+                    "exec", "--env", "GITHUB_SHA", "argon-build", "python3",
+                    "/workspace/.github/ci/full-build.py", "record", "--arch", arch,
+                    "--mode", "release", "--fingerprint", "planned-fingerprint",
+                    "--certificate", "planned-certificate", "--image", "planned-image"]})
 
     def verify(self):
         return pipeline.verify_artifact(self.root, self.sha, "arm64", "release", "expected",

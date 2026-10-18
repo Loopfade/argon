@@ -183,7 +183,10 @@ jobs:
           PREPARED_IMAGE: ${{ inputs.image }}
           SIGNING_MODE: ${{ inputs.signing }}
         run: |
-          python3 .github/ci/full-build.py record --arch "$TARGET_ARCH" --mode "$SIGNING_MODE" \
+          # Signing created these files as the container user; record provenance
+          # there too, with the exact source SHA from this workflow run.
+          docker exec --env GITHUB_SHA "$BUILD_CONTAINER_NAME" \
+            python3 /workspace/.github/ci/full-build.py record --arch "$TARGET_ARCH" --mode "$SIGNING_MODE" \
             --fingerprint "$BUILD_FINGERPRINT" --certificate "$BUILD_CERTIFICATE" --image "$PREPARED_IMAGE"
       - name: Show cache statistics and stop compiler processes
         if: always()
