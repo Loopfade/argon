@@ -63,7 +63,11 @@ limits packaged UI locales. Changed upstream anchors abort preparation. The
 prepared-image input gate tracks this script to reject stale images.
 
 Validation uses the production Java policy with deterministic timestamps, a
-JavaScript compatibility test, matching Russian/English resource keys and
+JavaScript compatibility test, a host-side rule-editor regression with the
+AndroidX row binding contract, matching Russian/English resource keys and
 placeholders, and the pinned-source integration with repeated overlay
-application. These checks do not replace an Android build or on-device testing
+application. The editor check covers adding, editing, restoring and saving a
+site with Chromium's theme lacking `seekBarPreferenceStyle`; its time-limit
+row explicitly uses AndroidX's Material seekbar layout. These checks do not
+replace an Android build or on-device testing
 of screen locks, Bluetooth/wired headsets, media notifications and process death.
