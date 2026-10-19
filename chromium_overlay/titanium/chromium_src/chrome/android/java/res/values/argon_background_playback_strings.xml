@@ -19,7 +19,12 @@
     <string name="argon_background_toggle_site">Allow background playback for %1$s</string>
     <string name="argon_background_rule_title">Site settings</string>
     <string name="argon_background_domain">Site domain</string>
-    <string name="argon_background_domain_hint">For example, rutube.ru or пример.рф. No https://, path, port or wildcard.</string>
+    <string name="argon_background_domain_hint">For example, example.org. No https://, path, port or wildcard.</string>
+    <string name="argon_background_domain_example">example.org</string>
+    <string name="argon_background_domain_helper">Only the domain, without https://, path or port.</string>
+    <string name="argon_background_scope_heading">Scope</string>
+    <string name="argon_background_no_overlaps_short">No overlapping rules.</string>
+    <string name="argon_background_edit_domain">Edit site domain</string>
     <string name="argon_background_scope_exact">Only this domain</string>
     <string name="argon_background_scope_subdomains">Including subdomains</string>
     <string name="argon_background_rule_allowed">Allowed in background</string>
