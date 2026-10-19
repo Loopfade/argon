@@ -126,15 +126,27 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(store.policy.isEnabled() == enabled, "The overview must switch back through the same native callback");
 
         var editor = open("");
-        var details = byKey(editor.getPreferenceScreen(), "argon_background_rule_details");
-        check(details.getTitleId() == (enabled ? R.string.argon_background_rule_details
-                : R.string.argon_background_state_disabled), "An empty editor must show the current global state");
+        var domainRow = (EditTextPreference) row(editor.getPreferenceScreen(), R.string.argon_background_domain);
+        check(editor.getPreferenceScreen().rows.get(0) == domainRow
+                        && byKey(editor.getPreferenceScreen(), "argon_background_rule_details") == null,
+                "The editable domain and scope must occupy one card, with domain first");
+        check(domainRow.boundHolder.findViewById(R.id.argon_background_scope_group).getVisibility()
+                        == android.view.View.GONE,
+                "Empty domain must not repeat its hint in a separate scope block");
         var permission = (SwitchPreferenceCompat) row(editor.getPreferenceScreen(), R.string.argon_background_allow_site);
         var subdomains = (SwitchPreferenceCompat) row(editor.getPreferenceScreen(), R.string.argon_background_subdomains);
         var limit = (SeekBarPreference) row(editor.getPreferenceScreen(), R.string.argon_background_time_limit);
         check(permission.isChecked() && subdomains.isChecked() && limit.getValue() == 60,
                 "The new editor must retain permission, subdomain and 60-minute defaults");
         domain(editor, "example.test", true);
+        domainRow.bind();
+        var group = domainRow.boundHolder.findViewById(R.id.argon_background_scope_group);
+        check(group.getVisibility() == android.view.View.VISIBLE,
+                "Entering a valid domain must reveal inline scope details");
+        check(group.performClick()
+                        && AlertDialog.lastTitle.equals(text(R.string.argon_background_rule_details_for,
+                                "example.test")),
+                "The scope detail action must open without editing or saving the domain");
         for (boolean allowed : new boolean[] {false, true}) {
             choose(permission, allowed);
             check(permission.getSummary().toString().equals(text(allowed
@@ -148,11 +160,17 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 check(subdomains.getSummary().toString().equals(text(includes
                         ? R.string.argon_background_subdomains_description : R.string.argon_background_exact_description)),
                         "Scope helper text must follow the draft switch");
-                String summary = details.getSummary().toString();
-                check(enabled ? summary.contains(text(R.string.argon_background_state_enabled))
-                        && !summary.contains(text(R.string.argon_background_editor_disabled))
-                        : summary.contains(text(R.string.argon_background_editor_disabled)),
-                        "The editor header must distinguish draft permissions from the global feature state");
+                domainRow.bind();
+                var scopeText = (android.widget.TextView) domainRow.boundHolder.findViewById(
+                        R.id.argon_background_scope_summary);
+                var overlapsText = (android.widget.TextView) domainRow.boundHolder.findViewById(
+                        R.id.argon_background_scope_overlaps);
+                check(scopeText.getText().toString().equals(text(includes
+                                ? R.string.argon_background_scope_subdomains
+                                : R.string.argon_background_scope_exact))
+                                && overlapsText.getText().toString().equals(
+                                        text(R.string.argon_background_no_overlaps_short)),
+                        "The inline preview must track the draft scope without persisting it");
                 check(store.policy.getRules().isEmpty() && store.policy.isEnabled() == enabled,
                         "Changing editor switches must not persist a draft or enable the feature");
             }
@@ -205,6 +223,14 @@ public final class ArgonBackgroundPlaybackFlowTest {
         var host = (EditTextPreference) row(editor.getPreferenceScreen(), R.string.argon_background_domain);
         host.openDialog().setText(value);
         host.closeDialog(accept);
+    }
+
+    private static void scopeDetails(ArgonBackgroundPlaybackSettings.RuleEditor editor) {
+        var host = (EditTextPreference) row(editor.getPreferenceScreen(), R.string.argon_background_domain);
+        host.bind();
+        var group = host.boundHolder.findViewById(R.id.argon_background_scope_group);
+        check(group.getVisibility() == android.view.View.VISIBLE && group.performClick(),
+                "A valid site must expose its scope details within the domain card");
     }
 
     private static void minutes(ArgonBackgroundPlaybackSettings.RuleEditor editor, int value) {
@@ -424,7 +450,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(!childSummary.contains(child.getResources().getQuantityString(R.plurals.argon_background_minutes, 1, 1)),
                 "A blocked rule must not present its unused limit as an active permission");
         child = open("video.example.test");
-        byKey(child.getPreferenceScreen(), "argon_background_rule_details").click();
+        scopeDetails(child);
         check(AlertDialog.lastMessage.contains("• example.test")
                 && !AlertDialog.lastMessage.contains("• news.example.test")
                 && AlertDialog.lastMessage.contains(text(R.string.argon_background_rule_priority)),
@@ -434,11 +460,11 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 "The runtime result must match the described exact-host exception");
         var parent = open("example.test");
         row(parent.getPreferenceScreen(), R.string.argon_background_subdomains).change(false);
-        byKey(parent.getPreferenceScreen(), "argon_background_rule_details").click();
+        scopeDetails(parent);
         check(AlertDialog.lastMessage.contains(text(R.string.argon_background_no_overlaps)),
                 "The draft explanation must update when subdomain coverage is turned off");
         domain(parent, "fresh.example.test", true);
-        byKey(parent.getPreferenceScreen(), "argon_background_rule_details").click();
+        scopeDetails(parent);
         check(AlertDialog.lastMessage.contains(text(R.string.argon_background_no_overlaps)),
                 "A rename preview must exclude the old parent that Save will replace");
         check(store.policy.getRules().stream().anyMatch(r -> r.host.equals("example.test")),

@@ -19,7 +19,12 @@
     <string name="argon_background_toggle_site">Разрешить воспроизведение в фоне для %1$s</string>
     <string name="argon_background_rule_title">Настройки сайта</string>
     <string name="argon_background_domain">Домен сайта</string>
-    <string name="argon_background_domain_hint">Например, rutube.ru или пример.рф. Без https://, пути, порта и маски.</string>
+    <string name="argon_background_domain_hint">Например, example.org. Без https://, пути, порта и маски.</string>
+    <string name="argon_background_domain_example">example.org</string>
+    <string name="argon_background_domain_helper">Только домен, без https://, пути и порта.</string>
+    <string name="argon_background_scope_heading">Область действия</string>
+    <string name="argon_background_no_overlaps_short">Пересечений с другими правилами нет.</string>
+    <string name="argon_background_edit_domain">Изменить домен сайта</string>
     <string name="argon_background_scope_exact">Только этот домен</string>
     <string name="argon_background_scope_subdomains">Включая поддомены</string>
     <string name="argon_background_rule_allowed">Разрешено в фоне</string>

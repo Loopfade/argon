@@ -32,7 +32,13 @@ empty list. No domains are added automatically.
 When the feature is off, list rows label permissions as saved settings, rather
 than active permissions. With the feature on, rows show their permission,
 subdomain scope and overlap count. Allowed rows display their limit in minutes;
-blocked rows do not present an unused limit as active. The editor separates
+blocked rows do not present an unused limit as active. The site editor begins with a single native domain card. Its primary action
+edits the domain in the AndroidX dialog; after a valid, non-duplicate domain is
+entered, a separately focusable inline scope preview describes subdomain
+coverage and overlap count. Tapping the preview opens the detailed rule
+explanation without editing the domain. The example is the neutral reserved
+domain `example.org`, and there is no redundant introductory scope card.
+The editor separates
 the global feature state from its draft permission and subdomain switches.
 Helper text follows both draft switches, and Save explains whether changes
 apply now or after the feature is enabled. Detailed help lists overlapping

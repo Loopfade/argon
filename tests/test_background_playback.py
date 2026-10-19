@@ -141,7 +141,11 @@ if (is_android) {
         anchor = '  "java/res/values-ru/argon_widget_strings.xml",'
         layout = '  "java/res/layout/argon_background_overview.xml",'
         expected = background.patch_resources(anchor)
-        legacy = expected.replace('\n' + layout, '')
+        domain_layout = '  "java/res/layout/argon_background_domain_card.xml",'
+        legacy = expected.replace('\n' + layout, '').replace('\n' + domain_layout, '')
         self.assertEqual(background.patch_resources(legacy), expected)
+        previous = expected.replace('\n' + domain_layout, '')
+        self.assertEqual(background.patch_resources(previous), expected)
         self.assertEqual(background.patch_resources(expected), expected)
         self.assertEqual(expected.count(layout), 1)
+        self.assertEqual(expected.count(domain_layout), 1)
