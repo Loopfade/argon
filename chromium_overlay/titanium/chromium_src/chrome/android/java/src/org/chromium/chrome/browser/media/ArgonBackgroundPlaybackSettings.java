@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.media;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Toast;
 
@@ -55,25 +56,14 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         var store = ArgonBackgroundPlaybackStore.get();
         PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext());
         setPreferenceScreen(screen);
-        Preference explanation = new Preference(requireContext());
-        explanation.setKey("argon_background_explanation");
-        explanation.setTitle(store.policy.isEnabled() ? R.string.argon_background_state_enabled
-                : R.string.argon_background_state_disabled);
-        explanation.setSingleLineTitle(false);
-        explanation.setSummary(getString(store.policy.isEnabled()
-                ? R.string.argon_background_description : R.string.argon_background_description_disabled)
-                + "\n\n" + getString(R.string.argon_background_more));
-        explanation.setOnPreferenceClickListener(ignored -> {
-            showDetails(this, getString(R.string.argon_background_title),
-                    getString(R.string.argon_background_details_description));
-            return true;
-        });
-        screen.addPreference(explanation);
-
-        SwitchPreferenceCompat master = new SwitchPreferenceCompat(requireContext());
+        SwitchPreferenceCompat master = new OverviewPreference();
+        master.setKey("argon_background_overview");
         master.setPersistent(false);
         master.setTitle(R.string.argon_background_enable);
-        master.setSummary(R.string.argon_background_master_description);
+        master.setSingleLineTitle(false);
+        master.setSummary(getString(store.policy.isEnabled()
+                ? R.string.argon_background_description : R.string.argon_background_description_disabled)
+                + "\n\n" + getString(R.string.argon_background_master_description));
         master.setChecked(store.policy.isEnabled());
         master.setOnPreferenceChangeListener((preference, value) -> {
             store.preferences.edit().putBoolean(ArgonBackgroundPlaybackStore.ENABLED, (Boolean) value).apply();
@@ -94,15 +84,40 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         for (var rule : store.policy.getRules()) sites.addPreference(new RulePreference(rule));
         if (store.policy.getRules().isEmpty()) {
             Preference empty = new Preference(requireContext());
+            empty.setTitle(R.string.argon_background_empty_title);
             empty.setSummary(R.string.argon_background_empty);
             empty.setSelectable(false);
             sites.addPreference(empty);
         }
 
         Preference help = new Preference(requireContext());
-        help.setSummary(R.string.argon_background_reset_description);
+        help.setSummary(store.policy.getRules().isEmpty()
+                ? (store.policy.isEnabled() ? R.string.argon_background_empty_enabled
+                        : R.string.argon_background_empty_disabled)
+                : (store.policy.isEnabled() ? R.string.argon_background_reset_description
+                        : R.string.argon_background_reset_description_disabled));
         help.setSelectable(false);
         screen.addPreference(help);
+    }
+
+    /** One native switch row with a separate help action in the same card. */
+    private final class OverviewPreference extends SwitchPreferenceCompat {
+        OverviewPreference() {
+            super(ArgonBackgroundPlaybackSettings.this.requireContext());
+            setLayoutResource(R.layout.argon_background_overview);
+            setWidgetLayoutResource(0); // The layout embeds AndroidX's switchWidget.
+        }
+
+        @Override
+        public void onBindViewHolder(PreferenceViewHolder holder) {
+            super.onBindViewHolder(holder);
+            View help = holder.findViewById(R.id.argon_background_help);
+            if (help != null) {
+                help.setOnClickListener(view -> showDetails(ArgonBackgroundPlaybackSettings.this,
+                        getString(R.string.argon_background_how_it_works),
+                        getString(R.string.argon_background_details_description)));
+            }
+        }
     }
 
     private final class RulePreference extends Preference {
@@ -156,9 +171,7 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
     }
 
     private static String duration(ChromeBaseSettingsFragment page, int minutes) {
-        return minutes % 60 == 0
-                ? page.getResources().getQuantityString(R.plurals.argon_background_hours, minutes / 60, minutes / 60)
-                : page.getResources().getQuantityString(R.plurals.argon_background_minutes, minutes, minutes);
+        return page.getResources().getQuantityString(R.plurals.argon_background_minutes, minutes, minutes);
     }
 
     private static String scope(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy.Rule rule) {
@@ -172,11 +185,21 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
 
     private static String ruleSummary(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy policy,
             ArgonBackgroundPlaybackPolicy.Rule rule, String replacedHost) {
-        String summary = page.getString(R.string.argon_background_rule_summary,
-                ruleState(page, rule), duration(page, rule.minutes), scope(page, rule));
+        String summary;
+        if (!policy.isEnabled()) {
+            summary = rule.enabled
+                    ? page.getString(R.string.argon_background_saved_allowed,
+                            duration(page, rule.minutes), scope(page, rule))
+                    : page.getString(R.string.argon_background_saved_blocked, scope(page, rule));
+        } else {
+            summary = rule.enabled
+                    ? page.getString(R.string.argon_background_rule_summary,
+                            ruleState(page, rule), duration(page, rule.minutes), scope(page, rule))
+                    : page.getString(R.string.argon_background_blocked_summary,
+                            ruleState(page, rule), scope(page, rule));
+        }
         int overlaps = policy.getOverlappingRules(rule, replacedHost).size();
         if (overlaps > 0) summary += "\n" + page.getString(R.string.argon_background_overlap_count, overlaps);
-        if (!policy.isEnabled()) summary += "\n" + page.getString(R.string.argon_background_rule_inactive);
         return summary;
     }
 
@@ -247,6 +270,9 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
         private boolean mSubdomains = true;
         private @Nullable Preference mDescription;
         private @Nullable Preference mSave;
+        private @Nullable Preference mAllow;
+        private @Nullable Preference mSubdomainPreference;
+        private @Nullable Preference mLimit;
 
         @Override
         public void onCreatePreferences(@Nullable Bundle saved, @Nullable String rootKey) {
@@ -272,6 +298,7 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             setPreferenceScreen(screen);
 
             mDescription = new Preference(requireContext());
+            mDescription.setKey("argon_background_rule_details");
             mDescription.setTitle(R.string.argon_background_rule_details);
             mDescription.setSingleLineTitle(false);
             mDescription.setOnPreferenceClickListener(ignored -> {
@@ -309,12 +336,15 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
                 return true;
             });
             screen.addPreference(host);
-            screen.addPreference(toggle(R.string.argon_background_allow_site, mEnabled,
-                    value -> { mEnabled = value; refreshDescription(); }));
-            screen.addPreference(toggle(R.string.argon_background_subdomains, mSubdomains,
-                    value -> { mSubdomains = value; refreshDescription(); }));
+            mAllow = toggle(R.string.argon_background_allow_site, mEnabled,
+                    value -> { mEnabled = value; refreshDescription(); });
+            screen.addPreference(mAllow);
+            mSubdomainPreference = toggle(R.string.argon_background_subdomains, mSubdomains,
+                    value -> { mSubdomains = value; refreshDescription(); });
+            screen.addPreference(mSubdomainPreference);
 
             SeekBarPreference limit = new SeekBarPreference(requireContext());
+            mLimit = limit;
             // Chromium's PreferenceTheme does not define seekBarPreferenceStyle.
             // The generic row lacks seekbar_value and crashes during AndroidX binding.
             // chrome_java exposes dependency resources through org.chromium.chrome.R.
@@ -373,17 +403,33 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
             if (description == null || save == null) return;
             String host = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
             int error = validationError(host);
+            boolean active = ArgonBackgroundPlaybackStore.get().policy.isEnabled();
             save.setEnabled(error == 0);
-            save.setSummary(error == 0 ? getString(R.string.argon_background_save_description) : getString(error));
+            save.setSummary(error == 0 ? getString(active ? R.string.argon_background_save_description
+                    : R.string.argon_background_save_description_disabled) : getString(error));
+            description.setTitle(active ? R.string.argon_background_rule_details
+                    : R.string.argon_background_state_disabled);
+            if (mAllow != null) mAllow.setSummary(mEnabled ? R.string.argon_background_allow_description
+                    : R.string.argon_background_block_description);
+            if (mSubdomainPreference != null) mSubdomainPreference.setSummary(mSubdomains
+                    ? R.string.argon_background_subdomains_description : R.string.argon_background_exact_description);
+            if (mLimit != null) mLimit.setSummary(mEnabled ? R.string.argon_background_time_description
+                    : R.string.argon_background_time_description_blocked);
             description.setSelectable(error == 0);
             if (error != 0 || host == null) {
-                description.setSummary(mHost.trim().isEmpty()
-                        ? getString(R.string.argon_background_domain_hint) : getString(error));
+                description.setSummary(getString(active ? R.string.argon_background_state_enabled
+                        : R.string.argon_background_editor_disabled) + "\n\n"
+                        + (mHost.trim().isEmpty() ? getString(R.string.argon_background_domain_hint)
+                                : getString(error)));
                 return;
             }
             var rule = new ArgonBackgroundPlaybackPolicy.Rule(host, mMinutes, mEnabled, mSubdomains);
-            description.setSummary(ruleSummary(this, ArgonBackgroundPlaybackStore.get().policy, rule, mOriginalHost)
-                    + "\n\n" + getString(R.string.argon_background_more));
+            description.setSummary(active
+                    ? getString(R.string.argon_background_state_enabled) + "\n"
+                            + ruleSummary(this, ArgonBackgroundPlaybackStore.get().policy, rule, mOriginalHost)
+                            + "\n\n" + getString(R.string.argon_background_more)
+                    : getString(R.string.argon_background_editor_disabled) + "\n\n"
+                            + getString(R.string.argon_background_rule_details));
         }
 
         private int validationError(@Nullable String host) {

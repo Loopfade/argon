@@ -136,3 +136,12 @@ if (is_android) {
         self.assertEqual(background.patch_resources(legacy), patched + '\n')
         self.assertEqual(background.patch_resources(patched), patched)
         self.assertFalse((OVERLAY / "res/raw/argon_background_playback.js").exists())
+
+    def test_overview_resource_upgrades_existing_prepared_catalog_once(self):
+        anchor = '  "java/res/values-ru/argon_widget_strings.xml",'
+        layout = '  "java/res/layout/argon_background_overview.xml",'
+        expected = background.patch_resources(anchor)
+        legacy = expected.replace('\n' + layout, '')
+        self.assertEqual(background.patch_resources(legacy), expected)
+        self.assertEqual(background.patch_resources(expected), expected)
+        self.assertEqual(expected.count(layout), 1)

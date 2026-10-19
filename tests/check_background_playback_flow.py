@@ -89,8 +89,9 @@ def load_adapters(name):
 def resources():
     names = {"string": [], "plurals": [],
              "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material",
-                        "preference_dialog_edittext"],
-             "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value"],
+                        "preference_dialog_edittext", "argon_background_overview"],
+             "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value",
+                    "switchWidget", "argon_background_help"],
              "drawable": ["argon_certificate_add"]}
     for node in ET.parse(OVERLAY / "res/values/argon_background_playback_strings.xml").getroot():
         names[node.tag].append(node.attrib["name"])
@@ -158,6 +159,7 @@ def adapters():
 public class Context {
   public static final int MODE_PRIVATE = 0;
   public static final String INPUT_METHOD_SERVICE = "input_method";
+  public static final String ACCESSIBILITY_SERVICE = "accessibility";
   public final java.util.List<BroadcastReceiver> receivers = new java.util.ArrayList<>();
   public final android.os.PowerManager power = new android.os.PowerManager();
   public final android.app.KeyguardManager keyguard = new android.app.KeyguardManager();
@@ -168,7 +170,11 @@ public class Context {
     if (type == android.app.KeyguardManager.class) return type.cast(keyguard);
     return null;
   }
-  public Object getSystemService(String name) { return new android.view.inputmethod.InputMethodManager(); }
+  public Object getSystemService(String name) {
+    return ACCESSIBILITY_SERVICE.equals(name) ? new android.view.accessibility.AccessibilityManager()
+      : new android.view.inputmethod.InputMethodManager();
+  }
+  public String getString(int id) { return org.chromium.chrome.PlaybackTestResources.getString(id); }
   public android.content.res.Resources getResources() { return new android.content.res.Resources(); }
   public void unregisterReceiver(BroadcastReceiver receiver) { receivers.remove(receiver); }
   public android.content.res.TypedArray obtainStyledAttributes(android.util.AttributeSet a, int[] ids, int s, int r) {
@@ -223,12 +229,13 @@ public class Activity extends android.content.Context {
   public Activity getOnBackPressedDispatcher() { return this; } public void onBackPressed() { backs++; }
 }''',
         "androidx/appcompat/widget/SwitchCompat.java": '''package androidx.appcompat.widget;
-public class SwitchCompat extends android.view.View {
-  public interface Change { void accept(Object button,boolean value); }
-  private Change listener; private boolean checked;
-  public void setOnCheckedChangeListener(Change c) { listener=c; }
+public class SwitchCompat extends android.widget.CompoundButton {
+  private OnCheckedChangeListener listener; private boolean checked;
+  public void setOnCheckedChangeListener(OnCheckedChangeListener c) { listener=c; }
   public void setChecked(boolean value) { boolean changed=value!=checked; checked=value;
-    if(changed && listener!=null) listener.accept(this,value); }
+    if(changed && listener!=null) listener.onCheckedChanged(this,value); }
+  public void toggle() { setChecked(!checked); }
+  public void setTextOn(CharSequence text) {} public void setTextOff(CharSequence text) {}
   public boolean isChecked() { return checked; } public void setContentDescription(String text) {}
 }''',
         "android/widget/Toast.java": '''package android.widget;
@@ -293,18 +300,38 @@ public class KeyEvent { public static final int ACTION_DOWN=0, KEYCODE_DPAD_LEFT
         "android/view/View.java": '''package android.view;
 public class View {
   public static final int VISIBLE=0, GONE=8;
+  public interface OnClickListener { void onClick(View view); }
+  private OnClickListener click; private int visibility;
+  public void setOnClickListener(OnClickListener listener) { click=listener; }
+  public boolean performClick() { if(click==null) return false; click.onClick(this); return true; }
   public interface OnKeyListener { boolean onKey(View v,int code,KeyEvent e); }
   private final java.util.Map<Integer,View> children=new java.util.HashMap<>();
   public void addView(int id,View view) { children.put(id,view); }
   @SuppressWarnings("unchecked") public <T extends View> T findViewById(int id) { return (T) children.get(id); }
-  public void setVisibility(int v) {} public void setEnabled(boolean v) {} public void setOnKeyListener(OnKeyListener l) {}
+  public void setVisibility(int v) { visibility=v; } public int getVisibility() { return visibility; }
+  public void setEnabled(boolean v) {} public void setOnKeyListener(OnKeyListener l) {}
   public boolean requestFocus() { return true; } public boolean isFocused() { return true; }
   public void setSelection(int v) {} public boolean removeCallbacks(Runnable r) { return true; }
   public boolean postDelayed(Runnable r,long delay) { return true; }
   public android.content.Context getContext() { return org.chromium.base.ContextUtils.context; }
 }''',
         "android/widget/TextView.java": '''package android.widget;
-public class TextView extends android.view.View { public void setText(String text) {} }''',
+public class TextView extends android.view.View { public void setText(CharSequence text) {} }''',
+        "android/widget/Checkable.java": '''package android.widget;
+public interface Checkable { void setChecked(boolean value); boolean isChecked(); void toggle(); }''',
+        "android/widget/CompoundButton.java": '''package android.widget;
+public abstract class CompoundButton extends android.view.View implements Checkable {
+  public interface OnCheckedChangeListener { void onCheckedChanged(CompoundButton button,boolean value); }
+}''',
+        "android/view/accessibility/AccessibilityManager.java": '''package android.view.accessibility;
+public class AccessibilityManager { public boolean isEnabled() { return true; } }''',
+        "android/text/TextUtils.java": '''package android.text;
+public class TextUtils { public static boolean isEmpty(CharSequence text) { return text==null || text.length()==0; } }''',
+        "androidx/core/content/res/TypedArrayUtils.java": '''package androidx.core.content.res;
+public class TypedArrayUtils {
+  public static String getString(android.content.res.TypedArray a,int index,int fallback) { return null; }
+  public static boolean getBoolean(android.content.res.TypedArray a,int index,int fallback,boolean value) { return value; }
+}''',
         "android/widget/SeekBar.java": '''package android.widget;
 public class SeekBar extends android.view.View {
   private int progress, increment=1; private OnSeekBarChangeListener listener;
@@ -343,7 +370,7 @@ public class PreferenceDialogFragmentCompat {
             "package org.jspecify.annotations; @java.lang.annotation.Target({java.lang.annotation.ElementType.TYPE_USE}) "
             f"public @interface {annotation} {{}}")
     result["android/R.java"] = result["android/R.java"].replace("public class R {",
-        "public class R { public static class id { public static final int edit=16908291; }")
+        "public class R { public static class id { public static final int edit=16908291, summary=16908304; }")
     result["android/widget/EditText.java"] = result["android/widget/EditText.java"].replace(
         "public class EditText {", "public class EditText extends android.view.View {")
     result["android/os/Bundle.java"] = result["android/os/Bundle.java"].replace(
@@ -375,6 +402,13 @@ public class PreferenceDialogFragmentCompat {
   public Preference(android.content.Context c) {}
   public Preference(android.content.Context c,android.util.AttributeSet a,int s,int r) { this(c); }
   protected void notifyChanged() {} protected int getPersistedInt(int v) { return v; }
+  protected void onClick() {}
+  protected void performClick(android.view.View view) { onClick(); }
+  public android.content.Context getContext() { return org.chromium.base.ContextUtils.context; }
+  protected void notifyDependencyChange(boolean disabled) {}
+  public boolean shouldDisableDependents() { return false; }
+  protected boolean getPersistedBoolean(boolean value) { return value; }
+  protected boolean persistBoolean(boolean value) { return true; }
   protected boolean persistInt(int v) { return true; }
   public boolean isPersistent() { return false; } protected void onSetInitialValue(Object v) {}
   protected Object onGetDefaultValue(android.content.res.TypedArray a,int index) { return null; }
@@ -385,18 +419,23 @@ public class PreferenceDialogFragmentCompat {
     public android.os.Parcelable getSuperState() { return null; } public void writeToParcel(android.os.Parcel p,int flags) {}
   }""").replace("public void setWidgetLayoutResource(int v) {}", "public void setWidgetLayoutResource(int v) { widget=v; }").replace(
         "public void bind() { onBindViewHolder(new PreferenceViewHolder(layout)); }",
-        "public PreferenceViewHolder boundHolder; public void bind() { boundHolder=new PreferenceViewHolder(layout); boundHolder.addWidget(widget); onBindViewHolder(boundHolder); }")
-    result["androidx/preference/Preference.java"] = preference
+        "public PreferenceViewHolder boundHolder; public void bind() { boundHolder=new PreferenceViewHolder(layout); boundHolder.addWidget(widget); boundHolder.itemView.setOnClickListener(view -> performClick(view)); onBindViewHolder(boundHolder); }")
+    result["androidx/preference/Preference.java"] = preference.replace("summary=Integer.toString(v)",
+        "summary=org.chromium.chrome.PlaybackTestResources.getString(v)")
     result["androidx/preference/PreferenceViewHolder.java"] = result[
         "androidx/preference/PreferenceViewHolder.java"].replace("private final java.util.Map",
             "public final android.view.View itemView=new android.view.View();\n private final java.util.Map").replace(
             "views.put(R.id.seekbar, new android.view.View())", "views.put(R.id.seekbar, new android.widget.SeekBar())").replace(
             "views.put(R.id.seekbar_value, new android.view.View())", "views.put(R.id.seekbar_value, new android.widget.TextView())").replace(
-            "  public Object findViewById", """
+            "  public android.view.View findViewById", """
   public void addWidget(int layout) {
     if(layout==R.layout.argon_background_rule_switch) views.put(R.id.argon_background_rule_enabled,new androidx.appcompat.widget.SwitchCompat());
   }
-  public Object findViewById""")
+  public android.view.View findViewById""")
+    # The real SwitchPreferenceCompat accessibility path searches the row hierarchy too.
+    result["androidx/preference/PreferenceViewHolder.java"] = result[
+        "androidx/preference/PreferenceViewHolder.java"].replace(
+            "    }\n  }\n", "    }\n    views.forEach((id,view) -> itemView.addView(id,view));\n  }\n", 1)
     edit = result["androidx/preference/EditTextPreference.java"]
     start = edit.index("  public android.widget.EditText openDialog() {")
     end = edit.index("  public void closeDialog(boolean accept) {")
@@ -421,7 +460,8 @@ def main():
         deps = dict(zip(DEPENDENCIES, pool.map(dependency, DEPENDENCIES)))
     platform = adapters()
     with zipfile.ZipFile(deps["preference-sources.jar"]) as archive:
-        for name in ("SeekBarPreference", "EditTextPreferenceDialogFragmentCompat"):
+        for name in ("SeekBarPreference", "EditTextPreferenceDialogFragmentCompat",
+                     "SwitchPreferenceCompat", "TwoStatePreference"):
             path = f"androidx/preference/{name}.java"
             platform[path] = archive.read(path).decode()
     with zipfile.ZipFile(deps["preference.aar"]) as archive:
@@ -429,6 +469,7 @@ def main():
         for layout, fields in {
             "preference_dialog_edittext": {"@android:id/edit": "EditText"},
             "preference_widget_seekbar_material": {"@+id/seekbar": "SeekBar", "@+id/seekbar_value": "TextView"},
+            "preference_widget_switch_compat": {"@+id/switchWidget": "androidx.appcompat.widget.SwitchCompat"},
         }.items():
             if not re.search(rf"^int layout {layout} ", symbols, re.MULTILINE):
                 raise ValueError(f"Missing AndroidX resource symbol: {layout}")
@@ -436,14 +477,28 @@ def main():
             actual = {node.attrib.get("{http://schemas.android.com/apk/res/android}id"): node.tag for node in tree.iter()}
             if any(actual.get(key) != value for key, value in fields.items()):
                 raise ValueError(f"AndroidX layout contract changed: {layout}")
-    styleables = sorted(set(re.findall(r"R.styleable.(SeekBarPreference_\w+)", platform["androidx/preference/SeekBarPreference.java"])))
+    overview = ET.parse(OVERLAY / "res/layout/argon_background_overview.xml").getroot()
+    android = "{http://schemas.android.com/apk/res/android}"
+    fields = {node.attrib.get(android + "id"): node for node in overview.iter()}
+    switch = fields.get("@+id/switchWidget")
+    help_link = fields.get("@+id/argon_background_help")
+    if (switch is None or switch.tag != "androidx.appcompat.widget.SwitchCompat"
+            or any(switch.get(android + flag) != "false" for flag in ("clickable", "focusable"))
+            or help_link is None or help_link.get(android + "clickable") != "true"
+            or help_link.get(android + "focusable") != "true"
+            or fields.get("@android:id/title") is None or fields.get("@android:id/summary") is None):
+        raise ValueError("Overview must preserve the native switch, title/summary IDs and independent help action")
+    styleables = {name: sorted(set(re.findall(rf"R.styleable.({name}_\w+)",
+        platform[f"androidx/preference/{name}.java"]))) for name in ("SeekBarPreference", "SwitchPreferenceCompat")}
     platform["androidx/preference/R.java"] = (
         "package androidx.preference; public class R {"
-        "public static class attr { public static final int seekBarPreferenceStyle=1; }"
+        "public static class attr { public static final int seekBarPreferenceStyle=1, switchPreferenceCompatStyle=2; }"
         "public static class id { public static final int seekbar=org.chromium.chrome.R.id.seekbar,"
-        "seekbar_value=org.chromium.chrome.R.id.seekbar_value; }"
-        "public static class styleable { public static final int[] SeekBarPreference=new int[20];" + "".join(
-            f"public static final int {name}={i};" for i, name in enumerate(styleables)) + "}}")
+        "seekbar_value=org.chromium.chrome.R.id.seekbar_value, switchWidget=org.chromium.chrome.R.id.switchWidget; }"
+        "public static class styleable {" + "".join(
+            f"public static final int[] {group}=new int[{len(names)}];" + "".join(
+                f"public static final int {name}={i};" for i, name in enumerate(names))
+            for group, names in styleables.items()) + "}}")
     with tempfile.TemporaryDirectory(prefix="argon-playback-flow-") as directory:
         root = Path(directory)
         for path, source in platform.items():

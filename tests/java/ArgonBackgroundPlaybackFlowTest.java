@@ -16,6 +16,7 @@ import androidx.preference.EditTextPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.SeekBarPreference;
+import androidx.preference.SwitchPreferenceCompat;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ApplicationStatus;
@@ -69,6 +70,102 @@ public final class ArgonBackgroundPlaybackFlowTest {
             preference.bind();
             if (preference instanceof PreferenceScreen group) bind(group);
         }
+    }
+
+    private static Preference byKey(PreferenceScreen screen, String key) {
+        for (Preference preference : screen.rows) {
+            if (key.equals(preference.getKey())) return preference;
+            if (preference instanceof PreferenceScreen group) {
+                Preference found = byKey(group, key);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void choose(SwitchPreferenceCompat preference, boolean value) {
+        if (preference.isChecked() != value) preference.boundHolder.itemView.performClick();
+        check(preference.isChecked() == value, "The native switch row did not retain its new state");
+    }
+
+    private static void overviewAndDraftStates(boolean enabled) throws Exception {
+        var store = fresh(enabled);
+        int writes = ContextUtils.context.preferences.writes;
+        var overview = settings();
+        check(store.policy.getRules().isEmpty() && store.policy.isEnabled() == enabled,
+                "Binding the overview must preserve the empty list and master state");
+        check(ContextUtils.context.preferences.writes == writes,
+                "Binding the native overview switch must not save a preference");
+        var master = (SwitchPreferenceCompat) byKey(overview.getPreferenceScreen(), "argon_background_overview");
+        check(master.getTitleId() == R.string.argon_background_enable
+                && master.getSummary().toString().contains(text(enabled
+                        ? R.string.argon_background_description : R.string.argon_background_description_disabled)),
+                "The description and global switch must be one card with matching state");
+        var widget = (SwitchCompat) master.boundHolder.findViewById(R.id.switchWidget);
+        check(widget != null && widget.isChecked() == enabled,
+                "The embedded AndroidX switch must reflect the actual global state");
+        check(master.boundHolder.findViewById(R.id.argon_background_help).performClick()
+                && AlertDialog.lastTitle.equals(text(R.string.argon_background_how_it_works))
+                && AlertDialog.lastMessage.equals(text(R.string.argon_background_details_description))
+                && ContextUtils.context.preferences.writes == writes && store.policy.isEnabled() == enabled,
+                "Opening help must show the localized explanation without toggling or saving the master");
+        check(row(overview.getPreferenceScreen(), R.string.argon_background_empty_title) != null,
+                "The first visit must explain that there are no preconfigured sites");
+        check(overview.getPreferenceScreen().rows.get(2).getSummary().toString().equals(text(enabled
+                ? R.string.argon_background_empty_enabled : R.string.argon_background_empty_disabled)),
+                "An empty-list warning must describe the current global state");
+        master.boundHolder.itemView.performClick();
+        check(store.policy.isEnabled() == !enabled && ContextUtils.context.preferences.writes == writes + 1,
+                "Clicking the native overview row must change the master exactly once");
+        bind(overview.getPreferenceScreen());
+        master = (SwitchPreferenceCompat) byKey(overview.getPreferenceScreen(), "argon_background_overview");
+        check(((SwitchCompat) master.boundHolder.findViewById(R.id.switchWidget)).isChecked() == !enabled,
+                "A rebuilt overview must bind its updated native switch state");
+        master.boundHolder.itemView.performClick();
+        check(store.policy.isEnabled() == enabled, "The overview must switch back through the same native callback");
+
+        var editor = open("");
+        var details = byKey(editor.getPreferenceScreen(), "argon_background_rule_details");
+        check(details.getTitleId() == (enabled ? R.string.argon_background_rule_details
+                : R.string.argon_background_state_disabled), "An empty editor must show the current global state");
+        var permission = (SwitchPreferenceCompat) row(editor.getPreferenceScreen(), R.string.argon_background_allow_site);
+        var subdomains = (SwitchPreferenceCompat) row(editor.getPreferenceScreen(), R.string.argon_background_subdomains);
+        var limit = (SeekBarPreference) row(editor.getPreferenceScreen(), R.string.argon_background_time_limit);
+        check(permission.isChecked() && subdomains.isChecked() && limit.getValue() == 60,
+                "The new editor must retain permission, subdomain and 60-minute defaults");
+        domain(editor, "example.test", true);
+        for (boolean allowed : new boolean[] {false, true}) {
+            choose(permission, allowed);
+            check(permission.getSummary().toString().equals(text(allowed
+                    ? R.string.argon_background_allow_description : R.string.argon_background_block_description)),
+                    "Permission helper text must follow the draft switch");
+            check(limit.getSummary().toString().equals(text(allowed
+                    ? R.string.argon_background_time_description : R.string.argon_background_time_description_blocked)),
+                    "A blocked rule must explain that its saved limit is inactive");
+            for (boolean includes : new boolean[] {false, true}) {
+                choose(subdomains, includes);
+                check(subdomains.getSummary().toString().equals(text(includes
+                        ? R.string.argon_background_subdomains_description : R.string.argon_background_exact_description)),
+                        "Scope helper text must follow the draft switch");
+                String summary = details.getSummary().toString();
+                check(enabled ? summary.contains(text(R.string.argon_background_state_enabled))
+                        && !summary.contains(text(R.string.argon_background_editor_disabled))
+                        : summary.contains(text(R.string.argon_background_editor_disabled)),
+                        "The editor header must distinguish draft permissions from the global feature state");
+                check(store.policy.getRules().isEmpty() && store.policy.isEnabled() == enabled,
+                        "Changing editor switches must not persist a draft or enable the feature");
+            }
+        }
+        check(row(editor.getPreferenceScreen(), R.string.argon_background_save).getSummary().toString().equals(text(enabled
+                ? R.string.argon_background_save_description : R.string.argon_background_save_description_disabled)),
+                "Save must explain whether the settings apply now or after enabling the feature");
+        save(editor);
+        String saved = site(settings().getPreferenceScreen(), "example.test").getSummary().toString();
+        String duration = editor.getResources().getQuantityString(R.plurals.argon_background_minutes, 60, 60);
+        check(saved.contains(duration) && (enabled ? saved.contains(text(R.string.argon_background_rule_allowed))
+                : saved.contains(text(R.string.argon_background_saved_allowed, duration,
+                        text(R.string.argon_background_scope_subdomains)))),
+                "The list must show saved permissions when off and actual permissions when on, always in minutes");
     }
 
     private static ArgonBackgroundPlaybackSettings settings() {
@@ -302,8 +399,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
     private static void descriptionsAndOverlaps(boolean enabled) throws Exception {
         var store = fresh(enabled);
         var overview = settings();
-        row(overview.getPreferenceScreen(), enabled ? R.string.argon_background_state_enabled
-                : R.string.argon_background_state_disabled).click();
+        byKey(overview.getPreferenceScreen(), "argon_background_overview").boundHolder
+                .findViewById(R.id.argon_background_help).performClick();
         check(AlertDialog.lastMessage.equals(text(R.string.argon_background_details_description)),
                 "The overview block must explain the entire mode in the selected language");
         add("example.test", 60);
@@ -319,13 +416,14 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 "The parent row must explain scope and both child intersections");
         var childSummary = site(settings().getPreferenceScreen(), "video.example.test").getSummary().toString();
         check(childSummary.contains(text(R.string.argon_background_scope_exact))
-                && childSummary.contains(text(R.string.argon_background_rule_blocked))
+                && childSummary.contains(enabled ? text(R.string.argon_background_rule_blocked)
+                        : text(R.string.argon_background_saved_blocked, text(R.string.argon_background_scope_exact)))
                 && childSummary.contains(text(R.string.argon_background_overlap_count, 1)),
                 "The child row must explain its exact disabled exception and one parent intersection");
-        check(childSummary.contains(text(R.string.argon_background_rule_inactive)) == !enabled,
-                "Saved rule descriptions must show whether the master mode is inactive");
+        check(!childSummary.contains(child.getResources().getQuantityString(R.plurals.argon_background_minutes, 1, 1)),
+                "A blocked rule must not present its unused limit as an active permission");
         child = open("video.example.test");
-        row(child.getPreferenceScreen(), R.string.argon_background_rule_details).click();
+        byKey(child.getPreferenceScreen(), "argon_background_rule_details").click();
         check(AlertDialog.lastMessage.contains("• example.test")
                 && !AlertDialog.lastMessage.contains("• news.example.test")
                 && AlertDialog.lastMessage.contains(text(R.string.argon_background_rule_priority)),
@@ -335,11 +433,11 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 "The runtime result must match the described exact-host exception");
         var parent = open("example.test");
         row(parent.getPreferenceScreen(), R.string.argon_background_subdomains).change(false);
-        row(parent.getPreferenceScreen(), R.string.argon_background_rule_details).click();
+        byKey(parent.getPreferenceScreen(), "argon_background_rule_details").click();
         check(AlertDialog.lastMessage.contains(text(R.string.argon_background_no_overlaps)),
                 "The draft explanation must update when subdomain coverage is turned off");
         domain(parent, "fresh.example.test", true);
-        row(parent.getPreferenceScreen(), R.string.argon_background_rule_details).click();
+        byKey(parent.getPreferenceScreen(), "argon_background_rule_details").click();
         check(AlertDialog.lastMessage.contains(text(R.string.argon_background_no_overlaps)),
                 "A rename preview must exclude the old parent that Save will replace");
         check(store.policy.getRules().stream().anyMatch(r -> r.host.equals("example.test")),
@@ -370,8 +468,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(!row(draft.getPreferenceScreen(), R.string.argon_background_save).isEnabled(),
                 "Canonical duplicates must be rejected in the draft preview");
         row(overview.getPreferenceScreen(), R.string.argon_background_enable).change(!enabled);
-        check(row(overview.getPreferenceScreen(), !enabled ? R.string.argon_background_state_enabled
-                : R.string.argon_background_state_disabled) != null,
+        check(row(overview.getPreferenceScreen(), R.string.argon_background_enable).getSummary().toString().contains(text(
+                !enabled ? R.string.argon_background_description : R.string.argon_background_description_disabled)),
                 "The overview status must update immediately with the master switch");
     }
 
@@ -1126,6 +1224,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         for (boolean russian : new boolean[] {false, true}) {
             PlaybackTestResources.russian = russian;
             for (boolean enabled : new boolean[] {false, true}) {
+                overviewAndDraftStates(enabled);
                 editorAndPersistence(enabled);
                 validationAndCapacity(enabled);
                 staleListSwitch(enabled);

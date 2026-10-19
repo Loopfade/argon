@@ -35,6 +35,10 @@ public class InputType { public static final int TYPE_CLASS_TEXT = 1, TYPE_TEXT_
 public class EditorInfo { public static final int IME_ACTION_DONE = 6, IME_FLAG_NO_PERSONALIZED_LEARNING = 16777216; }''',
     "android/view/View.java": '''package android.view;
 public class View { public static final int VISIBLE = 0, GONE = 8;
+  public interface OnClickListener { void onClick(View view); }
+  private OnClickListener listener;
+  public void setOnClickListener(OnClickListener value) { listener=value; }
+  public boolean performClick() { if(listener==null) return false; listener.onClick(this); return true; }
   public void setVisibility(int value) {} }''',
     "android/widget/EditText.java": '''package android.widget;
 public class EditText {
@@ -63,7 +67,7 @@ public class AlertDialog {
   }
 }''',
     "androidx/appcompat/widget/SwitchCompat.java": '''package androidx.appcompat.widget;
-public class SwitchCompat {
+public class SwitchCompat extends android.view.View {
   public interface Change { void accept(Object button, boolean value); }
   public void setOnCheckedChangeListener(Change c) {}
   public void setChecked(boolean v) {} public void setContentDescription(String v) {}
@@ -77,8 +81,12 @@ public class PreferenceViewHolder {
       views.put(R.id.seekbar, new android.view.View());
       views.put(R.id.seekbar_value, new android.view.View());
     }
+    if (layout == R.layout.argon_background_overview) {
+      views.put(R.id.switchWidget, new androidx.appcompat.widget.SwitchCompat());
+      views.put(R.id.argon_background_help, new android.view.View());
+    }
   }
-  public Object findViewById(int id) { return views.get(id); }
+  public android.view.View findViewById(int id) { return views.get(id); }
 }''',
     "androidx/preference/Preference.java": '''package androidx.preference;
 public class Preference {
@@ -245,8 +253,9 @@ class BackgroundPlaybackSettingsTests(unittest.TestCase):
     def test_add_and_edit_bind_and_save_with_chromium_preference_theme(self):
         resources = {"string": [], "plurals": [],
                      "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material",
-                                "preference_dialog_edittext"],
-                     "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value"],
+                                "preference_dialog_edittext", "argon_background_overview"],
+                     "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value",
+                            "switchWidget", "argon_background_help"],
                      "drawable": ["argon_certificate_add"]}
         for node in ET.parse(OVERLAY / "res/values/argon_background_playback_strings.xml").getroot():
             resources[node.tag].append(node.attrib["name"])
