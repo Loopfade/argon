@@ -406,7 +406,7 @@ public class PreferenceDialogFragmentCompat {
   private int widget;
   public Preference(android.content.Context c) {}
   public Preference(android.content.Context c,android.util.AttributeSet a,int s,int r) { this(c); }
-  protected void notifyChanged() {} protected int getPersistedInt(int v) { return v; }
+  protected int getPersistedInt(int v) { return v; }
   protected void onClick() {}
   protected void performClick(android.view.View view) { onClick(); }
   public android.content.Context getContext() { return org.chromium.base.ContextUtils.context; }
