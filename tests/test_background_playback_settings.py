@@ -39,7 +39,15 @@ public class View { public static final int VISIBLE = 0, GONE = 8;
   private OnClickListener listener;
   public void setOnClickListener(OnClickListener value) { listener=value; }
   public boolean performClick() { if(listener==null) return false; listener.onClick(this); return true; }
-  public void setVisibility(int value) {} }''',
+  private int visibility = VISIBLE;
+  public void setVisibility(int value) { visibility = value; }
+  public int getVisibility() { return visibility; } }''',
+    "android/widget/TextView.java": '''package android.widget;
+public class TextView extends android.view.View {
+  private CharSequence text="";
+  public void setText(CharSequence value) { text=value; }
+  public CharSequence getText() { return text; }
+}''',
     "android/widget/EditText.java": '''package android.widget;
 public class EditText {
   private String text = ""; private int inputType, imeOptions; private boolean singleLine;
@@ -85,6 +93,13 @@ public class PreferenceViewHolder {
       views.put(R.id.switchWidget, new androidx.appcompat.widget.SwitchCompat());
       views.put(R.id.argon_background_help, new android.view.View());
     }
+    if (layout == R.layout.argon_background_domain_card) {
+      android.view.View group = new android.view.View();
+      group.setVisibility(android.view.View.GONE);
+      views.put(R.id.argon_background_scope_group, group);
+      views.put(R.id.argon_background_scope_summary, new android.widget.TextView());
+      views.put(R.id.argon_background_scope_overlaps, new android.widget.TextView());
+    }
   }
   public android.view.View findViewById(int id) { return views.get(id); }
 }''',
@@ -112,6 +127,7 @@ public class Preference {
   public boolean change(Object value) { return change.accept(this, value); }
   public boolean callChangeListener(Object value) { return change == null || change(value); }
   public void click() { click.accept(this); }
+  protected void notifyChanged() {}
   public void onBindViewHolder(PreferenceViewHolder h) {}
   public void bind() { onBindViewHolder(new PreferenceViewHolder(layout)); }
 }''',
@@ -253,9 +269,12 @@ class BackgroundPlaybackSettingsTests(unittest.TestCase):
     def test_add_and_edit_bind_and_save_with_chromium_preference_theme(self):
         resources = {"string": [], "plurals": [],
                      "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material",
-                                "preference_dialog_edittext", "argon_background_overview"],
+                                "preference_dialog_edittext", "argon_background_overview",
+                                 "argon_background_domain_card"],
                      "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value",
-                            "switchWidget", "argon_background_help"],
+                            "switchWidget", "argon_background_help",
+                             "argon_background_scope_group", "argon_background_scope_summary",
+                             "argon_background_scope_overlaps"],
                      "drawable": ["argon_certificate_add"]}
         for node in ET.parse(OVERLAY / "res/values/argon_background_playback_strings.xml").getroot():
             resources[node.tag].append(node.attrib["name"])
