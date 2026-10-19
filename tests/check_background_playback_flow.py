@@ -44,8 +44,16 @@ def dependency(name):
     path = CACHE / name
     data = path.read_bytes() if path.exists() else None
     if data is None or hashlib.sha256(data).hexdigest() != expected:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            data = response.read()
+        # AndroidX snapshot downloads occasionally stall on GitHub-hosted runners.
+        # Retain the SHA-256 pin and retry transient transport errors only.
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(url, timeout=120) as response:
+                    data = response.read()
+                break
+            except (OSError, TimeoutError):
+                if attempt == 2:
+                    raise
         if hashlib.sha256(data).hexdigest() != expected:
             raise ValueError(f"Unexpected dependency contents: {name}")
         path.parent.mkdir(parents=True, exist_ok=True)
