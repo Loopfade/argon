@@ -140,16 +140,20 @@ class ContinuationTests(unittest.TestCase):
         self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
 
     def test_full_pipeline_continues_only_its_original_manual_main_run(self):
-        self.run.update(path=continuation.FULL_WORKFLOW, event="workflow_dispatch",
-                        head_branch="main", pull_requests=[])
-        with patch.object(continuation, "api", side_effect=self.api):
-            continuation.schedule({**self.env, "GITHUB_SHA": self.head})
-            self.writes.clear()
-            continuation.resume({**self.controller_env, "RESUME_SHA": self.head})
-        self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
-        self.run["head_branch"] = "topic"
-        with self.assertRaisesRegex(ValueError, "manual main"):
-            continuation.check_run(self.run, self.repository, 123)
+        for workflow in (".github/workflows/build-all.yml",
+                         ".github/workflows/build-all-no-publish.yml"):
+            with self.subTest(workflow=workflow):
+                self.run.update(path=workflow, event="workflow_dispatch",
+                                head_branch="main", pull_requests=[])
+                self.writes.clear()
+                with patch.object(continuation, "api", side_effect=self.api):
+                    continuation.schedule({**self.env, "GITHUB_SHA": self.head})
+                    self.writes.clear()
+                    continuation.resume({**self.controller_env, "RESUME_SHA": self.head})
+                self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
+                for change in ({"head_branch": "topic"}, {"event": "pull_request"}):
+                    with self.assertRaisesRegex(ValueError, "manual main"):
+                        continuation.check_run({**self.run, **change}, self.repository, 123)
 
     def test_changed_pr_head_or_base_never_continues(self):
         for changed in ("head", "merge"):

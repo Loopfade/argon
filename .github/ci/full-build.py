@@ -22,6 +22,7 @@ from sign_and_verify import check_release_key, signing_tools, verify_apk_abi, wr
 
 IMAGE_LABEL = "io.argon.prepared-inputs"
 WORKFLOW = ".github/workflows/build-all.yml"
+WORKFLOWS = (WORKFLOW, ".github/workflows/build-all-no-publish.yml")
 
 
 def command(argv, **kwargs):
@@ -173,7 +174,7 @@ def reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
         if not run_id:
             continue
         run = api(f"actions/runs/{run_id}")
-        if (run.get("path") != WORKFLOW or run.get("event") != "workflow_dispatch"
+        if (run.get("path") not in WORKFLOWS or run.get("event") != "workflow_dispatch"
                 or run.get("head_sha") != sha or run.get("head_branch") != "main"
                 or run.get("repository", {}).get("full_name") != os.environ["GITHUB_REPOSITORY"]
                 or run.get("head_repository", {}).get("full_name") != os.environ["GITHUB_REPOSITORY"]):

@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 WORKFLOW = ".github/workflows/build.yml"
 FULL_WORKFLOW = ".github/workflows/build-all.yml"
+FULL_WORKFLOWS = (FULL_WORKFLOW, ".github/workflows/build-all-no-publish.yml")
 CONTROLLER_WORKFLOW = ".github/workflows/continue-build.yml"
 BUILD_JOBS = {
     f"Build and verify {arch} / Build, sign and verify APK ({arch})": arch
@@ -33,13 +34,13 @@ def number(value, minimum=1):
 
 
 def check_run(run, repository, run_id):
-    if (run["id"] != run_id or run["path"] not in (WORKFLOW, FULL_WORKFLOW)
+    if (run["id"] != run_id or run["path"] not in (WORKFLOW, *FULL_WORKFLOWS)
             or run["repository"]["full_name"] != repository
             or run["head_repository"]["full_name"] != repository
             or run["event"] not in ("pull_request", "workflow_dispatch")):
         raise ValueError("Refusing to continue an unrelated or unsupported workflow")
-    if run["path"] == FULL_WORKFLOW and (run["event"] != "workflow_dispatch"
-                                         or run["head_branch"] != "main"):
+    if run["path"] in FULL_WORKFLOWS and (run["event"] != "workflow_dispatch"
+                                          or run["head_branch"] != "main"):
         raise ValueError("The full pipeline must originate from a manual main run")
 
 

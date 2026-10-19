@@ -25,7 +25,8 @@ def consumers_active(repository, exclude_run=None):
     # Query repository history so an in-flight legacy build still retains its
     # digest after its workflow file has been deleted from main.
     result = pages(f"repos/{repository}/actions/runs?per_page=100")
-    consumers = {".github/workflows/build-all.yml", ".github/workflows/validate.yml",
+    consumers = {".github/workflows/build-all.yml", ".github/workflows/build-all-no-publish.yml",
+                 ".github/workflows/validate.yml",
                  ".github/workflows/build.yml"}
     runs = [run for page in result for run in page["workflow_runs"]
             if run.get("path") in consumers]

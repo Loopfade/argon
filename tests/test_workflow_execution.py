@@ -180,6 +180,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         for title, path, trusted in (
             ("Full Argon build (release)", ".github/workflows/build-all.yml", True),
             ("Renamed build run", ".github/workflows/build-all.yml", True),
+            ("Full Argon build without APK publishing (release)", ".github/workflows/build-all-no-publish.yml", False),
             ("Build Argon", ".github/workflows/untrusted.yml", False),
             ("Build Argon (full pipeline)", ".github/workflows/untrusted.yml", False),
             ("Full Argon build (release)", ".github/workflows/build.yml", False),

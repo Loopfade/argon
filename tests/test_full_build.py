@@ -195,6 +195,44 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
             self.assertEqual(self.verify(), self.root)
             align.assert_called_once()
 
+    def test_both_manual_workflows_reuse_only_after_payload_verification(self):
+        payload = self.root / "verified-payload"
+        payload.mkdir()
+        (payload / "verified.apk").write_bytes(b"verified APK")
+        repository = "Loopfade/argon"
+        for workflow in (".github/workflows/build-all.yml",
+                         ".github/workflows/build-all-no-publish.yml"):
+            source = {"path": workflow, "event": "workflow_dispatch", "head_sha": self.sha,
+                      "head_branch": "main", "repository": {"full_name": repository},
+                      "head_repository": {"full_name": repository}}
+            artifact = {"id": 11, "name": "matching", "expired": False,
+                        "created_at": "2026-10-19T00:00:00Z", "workflow_run": {"id": 41}}
+            with self.subTest(workflow=workflow), \
+                 patch.dict(os.environ, {"GITHUB_REPOSITORY": repository}), \
+                 patch.object(pipeline, "ROOT", self.root), \
+                 patch.object(pipeline, "api", side_effect=[[{"artifacts": [artifact]}], source]), \
+                 patch.object(pipeline, "extract_artifact", return_value=payload), \
+                 patch.object(pipeline, "verify_artifact", return_value=payload) as verify:
+                self.assertEqual(pipeline.reusable_artifact("matching", self.sha, "arm64", "release",
+                    "fingerprint", "certificate", Path("/sdk"), Path("/jdk")), 41)
+                verify.assert_called_once_with(payload, self.sha, "arm64", "release", "fingerprint",
+                                               "certificate", Path("/sdk"), Path("/jdk"))
+                self.assertEqual((self.root / "artifacts/arm64-v8a/verified.apk").read_bytes(), b"verified APK")
+
+    def test_unrelated_workflow_cannot_supply_reusable_artifacts(self):
+        repository = "Loopfade/argon"
+        source = {"path": ".github/workflows/publish-release.yml", "event": "workflow_dispatch",
+                  "head_sha": self.sha, "head_branch": "main", "repository": {"full_name": repository},
+                  "head_repository": {"full_name": repository}}
+        artifact = {"id": 11, "name": "matching", "expired": False,
+                    "created_at": "2026-10-19T00:00:00Z", "workflow_run": {"id": 41}}
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": repository}), \
+             patch.object(pipeline, "api", side_effect=[[{"artifacts": [artifact]}], source]), \
+             patch.object(pipeline, "extract_artifact") as extract:
+            self.assertIsNone(pipeline.reusable_artifact("matching", self.sha, "arm64", "release",
+                "fingerprint", "certificate", Path("/sdk"), Path("/jdk")))
+            extract.assert_not_called()
+
     def test_changed_sha_mode_abi_inputs_or_fingerprint_never_reuses_apk(self):
         self.fixture_artifact()
         for key, value in (("source_commit", "b" * 40), ("target_cpu", "arm"),
