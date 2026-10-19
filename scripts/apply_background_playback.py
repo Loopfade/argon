@@ -196,8 +196,11 @@ def patch_resources(text):
              "layout/argon_background_rule_switch.xml"]
     block = "\n".join('  "java/res/' + path + '",' for path in files)
     text = replace_once(text, anchor, anchor + "\n" + block)
-    # Upgrade the existing catalog without duplicating the previously registered resources.
-    return replace_once(text, block, block + '\n  "java/res/layout/argon_background_overview.xml",')
+    # Upgrade older prepared image catalogs without duplicating any resource.
+    text = replace_once(text, block, block + '\n  "java/res/layout/argon_background_overview.xml",')
+    return replace_once(text, '  "java/res/layout/argon_background_overview.xml",',
+                        '  "java/res/layout/argon_background_overview.xml",\n'
+                        '  "java/res/layout/argon_background_domain_card.xml",')
 
 
 def patch_tab_visibility(text):
