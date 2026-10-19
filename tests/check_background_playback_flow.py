@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the four production playback classes together with pinned AndroidX callbacks.
+"""Run the production playback classes and visibility bridge with pinned AndroidX callbacks.
 
 Android/Chromium services are deterministic host adapters, not an Android device.
 The store, JSON serialization, editor, policy, controller, edit dialog and seekbar
@@ -359,8 +359,8 @@ public class PreferenceDialogFragmentCompat {
             "  public android.app.Activity requireActivity() { return activity; }").replace(
             "return Integer.toString(id);", "return org.chromium.chrome.PlaybackTestResources.getString(id,args);").replace(
             "return Integer.toString(n);", "return org.chromium.chrome.PlaybackTestResources.getQuantityString(id,n,args);")
-    result["org/chromium/chrome/browser/tab/Tab.java"] = result[
-        "org/chromium/chrome/browser/tab/Tab.java"].replace(
+    result["org/chromium/chrome/browser/tab/TabImpl.java"] = result[
+        "org/chromium/chrome/browser/tab/TabImpl.java"].replace(
             "  public boolean incognito, destroyed;", "  public boolean incognito,destroyed,interactable=true;\n"
             "  public int hash,group; public int hashCode() { return hash; }\n"
             "  public String url=\"https://video.example/\";").replace(
@@ -453,7 +453,8 @@ def main():
         sources = list(root.rglob("*.java")) + [
             OVERLAY / "src" / PACKAGE / f"ArgonBackgroundPlayback{name}.java"
             for name in ("Settings", "Store", "Policy", "Controller")
-        ] + [ROOT / "tests/java/ArgonBackgroundPlaybackFlowTest.java"]
+        ] + [OVERLAY / "src/org/chromium/chrome/browser/tab/ArgonBackgroundPlaybackVisibility.java",
+             ROOT / "tests/java/ArgonBackgroundPlaybackFlowTest.java"]
         compiler = ["javac"] if shutil.which("javac") else ["java", "-m", "jdk.compiler/com.sun.tools.javac.Main"]
         subprocess.run([*compiler, "-cp", str(deps["android-json.jar"]), "-d", directory, *map(str, sources)], check=True)
         subprocess.run(["java", "-cp", directory + ":" + str(deps["android-json.jar"]),

@@ -67,6 +67,19 @@ class BackgroundPlaybackTests(unittest.TestCase):
         self.assertIn("mRootUiCoordinator.getTabObscuringHandler()", updated)
         self.assertIn("getScrimVisibilitySupplier()", updated)
 
+    def test_java_registration_upgrades_existing_overlay_without_duplicate_classes(self):
+        anchor = '  "java/src/org/chromium/chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",'
+        patched = background.patch_java_sources(anchor)
+        bridge = '  "java/src/org/chromium/chrome/browser/tab/ArgonBackgroundPlaybackVisibility.java",'
+        self.assertEqual(patched.count(bridge), 1)
+        self.assertEqual(background.patch_java_sources(patched), patched)
+        legacy = patched.replace("\n" + bridge, "")
+        self.assertEqual(background.patch_java_sources(legacy), patched)
+        sources = re.findall(r'"(java/src/[^"\n]*ArgonBackgroundPlayback[^"\n]*\.java)"', patched)
+        self.assertEqual(len(sources), len(set(sources)))
+        for source in sources:
+            self.assertTrue((OVERLAY.parent / source).is_file(), source)
+
     def test_locale_patch_upgrades_prepared_sources_and_remains_idempotent(self):
         prefix = 'platform_pak_locales = [ "en-US", "ru", "de" ]\n'
         suffix = 'locales_without_pseudolocales = platform_pak_locales - pseudolocales\n'

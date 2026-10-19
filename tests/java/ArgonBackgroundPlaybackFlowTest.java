@@ -21,8 +21,7 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
 import org.chromium.chrome.PlaybackTestResources;
-import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tab.TabImpl;
+import org.chromium.chrome.browser.tab.TestTab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.content_public.browser.MediaSession;
 import org.chromium.content_public.browser.Page;
@@ -376,19 +375,19 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 "The overview status must update immediately with the master switch");
     }
 
-    private static Tab playing(TabModelSelector selector, String url) {
+    private static TestTab playing(TabModelSelector selector, String url) {
         var contents = new WebContents();
         var session = new MediaSession();
         session.controllable = true;
         contents.session = session;
-        var tab = new TabImpl(contents);
+        var tab = new TestTab(contents);
         tab.url = url;
         tab.interactable = false;
         selector.tabs.add(tab);
         return tab;
     }
 
-    private static void play(Tab tab) {
+    private static void play(TestTab tab) {
         var session = tab.contents.session;
         session.suspended = false;
         for (var observer : List.copyOf(session.observers)) observer.mediaSessionStateChanged(true, false);
@@ -415,8 +414,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
             Activity activity = new Activity();
             activity.focused = false;
             TabModelSelector selector = new TabModelSelector();
-            Tab background = playing(selector, "https://order.test/");
-            Tab selected = playing(selector, "https://www.order.test/");
+            TestTab background = playing(selector, "https://order.test/");
+            TestTab selected = playing(selector, "https://www.order.test/");
             background.hash = foregroundFirst ? 1 : 0;
             selected.hash = foregroundFirst ? 0 : 1;
             ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -436,8 +435,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
         SystemClock.now = 60_000;
         Activity activity = new Activity();
         TabModelSelector selector = new TabModelSelector();
-        Tab background = playing(selector, "https://startup.test/");
-        Tab selected = playing(selector, "https://startup.test/");
+        TestTab background = playing(selector, "https://startup.test/");
+        TestTab selected = playing(selector, "https://startup.test/");
         selected.interactable = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
@@ -470,7 +469,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://focus.test/");
+        TestTab tab = playing(selector, "https://focus.test/");
         tab.interactable = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
@@ -495,7 +494,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab allowed = new TabImpl(new WebContents()), denied = new TabImpl(new WebContents());
+        TestTab allowed = new TestTab(new WebContents()), denied = new TestTab(new WebContents());
         allowed.url = "https://player.test/";
         denied.url = "https://unlisted.test/";
         selector.tabs.addAll(List.of(allowed, denied));
@@ -524,7 +523,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://paused.test/");
+        TestTab tab = playing(selector, "https://paused.test/");
         tab.contents.session.suspended = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
@@ -543,7 +542,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://navigation.test/");
+        TestTab tab = playing(selector, "https://navigation.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         selector.observer.onPageLoadStarted(tab, tab.getUrl());
@@ -572,10 +571,10 @@ public final class ArgonBackgroundPlaybackFlowTest {
         ArgonBackgroundPlaybackController.detach(activity);
     }
 
-    private static void selectPage(TabModelSelector selector, Tab selected) {
+    private static void selectPage(TabModelSelector selector, TestTab selected) {
         // TabImpl's interactability is false for a hidden/detached/frozen tab.
         // A group card or tab overview shows no interactable page at all.
-        for (Tab tab : selector.tabs) {
+        for (TestTab tab : selector.tabs) {
             if (tab.interactable) {
                 tab.interactable = false;
                 selector.observer.onInteractabilityChanged(tab, false);
@@ -598,10 +597,10 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("independent.test", 2);
         Activity activity = new Activity();
         TabModelSelector selector = new TabModelSelector();
-        Tab main = playing(selector, "https://group.test/watch");
-        Tab sibling = playing(selector, "https://video.group.test/watch");
-        Tab blocked = playing(selector, "https://private.group.test/watch");
-        Tab independent = playing(selector, "https://independent.test/watch");
+        TestTab main = playing(selector, "https://group.test/watch");
+        TestTab sibling = playing(selector, "https://video.group.test/watch");
+        TestTab blocked = playing(selector, "https://private.group.test/watch");
+        TestTab independent = playing(selector, "https://independent.test/watch");
         main.group = sibling.group = blocked.group = independent.group = 1;
         ContextUtils.context.power.interactive = false;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -678,7 +677,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         SystemClock.now = 60_000;
         Activity activity = new Activity();
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://unlisted.test/current");
+        TestTab tab = playing(selector, "https://unlisted.test/current");
         tab.interactable = true;
         tab.contents.committedUrl = new GURL(tab.url);
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -707,7 +706,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://obscured.test/");
+        TestTab tab = playing(selector, "https://obscured.test/");
         tab.interactable = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
@@ -751,7 +750,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://cached.test/");
+        TestTab tab = playing(selector, "https://cached.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         tab.url = "https://unlisted.test/";
@@ -787,7 +786,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
             add("allowed.test", 1);
             Activity activity = new Activity();
             TabModelSelector selector = new TabModelSelector();
-            TabImpl tab = new TabImpl(new WebContents());
+            TestTab tab = new TestTab(new WebContents());
             tab.mIsHidden = false;
             tab.refreshBackgroundPlaybackVisibility();
             selector.tabs.add(tab);
@@ -821,9 +820,9 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        TabImpl tab = (TabImpl) playing(selector, "https://visible.test/");
-        Tab unlisted = playing(selector, "https://other.test/");
-        Tab privateTab = playing(selector, "https://visible.test/private");
+        TestTab tab = playing(selector, "https://visible.test/");
+        TestTab unlisted = playing(selector, "https://other.test/");
+        TestTab privateTab = playing(selector, "https://visible.test/private");
         privateTab.incognito = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
@@ -892,7 +891,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         fresh(true);
         add("visible.test", 1);
         selector = new TabModelSelector();
-        tab = (TabImpl) playing(selector, "https://visible.test/");
+        tab = playing(selector, "https://visible.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         ArgonBackgroundPlaybackController.detach(activity);
@@ -911,14 +910,14 @@ public final class ArgonBackgroundPlaybackFlowTest {
         save(privateRule);
         Activity activity = new Activity();
         TabModelSelector selector = new TabModelSelector();
-        Tab main = playing(selector, "https://video.example/watch");
+        TestTab main = playing(selector, "https://video.example/watch");
         main.interactable = true;
         ContextUtils.context.power.interactive = false;
-        Tab child = playing(selector, "https://www.video.example/watch");
-        Tab specific = playing(selector, "https://private.video.example/");
-        Tab denied = playing(selector, "https://video.example.attacker.test/");
-        Tab http = playing(selector, "http://video.example/");
-        Tab privateTab = playing(selector, "https://video.example/");
+        TestTab child = playing(selector, "https://www.video.example/watch");
+        TestTab specific = playing(selector, "https://private.video.example/");
+        TestTab denied = playing(selector, "https://video.example.attacker.test/");
+        TestTab http = playing(selector, "http://video.example/");
+        TestTab privateTab = playing(selector, "https://video.example/");
         privateTab.incognito = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
@@ -979,7 +978,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://budget.example/");
+        TestTab tab = playing(selector, "https://budget.example/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         SystemClock.now = 30_000;
@@ -1015,7 +1014,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://video.example./");
+        TestTab tab = playing(selector, "https://video.example./");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         check(tab.contents.pauses == 0, "An HTTPS URL with a DNS root dot must match the saved canonical rule");
@@ -1028,8 +1027,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity firstActivity = new Activity(), secondActivity = new Activity();
         firstActivity.focused = secondActivity.focused = false;
         TabModelSelector firstSelector = new TabModelSelector(), secondSelector = new TabModelSelector();
-        Tab first = playing(firstSelector, "https://windows.example/");
-        Tab second = playing(secondSelector, "https://www.windows.example/");
+        TestTab first = playing(firstSelector, "https://windows.example/");
+        TestTab second = playing(secondSelector, "https://www.windows.example/");
         ArgonBackgroundPlaybackController.attach(firstActivity, firstSelector, firstActivity.obscuring, firstActivity.scrim);
         Handler.runPending();
         SystemClock.now = 20_000;
@@ -1062,7 +1061,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab tab = playing(selector, "https://video.overlap.test/");
+        TestTab tab = playing(selector, "https://video.overlap.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         SystemClock.now = 60_000;

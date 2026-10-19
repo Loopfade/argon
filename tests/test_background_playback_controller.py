@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "org/chromium/chrome/browser/media/"
 SOURCE = ROOT / "chromium_overlay/titanium/chromium_src/chrome/android/java/src" / PACKAGE
 CONTROLLER = SOURCE / "ArgonBackgroundPlaybackController.java"
+VISIBILITY_BRIDGE = SOURCE.parent / "tab/ArgonBackgroundPlaybackVisibility.java"
 spec = importlib.util.spec_from_file_location("visibility_patch", ROOT / "scripts/apply_background_playback.py")
 visibility_patch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(visibility_patch)
@@ -131,22 +132,20 @@ public class GURL {
   public String getHost() { return uri.getHost() == null ? "" : uri.getHost(); }
 }''',
     "org/chromium/chrome/browser/tab/Tab.java": '''package org.chromium.chrome.browser.tab;
-public class Tab {
-  public org.chromium.content_public.browser.WebContents contents;
-  public boolean incognito, destroyed;
-  public Tab(org.chromium.content_public.browser.WebContents c) {
-    contents = c; if(c!=null) c.urlSupplier=this::getUrl;
-  }
-  public boolean isOffTheRecord() { return incognito; }
-  public boolean isDestroyed() { return destroyed; }
-  public boolean isUserInteractable() { return true; }
-  public org.chromium.content_public.browser.WebContents getWebContents() { return contents; }
-  public org.chromium.url.GURL getUrl() { return new org.chromium.url.GURL("https://video.example/"); }
+public interface Tab {
+  boolean isOffTheRecord();
+  boolean isDestroyed();
+  boolean isUserInteractable();
+  org.chromium.content_public.browser.WebContents getWebContents();
+  org.chromium.url.GURL getUrl();
 }''',
     "org/chromium/chrome/browser/tab/TabImpl.java": visibility_patch.patch_tab_visibility('''package org.chromium.chrome.browser.tab;
 import org.chromium.content_public.browser.Visibility;
-// Compile the exact pinned visibility decision with only its services adapted.
-public class TabImpl extends Tab {
+// Match the pinned package-private implementation of the public Tab interface.
+// Compile its exact visibility decision with only its services adapted.
+class TabImpl implements Tab {
+  public org.chromium.content_public.browser.WebContents contents;
+  public boolean incognito, destroyed;
   public boolean mIsHidden=true, mIsDetachedFromActivity, occluded, offscreen;
   private final java.util.function.Supplier<Boolean> mIsOffscreenRenderingSupplier=() -> offscreen;
   private final Window mWindowAndroid=new Window();
@@ -154,11 +153,23 @@ public class TabImpl extends Tab {
     java.util.function.Supplier<Boolean> getOcclusionSupplier() { return () -> occluded; }
   }
   private static <T> T assumeNonNull(T value) { return java.util.Objects.requireNonNull(value); }
-  public TabImpl(org.chromium.content_public.browser.WebContents c) { super(c); }
+  TabImpl(org.chromium.content_public.browser.WebContents c) {
+    contents = c; if(c!=null) c.urlSupplier=this::getUrl;
+  }
+  public boolean isOffTheRecord() { return incognito; }
+  public boolean isDestroyed() { return destroyed; }
+  public boolean isUserInteractable() { return true; }
+  public org.chromium.content_public.browser.WebContents getWebContents() { return contents; }
+  public org.chromium.url.GURL getUrl() { return new org.chromium.url.GURL("https://video.example/"); }
 ''' + visibility_patch.TAB_VISIBILITY_METHOD + '\n}'),
+    "org/chromium/chrome/browser/tab/TestTab.java": '''package org.chromium.chrome.browser.tab;
+// Test-only construction and access to adapted window/player state.
+public class TestTab extends TabImpl {
+  public TestTab(org.chromium.content_public.browser.WebContents contents) { super(contents); }
+}''',
     "org/chromium/chrome/browser/tabmodel/TabModelSelector.java": '''package org.chromium.chrome.browser.tabmodel;
 public class TabModelSelector {
-  public final java.util.List<org.chromium.chrome.browser.tab.Tab> tabs = new java.util.ArrayList<>();
+  public final java.util.List<org.chromium.chrome.browser.tab.TestTab> tabs = new java.util.ArrayList<>();
   public TabModelSelectorTabObserver observer;
 }''',
     "org/chromium/chrome/browser/tab/TabObscuringHandler.java": '''package org.chromium.chrome.browser.tab;
@@ -305,7 +316,7 @@ class BackgroundPlaybackControllerTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(code)
                 sources.append(str(target))
-            sources += [str(CONTROLLER), str(SOURCE / "ArgonBackgroundPlaybackPolicy.java"),
+            sources += [str(CONTROLLER), str(VISIBILITY_BRIDGE), str(SOURCE / "ArgonBackgroundPlaybackPolicy.java"),
                         str(ROOT / "tests/java/ArgonBackgroundPlaybackControllerTest.java")]
             compiler = (["javac"] if shutil.which("javac")
                         else ["java", "-m", "jdk.compiler/com.sun.tools.javac.Main"])
@@ -319,3 +330,15 @@ class BackgroundPlaybackControllerTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("PASS: production controller startup and media lifecycle", result.stdout)
+            # Keep the real package boundary enforced by javac. Making the
+            # adapter public used to hide the actual APK compilation failure.
+            illegal = root / "IllegalTabImplAccess.java"
+            illegal.write_text("""package org.chromium.chrome.browser.media;
+import org.chromium.chrome.browser.tab.TabImpl;
+class IllegalTabImplAccess { TabImpl tab; }
+""")
+            rejected = subprocess.run([*compiler, "-cp", str(root / "classes"),
+                                       "-d", str(root / "rejected"), str(illegal)],
+                                      capture_output=True, text=True)
+            self.assertNotEqual(rejected.returncode, 0, "The native TabImpl package boundary was lost")
+            self.assertIn("TabImpl is not public", rejected.stderr)

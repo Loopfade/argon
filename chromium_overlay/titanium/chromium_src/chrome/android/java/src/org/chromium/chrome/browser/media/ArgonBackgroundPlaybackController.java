@@ -21,8 +21,8 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.tab.ArgonBackgroundPlaybackVisibility;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tab.TabImpl;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
@@ -292,8 +292,8 @@ public final class ArgonBackgroundPlaybackController {
         // Reuse TabImpl's hidden/occluded/offscreen calculation. Never change
         // Tab.isHidden/isUserInteractable: those still describe a real visit.
         if (!state.tab.isDestroyed() && !state.contents.isDestroyed()
-                && state.tab.getWebContents() == state.contents && state.tab instanceof TabImpl tab) {
-            tab.refreshBackgroundPlaybackVisibility();
+                && state.tab.getWebContents() == state.contents) {
+            ArgonBackgroundPlaybackVisibility.refresh(state.tab);
         }
     }
 

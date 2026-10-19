@@ -36,6 +36,7 @@ WEB_CONTENTS_OBSERVER = MEDIA_API_ROOT / "WebContentsObserver.java"
 WEB_CONTENTS = MEDIA_API_ROOT / "WebContents.java"
 MEDIA_SESSION_OBSERVER = MEDIA_API_ROOT / "MediaSessionObserver.java"
 APPLICATION_STATUS = Path("base/android/java/src/org/chromium/base/ApplicationStatus.java")
+TAB = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/Tab.java")
 TAB_OBSERVER = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java")
 TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java")
 TAB_OBSCURING = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObscuringHandler.java")
@@ -48,7 +49,7 @@ BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
               patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
               WEB_CONTENTS_OBSERVER, WEB_CONTENTS, MEDIA_SESSION_OBSERVER,
-              APPLICATION_STATUS, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI,
+              APPLICATION_STATUS, TAB, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI,
               WEB_CONTENTS_ANDROID, RENDER_FRAME_HOST)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
@@ -187,7 +188,11 @@ def verify_background_media_observer_api(src):
             "default void onLoadStopped(Tab tab, boolean toDifferentDocument)",
             "default void onInteractabilityChanged(Tab tab, boolean isInteractable)",
         ),
+        TAB: (
+            "public interface Tab extends TabLifecycle {",
+        ),
         TAB_IMPL: (
+            "\nclass TabImpl implements Tab, TabInternal {",
             "public boolean isUserInteractable()",
             "!mIsHidden && !isFrozen() && mIsViewAttachedToWindow && !isDetachedFromActivity()",
             background.TAB_VISIBILITY_METHOD,
@@ -463,6 +468,16 @@ def main():
         patch.apply(src, product_name=False)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
+        java_sources = re.findall(
+            r'"(java/src/[^"\n]*ArgonBackgroundPlayback[^"\n]*\.java)"',
+            (src / background.JAVA_SOURCES).read_text(),
+        )
+        bridge = "java/src/org/chromium/chrome/browser/tab/ArgonBackgroundPlaybackVisibility.java"
+        if java_sources.count(bridge) != 1 or len(java_sources) != len(set(java_sources)):
+            raise ValueError("Missing or duplicate background playback visibility bridge registration")
+        for source in java_sources:
+            if not (src / "titanium/chromium_src/chrome/android" / source).is_file():
+                raise ValueError(f"Missing background playback Java source: {source}")
         verify_omnibox_icon_dependency(
             (src / patch.OMNIBOX_GN).read_text(),
             (src / SEARCHBOX_PATH).read_text(),

@@ -181,7 +181,10 @@ def patch_java_sources(text):
     files = ["Policy", "Store", "Controller", "Settings"]
     block = "\n".join('  "java/src/org/chromium/chrome/browser/media/ArgonBackgroundPlayback'
                       + name + '.java",' for name in files)
-    return replace_once(text, anchor, anchor + "\n" + block)
+    text = replace_once(text, anchor, anchor + "\n" + block)
+    # Upgrade an already registered four-class overlay without duplicating it.
+    return replace_once(text, block, block + '\n'
+        '  "java/src/org/chromium/chrome/browser/tab/ArgonBackgroundPlaybackVisibility.java",')
 
 
 def patch_resources(text):

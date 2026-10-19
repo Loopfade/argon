@@ -111,6 +111,13 @@ layout through Chromium's merged
 `org.chromium.chrome.R`. The host compile check exposes this resource namespace
 without an artificial `androidx.preference.R`.
 
+The visibility bridge is compiled in `org.chromium.chrome.browser.tab`, beside
+Chromium's package-private `TabImpl`. The media controller uses only the public
+`Tab` interface and bridge. Host adapters retain that interface/class boundary;
+a negative javac check rejects a direct import of `TabImpl` from the media
+package. The pinned-source check verifies those declarations as well as the
+bridge's Java source registration, including repeated overlay application.
+
 `python3 tests/check_background_playback_flow.py` runs the production settings,
 store, policy and controller together. It uses Android's standalone JSON library
 and the pinned AndroidX edit-dialog and seekbar source without modifications,
