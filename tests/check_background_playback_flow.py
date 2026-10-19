@@ -89,9 +89,11 @@ def load_adapters(name):
 def resources():
     names = {"string": [], "plurals": [],
              "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material",
-                        "preference_dialog_edittext", "argon_background_overview"],
+                        "preference_dialog_edittext", "argon_background_overview",
+                        "argon_background_domain_card"],
              "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value",
-                    "switchWidget", "argon_background_help"],
+                    "switchWidget", "argon_background_help", "argon_background_scope_group",
+                    "argon_background_scope_summary", "argon_background_scope_overlaps"],
              "drawable": ["argon_certificate_add"]}
     for node in ET.parse(OVERLAY / "res/values/argon_background_playback_strings.xml").getroot():
         names[node.tag].append(node.attrib["name"])
@@ -316,7 +318,11 @@ public class View {
   public android.content.Context getContext() { return org.chromium.base.ContextUtils.context; }
 }''',
         "android/widget/TextView.java": '''package android.widget;
-public class TextView extends android.view.View { public void setText(CharSequence text) {} }''',
+public class TextView extends android.view.View {
+  private CharSequence text="";
+  public void setText(CharSequence value) { text=value; }
+  public CharSequence getText() { return text; }
+}''',
         "android/widget/Checkable.java": '''package android.widget;
 public interface Checkable { void setChecked(boolean value); boolean isChecked(); void toggle(); }''',
         "android/widget/CompoundButton.java": '''package android.widget;
@@ -487,6 +493,18 @@ def main():
             or help_link.get(android + "focusable") != "true"
             or fields.get("@android:id/title") is None or fields.get("@android:id/summary") is None):
         raise ValueError("Overview must preserve the native switch, title/summary IDs and independent help action")
+    domain = ET.parse(OVERLAY / "res/layout/argon_background_domain_card.xml").getroot()
+    domain_fields = {node.attrib.get(android + "id"): node for node in domain.iter()}
+    scope_group = domain_fields.get("@+id/argon_background_scope_group")
+    if (domain_fields.get("@android:id/title") is None
+            or domain_fields.get("@android:id/summary") is None
+            or scope_group is None
+            or scope_group.get(android + "clickable") != "true"
+            or scope_group.get(android + "focusable") != "true"
+            or scope_group.get(android + "visibility") != "gone"
+            or domain_fields.get("@+id/argon_background_scope_summary") is None
+            or domain_fields.get("@+id/argon_background_scope_overlaps") is None):
+        raise ValueError("Domain card must preserve AndroidX binding and accessible scope details")
     styleables = {name: sorted(set(re.findall(rf"R.styleable.({name}_\w+)",
         platform[f"androidx/preference/{name}.java"]))) for name in ("SeekBarPreference", "SwitchPreferenceCompat")}
     platform["androidx/preference/R.java"] = (
