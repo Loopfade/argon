@@ -225,6 +225,14 @@ public final class ArgonBackgroundPlaybackFlowTest {
         host.closeDialog(accept);
     }
 
+    private static void scopeDetails(ArgonBackgroundPlaybackSettings.RuleEditor editor) {
+        var host = (EditTextPreference) row(editor.getPreferenceScreen(), R.string.argon_background_domain);
+        host.bind();
+        var group = host.boundHolder.findViewById(R.id.argon_background_scope_group);
+        check(group.getVisibility() == android.view.View.VISIBLE && group.performClick(),
+                "A valid site must expose its scope details within the domain card");
+    }
+
     private static void minutes(ArgonBackgroundPlaybackSettings.RuleEditor editor, int value) {
         var limit = (SeekBarPreference) row(editor.getPreferenceScreen(), R.string.argon_background_time_limit);
         ((SeekBar) limit.boundHolder.findViewById(R.id.seekbar)).userProgress(value - limit.getMin());
@@ -442,7 +450,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(!childSummary.contains(child.getResources().getQuantityString(R.plurals.argon_background_minutes, 1, 1)),
                 "A blocked rule must not present its unused limit as an active permission");
         child = open("video.example.test");
-        byKey(child.getPreferenceScreen(), "argon_background_rule_details").click();
+        scopeDetails(child);
         check(AlertDialog.lastMessage.contains("• example.test")
                 && !AlertDialog.lastMessage.contains("• news.example.test")
                 && AlertDialog.lastMessage.contains(text(R.string.argon_background_rule_priority)),
@@ -452,11 +460,11 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 "The runtime result must match the described exact-host exception");
         var parent = open("example.test");
         row(parent.getPreferenceScreen(), R.string.argon_background_subdomains).change(false);
-        byKey(parent.getPreferenceScreen(), "argon_background_rule_details").click();
+        scopeDetails(parent);
         check(AlertDialog.lastMessage.contains(text(R.string.argon_background_no_overlaps)),
                 "The draft explanation must update when subdomain coverage is turned off");
         domain(parent, "fresh.example.test", true);
-        byKey(parent.getPreferenceScreen(), "argon_background_rule_details").click();
+        scopeDetails(parent);
         check(AlertDialog.lastMessage.contains(text(R.string.argon_background_no_overlaps)),
                 "A rename preview must exclude the old parent that Save will replace");
         check(store.policy.getRules().stream().anyMatch(r -> r.host.equals("example.test")),
