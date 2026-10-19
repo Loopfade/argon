@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The EditTextPreference domain field and its focusable scope action share a card. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/PreferenceLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@android:id/title"
+            style="@style/PreferenceTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:singleLine="false" />
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="12dp"
+            android:src="@android:drawable/ic_menu_edit"
+            android:contentDescription="@string/argon_background_edit_domain"
+            android:clickable="false"
+            android:focusable="false" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@android:id/summary"
+        style="@style/PreferenceTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:singleLine="false"
+        android:textStyle="bold" />
+
+    <TextView
+        style="@style/PreferenceSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/argon_background_domain_helper" />
+
+    <LinearLayout
+        android:id="@+id/argon_background_scope_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="?android:attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:minHeight="48dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider" />
+
+        <TextView
+            style="@style/PreferenceTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/argon_background_scope_heading" />
+
+        <TextView
+            android:id="@+id/argon_background_scope_summary"
+            style="@style/PreferenceSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/argon_background_scope_overlaps"
+            style="@style/PreferenceSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" />
+    </LinearLayout>
+</LinearLayout>
