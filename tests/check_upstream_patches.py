@@ -41,12 +41,15 @@ TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl
 TAB_OBSCURING = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObscuringHandler.java")
 SCRIM_MANAGER = Path("components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/scrim/ScrimManager.java")
 ROOT_UI = Path("chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java")
+WEB_CONTENTS_ANDROID = Path("content/browser/web_contents/web_contents_android.cc")
+RENDER_FRAME_HOST = Path("content/browser/renderer_host/render_frame_host_impl.cc")
 BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
               patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
               WEB_CONTENTS_OBSERVER, WEB_CONTENTS, MEDIA_SESSION_OBSERVER,
-              APPLICATION_STATUS, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI)
+              APPLICATION_STATUS, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI,
+              WEB_CONTENTS_ANDROID, RENDER_FRAME_HOST)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
@@ -159,6 +162,7 @@ def verify_background_media_observer_api(src):
         WEB_CONTENTS: (
             "GURL getLastCommittedUrl()",
             "void suspendAllMediaPlayers()",
+            "void updateWebContentsVisibility(@Visibility int visibility)",
         ),
         WEB_CONTENTS_OBSERVER: (
             "public WebContentsObserver(@Nullable WebContents webContents)",
@@ -186,6 +190,7 @@ def verify_background_media_observer_api(src):
         TAB_IMPL: (
             "public boolean isUserInteractable()",
             "!mIsHidden && !isFrozen() && mIsViewAttachedToWindow && !isDetachedFromActivity()",
+            background.TAB_VISIBILITY_METHOD,
         ),
         TAB_OBSCURING: (
             "public boolean isTabContentObscured()",
@@ -205,6 +210,18 @@ def verify_background_media_observer_api(src):
         for signature in required:
             if signature not in source:
                 raise ValueError(f"Background playback observer API changed: {path}: {signature}")
+    # Host adapters must not silently permit an API which aborts the real app.
+    android = (src / WEB_CONTENTS_ANDROID).read_text()
+    native = (src / RENDER_FRAME_HOST).read_text()
+    if not re.search(r"void WebContentsAndroid::EvaluateJavaScript\(.*?->ExecuteJavaScript\(",
+                     android, re.DOTALL):
+        raise ValueError("Review the pinned Android JavaScript execution path")
+    if not re.search(r"void RenderFrameHostImpl::ExecuteJavaScript\(.*?CHECK\(CanExecuteJavaScript\(\)\);",
+                     native, re.DOTALL):
+        raise ValueError("Review the pinned native JavaScript origin guard")
+    if not re.search(r"bool RenderFrameHostImpl::CanExecuteJavaScript\(\).*?HasWebUIBindings.*?kAboutBlankURL",
+                     native, re.DOTALL):
+        raise ValueError("Review the allowed origins in the native JavaScript guard")
 
 
 def obtain_pinned_gn(directory, deps_text):

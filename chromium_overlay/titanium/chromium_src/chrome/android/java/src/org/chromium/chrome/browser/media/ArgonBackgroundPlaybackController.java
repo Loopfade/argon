@@ -21,22 +21,19 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.R;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabImpl;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.content_public.browser.MediaSession;
 import org.chromium.content_public.browser.MediaSessionObserver;
 import org.chromium.content_public.browser.Page;
+import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
 import org.chromium.url.GURL;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,7 +56,6 @@ public final class ArgonBackgroundPlaybackController {
     private final Callback<Boolean> mScrimObserver = visible -> refresh();
     private final @Nullable PowerManager mPower = mContext.getSystemService(PowerManager.class);
     private final @Nullable KeyguardManager mKeyguard = mContext.getSystemService(KeyguardManager.class);
-    private final String mScript;
     private boolean mDestroyed;
     private boolean mWasEnabled = mStore.policy.isEnabled();
     private final Runnable mTick = this::refresh;
@@ -97,8 +93,7 @@ public final class ArgonBackgroundPlaybackController {
         boolean sessionPlaying;
         boolean playing;
         boolean wasForeground;
-        boolean documentReady = true;
-        @Nullable Boolean override;
+        boolean keepVisible;
         String host = "";
 
         State(Tab tab, WebContents contents) {
@@ -120,6 +115,25 @@ public final class ArgonBackgroundPlaybackController {
         if (controller != null) controller.destroy();
     }
 
+    /** Called by TabImpl before sending its visibility decision to the renderer. */
+    public static @Visibility int resolveVisibility(Tab tab, @Visibility int requested) {
+        if (requested == Visibility.VISIBLE || tab.isOffTheRecord() || tab.isDestroyed()) return requested;
+        for (var controller : sControllers.values()) {
+            State state = controller.mTabs.get(tab);
+            if (controller.mDestroyed || state == null || !state.keepVisible || !state.playing
+                    || state.contents != tab.getWebContents() || state.contents.isDestroyed()) continue;
+            String host = ArgonBackgroundPlaybackStore.hostFromUrl(state.contents.getLastCommittedUrl());
+            // A pending/new document cannot inherit the previous host's permission.
+            if (host.isEmpty() || !host.equals(state.host)) continue;
+            var policy = controller.mStore.policy;
+            if (policy.isEnabled() && policy.isSiteEnabled(host)
+                    && policy.mayPlay(host, false, SystemClock.elapsedRealtime(), false)) {
+                return Visibility.VISIBLE;
+            }
+        }
+        return requested;
+    }
+
     private ArgonBackgroundPlaybackController(Activity activity, TabModelSelector selector,
             TabObscuringHandler obscuringHandler, NonNullObservableSupplier<Boolean> scrimVisible) {
         mActivity = activity;
@@ -128,7 +142,6 @@ public final class ArgonBackgroundPlaybackController {
         mFocusListener = (changedActivity, hasFocus) -> {
             if (changedActivity == mActivity) refresh();
         };
-        mScript = readScript();
         mObserver = new TabModelSelectorTabObserver(selector) {
             @Override
             protected void onTabRegistered(Tab tab) {
@@ -149,30 +162,17 @@ public final class ArgonBackgroundPlaybackController {
             @Override
             public void onPageLoadStarted(Tab tab, GURL url) {
                 track(tab);
-                State state = mTabs.get(tab);
-                if (state != null) {
-                    state.documentReady = false;
-                }
+                refresh();
             }
 
             @Override
             public void onPageLoadFinished(Tab tab, GURL url) {
                 track(tab);
-                State state = mTabs.get(tab);
-                if (state != null) {
-                    state.documentReady = true;
-                    // A successful load has a new document, even on the same host.
-                    state.override = null;
-                }
                 refresh();
             }
 
             @Override
             public void onLoadStopped(Tab tab, boolean toDifferentDocument) {
-                State state = mTabs.get(tab);
-                // Aborted/failed loads need not send onPageLoadFinished. The old
-                // document may still be alive and must keep receiving rule changes.
-                if (state != null) state.documentReady = true;
                 refresh();
             }
 
@@ -220,11 +220,9 @@ public final class ArgonBackgroundPlaybackController {
             @Override
             public void primaryPageChanged(Page page) {
                 if (mTabs.get(tab) != state) return;
-                // BFCache/prerender activation can change the primary document
-                // without a normal page-load pair. Reapply its current rule.
-                state.documentReady = true;
-                state.override = null;
+                // BFCache/prerender activation need not send a page-load pair.
                 refresh();
+                if (state.keepVisible) updateNativeVisibility(state);
             }
 
             @Override
@@ -287,6 +285,16 @@ public final class ArgonBackgroundPlaybackController {
         if (state == null) return;
         if (state.observer != null) state.observer.stopObserving();
         if (state.contentsObserver != null) state.contentsObserver.observe(null);
+        if (state.keepVisible) updateNativeVisibility(state);
+    }
+
+    private static void updateNativeVisibility(State state) {
+        // Reuse TabImpl's hidden/occluded/offscreen calculation. Never change
+        // Tab.isHidden/isUserInteractable: those still describe a real visit.
+        if (!state.tab.isDestroyed() && !state.contents.isDestroyed()
+                && state.tab.getWebContents() == state.contents && state.tab instanceof TabImpl tab) {
+            tab.refreshBackgroundPlaybackVisibility();
+        }
     }
 
     private boolean isForeground(Tab tab) {
@@ -326,14 +334,11 @@ public final class ArgonBackgroundPlaybackController {
             String host = state.host;
             boolean allowed = mStore.policy.mayPlay(host, state.wasForeground, now, state.playing);
             if (!allowed && state.playing) pause(state);
-            boolean override = mStore.policy.isEnabled()
+            boolean keepVisible = state.playing && mStore.policy.isEnabled()
                     && mStore.policy.isSiteEnabled(host) && allowed;
-            if ((state.documentReady || !override) && (state.override == null || state.override != override)) {
-                state.override = override;
-                if (!mScript.isEmpty() && !host.isEmpty()) {
-                    state.contents.evaluateJavaScript(
-                            mScript.replace("ARGON_OVERRIDE_ACTIVE", Boolean.toString(override)), null);
-                }
+            if (state.keepVisible != keepVisible) {
+                state.keepVisible = keepVisible;
+                updateNativeVisibility(state);
             }
             playing |= state.playing;
         }
@@ -349,19 +354,6 @@ public final class ArgonBackgroundPlaybackController {
         // UI suspend can be intercepted (and ignored) by the site's pause handler.
         // This public Chromium API suspends the media players directly and preserves position.
         state.contents.suspendAllMediaPlayers();
-    }
-
-    private String readScript() {
-        StringBuilder script = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                mContext.getResources().openRawResource(R.raw.argon_background_playback),
-                StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) script.append(line).append('\n');
-        } catch (IOException ignored) {
-            // Native deadline enforcement still works if the compatibility shim cannot load.
-        }
-        return script.toString();
     }
 
     private void destroy() {

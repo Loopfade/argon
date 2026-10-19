@@ -87,7 +87,7 @@ def load_adapters(name):
 
 
 def resources():
-    names = {"string": [], "plurals": [], "raw": ["argon_background_playback"],
+    names = {"string": [], "plurals": [],
              "layout": ["argon_background_rule_switch", "preference_widget_seekbar_material",
                         "preference_dialog_edittext"],
              "id": ["argon_background_rule_enabled", "seekbar", "seekbar_value"],
@@ -221,14 +221,6 @@ public class Activity extends android.content.Context {
   public final org.chromium.base.supplier.NonNullObservableSupplier<Boolean> scrim = new org.chromium.base.supplier.NonNullObservableSupplier<>(false);
   public boolean hasWindowFocus() { return focused; }
   public Activity getOnBackPressedDispatcher() { return this; } public void onBackPressed() { backs++; }
-}''',
-        "android/content/res/Resources.java": '''package android.content.res;
-public class Resources {
-  public java.io.InputStream openRawResource(int id) {
-    var resource=getClass().getResourceAsStream("/argon_background_playback.js");
-    if(resource==null) throw new IllegalStateException("Missing production compatibility script");
-    return resource;
-  }
 }''',
         "androidx/appcompat/widget/SwitchCompat.java": '''package androidx.appcompat.widget;
 public class SwitchCompat extends android.view.View {
@@ -376,8 +368,6 @@ public class PreferenceDialogFragmentCompat {
             'new org.chromium.url.GURL("https://video.example/")', "new org.chromium.url.GURL(url)")
     result["org/chromium/content_public/browser/WebContents.java"] = result[
         "org/chromium/content_public/browser/WebContents.java"].replace(
-            "  public int pauses;", "  public int pauses; public final java.util.List<String> scripts=new java.util.ArrayList<>();").replace(
-            "evaluateJavaScript(String script, Object callback) {}", "evaluateJavaScript(String script,Object callback) { scripts.add(script); }").replace(
             "suspendAllMediaPlayers() { pauses++; }", "suspendAllMediaPlayers() { pauses++; if(session!=null) session.suspended=true; }")
     preference = result["androidx/preference/Preference.java"]
     preference = preference.replace("public Preference(android.content.Context c) {}", """
@@ -456,7 +446,6 @@ def main():
             f"public static final int {name}={i};" for i, name in enumerate(styleables)) + "}}")
     with tempfile.TemporaryDirectory(prefix="argon-playback-flow-") as directory:
         root = Path(directory)
-        shutil.copy(OVERLAY / "res/raw/argon_background_playback.js", root)
         for path, source in platform.items():
             target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)

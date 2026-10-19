@@ -46,7 +46,7 @@ class BackgroundPlaybackTests(unittest.TestCase):
                                  re.findall(r"%[\d$]*[ds]", russian.text or ""), name)
 
     def test_patch_anchor_changes_fail_instead_of_silently_breaking_the_build(self):
-        for transform in (background.patch_activity, background.patch_menu,
+        for transform in (background.patch_activity, background.patch_tab_visibility, background.patch_menu,
                           background.patch_locales, background.patch_java_sources,
                           background.patch_resources, background.patch_android_packaging,
                           background.patch_paks, background.patch_apk_template,
@@ -103,34 +103,23 @@ if (is_android) {
         with self.assertRaisesRegex(ValueError, 'mapping changed'):
             background.patch_locales(source)
 
-    @unittest.skipUnless(shutil.which("node"), "Node required for visibility compatibility test")
-    def test_visibility_compatibility_is_reversible_and_idempotent(self):
-        script = (OVERLAY / "res/raw/argon_background_playback.js").read_text()
-        harness = r'''
-const vm = require('node:vm');
-const listeners = [];
-class Document {
-  get hidden() { return true; }
-  get visibilityState() { return 'hidden'; }
-  addEventListener(name, callback) { listeners.push(callback); }
-}
-const sandbox = {document: new Document(), window: {addEventListener(name, cb) { listeners.push(cb); }}};
-vm.createContext(sandbox);
-function check(value) { if (!value) throw Error('Visibility shim regression'); }
-'''
-        with tempfile.TemporaryDirectory() as directory:
-            test = Path(directory) / "test.cjs"
-            import json
-            harness += "\nvm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "false")) + ", sandbox);\n"
-            harness += "check(listeners.length === 0 && sandbox.document.hidden === true && !Object.hasOwn(sandbox.window, '__argonBackgroundPlaybackVisibility'));\n"
-            harness += "\nvm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "true")) + ", sandbox);\n"
-            harness += "check(sandbox.document.hidden === false && sandbox.document.visibilityState === 'visible');\n"
-            harness += "const readHidden = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden').get; check(readHidden.call(sandbox.document) === false);\n"
-            harness += "const otherDocument = new Document(); check(otherDocument.hidden === true && otherDocument.visibilityState === 'hidden');\n"
-            harness += "let stopped = 0; listeners[0]({stopImmediatePropagation() { stopped++; }}); check(stopped === 1);\n"
-            harness += "vm.runInContext(" + json.dumps(script.replace("ARGON_OVERRIDE_ACTIVE", "false")) + ", sandbox);\n"
-            harness += "check(sandbox.document.hidden === true && sandbox.document.visibilityState === 'hidden');\n"
-            harness += "check(readHidden.call(sandbox.document) === true);\n"
-            harness += "listeners[0]({stopImmediatePropagation() { stopped++; }}); check(stopped === 1 && listeners.length === 2);\n"
-            test.write_text(harness)
-            subprocess.run(["node", str(test)], check=True, capture_output=True, text=True)
+    def test_native_visibility_patch_preserves_upstream_decision_and_is_idempotent(self):
+        original = "class TabImpl {\n" + background.TAB_VISIBILITY_METHOD + "\n}"
+        patched = background.patch_tab_visibility(original)
+        self.assertEqual(background.patch_tab_visibility(patched), patched)
+        self.assertEqual(patched.count("public void refreshBackgroundPlaybackVisibility()"), 1)
+        for value in ("HIDDEN", "OCCLUDED", "VISIBLE"):
+            self.assertEqual(patched.count(f".resolveVisibility(this, Visibility.{value})"), 1)
+        self.assertIn("mIsHidden && !isOffscreenRendering", patched)
+        self.assertIn("!mIsDetachedFromActivity", patched)
+        self.assertIn("assumeNonNull(mWindowAndroid).getOcclusionSupplier().get()", patched)
+        with self.assertRaises(ValueError):
+            background.patch_tab_visibility(original.replace("!mIsDetachedFromActivity", "true"))
+
+    def test_retired_script_is_unregistered_on_existing_prepared_catalog(self):
+        anchor = '  "java/res/values-ru/argon_widget_strings.xml",'
+        patched = background.patch_resources(anchor)
+        legacy = patched + '\n  "java/res/raw/argon_background_playback.js",\n'
+        self.assertEqual(background.patch_resources(legacy), patched + '\n')
+        self.assertEqual(background.patch_resources(patched), patched)
+        self.assertFalse((OVERLAY / "res/raw/argon_background_playback.js").exists())

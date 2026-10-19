@@ -1,5 +1,6 @@
 """Exercise the production controller with deterministic Android/Chromium adapters."""
 from pathlib import Path
+import importlib.util
 import shutil
 import subprocess
 import tempfile
@@ -9,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "org/chromium/chrome/browser/media/"
 SOURCE = ROOT / "chromium_overlay/titanium/chromium_src/chrome/android/java/src" / PACKAGE
 CONTROLLER = SOURCE / "ArgonBackgroundPlaybackController.java"
+spec = importlib.util.spec_from_file_location("visibility_patch", ROOT / "scripts/apply_background_playback.py")
+visibility_patch = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(visibility_patch)
 
 # Only platform services are substituted. The actual controller and budget policy
 # run unchanged, including the MediaSessionObserver constructor's null rejection.
@@ -48,11 +52,7 @@ public interface SharedPreferences {
   void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener);
 }''',
     "android/content/res/Resources.java": '''package android.content.res;
-public class Resources {
-  public java.io.InputStream openRawResource(int id) {
-    return new java.io.ByteArrayInputStream("ARGON_OVERRIDE_ACTIVE;".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-  }
-}''',
+public class Resources {}''',
     "android/os/Looper.java": '''package android.os;
 public class Looper { public static Looper getMainLooper() { return new Looper(); } }''',
     "android/os/SystemClock.java": '''package android.os;
@@ -123,8 +123,6 @@ public @interface NullMarked {}''',
     "org/chromium/build/annotations/Nullable.java": '''package org.chromium.build.annotations;
 @java.lang.annotation.Target({java.lang.annotation.ElementType.TYPE_USE})
 public @interface Nullable {}''',
-    "org/chromium/chrome/R.java": '''package org.chromium.chrome;
-public class R { public static class raw { public static final int argon_background_playback = 1; } }''',
     "org/chromium/url/GURL.java": '''package org.chromium.url;
 public class GURL {
   private final java.net.URI uri;
@@ -145,6 +143,19 @@ public class Tab {
   public org.chromium.content_public.browser.WebContents getWebContents() { return contents; }
   public org.chromium.url.GURL getUrl() { return new org.chromium.url.GURL("https://video.example/"); }
 }''',
+    "org/chromium/chrome/browser/tab/TabImpl.java": visibility_patch.patch_tab_visibility('''package org.chromium.chrome.browser.tab;
+import org.chromium.content_public.browser.Visibility;
+// Compile the exact pinned visibility decision with only its services adapted.
+public class TabImpl extends Tab {
+  public boolean mIsHidden=true, mIsDetachedFromActivity, occluded, offscreen;
+  private final java.util.function.Supplier<Boolean> mIsOffscreenRenderingSupplier=() -> offscreen;
+  private final Window mWindowAndroid=new Window();
+  private class Window {
+    java.util.function.Supplier<Boolean> getOcclusionSupplier() { return () -> occluded; }
+  }
+  private static <T> T assumeNonNull(T value) { return java.util.Objects.requireNonNull(value); }
+  public TabImpl(org.chromium.content_public.browser.WebContents c) { super(c); }
+''' + visibility_patch.TAB_VISIBILITY_METHOD + '\n}'),
     "org/chromium/chrome/browser/tabmodel/TabModelSelector.java": '''package org.chromium.chrome.browser.tabmodel;
 public class TabModelSelector {
   public final java.util.List<org.chromium.chrome.browser.tab.Tab> tabs = new java.util.ArrayList<>();
@@ -218,9 +229,21 @@ public class WebContents {
   public org.chromium.url.GURL getLastCommittedUrl() { return committedUrl!=null ? committedUrl : urlSupplier.get(); }
   public boolean destroyed;
   public int pauses;
+  public int visibility = Visibility.HIDDEN;
+  public final java.util.List<Integer> visibilityChanges = new java.util.ArrayList<>();
   public final java.util.List<WebContentsObserver> observers = new java.util.ArrayList<>();
   public boolean isDestroyed() { return destroyed; }
-  public void evaluateJavaScript(String script, Object callback) {}
+  public int getVisibility() { return visibility; }
+  public void updateWebContentsVisibility(int value) {
+    if (visibility != value) visibilityChanges.add(value);
+    visibility = value;
+  }
+  public void evaluateJavaScript(String script, Object callback) {
+    // RenderFrameHostImpl::ExecuteJavaScript CHECKs CanExecuteJavaScript().
+    // Ordinary HTTPS documents are not privileged WebUI/test frames.
+    if ("https".equals(getLastCommittedUrl().getScheme()) || "http".equals(getLastCommittedUrl().getScheme()))
+      throw new AssertionError("Chromium CHECK(CanExecuteJavaScript()): ordinary web origin");
+  }
   public void suspendAllMediaPlayers() { pauses++; }
   public void createSession(MediaSession value) {
     session = value;
@@ -231,6 +254,9 @@ public class WebContents {
     for (var observer : java.util.List.copyOf(observers)) observer.webContentsDestroyed();
   }
 }''',
+    "org/chromium/content_public/browser/Visibility.java": '''package org.chromium.content_public.browser;
+@java.lang.annotation.Target({java.lang.annotation.ElementType.TYPE_USE})
+public @interface Visibility { int VISIBLE=0, HIDDEN=1, OCCLUDED=2; }''',
     "org/chromium/content_public/browser/WebContentsObserver.java": '''package org.chromium.content_public.browser;
 public class WebContentsObserver {
   private WebContents contents;

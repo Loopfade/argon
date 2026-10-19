@@ -22,10 +22,12 @@ import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
 import org.chromium.chrome.PlaybackTestResources;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabImpl;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.content_public.browser.MediaSession;
 import org.chromium.content_public.browser.Page;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.Visibility;
 import org.chromium.url.GURL;
 import org.json.JSONArray;
 
@@ -379,7 +381,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         var session = new MediaSession();
         session.controllable = true;
         contents.session = session;
-        var tab = new Tab(contents);
+        var tab = new TabImpl(contents);
         tab.url = url;
         tab.interactable = false;
         selector.tabs.add(tab);
@@ -493,7 +495,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Activity activity = new Activity();
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
-        Tab allowed = new Tab(new WebContents()), denied = new Tab(new WebContents());
+        Tab allowed = new TabImpl(new WebContents()), denied = new TabImpl(new WebContents());
         allowed.url = "https://player.test/";
         denied.url = "https://unlisted.test/";
         selector.tabs.addAll(List.of(allowed, denied));
@@ -547,23 +549,26 @@ public final class ArgonBackgroundPlaybackFlowTest {
         selector.observer.onPageLoadStarted(tab, tab.getUrl());
         row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(false);
         selector.observer.onLoadStopped(tab, true);
-        check(tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](false)"),
+        check(tab.contents.getVisibility() == Visibility.HIDDEN,
                 "Stopping or cancelling navigation must not leave the previous document's visibility override enabled");
         row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(true);
-        check(tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](true)"),
-                "Rules must become applicable again after a cancelled load, without requiring another successful navigation");
-        int scripts = tab.contents.scripts.size();
+        check(tab.contents.getVisibility() == Visibility.HIDDEN,
+                "Enabling the mode must not keep a paused page running or restart playback");
+        play(tab);
+        check(tab.contents.getVisibility() == Visibility.VISIBLE,
+                "A resumed allowed player must work after a cancelled load without another successful navigation");
+        int changes = tab.contents.visibilityChanges.size();
         selector.observer.onPageLoadStarted(tab, tab.getUrl());
         selector.observer.onPageLoadFinished(tab, tab.getUrl());
-        check(tab.contents.scripts.size() == scripts + 1,
-                "A successful same-host reload must apply the shim to its new document");
+        check(tab.contents.getVisibility() == Visibility.VISIBLE && tab.contents.visibilityChanges.size() == changes,
+                "A same-host reload must not deliver a hidden event to an allowed player");
         selector.observer.onPageLoadStarted(tab, tab.getUrl());
         tab.url = "https://unlisted.test/";
         selector.observer.onUrlUpdated(tab);
-        check(tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](false)"),
+        check(tab.contents.getVisibility() == Visibility.HIDDEN,
                 "Navigating to an unlisted host must revoke the old document's override while loading");
         play(tab);
-        check(tab.contents.pauses == 2, "An unlisted destination must not inherit the previous domain's permission");
+        check(tab.contents.pauses == 3, "An unlisted destination must not inherit the previous domain's permission");
         ArgonBackgroundPlaybackController.detach(activity);
     }
 
@@ -752,17 +757,149 @@ public final class ArgonBackgroundPlaybackFlowTest {
         tab.url = "https://unlisted.test/";
         selector.observer.onUrlUpdated(tab);
         row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(false);
-        int scripts = tab.contents.scripts.size();
         tab.url = "https://cached.test/";
         selector.observer.onUrlUpdated(tab);
         // BFCache restores and prerender activations replace the primary page
         // without requiring onPageLoadStarted/onPageLoadFinished.
         for (var observer : List.copyOf(tab.contents.observers)) observer.primaryPageChanged(new Page());
         Handler.runPending();
-        check(tab.contents.scripts.size() > scripts
-                && tab.contents.scripts.get(tab.contents.scripts.size() - 1).contains("window[slot](false)"),
-                "A restored cached document must receive current disabled rules instead of retaining its old enabled visibility shim");
+        check(tab.contents.getVisibility() == Visibility.HIDDEN,
+                "A restored cached document must retain ordinary native visibility when the mode is disabled");
         ArgonBackgroundPlaybackController.detach(activity);
+    }
+
+    private static void ordinaryNavigationDoesNotExecuteJavaScript() throws Exception {
+        // Negative control: adapters must preserve the native CHECK which was
+        // missing from the earlier host test and allowed this regression through.
+        for (String url : List.of("https://ordinary.test/", "http://ordinary.test/")) {
+            WebContents contents = new WebContents();
+            contents.committedUrl = new GURL(url);
+            try {
+                contents.evaluateJavaScript("true", null);
+                throw new AssertionError("The native JavaScript origin guard was bypassed by the adapter");
+            } catch (AssertionError expected) {
+                check(expected.getMessage().startsWith("Chromium CHECK(CanExecuteJavaScript())"),
+                        "The negative control must fail at Chromium's origin guard");
+            }
+        }
+        for (boolean enabled : new boolean[] {false, true}) {
+            fresh(enabled);
+            add("allowed.test", 1);
+            Activity activity = new Activity();
+            TabModelSelector selector = new TabModelSelector();
+            TabImpl tab = new TabImpl(new WebContents());
+            tab.mIsHidden = false;
+            tab.refreshBackgroundPlaybackVisibility();
+            selector.tabs.add(tab);
+            ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+            Handler.runPending();
+            for (String url : List.of("https://ordinary.test/", "https://allowed.test/",
+                    "https://unlisted.test/", "http://ordinary.test/", "https://allowed.test/again")) {
+                tab.url = url;
+                selector.observer.onPageLoadStarted(tab, tab.getUrl());
+                selector.observer.onUrlUpdated(tab);
+                for (var observer : List.copyOf(tab.contents.observers)) observer.primaryPageChanged(new Page());
+                selector.observer.onPageLoadFinished(tab, tab.getUrl());
+                selector.observer.onLoadStopped(tab, true);
+                Handler.runPending();
+                check(tab.contents.getVisibility() == Visibility.VISIBLE && tab.contents.pauses == 0,
+                        "Ordinary foreground navigation must retain Chromium's native behavior in both modes");
+            }
+            tab.mIsHidden = true;
+            tab.interactable = false;
+            selector.observer.onInteractabilityChanged(tab, false);
+            tab.refreshBackgroundPlaybackVisibility();
+            check(tab.contents.getVisibility() == Visibility.HIDDEN && Handler.pendingCount() == 0,
+                    "An allowed site without playback must not gain background visibility or polling");
+            ArgonBackgroundPlaybackController.detach(activity);
+        }
+    }
+
+    private static void nativeVisibilityLifecycle() throws Exception {
+        fresh(true);
+        add("visible.test", 1);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        TabImpl tab = (TabImpl) playing(selector, "https://visible.test/");
+        Tab unlisted = playing(selector, "https://other.test/");
+        Tab privateTab = playing(selector, "https://visible.test/private");
+        privateTab.incognito = true;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        check(tab.contents.getVisibility() == Visibility.VISIBLE && !tab.isUserInteractable() && tab.mIsHidden,
+                "Native page visibility must not turn a hidden tab into a genuine foreground visit");
+        check(unlisted.contents.getVisibility() == Visibility.HIDDEN && unlisted.contents.pauses == 1
+                && privateTab.contents.getVisibility() == Visibility.HIDDEN && privateTab.contents.pauses == 0,
+                "Native visibility must not leak to unlisted or private tabs");
+
+        int changes = tab.contents.visibilityChanges.size();
+        tab.mIsHidden = false;
+        tab.occluded = true;
+        tab.refreshBackgroundPlaybackVisibility();
+        tab.mIsHidden = true;
+        selector.observer.onInteractabilityChanged(tab, false);
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.visibilityChanges.size() == changes,
+                "A permitted player must never receive a transient hidden/occluded event during hide");
+
+        // A permission decision must recheck the committed host even before the
+        // controller receives navigation callbacks for the replacement document.
+        tab.contents.committedUrl = new GURL("https://other.test/");
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.getVisibility() == Visibility.HIDDEN,
+                "A different committed origin must not inherit an old visibility permission");
+        tab.contents.committedUrl = new GURL("https://visible.test/");
+        for (var observer : List.copyOf(tab.contents.observers)) observer.primaryPageChanged(new Page());
+        check(tab.contents.getVisibility() == Visibility.VISIBLE,
+                "An allowed primary page restored without load callbacks must recover current native visibility");
+
+        SystemClock.now = 20_000;
+        tab.contents.session.suspended = true;
+        for (var observer : List.copyOf(tab.contents.session.observers)) observer.mediaSessionStateChanged(true, true);
+        Handler.runPending();
+        check(tab.contents.getVisibility() == Visibility.HIDDEN && Handler.pendingCount() == 0,
+                "Pausing the last player must restore normal visibility and stop polling");
+        tab.mIsHidden = false;
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.getVisibility() == Visibility.OCCLUDED,
+                "Restoring normal visibility must preserve the window's occlusion decision");
+        tab.offscreen = true;
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.getVisibility() == Visibility.VISIBLE,
+                "The existing offscreen-rendering exception must remain intact");
+        tab.offscreen = false;
+        tab.mIsDetachedFromActivity = true;
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.getVisibility() == Visibility.VISIBLE,
+                "Detached tabs must retain the upstream rule which ignores window occlusion");
+        tab.mIsDetachedFromActivity = false;
+        tab.mIsHidden = true;
+        play(tab);
+        check(tab.contents.getVisibility() == Visibility.VISIBLE, "Resuming an allowed player must restore visibility");
+        SystemClock.now = 60_000;
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.getVisibility() == Visibility.HIDDEN,
+                "The native hook itself must reject a deadline even before the next timer tick");
+        Handler.runPending();
+        check(tab.contents.pauses == 1 && tab.contents.getVisibility() == Visibility.HIDDEN,
+                "Keeping the page visible must never renew the budget or prevent its native deadline");
+        play(tab);
+        check(tab.contents.pauses == 2 && tab.contents.getVisibility() == Visibility.HIDDEN,
+                "Notification Play after expiry must not restore visibility or renew the budget");
+        ArgonBackgroundPlaybackController.detach(activity);
+
+        fresh(true);
+        add("visible.test", 1);
+        selector = new TabModelSelector();
+        tab = (TabImpl) playing(selector, "https://visible.test/");
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        ArgonBackgroundPlaybackController.detach(activity);
+        check(tab.contents.getVisibility() == Visibility.HIDDEN && tab.contents.pauses == 0,
+                "Detaching the owning controller must restore visibility without starting or stopping another player");
+        check(ArgonBackgroundPlaybackController.resolveVisibility(tab, Visibility.OCCLUDED) == Visibility.OCCLUDED,
+                "An untracked tab must retain the original visibility decision");
     }
 
     private static void liveApplication() throws Exception {
@@ -793,7 +930,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(denied.contents.pauses == 1 && http.contents.pauses == 1 && specific.contents.pauses == 1
                 && privateTab.contents.pauses == 0,
                 "Domain boundaries, HTTPS, specific disabled rules and incognito exclusions were not enforced");
-        check(main.contents.scripts.get(main.contents.scripts.size() - 1).contains("window[slot](true)"), "Allowed site did not enable the compatibility shim");
+        check(main.contents.getVisibility() == Visibility.VISIBLE, "An allowed playing page must retain native visibility");
         SystemClock.now = 60_000;
         Handler.runPending();
         check(main.contents.pauses == 0 && child.contents.pauses == 0, "Playback stopped before the selected deadline");
@@ -826,7 +963,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         row(editor.getPreferenceScreen(), R.string.argon_background_allow_site).change(false);
         save(editor);
         check(main.contents.pauses == 5, "Disabling a saved rule must immediately pause background playback");
-        check(main.contents.scripts.get(main.contents.scripts.size() - 1).contains("window[slot](false)"), "Disabling a rule must reverse its visibility override");
+        check(main.contents.getVisibility() == Visibility.HIDDEN, "Disabling a rule must restore ordinary native visibility");
         int pauses = main.contents.pauses;
         row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(false);
         check(main.contents.pauses == pauses, "Turning the mode off must leave an already suspended player stopped");
@@ -967,6 +1104,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 case "pending": pendingNavigationIsNotAVisit(); break;
                 case "occlusion": obscuredGroupPageIsNotAVisit(); break;
                 case "cache": restoredDocumentReceivesCurrentRules(); break;
+                case "visibility": ordinaryNavigationDoesNotExecuteJavaScript(); nativeVisibilityLifecycle(); break;
                 default: throw new AssertionError("Unknown regression: " + args[0]);
             }
             return;
@@ -1010,7 +1148,10 @@ public final class ArgonBackgroundPlaybackFlowTest {
         pendingNavigationIsNotAVisit();
         obscuredGroupPageIsNotAVisit();
         restoredDocumentReceivesCurrentRules();
+        ordinaryNavigationDoesNotExecuteJavaScript();
+        nativeVisibilityLifecycle();
         System.out.println("PASS: saved rules reach live media sessions, native players, exact deadlines, focus changes, navigation and master switches");
+        System.out.println("PASS: native JavaScript origin guard, normal navigation in both modes and targeted reversible native visibility");
         screenOffTabGroups();
         System.out.println("PASS: screen-off grouped tabs keep domain permissions, shared/independent budgets and genuine foreground resets across windows");
         canonicalDomain();

@@ -9,6 +9,7 @@ import android.os.SystemClock;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabImpl;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.content_public.browser.MediaSession;
 import org.chromium.content_public.browser.WebContents;
@@ -37,7 +38,7 @@ public final class ArgonBackgroundPlaybackControllerTest {
         activity.focused = false;
         TabModelSelector selector = new TabModelSelector();
         WebContents contents = new WebContents();
-        Tab tab = new Tab(contents);
+        Tab tab = new TabImpl(contents);
         selector.tabs.add(tab);
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -74,7 +75,7 @@ public final class ArgonBackgroundPlaybackControllerTest {
         WebContents contents = new WebContents();
         MediaSession first = playingSession();
         contents.session = first;
-        Tab tab = new Tab(contents);
+        Tab tab = new TabImpl(contents);
         selector.tabs.add(tab);
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         check(first.observers.size() == 1, "Existing media must be observed immediately");
@@ -116,15 +117,15 @@ public final class ArgonBackgroundPlaybackControllerTest {
     private static void excludedAndClosedTabs() {
         Activity activity = new Activity();
         TabModelSelector selector = new TabModelSelector();
-        Tab incognito = new Tab(new WebContents());
+        Tab incognito = new TabImpl(new WebContents());
         incognito.incognito = true;
-        Tab frozen = new Tab(null);
+        Tab frozen = new TabImpl(null);
         WebContents destroyed = new WebContents();
         destroyed.destroyed = true;
-        Tab closed = new Tab(new WebContents());
+        Tab closed = new TabImpl(new WebContents());
         closed.destroyed = true;
-        Tab normal = new Tab(new WebContents());
-        selector.tabs.addAll(List.of(incognito, frozen, new Tab(destroyed), closed, normal));
+        Tab normal = new TabImpl(new WebContents());
+        selector.tabs.addAll(List.of(incognito, frozen, new TabImpl(destroyed), closed, normal));
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
         check(incognito.contents.observers.isEmpty() && destroyed.observers.isEmpty()

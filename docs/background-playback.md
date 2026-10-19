@@ -44,8 +44,9 @@ the list of languages used for translating web pages are independent.
 * An enabled mode permits background playback only on the user's enabled sites.
   Disabling the mode pauses its currently backgrounded sessions once, then
   returns to the browser's usual playback behavior.
-* The deadline starts when a site's controllable media session leaves the
-  foreground, including when the screen locks. It is elapsed session time,
+* The deadline starts with actual background playback, including a native player
+  without a controllable media session. An idle or already paused page does not
+  consume its first budget merely by leaving the foreground. It is elapsed session time,
   including pauses, rather than a fresh budget for every video or Play action.
   All tabs/windows matching one rule share its deadline.
 * Pausing, resuming from the lock screen, reloading, changing video, toggling or
@@ -72,21 +73,32 @@ the list of languages used for translating web pages are independent.
 
 ## Compatibility and verification
 
-A small independently implemented, reversible Page Visibility compatibility
-shim is injected only for enabled user sites. It does not change Chromium's
-actual native page visibility or disable its existing background video-track
-optimization. It runs after page load and covers the main document; early
-handlers, cross-origin embedded players, DRM and site-specific restrictions
-still require device testing. Nothing downloads or transcodes a separate audio
-track, and no bandwidth or battery reduction is guaranteed for multiplexed A/V.
+For a currently playing, permitted HTTPS page, the controller keeps Chromium's
+native WebContents visibility at VISIBLE before TabImpl would send HIDDEN or
+OCCLUDED to its renderer. This avoids the page's visibility-change pause handler
+without executing JavaScript in the site. Chromium's ordinary evaluateJavaScript
+API CHECKs privileged origins and must not be used on arbitrary websites; the
+test-only API and global injection switches are not enabled by this feature.
+
+Pausing the last player, expiry, revoking permission or detaching the controller
+restores TabImpl's normal hidden/occluded/offscreen-rendering decision. Idle
+pages do not acquire this override. The actual tab's hidden/interactable state
+is unchanged, so synthetic page visibility cannot count as a foreground visit
+and reset a budget. Each decision checks the current committed host, effective
+rule and deadline, including on primary-page changes without load callbacks.
+
+This native visibility override also affects the page's ordinary rendering and
+background optimizations while playback is permitted. DRM and site-specific
+restrictions still require device testing. Nothing downloads or transcodes a
+separate audio track, and no bandwidth or battery reduction is guaranteed.
 
 `scripts/apply_background_playback.py` runs after the CA/branding overlay. It
-registers its Java/resources, patches the activity lifecycle and menu, and
+registers its Java/resources, patches the activity lifecycle, TabImpl visibility and menu, and
 limits packaged UI locales. Changed upstream anchors abort preparation. The
 prepared-image input gate tracks this script to reject stale images.
 
-Validation uses the production Java policy with deterministic timestamps, a
-JavaScript compatibility test, a host-side rule-editor regression with the
+Validation uses the production Java policy with deterministic timestamps, the
+actual patched TabImpl visibility decision with adapted window services, a host-side rule-editor regression with the
 AndroidX row binding contract, matching Russian/English resource keys and
 placeholders, and the pinned-source integration with repeated overlay
 application. The editor check covers opening, confirming and cancelling the
@@ -118,6 +130,12 @@ descriptions, draft validation, parent/child intersections, excluded rename
 sources, disabled exceptions and deletion fallback. Native policy and live
 controller checks verify that reassigning an overlapping rule preserves elapsed
 time and that only a genuine foreground visit renews the budget.
+The flow's WebContents adapter rejects JavaScript evaluation on HTTP(S) origins
+instead of silently accepting it. Negative controls exercise that guard, and
+the pinned-source check verifies the real Android/native CHECK path. Navigation
+in both modes, BFCache-style primary-page changes, visibility restoration,
+occlusion, offscreen rendering, paused players and the native deadline are
+checked without bypassing Chromium's origin restrictions.
 
 Android/Chromium services, including native GURL, remain host adapters in that
 flow check. These checks do not replace an Android build or on-device testing

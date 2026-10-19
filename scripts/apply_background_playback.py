@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ACTIVITY = Path("chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java")
+TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java")
 MAIN_PREFERENCES = Path("chrome/android/java/res/xml/main_preferences.xml")
 LOCALES = Path("build/config/locales.gni")
 JAVA_SOURCES = Path("titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni")
@@ -14,9 +15,28 @@ CHROME_PAKS = Path("chrome/chrome_paks.gni")
 APK_TEMPLATE = Path("chrome/android/chrome_public_apk_tmpl.gni")
 BUNDLE_TEMPLATE = Path("chrome/android/modules/chrome_bundle_tmpl.gni")
 UI_BASE = Path("ui/base/BUILD.gn")
-INPUT_PATHS = (ACTIVITY, MAIN_PREFERENCES, LOCALES, JAVA_SOURCES, RESOURCES,
+INPUT_PATHS = (ACTIVITY, TAB_IMPL, MAIN_PREFERENCES, LOCALES, JAVA_SOURCES, RESOURCES,
                CHROME_ANDROID, CHROME_PAKS, APK_TEMPLATE, BUNDLE_TEMPLATE, UI_BASE)
 PACKAGE = "org.chromium.chrome.browser.media.ArgonBackgroundPlaybackController"
+
+# Pinned TabImpl's decision, also compiled by the host regression with window
+# services substituted. Upstream changes require review rather than a partial hook.
+TAB_VISIBILITY_METHOD = '''    private void updateWebContentsVisibility() {
+        var webContents = getWebContents();
+        if (webContents == null) return;
+
+        boolean isOffscreenRendering = mIsOffscreenRenderingSupplier.get();
+        if (mIsHidden && !isOffscreenRendering) {
+            webContents.updateWebContentsVisibility(Visibility.HIDDEN);
+        } else if (!mIsDetachedFromActivity
+                && !isOffscreenRendering
+                && assumeNonNull(mWindowAndroid).getOcclusionSupplier().get()) {
+            // If we are not attached to a window, occlusion does not make sense.
+            webContents.updateWebContentsVisibility(Visibility.OCCLUDED);
+        } else {
+            webContents.updateWebContentsVisibility(Visibility.VISIBLE);
+        }
+    }'''
 
 # Reviewed upstream mapping, restored when upgrading an older prepared overlay.
 ANDROID_LOCALE_MAPPING = '''# List for Android locale names in .xml exports. Note: needs to stay in sync
@@ -165,16 +185,34 @@ def patch_java_sources(text):
 
 
 def patch_resources(text):
+    # Retire the old main-world JS shim, including on an already patched catalog.
+    text = text.replace('  "java/res/raw/argon_background_playback.js",\n', '')
     anchor = '  "java/res/values-ru/argon_widget_strings.xml",'
     files = ["values/argon_background_playback_strings.xml",
              "values-ru/argon_background_playback_strings.xml",
-             "layout/argon_background_rule_switch.xml", "raw/argon_background_playback.js"]
+             "layout/argon_background_rule_switch.xml"]
     block = "\n".join('  "java/res/' + path + '",' for path in files)
     return replace_once(text, anchor, anchor + "\n" + block)
 
 
+def patch_tab_visibility(text):
+    # Intercept before a hidden event reaches the page and pauses its player.
+    # Keep the upstream hidden, occluded and offscreen-rendering decisions intact.
+    method = TAB_VISIBILITY_METHOD
+    for visibility in ("HIDDEN", "OCCLUDED", "VISIBLE"):
+        call = f"webContents.updateWebContentsVisibility(Visibility.{visibility});"
+        method = method.replace(call,
+            "webContents.updateWebContentsVisibility(\n"
+            f"                    {PACKAGE}.resolveVisibility(this, Visibility.{visibility}));")
+    return replace_once(text, TAB_VISIBILITY_METHOD,
+        "    /** Recompute native visibility after a background media permission changes. */\n"
+        "    public void refreshBackgroundPlaybackVisibility() {\n"
+        "        updateWebContentsVisibility();\n"
+        "    }\n\n" + method)
+
+
 def apply(src):
-    transforms = {ACTIVITY: patch_activity, MAIN_PREFERENCES: patch_menu,
+    transforms = {ACTIVITY: patch_activity, TAB_IMPL: patch_tab_visibility, MAIN_PREFERENCES: patch_menu,
                   LOCALES: patch_locales, JAVA_SOURCES: patch_java_sources,
                   RESOURCES: patch_resources, CHROME_ANDROID: patch_android_packaging,
                   CHROME_PAKS: patch_paks, APK_TEMPLATE: patch_apk_template,
