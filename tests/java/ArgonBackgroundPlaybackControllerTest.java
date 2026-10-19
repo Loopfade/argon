@@ -52,10 +52,10 @@ public final class ArgonBackgroundPlaybackControllerTest {
         contents.createSession(session);
         check(session.observers.size() == 1, "Repeated creation must not duplicate media observers");
         Handler.runPending();
-        check(contents.pauses == 0, "A late first session must receive its full budget");
+        check(contents.pauses == (enabled ? 0 : 1), "A late session needs the master on to receive a background budget");
         SystemClock.now += 60_000;
         Handler.runPending();
-        check(contents.pauses == (enabled ? 1 : 0), "Late media must obey the enabled site budget");
+        check(contents.pauses == 1, "Late media must obey the site budget or the off master");
 
         // Detaching removes both observation layers and pending deadline work.
         WebContentsObserver stale = contents.observers.get(0);

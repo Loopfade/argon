@@ -7,7 +7,10 @@ User-managed background playback for Argon on Android.
 Settings → Background playback / Настройки → Фоновое воспроизведение, in the main
 settings list between Appearance and the following advanced settings.
 
-The feature is off by default, with an empty site list. New rules allow playback
+The feature is off by default, with an empty site list. While it is off, audio
+and video pause in the background on every ordinary browser tab, including new
+Play requests from media controls. Foreground playback is unaffected.
+New rules allow playback
 and include subdomains by default, with a 60-minute limit. Users can add, edit and
 delete up to 100 site rules. Each rule has a domain, an enabled switch, a
 subdomain switch and a limit of 1–120 minutes. Tapping the row opens its editor;
@@ -53,9 +56,13 @@ the list of languages used for translating web pages are independent.
 
 * The native controller observes ordinary tabs in Chromium's tabbed activity.
   Off-the-record tabs, Custom Tabs and standalone web apps are not modified.
-* An enabled mode permits background playback only on the user's enabled sites.
-  Disabling the mode pauses its currently backgrounded sessions once, then
-  returns to the browser's usual playback behavior.
+* An enabled feature permits background playback only on the user's enabled sites.
+  Turning it off pauses currently backgrounded sessions and rejects subsequent
+  background Play requests, even when saved site permissions remain enabled.
+  Enabling the feature never restarts a paused player automatically.
+* The old unconditional Android background-media bypass is removed from
+  `patch.sh`. Chromium keeps its Android suspension defaults, with the targeted
+  visibility override used only for permitted playback.
 * The deadline starts with actual background playback, including a native player
   without a controllable media session. An idle or already paused page does not
   consume its first budget merely by leaving the foreground. It is elapsed session time,
@@ -72,9 +79,13 @@ the list of languages used for translating web pages are independent.
   window focus and a user-interactable tab on that site. Waking the screen or
   using another app alone does not reset it. Resetting never starts playback.
 * A more specific disabled rule wins over an enabled parent domain rule.
-* A monotonic native timer suspends the WebContents' media players directly after
-  expiry and checks subsequent MediaSession resume notifications again. This
-  bypasses a site's custom pause action handler. Page JavaScript does not grant
+* A monotonic native timer stops playback after expiry and checks subsequent
+  MediaSession resume notifications again. The controller first uses
+  `MediaSession.suspend(SuspendType.SYSTEM)` to pause controllable players without
+  routing through a site pause handler. It also suspends the WebContents' media
+  players to cover players outside a controllable session. Frame-closure
+  suspension alone does not set an HTML player's paused state and can be cleared
+  by a later native visibility transition. Page JavaScript does not grant
   permission or control the budget. Process death stops the player; no browser
   service is started to resurrect it automatically.
 * The usual Chromium media notification, metadata, lock-screen controls and
@@ -148,6 +159,11 @@ live controllers, checking multiple windows, specific disabled rules, screen
 and keyguard states, deadlines, shortening limits and deletion/re-adding without
 renewing the budget. Negative controls reproduce the original seekbar and
 missing-EditText failures in the actual AndroidX classes.
+Default-off checks cover an empty list and saved permissions, initial background
+media, screen-off grouped tabs, notification Play, keyguard, returning to the
+foreground, observer recreation and toggling the master. A revocation check
+requires an actual system pause, rather than treating pipeline suspension as
+an HTML pause; a site UI pause handler cannot intercept it.
 Both UI languages and master modes cover the overview and per-domain
 descriptions, draft validation, parent/child intersections, excluded rename
 sources, disabled exceptions and deletion fallback. Native policy and live

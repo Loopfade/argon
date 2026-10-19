@@ -2,12 +2,12 @@
 <resources>
     <string name="argon_background_title">Background playback</string>
     <string name="argon_background_description">On. Only sites with permission enabled can play audio and video in the background. Playback pauses on other sites.</string>
-    <string name="argon_background_description_disabled">Off. The browser works as usual. The site permissions and limits below do not apply.</string>
+    <string name="argon_background_description_disabled">Off. Audio and video pause in the background on all sites. Saved permissions and limits do not apply.</string>
     <string name="argon_background_state_enabled">The feature is on.</string>
     <string name="argon_background_state_disabled">The feature is off</string>
     <string name="argon_background_more">More details</string>
     <string name="argon_background_close">Close</string>
-    <string name="argon_background_details_description">This feature controls audio and video playback on selected HTTPS sites when the browser is minimized or the screen is off. It is off by default, with no preconfigured domains. While it is off, the browser works as usual: saved permissions and limits do not apply. Some sites may still restrict playback.\n\nEnter a domain without a scheme, path, port or wildcard. Unicode domains are supported. IP addresses and whole public or private registries, such as co.uk or github.io, cannot be added.\n\nNew rules allow playback and include subdomains by default, with a 60-minute limit. The limit can be set from 1 to 120 minutes. When the feature is on, an empty list or no matching permission rule means background playback pauses.\n\nExact duplicates are rejected. Overlapping rules are allowed as exceptions: while the feature is on, the most specific matching domain takes priority. If its permission is off, background playback is blocked even when a broader rule allows it.\n\nOne limit is shared by all tabs and windows using the same rule, including tabs in different groups. The timer starts with the first background playback and keeps counting during pauses. Playback pauses when the limit expires. Grouping tabs does not give other domains permission. Moving tabs, reloading, changing a rule or deleting and re-adding it does not renew the timer. Return to the actual site tab with the screen unlocked to start a new session. Waking the screen or opening a group overview does not count as a visit.\n\nSave stores all editor changes together. They apply while the feature is on. Turning the feature off pauses current background sessions once and restores normal browser behavior.</string>
+    <string name="argon_background_details_description">This feature controls audio and video playback on selected HTTPS sites when the browser is minimized or the screen is off. It is off by default, with no preconfigured domains. While it is off, background audio and video are blocked on all sites. Rules are saved but do not grant permission until the feature is turned on. Some sites may still restrict playback.\n\nEnter a domain without a scheme, path, port or wildcard. Unicode domains are supported. IP addresses and whole public or private registries, such as co.uk or github.io, cannot be added.\n\nNew rules allow playback and include subdomains by default, with a 60-minute limit. The limit can be set from 1 to 120 minutes. When the feature is on, an empty list or no matching permission rule means background playback pauses.\n\nExact duplicates are rejected. Overlapping rules are allowed as exceptions: while the feature is on, the most specific matching domain takes priority. If its permission is off, background playback is blocked even when a broader rule allows it.\n\nOne limit is shared by all tabs and windows using the same rule, including tabs in different groups. The timer starts with the first background playback and keeps counting during pauses. Playback pauses when the limit expires. Grouping tabs does not give other domains permission. Moving tabs, reloading, changing a rule or deleting and re-adding it does not renew the timer. Return to the actual site tab with the screen unlocked to start a new session. Waking the screen or opening a group overview does not count as a visit.\n\nSave stores all editor changes together. They apply while the feature is on. Turning the feature off pauses current background sessions and blocks new playback attempts.</string>
     <string name="argon_background_enable">Enable feature</string>
     <string name="argon_background_master_description">In the background means the browser is minimized or the screen is off.</string>
     <string name="argon_background_sites">Site settings</string>
@@ -52,8 +52,8 @@
     <string name="argon_background_how_it_works">How it works</string>
     <string name="argon_background_empty_title">No sites yet</string>
     <string name="argon_background_empty_enabled">The list is empty. While the feature is on, background playback pauses on all sites.</string>
-    <string name="argon_background_empty_disabled">Turning the feature on with an empty list will pause background playback on all sites.</string>
-    <string name="argon_background_reset_description_disabled">Turn on the feature to apply the saved permissions and limits.</string>
+    <string name="argon_background_empty_disabled">Add allowed sites and turn on the feature to listen to them in the background.</string>
+    <string name="argon_background_reset_description_disabled">Background playback is off for all sites. Turn on the feature to allow your selected sites.</string>
     <string name="argon_background_saved_allowed">Saved: allow in background · %1$s\n%2$s</string>
     <string name="argon_background_saved_blocked">Saved: block in background\n%1$s</string>
     <string name="argon_background_blocked_summary">%1$s\n%2$s</string>
@@ -63,7 +63,7 @@
     <string name="argon_background_exact_description">The rule applies only to the specified domain.</string>
     <string name="argon_background_time_description_blocked">The saved limit is used if playback is allowed. From 1 to 120 minutes, including pauses.</string>
     <string name="argon_background_save_description_disabled">Save the settings. They will apply after the feature is turned on.</string>
-    <string name="argon_background_editor_disabled">Permissions and limits do not apply right now. Site settings can be saved in advance. To apply them, turn on the feature on the Background playback screen.</string>
+    <string name="argon_background_editor_disabled">The feature is off: background audio and video are blocked on all sites. Site settings can be saved in advance. The permission and limit will apply after the feature is turned on on the Background playback screen.</string>
     <plurals name="argon_background_minutes">
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>

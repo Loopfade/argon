@@ -210,7 +210,16 @@ public class TabModelSelectorTabObserver {
 public class MediaSession {
   public final java.util.List<MediaSessionObserver> observers = new java.util.ArrayList<>();
   public boolean controllable, suspended;
+  public boolean playerPaused, ignoreUiPauseHandler;
+  public int suspendCalls, lastSuspendType = -1;
   public static MediaSession fromWebContents(WebContents contents) { return contents.session; }
+  public boolean isControllable() { return controllable; }
+  public void suspend(int type) {
+    suspendCalls++; lastSuspendType=type;
+    if (!controllable || (type==org.chromium.media_session.mojom.MediaSession.SuspendType.UI && ignoreUiPauseHandler)) return;
+    suspended=true; playerPaused=true;
+    for (var observer : java.util.List.copyOf(observers)) observer.mediaSessionStateChanged(controllable,true);
+  }
   public void addObserver(MediaSessionObserver observer) {
     observers.add(observer);
     observer.mediaSessionStateChanged(controllable, suspended);
@@ -221,6 +230,8 @@ public class MediaSession {
     for (var observer : java.util.List.copyOf(observers)) observer.stopObserving();
   }
 }''',
+    "org/chromium/media_session/mojom/MediaSession.java": '''package org.chromium.media_session.mojom;
+public class MediaSession { public static class SuspendType { public static final int SYSTEM=0, UI=1, CONTENT=2; } }''',
     "org/chromium/content_public/browser/MediaSessionObserver.java": '''package org.chromium.content_public.browser;
 public abstract class MediaSessionObserver {
   private MediaSession session;

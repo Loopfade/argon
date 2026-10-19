@@ -32,6 +32,7 @@ import org.chromium.content_public.browser.Page;
 import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
+import org.chromium.media_session.mojom.MediaSession.SuspendType;
 import org.chromium.url.GURL;
 
 import java.util.ArrayList;
@@ -57,17 +58,10 @@ public final class ArgonBackgroundPlaybackController {
     private final @Nullable PowerManager mPower = mContext.getSystemService(PowerManager.class);
     private final @Nullable KeyguardManager mKeyguard = mContext.getSystemService(KeyguardManager.class);
     private boolean mDestroyed;
-    private boolean mWasEnabled = mStore.policy.isEnabled();
     private final Runnable mTick = this::refresh;
     private final SharedPreferences.OnSharedPreferenceChangeListener mPreferences =
             (preferences, key) -> {
                 mStore.reload();
-                if (mWasEnabled && !mStore.policy.isEnabled()) {
-                    for (State state : mTabs.values()) {
-                        if (!isForeground(state.tab)) pause(state);
-                    }
-                }
-                mWasEnabled = mStore.policy.isEnabled();
                 refresh();
             };
     private final ApplicationStatus.ActivityStateListener mActivityListener =
@@ -351,8 +345,12 @@ public final class ArgonBackgroundPlaybackController {
         state.playing = false;
         state.sessionPlaying = false;
         state.players.clear();
-        // UI suspend can be intercepted (and ignored) by the site's pause handler.
-        // This public Chromium API suspends the media players directly and preserves position.
+        // SYSTEM bypasses a site's UI pause handler and pauses its actual players.
+        MediaSessionObserver observer = state.observer;
+        MediaSession session = observer == null ? null : observer.getMediaSession();
+        if (session != null && session.isControllable()) session.suspend(SuspendType.SYSTEM);
+        // Also suspend players which are not part of a controllable session.
+        // This alone freezes the pipeline without setting the HTML player's paused state.
         state.contents.suspendAllMediaPlayers();
     }
 

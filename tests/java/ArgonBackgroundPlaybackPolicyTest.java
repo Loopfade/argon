@@ -16,7 +16,8 @@ public final class ArgonBackgroundPlaybackPolicyTest {
 
     public static void main(String[] args) {
         var policy = new ArgonBackgroundPlaybackPolicy();
-        check(policy.mayPlay("other.example", false, 0, true), "Off by default");
+        check(!policy.mayPlay("other.example", false, 0, true), "Background playback is blocked by default");
+        check(policy.mayPlay("other.example", true, 0, true), "The default off master still permits foreground playback");
         var rules = List.of(rule("video.example", 1, true), rule("other.example", 2, true));
         policy.configure(true, rules);
         check(!policy.mayPlay("video.example.attacker.test", false, 0, true), "Domain boundary");
@@ -34,7 +35,7 @@ public final class ArgonBackgroundPlaybackPolicyTest {
         policy.configure(true, rules);
         check(!policy.mayPlay("video.example", false, 99_000, true), "Re-adding does not renew it");
         policy.configure(false, rules);
-        check(policy.mayPlay("video.example", false, 99_000, true), "Disabled mode uses browser defaults");
+        check(!policy.mayPlay("video.example", false, 99_000, true), "The off master overrides saved permissions");
         policy.configure(true, rules);
         check(!policy.mayPlay("video.example", false, 99_000, true), "Re-enabling does not renew it");
         check(policy.mayPlay("other.example", false, 100_000, true), "Independent site budget");

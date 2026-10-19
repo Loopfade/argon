@@ -29,6 +29,7 @@ import org.chromium.content_public.browser.Page;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.Visibility;
 import org.chromium.url.GURL;
+import org.chromium.media_session.mojom.MediaSession.SuspendType;
 import org.json.JSONArray;
 
 import java.util.ArrayList;
@@ -488,6 +489,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
     private static void play(TestTab tab) {
         var session = tab.contents.session;
         session.suspended = false;
+        session.playerPaused = false;
         for (var observer : List.copyOf(session.observers)) observer.mediaSessionStateChanged(true, false);
         Handler.runPending();
     }
@@ -495,6 +497,101 @@ public final class ArgonBackgroundPlaybackFlowTest {
     private static void screenEvent() {
         for (var receiver : List.copyOf(ContextUtils.context.receivers)) receiver.onReceive(ContextUtils.context, new Intent());
         Handler.runPending();
+    }
+
+    private static void masterOffStopsPlayback() throws Exception {
+        for (boolean savedPermission : new boolean[] {false, true}) {
+            var store = fresh(false);
+            if (savedPermission) add("youtube.com", 60);
+            Activity activity = new Activity();
+            TabModelSelector selector = new TabModelSelector();
+            TestTab youtube = playing(selector, "https://www.youtube.com/watch?v=test");
+            TestTab other = playing(selector, "https://other.test/audio");
+            youtube.interactable = true;
+            youtube.group = other.group = 1;
+            ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+            Handler.runPending();
+            check(youtube.contents.pauses == 0 && other.contents.pauses == 1,
+                    "An off master must retain foreground playback and stop a background tab in the same group");
+            ContextUtils.context.power.interactive = false;
+            screenEvent();
+            check(youtube.contents.pauses == 1 && other.contents.pauses == 1,
+                    "Screen-off must stop every site when the master is off, with an empty list or saved permissions");
+            play(youtube);
+            play(other);
+            check(youtube.contents.pauses == 2 && other.contents.pauses == 2,
+                    "Notification Play must not bypass an off master");
+            ContextUtils.context.power.interactive = true;
+            ContextUtils.context.keyguard.locked = true;
+            screenEvent();
+            play(youtube);
+            check(youtube.contents.pauses == 3, "Waking a locked screen must not bypass an off master");
+            ContextUtils.context.keyguard.locked = false;
+            activity.focused = false;
+            screenEvent();
+            play(youtube);
+            check(youtube.contents.pauses == 4, "Another app in the foreground must not permit playback with the master off");
+            activity.focused = true;
+            screenEvent();
+            check(youtube.contents.pauses == 4 && youtube.contents.session.playerPaused,
+                    "Returning to the site must not restart its paused player");
+            play(youtube);
+            check(youtube.contents.pauses == 4, "Foreground playback must still work with the master off");
+            ContextUtils.context.power.interactive = false;
+            screenEvent();
+            check(youtube.contents.pauses == 5, "The next screen-off must enforce the off master again");
+            ArgonBackgroundPlaybackController.detach(activity);
+
+            // Recreate activity/observers as when starting the browser in the background.
+            activity = new Activity();
+            selector = new TabModelSelector();
+            youtube = playing(selector, "https://www.youtube.com/watch?v=startup");
+            ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+            Handler.runPending();
+            check(!store.policy.isEnabled() && youtube.contents.pauses == 1,
+                    "Attaching to already playing background media must apply the persisted off master");
+            var master = (SwitchPreferenceCompat) row(settings().getPreferenceScreen(), R.string.argon_background_enable);
+            choose(master, true);
+            check(youtube.contents.session.playerPaused,
+                    "Enabling the master must not restart a stopped player");
+            play(youtube);
+            check(youtube.contents.pauses == (savedPermission ? 1 : 2),
+                    "Enabling permits playback only if a matching saved rule allows it");
+            master = (SwitchPreferenceCompat) row(settings().getPreferenceScreen(), R.string.argon_background_enable);
+            choose(master, false);
+            int pauses = youtube.contents.pauses;
+            play(youtube);
+            check(youtube.contents.pauses == pauses + 1,
+                    "Turning the master off must keep rejecting subsequent Play requests");
+            ArgonBackgroundPlaybackController.detach(activity);
+        }
+    }
+
+    private static void deniedPlaybackUsesRealPause() throws Exception {
+        fresh(true);
+        add("pause.test", 60);
+        Activity activity = new Activity();
+        activity.focused = false;
+        TabModelSelector selector = new TabModelSelector();
+        TestTab tab = playing(selector, "https://pause.test/watch");
+        tab.contents.session.ignoreUiPauseHandler = true;
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        var rule = site(settings().getPreferenceScreen(), "pause.test");
+        ((SwitchCompat) rule.boundHolder.findViewById(R.id.argon_background_rule_enabled)).setChecked(false);
+        check(tab.contents.pauses == 1 && tab.contents.session.playerPaused
+                && tab.contents.session.lastSuspendType == SuspendType.SYSTEM,
+                "Revoking permission must pause the actual player through the system path, even if a site ignores its UI pause handler");
+        // SuspendForFrameClosed only freezes a pipeline. OnPageShown clears it;
+        // the HTML player must remain paused after that visibility transition.
+        tab.mIsHidden = false;
+        tab.refreshBackgroundPlaybackVisibility();
+        check(tab.contents.session.playerPaused,
+                "A native visibility change must not resume a player stopped by a denied rule");
+        play(tab);
+        check(tab.contents.pauses == 2 && tab.contents.session.playerPaused,
+                "A restarted denied player must be paused again");
+        ArgonBackgroundPlaybackController.detach(activity);
     }
 
     private static void focus(Activity activity, boolean value) {
@@ -1000,7 +1097,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
     }
 
     private static void liveApplication() throws Exception {
-        var store = fresh(false);
+        var store = fresh(true);
         add("video.example", 1);
         add("private.video.example", 1);
         var privateRule = open("private.video.example");
@@ -1019,19 +1116,17 @@ public final class ArgonBackgroundPlaybackFlowTest {
         privateTab.incognito = true;
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
         Handler.runPending();
-        check(main.contents.pauses == 0 && denied.contents.pauses == 0, "Disabled mode must retain normal browser behavior");
         SystemClock.now = 1_000;
-        row(settings().getPreferenceScreen(), R.string.argon_background_enable).change(true);
         check(store.policy.isEnabled() && main.contents.pauses == 0 && child.contents.pauses == 0,
-                "Enabling the master switch must immediately apply stored site permissions");
+                "The enabled master must apply stored site permissions");
         check(denied.contents.pauses == 1 && http.contents.pauses == 1 && specific.contents.pauses == 1
                 && privateTab.contents.pauses == 0,
                 "Domain boundaries, HTTPS, specific disabled rules and incognito exclusions were not enforced");
         check(main.contents.getVisibility() == Visibility.VISIBLE, "An allowed playing page must retain native visibility");
-        SystemClock.now = 60_000;
+        SystemClock.now = 59_000;
         Handler.runPending();
         check(main.contents.pauses == 0 && child.contents.pauses == 0, "Playback stopped before the selected deadline");
-        SystemClock.now = 61_000;
+        SystemClock.now = 60_000;
         Handler.runPending();
         check(main.contents.pauses == 1 && child.contents.pauses == 1, "Tabs/subdomains must share the exact deadline");
         play(main);
@@ -1066,7 +1161,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(main.contents.pauses == pauses, "Turning the mode off must leave an already suspended player stopped");
         pauses = main.contents.pauses;
         play(main);
-        check(main.contents.pauses == pauses, "Disabled mode must stop intercepting future Play actions");
+        check(main.contents.pauses == pauses + 1, "The off master must also stop future Play actions");
         ArgonBackgroundPlaybackController.detach(activity);
     }
 
@@ -1202,6 +1297,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 case "occlusion": obscuredGroupPageIsNotAVisit(); break;
                 case "cache": restoredDocumentReceivesCurrentRules(); break;
                 case "visibility": ordinaryNavigationDoesNotExecuteJavaScript(); nativeVisibilityLifecycle(); break;
+                case "master-off": masterOffStopsPlayback(); break;
+                case "real-pause": deniedPlaybackUsesRealPause(); break;
                 default: throw new AssertionError("Unknown regression: " + args[0]);
             }
             return;
@@ -1231,6 +1328,9 @@ public final class ArgonBackgroundPlaybackFlowTest {
                 descriptionsAndOverlaps(enabled);
             }
         }
+        masterOffStopsPlayback();
+        deniedPlaybackUsesRealPause();
+        System.out.println("PASS: off by default, screen-off, notification Play, restart and system pause after permission revocation");
         System.out.println("PASS: real AndroidX input, cancel, slider, restore, save/delete, validation, scope descriptions and overlaps in both modes and languages");
         storeReload();
         System.out.println("PASS: production JSON storage, restart, canonical domains and corrupt data");

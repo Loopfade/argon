@@ -393,9 +393,8 @@ public class PreferenceDialogFragmentCompat {
             "  public String url=\"https://video.example/\";").replace(
             "isUserInteractable() { return true; }", "isUserInteractable() { return interactable; }").replace(
             'new org.chromium.url.GURL("https://video.example/")', "new org.chromium.url.GURL(url)")
-    result["org/chromium/content_public/browser/WebContents.java"] = result[
-        "org/chromium/content_public/browser/WebContents.java"].replace(
-            "suspendAllMediaPlayers() { pauses++; }", "suspendAllMediaPlayers() { pauses++; if(session!=null) session.suspended=true; }")
+    # Frame-closure suspension freezes a pipeline; it does not pause the HTML
+    # player. The session adapter records the separate, actual system pause.
     preference = result["androidx/preference/Preference.java"]
     preference = preference.replace("public Preference(android.content.Context c) {}", """
   private int widget;

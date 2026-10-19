@@ -35,6 +35,12 @@ MEDIA_API_ROOT = Path("content/public/android/java/src/org/chromium/content_publ
 WEB_CONTENTS_OBSERVER = MEDIA_API_ROOT / "WebContentsObserver.java"
 WEB_CONTENTS = MEDIA_API_ROOT / "WebContents.java"
 MEDIA_SESSION_OBSERVER = MEDIA_API_ROOT / "MediaSessionObserver.java"
+MEDIA_SESSION = MEDIA_API_ROOT / "MediaSession.java"
+NATIVE_MEDIA_SESSION = Path("content/browser/media/session/media_session_impl.cc")
+MEDIA_SESSION_CONTROLLER = Path("content/browser/media/session/media_session_controller.cc")
+HTML_MEDIA_ELEMENT = Path("third_party/blink/renderer/core/html/media/html_media_element.cc")
+MEDIA_SESSION_MOJOM = Path("services/media_session/public/mojom/media_session.mojom")
+MEDIA_PLAYBACK_OPTIONS = Path("content/public/renderer/render_frame_media_playback_options.cc")
 APPLICATION_STATUS = Path("base/android/java/src/org/chromium/base/ApplicationStatus.java")
 TAB = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/Tab.java")
 TAB_OBSERVER = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java")
@@ -50,7 +56,9 @@ BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
               WEB_CONTENTS_OBSERVER, WEB_CONTENTS, MEDIA_SESSION_OBSERVER,
               APPLICATION_STATUS, TAB, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI,
-              WEB_CONTENTS_ANDROID, RENDER_FRAME_HOST)
+              WEB_CONTENTS_ANDROID, RENDER_FRAME_HOST, MEDIA_SESSION,
+              NATIVE_MEDIA_SESSION, MEDIA_SESSION_CONTROLLER, HTML_MEDIA_ELEMENT,
+              MEDIA_SESSION_MOJOM, MEDIA_PLAYBACK_OPTIONS)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
@@ -215,6 +223,7 @@ def verify_background_media_observer_api(src):
         for signature in required:
             if signature not in source:
                 raise ValueError(f"Background playback observer API changed: {path}: {signature}")
+    verify_background_pause_api(src)
     # Host adapters must not silently permit an API which aborts the real app.
     android = (src / WEB_CONTENTS_ANDROID).read_text()
     native = (src / RENDER_FRAME_HOST).read_text()
@@ -227,6 +236,39 @@ def verify_background_media_observer_api(src):
     if not re.search(r"bool RenderFrameHostImpl::CanExecuteJavaScript\(\).*?HasWebUIBindings.*?kAboutBlankURL",
                      native, re.DOTALL):
         raise ValueError("Review the allowed origins in the native JavaScript guard")
+
+
+def verify_background_pause_api(src):
+    session = (src / MEDIA_SESSION).read_text()
+    for signature in (
+            "import org.chromium.media_session.mojom.MediaSession.SuspendType;",
+            "public abstract void suspend(@SuspendType.EnumType int suspendType);",
+            "public abstract boolean isControllable();"):
+        if signature not in session:
+            raise ValueError("Review the pinned MediaSession system-pause API: " + signature)
+    if '"//services/media_session/public/mojom:mojom_java"' not in (src / patch.CHROME_ANDROID_GN).read_text():
+        raise ValueError("chrome_java must expose the MediaSession SuspendType dependency")
+    if not re.search(r"enum SuspendType\s*\{\s*//[^\n]*\n\s*kSystem,", (src / MEDIA_SESSION_MOJOM).read_text()):
+        raise ValueError("Review the pinned system suspend enum")
+    native = (src / NATIVE_MEDIA_SESSION).read_text()
+    suspend = re.search(r"void MediaSessionImpl::Suspend\(SuspendType suspend_type\) \{(.*?)\n\}", native, re.DOTALL)
+    if (suspend is None or "suspend_type == SuspendType::kUI" not in suspend[1]
+            or "ShouldRouteAction(" not in suspend[1]
+            or "OnSuspendInternal(suspend_type, State::SUSPENDED);" not in suspend[1]):
+        raise ValueError("Review the native system pause which bypasses site UI handlers")
+    if "observer->OnSuspend(it.first.player_id, triggered_by_user);" not in native:
+        raise ValueError("Native system suspension must reach the session players")
+    controller = (src / MEDIA_SESSION_CONTROLLER).read_text()
+    if not re.search(r"void MediaSessionController::OnSuspend\([^}]+->RequestPause\(triggered_by_user\);", controller):
+        raise ValueError("Session suspension must pause the actual HTML player")
+    element = (src / HTML_MEDIA_ELEMENT).read_text()
+    if not re.search(r"void HTMLMediaElement::RequestPause\(bool triggered_by_user\) \{[^}]+PauseInternal\(", element):
+        raise ValueError("Review the native HTML player pause route")
+    options = (src / MEDIA_PLAYBACK_OPTIONS).read_text()
+    if not re.search(r"bool IsBackgroundMediaSuspendEnabled\(\) \{\s*#if BUILDFLAG\(IS_ANDROID\)", options):
+        raise ValueError("Keep the native Android background suspension defaults")
+    if "render_frame_media_playback_options.cc" in (ROOT / "patch.sh").read_text():
+        raise ValueError("Do not globally bypass Android background suspension in patch.sh")
 
 
 def obtain_pinned_gn(directory, deps_text):

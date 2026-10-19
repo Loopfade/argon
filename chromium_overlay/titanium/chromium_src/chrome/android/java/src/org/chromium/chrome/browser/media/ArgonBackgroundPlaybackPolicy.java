@@ -127,7 +127,8 @@ public final class ArgonBackgroundPlaybackPolicy {
     }
 
     public boolean mayPlay(String host, boolean foreground, long now, boolean startBudget) {
-        if (!mEnabled || foreground) return true;
+        if (foreground) return true;
+        if (!mEnabled) return false;
         int index = findRule(host);
         if (index < 0 || !mRules.get(index).enabled) return false;
         Rule rule = mRules.get(index);
