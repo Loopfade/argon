@@ -5,6 +5,7 @@ import collections
 import difflib
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,7 @@ manifests = sorted(cache.rglob("*M"), key=lambda p: p.stat().st_size, reverse=Tr
 results_by_key = {"".join(p.relative_to(cache).parts)[:-1]: p for p in cache.rglob("*R")}
 seen = set()
 modules = []
+candidate_count = 0
 
 with tempfile.TemporaryDirectory() as temp:
     root = pathlib.Path(temp)
@@ -28,11 +30,6 @@ with tempfile.TemporaryDirectory() as temp:
             if key in seen:
                 continue
             seen.add(key)
-            if len(infos) < 500 or any(
-                name.endswith("gen/build/modules/module.modulemap")
-                for name, *_ in infos
-            ):
-                continue
             result = results_by_key.get(key)
             if result is None:
                 continue
@@ -44,7 +41,13 @@ with tempfile.TemporaryDirectory() as temp:
                 continue
             with obj.open("rb") as stream:
                 magic = stream.read(4)
+            candidate_count += 1
+            if candidate_count <= 12:
+                print(f"CANDIDATE manifest={manifest.relative_to(cache)} "
+                      f"dependencies={len(infos)} magic={magic.hex()} "
+                      f"bytes={obj.stat().st_size}", flush=True)
             if magic != b"CPCH":
+                shutil.rmtree(output)
                 continue
             depfile = output / "ccache-result.d"
             deps = depfile.read_text() if depfile.exists() else ""
