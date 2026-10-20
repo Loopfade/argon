@@ -16,23 +16,19 @@ manifest_tool = SourceFileLoader(
     "manifest_tool", str(pathlib.Path(__file__).with_name("inspect-compiler-cache.py"))
 ).load_module()
 cache = pathlib.Path(sys.argv[1]).resolve()
-manifests = sorted(cache.rglob("*M"), key=lambda p: p.stat().st_size, reverse=True)
-results_by_key = {"".join(p.relative_to(cache).parts)[:-1]: p for p in cache.rglob("*R")}
+results_by_size = sorted(cache.rglob("*R"), key=lambda p: p.stat().st_size, reverse=True)
 seen = set()
 modules = []
 candidate_count = 0
 
 with tempfile.TemporaryDirectory() as temp:
     root = pathlib.Path(temp)
-    for manifest in manifests[:250]:
-        records = manifest_tool.inspect_manifest(manifest)
-        for key, infos in records:
+    for result in results_by_size[:150]:
+        key = "".join(result.relative_to(cache).parts)[:-1]
+        for key, infos in [(key, [])]:
             if key in seen:
                 continue
             seen.add(key)
-            result = results_by_key.get(key)
-            if result is None:
-                continue
             output = root / key
             output.mkdir()
             subprocess.run(["ccache", "--extract-result", str(result)], cwd=output, check=True)
@@ -43,7 +39,7 @@ with tempfile.TemporaryDirectory() as temp:
                 magic = stream.read(4)
             candidate_count += 1
             if candidate_count <= 12:
-                print(f"CANDIDATE manifest={manifest.relative_to(cache)} "
+                print(f"CANDIDATE result={result.relative_to(cache)} "
                       f"dependencies={len(infos)} magic={magic.hex()} "
                       f"bytes={obj.stat().st_size}", flush=True)
             if magic != b"CPCH":
@@ -60,9 +56,11 @@ with tempfile.TemporaryDirectory() as temp:
             selected = [line for line in dump.splitlines() if re.search(
                 r"<(?:INPUT_FILE|SUBMODULE_[A-Z_]+|MODULE_NAME|MODULE_DIRECTORY)\b", line
             )]
-            print(f"CACHED_MODULE key={key} manifest={manifest.relative_to(cache)} "
+            print(f"CACHED_MODULE key={key} result={result.relative_to(cache)} "
                   f"object_bytes={obj.stat().st_size} dependency_count={len(infos)}", flush=True)
             print("DEPENDENCY_TARGET " + deps.split(":", 1)[0], flush=True)
+            if not selected:
+                print("UNRECOGNIZED_DUMP " + dump[:4000], flush=True)
             modules.append((key, deps.split(":", 1)[0], selected))
     print(f"Cached modules found: {len(modules)}", flush=True)
     for key, target, lines in modules:
