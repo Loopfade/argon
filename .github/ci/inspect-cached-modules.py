@@ -59,6 +59,10 @@ with tempfile.TemporaryDirectory() as temp:
             print(f"CACHED_MODULE key={key} result={result.relative_to(cache)} "
                   f"object_bytes={obj.stat().st_size} dependency_count={len(infos)}", flush=True)
             print("DEPENDENCY_TARGET " + deps.split(":", 1)[0], flush=True)
+            if deps.startswith("obj/"):
+                for line in selected:
+                    if "SUBMODULE_" in line and re.search(r"sysroot/usr/include/[^/]+/asm/(?:hwcap|ptrace)\\.h", line):
+                        print(f"MODULE_ARCH_HEADER {key} {line}", flush=True)
             if not selected:
                 print("UNRECOGNIZED_DUMP " + dump[:4000], flush=True)
             modules.append((key, deps.split(":", 1)[0], selected))

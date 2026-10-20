@@ -1,4 +1,4 @@
-name: Inspect compiler cache manifests
+name: Inspect ARM compiler cache manifests
 
 on:
   push:
@@ -26,9 +26,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/ccache
-          key: argon-ccache-v3-arm64-155.0.8059.84-5869fe313571d75152b77813cf0a4ee26a4e6df0-diagnostic-${{ github.run_id }}
+          key: argon-ccache-v3-arm-155.0.8059.84-5869fe313571d75152b77813cf0a4ee26a4e6df0-diagnostic-${{ github.run_id }}
           restore-keys: |
-            argon-ccache-v3-arm64-155.0.8059.84-5869fe313571d75152b77813cf0a4ee26a4e6df0-
+            argon-ccache-v3-arm-155.0.8059.84-5869fe313571d75152b77813cf0a4ee26a4e6df0-
       - name: Inspect manifest dependency versions
         env:
           CACHE_PATH: ${{ runner.temp }}/ccache
@@ -36,5 +36,4 @@ jobs:
         run: |
           test -n "$MATCHED_CACHE"
           printf 'Restored cache: %s\n' "$MATCHED_CACHE"
-          python3 .github/ci/inspect-compiler-cache.py "$CACHE_PATH"
           python3 .github/ci/inspect-cached-modules.py "$CACHE_PATH"
