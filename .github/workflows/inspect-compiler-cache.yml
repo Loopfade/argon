@@ -1,0 +1,39 @@
+name: Inspect compiler cache manifests
+
+on:
+  push:
+    branches: [codex/inspect-ccache-manifests-20261020]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install ccache inspection tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ccache
+          ccache --version
+      - name: Restore main ARM64 compiler cache for inspection
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: argon-ccache-v3-arm64-155.0.8059.84-5869fe313571d75152b77813cf0a4ee26a4e6df0-diagnostic-${{ github.run_id }}
+          restore-keys: |
+            argon-ccache-v3-arm64-155.0.8059.84-5869fe313571d75152b77813cf0a4ee26a4e6df0-
+      - name: Inspect manifest dependency versions
+        env:
+          CACHE_PATH: ${{ runner.temp }}/ccache
+          MATCHED_CACHE: ${{ steps.cache.outputs.cache-matched-key }}
+        run: |
+          test -n "$MATCHED_CACHE"
+          printf 'Restored cache: %s\n' "$MATCHED_CACHE"
+          python3 .github/ci/inspect-compiler-cache.py "$CACHE_PATH"
