@@ -1,5 +1,5 @@
 name: Save compiler progress without stopping Ninja
-description: Wait up to one hour, then save a consistent snapshot of the live compiler cache
+description: Wait up to one hour, report compiler cache statistics, then save a consistent snapshot
 inputs:
   number:
     description: Checkpoint number within this attempt
@@ -11,6 +11,11 @@ runs:
       id: progress
       shell: bash
       run: python3 .github/ci/continuous-build.py wait --minutes 60
+    - name: Show live compiler cache statistics
+      if: always() && !cancelled()
+      continue-on-error: true
+      shell: bash
+      run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --show-stats --verbose
     - name: Snapshot compiler cache while Ninja continues
       if: steps.progress.outputs.done != 'true'
       shell: bash
