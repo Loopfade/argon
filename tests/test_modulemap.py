@@ -16,8 +16,8 @@ spec.loader.exec_module(modulemap)
 
 TRIPLES = {
     "arm": "arm-linux-androideabi", "arm64": "aarch64-linux-android",
-    "x86": "i686-linux-android", "x64": "x86_64-linux-android",
 }
+FOREIGN_TRIPLES = ("i686-linux-android", "x86_64-linux-android", "riscv64-linux-android")
 
 
 def verify_pinned_generator(src):
@@ -32,7 +32,7 @@ def verify_pinned_generator(src):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             include = root / "third_party/android_toolchain/ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include"
-            directories = [include / triple for triple in (*TRIPLES.values(), "riscv64-linux-android")]
+            directories = [include / triple for triple in (*TRIPLES.values(), *FOREIGN_TRIPLES)]
             for directory in directories:
                 (directory / "asm").mkdir(parents=True)
                 for name in ("hwcap.h", "ptrace.h"):
@@ -69,7 +69,7 @@ def verify_pinned_generator(src):
                     if reference is not None and rendered != reference:
                         raise ValueError(f"System modulemap depends on NDK directory order: {cpu}")
                     reference = rendered
-    print("PASS: pinned system module generator; four Android CPUs, 120 NDK directory orders each")
+    print("PASS: pinned system module generator; two Android CPUs, 120 NDK directory orders each")
 
 
 class ModulemapPatchTests(unittest.TestCase):
@@ -92,7 +92,7 @@ class ModulemapPatchTests(unittest.TestCase):
         select = self.selector()
         with tempfile.TemporaryDirectory() as temporary:
             include = Path(temporary) / "include"
-            directories = [include / triple for triple in (*TRIPLES.values(), "riscv64-linux-android")]
+            directories = [include / triple for triple in (*TRIPLES.values(), *FOREIGN_TRIPLES)]
             for directory in directories:
                 directory.mkdir(parents=True)
             for cpu, triple in TRIPLES.items():
@@ -100,8 +100,9 @@ class ModulemapPatchTests(unittest.TestCase):
                     with self.subTest(cpu=cpu, order=order):
                         self.assertEqual(select([include, *order], "android", cpu), [include, include / triple])
             self.assertEqual(select([include, *directories], "linux", "x64"), [include, *directories])
-            with self.assertRaisesRegex(ValueError, "Unsupported Android CPU"):
-                select([include, *directories], "android", "unknown")
+            for cpu in ("x86", "x64", "riscv64", "unknown"):
+                with self.subTest(cpu=cpu), self.assertRaisesRegex(ValueError, "Unsupported Android CPU"):
+                    select([include, *directories], "android", cpu)
             with self.assertRaisesRegex(ValueError, "Missing Android sysroot"):
                 select([include, directories[0]], "android", "arm64")
 

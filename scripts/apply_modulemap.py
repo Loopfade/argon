@@ -15,8 +15,6 @@ ANDROID_FILTER = """    # ARGON_ANDROID_SYSROOT: use only the target architectur
         android_triples = {
             'arm': 'arm-linux-androideabi',
             'arm64': 'aarch64-linux-android',
-            'x86': 'i686-linux-android',
-            'x64': 'x86_64-linux-android',
         }
         if target_cpu not in android_triples:
             raise ValueError(f'Unsupported Android CPU: {target_cpu}')

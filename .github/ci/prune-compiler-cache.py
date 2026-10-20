@@ -9,7 +9,7 @@ import subprocess
 
 
 def cache_prefix(lock, arch):
-    if arch not in ("arm64", "arm", "x64", "x86"):
+    if arch not in ("arm64", "arm"):
         raise ValueError("Unsupported compiler-cache architecture")
     version, revision = lock["chromium_version"], lock["chromium_commit"]
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", version) or not re.fullmatch(r"[0-9a-f]{40}", revision):
@@ -54,8 +54,8 @@ def obsolete_caches(caches, replacement_key, prefix, ref):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("replacement_key", nargs="?")
-    parser.add_argument("--prefix-for", choices=("arm64", "arm", "x64", "x86"))
-    parser.add_argument("--remove-old-versions", choices=("arm64", "arm", "x64", "x86"))
+    parser.add_argument("--prefix-for", choices=("arm64", "arm"))
+    parser.add_argument("--remove-old-versions", choices=("arm64", "arm"))
     args = parser.parse_args()
     if args.prefix_for:
         print(cache_prefix(json.loads(Path("build-lock.json").read_text()), args.prefix_for))
