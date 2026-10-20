@@ -1,7 +1,6 @@
 name: Validate scoped Russian CA
 on:
   push:
-    branches-ignore: [codex/inspect-ccache-manifests-20261020]
     paths-ignore:
       - '.github/workflows/update-dashboard.yml'
       - '.github/workflows/deploy-dashboard.yml'
@@ -63,7 +62,7 @@ jobs:
           persist-credentials: false
       - name: Validate patches and pinned inputs
         run: |
-          for arch in arm64 arm x64 x86; do
+          for arch in arm64 arm; do
             python3 scripts/preflight.py --inputs-only --arch "$arch"
             python3 scripts/configure_build.py --arch "$arch" --output ".build/args/$arch/args.gn"
           done

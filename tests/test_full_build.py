@@ -43,6 +43,12 @@ class FullBuildTests(unittest.TestCase):
         overlay.write_text("new source")
         self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
         overlay.unlink()
+        modulemap = checkout / "scripts/apply_modulemap.py"
+        original = modulemap.read_text()
+        modulemap.write_text(original + "\n# changed modulemap patch\n")
+        self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
+        modulemap.write_text(original)
+        self.assertEqual(before, pipeline.image_fingerprint(checkout))
         dockerfile = checkout / "docker/chromium/Dockerfile"
         dockerfile.write_text(dockerfile.read_text() + "\nRUN update-toolchain\n")
         self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
