@@ -1,5 +1,7 @@
 #!/bin/bash
 
+python3 "$SCRIPT_DIR/scripts/apply_modulemap.py" --chromium-src "$PWD"
+
 # Chromium M154 already handles extension-install dialogs through
 # ExtensionInstallPromptShowParams::GetParentWindow(). Keep this upstream file
 # byte-for-byte unchanged: the retired range-based sed patch truncated it when

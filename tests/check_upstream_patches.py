@@ -28,6 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import apply_scoped_ca as patch
 import apply_background_playback as background
+import apply_modulemap as modulemap
+from test_modulemap import verify_pinned_generator
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 LOCALE_CONSUMER = Path("components/strings/BUILD.gn")
@@ -50,7 +52,8 @@ SCRIM_MANAGER = Path("components/browser_ui/widget/android/java/src/org/chromium
 ROOT_UI = Path("chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java")
 WEB_CONTENTS_ANDROID = Path("content/browser/web_contents/web_contents_android.cc")
 RENDER_FRAME_HOST = Path("content/browser/renderer_host/render_frame_host_impl.cc")
-BASE_PATHS = (patch.PROFILE, patch.VERIFIER, patch.GN,
+BASE_PATHS = (modulemap.GENERATOR, modulemap.CONFIG,
+              patch.PROFILE, patch.VERIFIER, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
               patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
@@ -507,6 +510,8 @@ def main():
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         verify_background_media_observer_api(src)
+        modulemap.apply(src)
+        verify_pinned_generator(src)
         patch.apply(src, product_name=False)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
@@ -539,6 +544,7 @@ def main():
                 raise ValueError(f"Missing Argon Android resource: {resource}")
         before = {path: path.read_bytes() for path in src.rglob("*")
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
+        modulemap.apply(src)
         patch.apply(src, product_name=False)
         background.apply(src)
         after = {path: path.read_bytes() for path in src.rglob("*")
