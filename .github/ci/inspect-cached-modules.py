@@ -63,16 +63,20 @@ with tempfile.TemporaryDirectory() as temp:
                 print("UNRECOGNIZED_DUMP " + dump[:4000], flush=True)
             modules.append((key, deps.split(":", 1)[0], selected))
     print(f"Cached modules found: {len(modules)}", flush=True)
-    for key, target, lines in modules:
-        print(f"MODULE_METADATA {key} {target}", flush=True)
-        # Per-module names are much smaller than the full AST.
-        for line in lines:
-            if "SUBMODULE_DEFINITION" in line or "MODULE_NAME" in line:
-                print(line, flush=True)
     for i, (key, target, lines) in enumerate(modules):
         for other_key, other_target, other_lines in modules[i + 1:]:
             if target != other_target:
                 continue
             print(f"MODULE_DIFF {key} {other_key} {target}", flush=True)
-            diff = list(difflib.unified_diff(lines, other_lines, fromfile=key, tofile=other_key))
-            print("\n".join(diff[:700]), flush=True)
+            def names(records):
+                result = collections.Counter()
+                for record in records:
+                    match = re.search(r"<(\w+)[^>]*> blob data = '(.*)'", record)
+                    if match:
+                        result[match.groups()] += 1
+                return result
+            old_names, new_names = names(lines), names(other_lines)
+            for record, count in (old_names - new_names).items():
+                print(f"ONLY_FIRST {count} {record}", flush=True)
+            for record, count in (new_names - old_names).items():
+                print(f"ONLY_SECOND {count} {record}", flush=True)
