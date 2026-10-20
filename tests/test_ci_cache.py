@@ -41,6 +41,15 @@ class CacheReplacementTests(unittest.TestCase):
             with self.subTest(entries=entries):
                 self.assertIsNone(cache.obsolete_caches(entries, new["key"], self.prefix, self.ref))
 
+    def test_cache_prefix_accepts_only_supported_arm_targets(self):
+        lock = {"chromium_version": "155.0.8059.84", "chromium_commit": "a" * 40}
+        for arch in ("arm64", "arm"):
+            self.assertEqual(cache.cache_prefix(lock, arch),
+                             f"argon-ccache-v3-{arch}-155.0.8059.84-{'a' * 40}")
+        for arch in ("x64", "x86", "x86_64", "riscv64"):
+            with self.subTest(arch=arch), self.assertRaises(ValueError):
+                cache.cache_prefix(lock, arch)
+
     def test_only_older_caches_of_the_same_ref_arch_and_version_are_removed(self):
         old, new, later = self.entry(1), self.entry(2), self.entry(3)
         entries = [old, new, later, self.entry(4, ref="refs/heads/main"),

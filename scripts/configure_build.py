@@ -8,8 +8,6 @@ ROOT = Path(__file__).resolve().parents[1]
 TARGET_ABIS = {
     "arm64": "arm64-v8a",
     "arm": "armeabi-v7a",
-    "x64": "x86_64",
-    "x86": "x86",
 }
 
 
@@ -28,7 +26,7 @@ def render_gn_args(arch: str, ccache: bool = False) -> str:
     cpu = target_cpu(arch)
 
     # The pinned V8/Vanadium DrumBrake interpreter supports 64-bit targets only.
-    drumbrake = "true" if cpu in ("arm64", "x64") else "false"
+    drumbrake = "true" if cpu == "arm64" else "false"
     overrides = {
         "target_cpu": f'"{cpu}"',
         "v8_enable_drumbrake": drumbrake,

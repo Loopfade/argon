@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -21,8 +22,6 @@ class BuildTargetsTests(unittest.TestCase):
         for cpu, abi, drumbrake in [
             ("arm64", "arm64-v8a", "true"),
             ("arm", "armeabi-v7a", "false"),
-            ("x64", "x86_64", "true"),
-            ("x86", "x86", "false"),
         ]:
             for name in (cpu, abi):
                 with self.subTest(arch=name):
@@ -37,7 +36,7 @@ class BuildTargetsTests(unittest.TestCase):
                     self.assertIn('chrome_public_manifest_package = "app.titaniumru.browser"', args)
 
     def test_unsupported_architectures_are_rejected(self):
-        for arch in ["riscv64", "mips", "armeabi", "all", "", "../arm64"]:
+        for arch in ["x64", "x86", "x86_64", "i686", "riscv64", "mips", "armeabi", "all", "", "../arm64"]:
             with self.subTest(arch=arch), self.assertRaises(argparse.ArgumentTypeError):
                 configure_build.render_gn_args(arch)
 
@@ -48,17 +47,17 @@ class BuildTargetsTests(unittest.TestCase):
             for malformed in [template.replace(line, ""), template + line + "\n"]:
                 with self.subTest(name=name), patch.object(Path, "read_text", return_value=malformed):
                     with self.assertRaisesRegex(ValueError, name):
-                        configure_build.render_gn_args("x86")
+                        configure_build.render_gn_args("arm")
 
     def test_cli_writes_separate_outputs_and_preserves_template(self):
         template = (ROOT / "args.gn").read_bytes()
         with tempfile.TemporaryDirectory() as tmp:
-            for cpu in ["arm64", "arm", "x64", "x86"]:
+            for cpu in ["arm64", "arm"]:
                 output = Path(tmp) / cpu / "args.gn"
                 subprocess.run([sys.executable, ROOT / "scripts/configure_build.py",
                                 "--arch", cpu, "--output", output], check=True)
                 self.assertIn(f'target_cpu = "{cpu}"', output.read_text())
-            self.assertEqual(len(list(Path(tmp).glob("*/args.gn"))), 4)
+            self.assertEqual(len(list(Path(tmp).glob("*/args.gn"))), 2)
         self.assertEqual((ROOT / "args.gn").read_bytes(), template)
 
     def test_default_remains_arm64(self):
@@ -75,8 +74,8 @@ class BuildTargetsTests(unittest.TestCase):
             os.utime(output, (1000, 1000))
             subprocess.run(command, check=True)
             self.assertEqual(output.stat().st_mtime, 1000)
-            subprocess.run(command + ["--arch", "x86"], check=True)
-            self.assertIn('target_cpu = "x86"', output.read_text())
+            subprocess.run(command + ["--arch", "arm"], check=True)
+            self.assertIn('target_cpu = "arm"', output.read_text())
             self.assertNotEqual(output.stat().st_mtime, 1000)
 
     def test_ccache_mode_uses_ninja_wrapper(self):
@@ -85,12 +84,20 @@ class BuildTargetsTests(unittest.TestCase):
         self.assertIn('cc_wrapper = "ccache"', args)
         self.assertNotIn('use_siso = true', args)
 
+    def test_ci_preflight_checks_only_the_two_supported_android_targets(self):
+        workflow = (ROOT / ".github/workflows/validate.yml").read_text()
+        loop = re.search(r"for arch in ([^;\n]+); do", workflow)
+        self.assertIsNotNone(loop)
+        self.assertEqual(loop[1].split(), ["arm64", "arm"])
+
     def test_shell_rejects_invalid_architecture_before_preflight(self):
-        result = subprocess.run(["bash", ROOT / "build.sh", "riscv64"],
-                                capture_output=True, text=True)
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("Unsupported architecture", result.stderr)
-        self.assertNotIn("preflight.py", result.stderr)
+        for arch in ("riscv64", "x64", "x86", "x86_64"):
+            with self.subTest(arch=arch):
+                result = subprocess.run(["bash", ROOT / "build.sh", arch],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("Unsupported architecture", result.stderr)
+                self.assertNotIn("preflight.py", result.stderr)
 
     def test_shell_rejects_invalid_build_mode_before_preflight(self):
         result = subprocess.run(
@@ -187,12 +194,12 @@ class ApkArchitectureTests(unittest.TestCase):
     def test_apk_must_contain_exactly_the_selected_abi(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp) / "input.apk"
-            for expected in ["arm64-v8a", "armeabi-v7a", "x86_64", "x86"]:
+            for expected in ["arm64-v8a", "armeabi-v7a"]:
                 with self.subTest(expected=expected):
                     self.write_apk(apk, [expected])
                     sign_and_verify.verify_apk_abi(apk, expected)
-                other = "x86" if expected != "x86" else "arm64-v8a"
-                for actual in [[], [other], [expected, other]]:
+                other = "armeabi-v7a" if expected == "arm64-v8a" else "arm64-v8a"
+                for actual in [[], [other], [expected, other], ["x86"], ["x86_64"], [expected, "x86"]]:
                     with self.subTest(expected=expected, actual=actual):
                         self.write_apk(apk, actual)
                         with self.assertRaisesRegex(SystemExit, "Unexpected APK native ABIs"):
@@ -203,9 +210,9 @@ class ApkArchitectureTests(unittest.TestCase):
             apk = Path(tmp) / "input.apk"
             self.write_apk(apk, ["arm64-v8a"])
             argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", tmp,
-                    "--jdk", tmp, "--mode", "test", "--arch", "x86_64"]
+                    "--jdk", tmp, "--mode", "test", "--arch", "armeabi-v7a"]
             with patch.object(sys, "argv", argv), patch.object(sign_and_verify, "run") as run:
-                with self.assertRaisesRegex(SystemExit, "expected x86_64"):
+                with self.assertRaisesRegex(SystemExit, "expected armeabi-v7a"):
                     sign_and_verify.main()
                 run.assert_not_called()
 

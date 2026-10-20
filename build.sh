@@ -4,11 +4,11 @@ cd "$(dirname "$(realpath "$0")")"
 source ./common.sh
 
 if (( $# > 1 )); then
-  echo 'Usage: bash build.sh [arm64|arm|x64|x86|arm64-v8a|armeabi-v7a|x86_64]' >&2
+  echo 'Usage: bash build.sh [arm64|arm|arm64-v8a|armeabi-v7a]' >&2
   exit 2
 fi
 if [[ ${1:-} == --help || ${1:-} == -h ]]; then
-  echo 'Usage: bash build.sh [arm64|arm|x64|x86|arm64-v8a|armeabi-v7a|x86_64] (default: arm64)'
+  echo 'Usage: bash build.sh [arm64|arm|arm64-v8a|armeabi-v7a] (default: arm64)'
   exit 0
 fi
 TARGET_CPU=$(python3 scripts/configure_build.py --arch "${1:-arm64}" --print-cpu)
