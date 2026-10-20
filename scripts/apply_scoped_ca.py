@@ -45,6 +45,10 @@ TITANIUM_ANDROID_CC_DEPS = Path(
 TITANIUM_PRIVACY_PREFERENCES = Path(
     "titanium/chromium_src/chrome/android/java/res/xml/privacy_preferences_ext.xml"
 )
+TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS = Path(
+    "titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/"
+    "settings/search/SearchIndexProviderHooks.java"
+)
 TITANIUM_ROOT_RESOURCE = Path(
     "titanium/chromium_src/chrome/android/java/res/raw/argon_root_ca.pem"
 )
@@ -290,6 +294,28 @@ def patch_titanium_privacy_preferences(text: str) -> str:
         android:fragment="org.chromium.chrome.browser.privacy.settings.ArgonCertificateDomainsSettings" />
 """
     return replace_once(text, anchor, addition + anchor)
+
+
+def patch_titanium_search_index_provider_hooks(text: str) -> str:
+    anchor = "import org.chromium.build.annotations.NullMarked;"
+    text = replace_once(text, anchor, anchor + "\nimport org.chromium.chrome.R;")
+    anchor = "import org.chromium.chrome.browser.privacy.settings.PrivacySettings;"
+    text = replace_once(
+        text, anchor,
+        "import org.chromium.chrome.browser.privacy.settings.ArgonCertificateDomainsSettings;\n"
+        + anchor,
+    )
+    anchor = """        if (PrivacySettings.SEARCH_INDEX_DATA_PROVIDER == baseProvider) {
+            String fragmentName = baseProvider.getPrefFragmentName();"""
+    addition = """
+            // privacy_preferences_ext.xml is not indexed by PrivacySettings.
+            indexData.addEntryForKey(
+                    fragmentName,
+                    "argon_certificates",
+                    R.string.argon_certificates_title,
+                    /* summaryId= */ 0,
+                    ArgonCertificateDomainsSettings.class.getName());"""
+    return replace_once(text, anchor, anchor + addition)
 
 
 def patch_omnibox_gn(text: str) -> str:
@@ -552,6 +578,9 @@ def apply(src: Path, product_name: bool = True) -> None:
         ),
         src / TITANIUM_PRIVACY_PREFERENCES: patch_titanium_privacy_preferences(
             (src / TITANIUM_PRIVACY_PREFERENCES).read_text()
+        ),
+        src / TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS: patch_titanium_search_index_provider_hooks(
+            (src / TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS).read_text()
         ),
     })
     for source in (ROOT / "chromium_overlay").rglob("*"):

@@ -78,7 +78,7 @@ BASE_PATHS += tuple(path for path in background.INPUT_PATHS
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
-    patch.TITANIUM_PRIVACY_PREFERENCES,
+    patch.TITANIUM_PRIVACY_PREFERENCES, patch.TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
 ) + tuple(path for path in TRANSLATION_PATHS
           if str(path).startswith("titanium/"))
 
