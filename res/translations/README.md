@@ -12,6 +12,14 @@ and placeholder names before updating any files. The message IDs follow
 Chromium GRIT's fingerprint algorithm; existing translations are preserved and
 conflicting values fail preparation. Reapplying the overlay is idempotent.
 
+Reviewed entries can set `enable_translation` to make a message marked
+`translateable="false"` available to GRIT translations. `english_replacement`
+rebrands a plain-text source message after validating its original text; the
+incognito menu uses Argon in both English and Russian. Existing Russian entries
+can only be replaced when `previous_russian` matches their reviewed old text.
+All placeholders and unrelated messages remain intact. These resource changes
+do not enable the experimental features that display some of the messages.
+
 `bundles.json` lists the pinned resource bundles and all their included source
 files. Vanadium and Titanium rename the browser in the English messages and
 Russian catalogs, but leave the catalogs' numeric IDs based on the original

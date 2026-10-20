@@ -431,14 +431,51 @@ def grit_message_id(text: str, meaning: str = "") -> str:
     return str(value & 0x7fffffffffffffff)
 
 
+def patch_translation_source(text: str, name: str, translation: dict) -> str:
+    """Enable reviewed messages for translation and apply plain-text branding."""
+    pattern = re.compile(
+        r'<message\b(?=[^>]*\bname="' + re.escape(name)
+        + r'")[^>]*>.*?</message>', re.DOTALL,
+    )
+    english = translation["english"]
+    replacement = translation.get("english_replacement", english)
+    candidates = []
+    for match in pattern.finditer(text):
+        message = ET.fromstring(match[0])
+        if (presentable_message(message) in (english, replacement)
+                and message.attrib.get("meaning", "") == translation["meaning"]):
+            candidates.append((match[0], message))
+    if len(candidates) != 1:
+        raise ValueError(f"Expected one reviewed translation source: {name}")
+    before, message = candidates[0]
+    opening, body = before.split(">", 1)
+    if translation.get("enable_translation"):
+        if message.attrib.get("translateable") not in ("false", "true"):
+            raise ValueError(f"Translation eligibility changed: {name}")
+        opening = opening.replace('translateable="false"', 'translateable="true"')
+    if replacement != english:
+        if len(message):
+            raise ValueError(f"Branding replacement requires plain text: {name}")
+        body = replace_once(body, english, replacement)
+    return replace_once(text, before, opening + ">" + body)
+
+
 def russian_translation_writes(src: Path) -> dict[Path, str]:
-    """Extend Russian XTB catalogs, keeping other locales and existing IDs intact."""
+    """Apply reviewed source changes and Russian XTB translations."""
+    sources = {}
     catalogs = {}
     additions = {}
     for group in russian_translation_groups():
         source = src / group["source"]
+        text = sources.get(source, source.read_text("utf-8"))
+        for name, translation in russian_translation_entries(group):
+            if (translation.get("enable_translation")
+                    or "english_replacement" in translation):
+                text = patch_translation_source(text, name, translation)
+        if text != source.read_text("utf-8"):
+            sources[source] = text
         messages = {}
-        for message in ET.parse(source).iter("message"):
+        for message in ET.fromstring(text).iter("message"):
             messages.setdefault(message.attrib["name"], []).append(message)
         catalog = src / group["catalog"]
         if catalog not in catalogs:
@@ -456,7 +493,8 @@ def russian_translation_writes(src: Path) -> dict[Path, str]:
                 raise ValueError(f"Missing source message: {name}")
             candidates = [candidate for candidate in candidates if (
                 presentable_message(candidate), candidate.attrib.get("meaning", "")
-            ) == (translation["english"], translation["meaning"])]
+            ) == (translation.get("english_replacement", translation["english"]),
+                  translation["meaning"])]
             if not candidates:
                 raise ValueError(f"Russian translation source changed: {name}")
             message = candidates[0]
@@ -474,7 +512,9 @@ def russian_translation_writes(src: Path) -> dict[Path, str]:
             ):
                 raise ValueError(f"Russian translation placeholders differ: {name}")
             existing = additions[catalog].get(identifier)
-            if existing is not None and presentable_message(existing) != presentable_message(element):
+            if existing is not None and presentable_message(existing) not in (
+                presentable_message(element), translation.get("previous_russian")
+            ):
                 raise ValueError(f"Conflicting Russian translation: {name}")
             additions[catalog][identifier] = element
     # Vanadium's branding patches replace Chrome/Chromium in both languages,
@@ -489,7 +529,9 @@ def russian_translation_writes(src: Path) -> dict[Path, str]:
                 raise ValueError(f"Expected a Russian XTB catalog: {catalog}")
             additions[catalog] = {element.attrib["id"]: element for element in tree}
         for source in bundle["sources"]:
-            for message in ET.parse(src / source).iter("message"):
+            path = src / source
+            text = sources.get(path, path.read_text("utf-8"))
+            for message in ET.fromstring(text).iter("message"):
                 if (message.attrib.get("translateable") == "false"
                         or message.attrib.get("use_name_for_id") == "true"):
                     continue
@@ -520,9 +562,20 @@ def russian_translation_writes(src: Path) -> dict[Path, str]:
                     if child.tail:
                         child.tail = russian_browser_name(child.tail)
                 additions[catalog][identifier] = element
-    writes = {}
+    writes = dict(sources)
     for catalog, text in catalogs.items():
-        existing = {element.attrib["id"] for element in ET.fromstring(text)}
+        existing = {element.attrib["id"]: element for element in ET.fromstring(text)}
+        for identifier, element in existing.items():
+            replacement = additions[catalog][identifier]
+            if presentable_message(element) == presentable_message(replacement):
+                continue
+            pattern = r'<translation\b(?=[^>]*\bid="' + identifier + r'")[^>]*>.*?</translation>'
+            text, count = re.subn(
+                pattern, lambda _: ET.tostring(replacement, encoding="unicode"),
+                text, flags=re.DOTALL,
+            )
+            if count != 1:
+                raise ValueError(f"Expected one existing Russian translation: {identifier}")
         lines = ["  " + ET.tostring(element, encoding="unicode")
                  for identifier, element in additions[catalog].items()
                  if identifier not in existing]

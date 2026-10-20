@@ -79,6 +79,85 @@ class RussianTranslationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Conflicting Russian translation"):
             localization.russian_translation_writes(self.src)
 
+    def test_reviewed_nontranslatable_message_is_enabled_and_rebranded(self):
+        self.source.write_text(
+            '<grit-part><message name="IDS_HELLO" translateable="false">'
+            'Open in Incognito Titanium</message>'
+            '<message name="IDS_UNTOUCHED" translateable="false">Other</message>'
+            '</grit-part>'
+        )
+        self.groups[0]["messages"]["IDS_HELLO"] = {
+            "english": "Open in Incognito Titanium", "meaning": "",
+            "english_replacement": "Open in Incognito Argon",
+            "enable_translation": True, "russian": "Открыть инкогнито в Argon",
+        }
+        original = self.source.read_text()
+        writes = localization.russian_translation_writes(self.src)
+        self.assertEqual(self.source.read_text(), original)
+        tree = ET.fromstring(writes[self.source])
+        message = tree.find("message[@name='IDS_HELLO']")
+        self.assertEqual(message.attrib["translateable"], "true")
+        self.assertEqual(message.text, "Open in Incognito Argon")
+        self.assertEqual(tree.find("message[@name='IDS_UNTOUCHED']").attrib["translateable"], "false")
+        translations = ET.fromstring(writes[self.catalog])
+        identifier = localization.grit_message_id("Open in Incognito Argon")
+        self.assertEqual(translations.find(f"translation[@id='{identifier}']").text,
+                         "Открыть инкогнито в Argon")
+        old_id = localization.grit_message_id("Open in Incognito Titanium")
+        self.assertIsNone(translations.find(f"translation[@id='{old_id}']"))
+        for path, text in writes.items():
+            path.write_text(text)
+        for path, text in localization.russian_translation_writes(self.src).items():
+            self.assertEqual(path.read_text(), text)
+
+    def test_nontranslatable_placeholder_message_keeps_its_parameters(self):
+        self.source.write_text(self.source.read_text().replace(
+            '<message name="IDS_HELLO">',
+            '<message name="IDS_HELLO" translateable="false">',
+        ))
+        self.groups[0]["messages"]["IDS_HELLO"]["enable_translation"] = True
+        writes = localization.russian_translation_writes(self.src)
+        message = ET.fromstring(writes[self.source]).find("message")
+        self.assertEqual(message.attrib["translateable"], "true")
+        self.assertEqual(message.find("ph").text, "%1$s")
+        self.assertEqual(message.find("ph/ex").text, "User")
+        translation = ET.fromstring(writes[self.catalog]).find(
+            "translation[@id='5335090254790956485']"
+        )
+        self.assertEqual(translation.find("ph").attrib["name"], "USERNAME")
+
+    def test_only_reviewed_existing_russian_text_can_be_replaced(self):
+        identifier = "5335090254790956485"
+        self.catalog.write_text(self.original.replace(
+            "</translationbundle>",
+            f'<translation id="{identifier}">Hello <ph name="USERNAME"/></translation>'
+            '</translationbundle>',
+        ))
+        self.groups[0]["messages"]["IDS_HELLO"]["previous_russian"] = "Hello USERNAME"
+        writes = localization.russian_translation_writes(self.src)
+        tree = ET.fromstring(writes[self.catalog])
+        self.assertEqual(len(tree.findall(f"translation[@id='{identifier}']")), 1)
+        self.assertEqual(tree.find(f"translation[@id='{identifier}']").text, "Здравствуйте, ")
+        self.assertEqual(tree.find("translation[@id='123']").text, "Существующий перевод")
+        self.catalog.write_text(writes[self.catalog])
+        self.assertEqual(localization.russian_translation_writes(self.src), writes)
+        self.catalog.write_text(writes[self.catalog].replace("Здравствуйте", "Другой перевод"))
+        with self.assertRaisesRegex(ValueError, "Conflicting Russian translation"):
+            localization.russian_translation_writes(self.src)
+
+    def test_source_changes_reject_stale_or_ambiguous_messages(self):
+        self.groups[0]["messages"]["IDS_HELLO"]["enable_translation"] = True
+        source = self.source.read_text().replace(
+            '<message name="IDS_HELLO">',
+            '<message name="IDS_HELLO" translateable="false">',
+        )
+        for changed in (source.replace("Hello", "Goodbye"), source + source,
+                        source.replace(' translateable="false"', "")):
+            with self.subTest(source=changed):
+                self.source.write_text(changed)
+                with self.assertRaises(ValueError):
+                    localization.russian_translation_writes(self.src)
+
     def test_branding_reconnects_legacy_russian_ids_and_keeps_the_original(self):
         self.source.write_text(
             '<grit-part><message name="IDS_BRANDING">Open Titanium settings</message></grit-part>'
