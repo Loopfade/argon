@@ -19,7 +19,7 @@ jobs:
       - name: Install ccache inspection tool
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ccache
+          sudo apt-get install -y ccache llvm-18
           ccache --version
       - name: Restore main ARM64 compiler cache for inspection
         id: cache
@@ -37,3 +37,4 @@ jobs:
           test -n "$MATCHED_CACHE"
           printf 'Restored cache: %s\n' "$MATCHED_CACHE"
           python3 .github/ci/inspect-compiler-cache.py "$CACHE_PATH"
+          python3 .github/ci/inspect-cached-modules.py "$CACHE_PATH"
