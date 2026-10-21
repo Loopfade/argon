@@ -86,7 +86,6 @@ case "${1:-}" in
 
     python3 "$SCRIPT_DIR/scripts/apply_scoped_ca.py" --chromium-src "$PWD"
     python3 "$SCRIPT_DIR/scripts/apply_background_playback.py" --chromium-src "$PWD"
-    python3 "$SCRIPT_DIR/scripts/apply_browsing_data_period.py" --chromium-src "$PWD"
     touch "$SCRIPT_DIR/.build/argon-patched"
     ;;
   validate)

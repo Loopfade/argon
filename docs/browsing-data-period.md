@@ -16,8 +16,10 @@
 
 ## Применение и обновление Chromium
 
-`scripts/apply_browsing_data_period.py` применяется при подготовке исходников.
-Он меняет только инициализацию списка в `QuickDeleteDialogDelegate`, обработку
+`scripts/apply_browsing_data_period.py` вызывается из `patch.sh` после загрузки
+исходников и toolchain, вместе с остальными локальными патчами. Скрипт подготовки
+тяжёлого source-слоя Docker не меняется, поэтому этот слой можно переиспользовать.
+Патч меняет только инициализацию списка в `QuickDeleteDialogDelegate`, обработку
 выбора в `QuickDeleteMediator` и обработку периода в `ClearBrowsingDataFragment`.
 Диапазоны и названия периодов, типы удаляемых данных и обработчики подтверждения
 удаления остаются в Chromium.

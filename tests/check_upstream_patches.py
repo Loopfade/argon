@@ -516,10 +516,10 @@ def main():
         verify_background_media_observer_api(src)
         modulemap.apply(src)
         verify_pinned_generator(src)
+        deletion_period.apply(src)
         patch.apply(src, product_name=False)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
-        deletion_period.apply(src)
         verify_deletion_period_flow(src)
         java_sources = re.findall(
             r'"(java/src/[^"\n]*ArgonBackgroundPlayback[^"\n]*\.java)"',
@@ -551,9 +551,9 @@ def main():
         before = {path: path.read_bytes() for path in src.rglob("*")
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
         modulemap.apply(src)
+        deletion_period.apply(src)
         patch.apply(src, product_name=False)
         background.apply(src)
-        deletion_period.apply(src)
         after = {path: path.read_bytes() for path in src.rglob("*")
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
