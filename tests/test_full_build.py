@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,33 @@ pipeline = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pipeline)
 
 
+def source_stage_inputs(root):
+    """Collect Docker's local COPY inputs through the source/toolchain RUN."""
+    recipe = (root / "docker/chromium/Dockerfile").read_text()
+    boundary = "ARGON_FETCH_VANADIUM=1 bash scripts/prepare_chromium.sh sources"
+    if recipe.count(boundary) != 1:
+        raise ValueError("Cannot identify the cached source/toolchain stage")
+    recipe = recipe.split(boundary, 1)[0] + boundary + "\n"
+    files = {"Dockerfile (source stage)": recipe.encode(),
+             "generated source-lock.json": subprocess.check_output(
+                 [sys.executable, str(root / "scripts/image_source_inputs.py"),
+                  "--lock", str(root / "build-lock.json")])}
+    prepared = recipe.replace("\\\n", " ").split("FROM tooling AS prepared\n", 1)[1]
+    for line in prepared.splitlines():
+        if not line.startswith("COPY "):
+            continue
+        words = shlex.split(line)[1:]
+        if any(word.startswith("--from=") for word in words):
+            continue  # The source-pins stage exports the canonical JSON above.
+        sources = [word for word in words[:-1] if not word.startswith("--")]
+        for name in sources:
+            source = root / name
+            for path in source.rglob("*") if source.is_dir() else [source]:
+                if path.is_file():
+                    files[path.relative_to(root).as_posix()] = path.read_bytes()
+    return files
+
+
 class FullBuildTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -27,7 +55,7 @@ class FullBuildTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.sha = "a" * 40
 
-    def test_prepared_image_ignores_docs_but_tracks_overlay_and_toolchain_recipe(self):
+    def checkout(self):
         checkout = self.root / "checkout"
         def ignore(directory, names):
             skipped = set(shutil.ignore_patterns(".git", "vanadium", ".build", "keys",
@@ -36,6 +64,10 @@ class FullBuildTests(unittest.TestCase):
                 skipped.update(("chromium", "depot_tools"))
             return skipped
         shutil.copytree(ROOT, checkout, ignore=ignore)
+        return checkout
+
+    def test_prepared_image_ignores_docs_but_tracks_overlay_and_toolchain_recipe(self):
+        checkout = self.checkout()
         before = pipeline.image_fingerprint(checkout)
         (checkout / "README.md").write_text("documentation changed")
         self.assertEqual(before, pipeline.image_fingerprint(checkout))
@@ -43,15 +75,38 @@ class FullBuildTests(unittest.TestCase):
         overlay.write_text("new source")
         self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
         overlay.unlink()
-        modulemap = checkout / "scripts/apply_modulemap.py"
-        original = modulemap.read_text()
-        modulemap.write_text(original + "\n# changed modulemap patch\n")
-        self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
-        modulemap.write_text(original)
-        self.assertEqual(before, pipeline.image_fingerprint(checkout))
+        for name in ("apply_modulemap.py", "apply_browsing_data_period.py"):
+            source_patch = checkout / "scripts" / name
+            original = source_patch.read_text()
+            source_patch.write_text(original + "\n# changed source patch\n")
+            self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
+            source_patch.write_text(original)
+            self.assertEqual(before, pipeline.image_fingerprint(checkout))
         dockerfile = checkout / "docker/chromium/Dockerfile"
         dockerfile.write_text(dockerfile.read_text() + "\nRUN update-toolchain\n")
         self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
+
+    def test_deletion_overlay_preserves_the_cached_source_toolchain_stage(self):
+        checkout = self.checkout()
+        before = source_stage_inputs(checkout)
+        image_before = pipeline.image_fingerprint(checkout)
+        self.assertTrue(all(b"apply_browsing_data_period.py" not in data
+                            for data in before.values()),
+                        "The deletion overlay hook leaked into the heavy source layer")
+        self.assertIn(
+            'python3 "$SCRIPT_DIR/scripts/apply_browsing_data_period.py" --chromium-src "$PWD"',
+            (checkout / "patch.sh").read_text(),
+        )
+        for name in ("scripts/apply_browsing_data_period.py", "patch.sh"):
+            source = checkout / name
+            original = source.read_text()
+            source.write_text(original + "\n# Overlay cache regression\n")
+            self.assertEqual(before, source_stage_inputs(checkout))
+            self.assertNotEqual(image_before, pipeline.image_fingerprint(checkout))
+            source.write_text(original)
+        source = checkout / "scripts/prepare_chromium.sh"
+        source.write_text(source.read_text() + "\n# Source preparation changed\n")
+        self.assertNotEqual(before, source_stage_inputs(checkout))
 
     def test_apk_identity_separates_commits_architectures_keys_and_modes(self):
         args = [self.sha, "arm64", "release", "certificate", "prepared"]

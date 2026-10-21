@@ -1,0 +1,266 @@
+// Host adapters for Android UI and profile preference storage. The marked
+// methods below are filled with the exact Chromium sources under test.
+package org.chromium.argon.period;
+
+import java.nio.file.*;
+import java.util.*;
+import org.chromium.argon.period.TimePeriodUtils.TimePeriodSpinnerOption;
+
+@interface NullMarked {}
+@interface Nullable {}
+@interface TimePeriod {
+    int LAST_HOUR = 0, LAST_DAY = 1, LAST_WEEK = 2, FOUR_WEEKS = 3,
+        ALL_TIME = 4, OLDER_THAN_30_DAYS = 5, LAST_15_MINUTES = 6;
+}
+class Context {
+    final Profile profile;
+    Context(Profile value) { profile = value; }
+    String getString(int resource) { return Integer.toString(resource); }
+}
+class R {
+    static class string {
+        static final int clear_browsing_data_tab_period_15_minutes = 1,
+            clear_browsing_data_tab_period_hour = 2, clear_browsing_data_tab_period_24_hours = 3,
+            clear_browsing_data_tab_period_7_days = 4, clear_browsing_data_tab_period_four_weeks = 5,
+            clear_browsing_data_tab_period_everything = 6;
+    }
+}
+class android { static class R { static class layout {
+    static final int simple_spinner_item = 1, simple_spinner_dropdown_item = 2;
+}}}
+class View { void setPadding(int a, int b, int c, int d) {} }
+class ViewGroup extends View {}
+class ArrayAdapter<T> {
+    final T[] options;
+    ArrayAdapter(Context context, int resource, T[] values) { options = values; }
+    View getView(int position, View old, ViewGroup parent) { return new View(); }
+    void setDropDownViewResource(int resource) {}
+}
+class AdapterView<T> extends View {
+    interface OnItemSelectedListener {
+        void onItemSelected(AdapterView<?> view, View item, int position, long id);
+        void onNothingSelected(AdapterView<?> view);
+    }
+    ArrayAdapter<T> adapter;
+    int selected;
+    Object getItemAtPosition(int position) { return adapter.options[position]; }
+}
+class Spinner extends AdapterView<TimePeriodSpinnerOption> {
+    OnItemSelectedListener listener;
+    void setAdapter(ArrayAdapter<TimePeriodSpinnerOption> value) {
+        adapter = value; selected = 0; notifySelection();
+    }
+    void setSelection(int value) {
+        if (value < 0 || value >= adapter.options.length) throw new AssertionError("Invalid index");
+        selected = value; notifySelection();
+    }
+    void setOnItemSelectedListener(OnItemSelectedListener value) {
+        listener = value; notifySelection();
+    }
+    void notifySelection() {
+        if (listener != null && adapter != null) listener.onItemSelected(this, new View(), selected, selected);
+    }
+    int period() { return adapter.options[selected].getTimePeriod(); }
+    void setFocusable(boolean value) {}
+    void setClickable(boolean value) {}
+    void setLongClickable(boolean value) {}
+}
+class Profile {
+    final Path preferenceFile;
+    final List<Integer> writes = new ArrayList<>();
+    int clearCalls, checkboxWrites;
+    Profile(Path path) { preferenceFile = path; }
+    int read() {
+        try { return Files.exists(preferenceFile) ? Integer.parseInt(Files.readString(preferenceFile)) : TimePeriod.LAST_HOUR; }
+        catch (Exception error) { throw new RuntimeException(error); }
+    }
+    void write(int period) {
+        try { if (read() != period) { Files.writeString(preferenceFile, Integer.toString(period)); writes.add(period); } }
+        catch (Exception error) { throw new RuntimeException(error); }
+    }
+}
+class BrowsingDataBridge {
+    final Profile profile;
+    BrowsingDataBridge(Profile value) { profile = value; }
+    static BrowsingDataBridge getForProfile(Profile profile) { return new BrowsingDataBridge(profile); }
+    int getBrowsingDataDeletionTimePeriod() { return profile.read(); }
+    void setBrowsingDataDeletionTimePeriod(int period) { profile.write(period); }
+    void clearBrowsingData() { profile.clearCalls++; }
+    void setBrowsingDataDeletionPreference() { profile.checkboxWrites++; }
+}
+class TabModelSelector {
+    final Profile profile;
+    TabModelSelector(Profile value) { profile = value; }
+    TabModelSelector getCurrentModel() { return this; }
+    Profile getProfile() { return profile; }
+}
+class Key<T> {}
+class PropertyModel {
+    final Map<Key<?>, Object> values = new HashMap<>();
+    <T> void set(Key<T> key, T value) { values.put(key, value); }
+    @SuppressWarnings("unchecked") <T> T get(Key<T> key) { return (T) values.get(key); }
+}
+class QuickDeleteProperties {
+    static final Key<Integer> TIME_PERIOD = new Key<>(), CLOSED_TABS_COUNT = new Key<>();
+    static final Key<Boolean> HAS_MULTI_WINDOWS = new Key<>(), IS_SIGNED_IN = new Key<>(),
+        IS_SYNCING_HISTORY = new Key<>(), IS_DOMAIN_VISITED_DATA_PENDING = new Key<>();
+}
+class TabsFilter { void prepareListOfTabsToBeClosed(int period) {} }
+class QuickDeleteBridge { void restartCounterForTimePeriod(int period) {} }
+class QuickDeleteDelegate { static boolean isSignedIn(Profile profile) { return false; } }
+interface PeriodObserver { void onTimePeriodChanged(@TimePeriod int period); }
+class Mediator implements PeriodObserver {
+    final Profile mProfile;
+    final PropertyModel mPropertyModel = new PropertyModel();
+    final TabsFilter mQuickDeleteRegularTabsFilter = new TabsFilter();
+    final TabsFilter mQuickDeleteArchivedTabsFilter = new TabsFilter();
+    final QuickDeleteBridge mQuickDeleteBridge = new QuickDeleteBridge();
+    Mediator(Profile profile) { mProfile = profile; mPropertyModel.set(QuickDeleteProperties.HAS_MULTI_WINDOWS, false); }
+    int getCountOfTabsToBeDeleted() { return 0; }
+/* QUICK_SELECTION */
+}
+class ModalDialogManager {
+    int lastCause;
+    void dismissDialog(Object model, int cause) { lastCause = cause; }
+}
+class DialogDismissalCause { static final int ACTION_ON_CONTENT = 1, NEGATIVE_BUTTON_CLICKED = 2; }
+class QuickDeleteMetricsDelegate {
+    static class QuickDeleteAction { static final int MORE_OPTIONS_CLICKED = 1; }
+    static void recordHistogram(int action) {}
+}
+class SettingsNavigation {
+    enum SettingsFragment { CLEAR_BROWSING_DATA }
+    static Context openedContext;
+    void startSettings(Context context, SettingsFragment target) { openedContext = context; }
+}
+class SettingsNavigationFactory {
+    static SettingsNavigation createSettingsNavigation() { return new SettingsNavigation(); }
+}
+class QuickWindow {
+    final Context mContext;
+    final TabModelSelector mTabModelSelector;
+    final PeriodObserver mTimePeriodChangeObserver;
+    final ModalDialogManager mModalDialogManager = new ModalDialogManager();
+    final Object mModalDialogPropertyModel = new Object();
+    final Spinner spinner = new Spinner();
+    QuickWindow(Profile profile) {
+        mContext = new Context(profile); mTabModelSelector = new TabModelSelector(profile);
+        mTimePeriodChangeObserver = new Mediator(profile); show();
+    }
+    static <T> T assumeNonNull(T value) { return Objects.requireNonNull(value); }
+    static TimePeriodSpinnerOption[] getTimePeriodSpinnerOptions(Context context) {
+        return TimePeriodUtils.getTimePeriodSpinnerOptions(context);
+    }
+    void recordTimePeriodChange(int period) {}
+    void show() { updateSpinner(spinner); }
+    void choose(int period) {
+        for (int i = 0; i < spinner.adapter.options.length; i++) {
+            if (spinner.adapter.options[i].getTimePeriod() == period) { spinner.setSelection(i); return; }
+        }
+        throw new AssertionError("Period is not offered");
+    }
+    void moreOptions() { openClearBrowsingDataDialog(); }
+    void cancel() { mModalDialogManager.dismissDialog(mModalDialogPropertyModel, DialogDismissalCause.NEGATIVE_BUTTON_CLICKED); }
+/* QUICK_SPINNER */
+/* QUICK_NAVIGATION */
+}
+class Preference {
+    final String key;
+    Preference(String value) { key = value; }
+    String getKey() { return key; }
+}
+interface ChangeListener { boolean onPreferenceChange(Preference preference, Object value); }
+class SpinnerPreference extends Preference {
+    TimePeriodSpinnerOption[] options;
+    int selected;
+    ChangeListener listener;
+    SpinnerPreference(String key) { super(key); }
+    void setOptions(TimePeriodSpinnerOption[] values, int index) { options = values; selected = index; }
+    Object getSelectedOption() { return options[selected]; }
+    void setOnPreferenceChangeListener(ChangeListener value) { listener = value; }
+    void choose(int period) {
+        for (int i = 0; i < options.length; i++) {
+            if (options[i].getTimePeriod() == period && listener.onPreferenceChange(this, options[i])) { selected = i; return; }
+        }
+        throw new AssertionError("Period is not offered");
+    }
+}
+class Item { int period; void setSelectedTimePeriod(int value) { period = value; } }
+class FullWindow implements ChangeListener {
+    static final String PREF_TIME_RANGE = "time_period_spinner";
+    final Profile profile;
+    final SpinnerPreference spinner = new SpinnerPreference(PREF_TIME_RANGE);
+    final List<Item> mItems = List.of(new Item(), new Item());
+    int mLastSelectedTimePeriod;
+    FullWindow(Profile value) { profile = value; initializePeriod(); }
+    Profile getProfile() { return profile; }
+    Context getActivity() { return new Context(profile); }
+    SpinnerPreference findPreference(String key) { return spinner; }
+    static <T> T assumeNonNull(T value) { return Objects.requireNonNull(value); }
+    static TimePeriodSpinnerOption[] getTimePeriodSpinnerOptions(Context context) {
+        return TimePeriodUtils.getTimePeriodSpinnerOptions(context);
+    }
+    void cancel() {}
+/* FULL_INITIALIZATION */
+/* FULL_INDEX */
+/* FULL_SELECTION */
+}
+/* TIME_UTILS */
+
+public class BrowsingDataPeriodFlow {
+    static void check(boolean value, String message) { if (!value) throw new AssertionError(message); }
+    public static void main(String[] args) throws Exception {
+        Path root = Path.of(args[0]);
+        Profile profile = new Profile(root.resolve("profile-period"));
+        profile.write(TimePeriod.ALL_TIME);
+        QuickWindow quick = new QuickWindow(profile);
+        check(quick.spinner.period() == TimePeriod.ALL_TIME, "quick dialog should restore saved ALL_TIME");
+        check(profile.read() == TimePeriod.ALL_TIME, "initialization overwrote saved period");
+
+        for (TimePeriodSpinnerOption option : TimePeriodUtils.getTimePeriodSpinnerOptions(new Context(profile))) {
+            int period = option.getTimePeriod();
+            quick.choose(period);
+            check(profile.read() == period, "quick choice was not saved");
+            quick.cancel();
+            check(new QuickWindow(profile).spinner.period() == period, "quick cancellation lost period");
+            FullWindow full = new FullWindow(profile);
+            check(full.mLastSelectedTimePeriod == period, "full window ignored quick selection");
+            full.spinner.choose(TimePeriod.ALL_TIME);
+            check(profile.read() == TimePeriod.ALL_TIME, "full choice was not saved immediately");
+            full.cancel();
+            check(new FullWindow(profile).mLastSelectedTimePeriod == TimePeriod.ALL_TIME, "full cancellation lost period");
+            for (Item item : full.mItems) check(item.period == TimePeriod.ALL_TIME, "counters did not receive the selected period");
+            full.spinner.choose(period);
+            check(new QuickWindow(profile).spinner.period() == period, "quick window ignored full selection");
+        }
+
+        quick.choose(TimePeriod.ALL_TIME);
+        quick.moreOptions();
+        check(SettingsNavigation.openedContext == quick.mContext, "More options did not open settings");
+        check(new FullWindow(SettingsNavigation.openedContext.profile).mLastSelectedTimePeriod == TimePeriod.ALL_TIME,
+            "More options lost the draft period");
+        check(quick.mModalDialogManager.lastCause == DialogDismissalCause.ACTION_ON_CONTENT, "navigation did not dismiss quick window");
+
+        new FullWindow(profile).spinner.choose(TimePeriod.LAST_DAY);
+        profile.writes.clear();
+        quick.show();
+        check(quick.spinner.period() == TimePeriod.LAST_DAY, "same-instance reopening used a stale period");
+        check(!profile.writes.contains(TimePeriod.LAST_15_MINUTES), "old spinner listener overwrote period with item zero");
+
+        quick.choose(TimePeriod.ALL_TIME);
+        Profile restarted = new Profile(profile.preferenceFile);
+        check(new QuickWindow(restarted).spinner.period() == TimePeriod.ALL_TIME, "fresh UI/profile adapters lost stored period");
+        check(new FullWindow(restarted).mLastSelectedTimePeriod == TimePeriod.ALL_TIME, "full window lost period after restart");
+        Profile separate = new Profile(root.resolve("separate-profile"));
+        check(new QuickWindow(separate).spinner.period() == TimePeriod.LAST_HOUR, "new profile changed its default");
+        check(new FullWindow(separate).mLastSelectedTimePeriod == TimePeriod.LAST_HOUR, "default windows disagree");
+        new QuickWindow(separate).choose(TimePeriod.LAST_WEEK);
+        check(profile.read() == TimePeriod.ALL_TIME, "selection leaked into another profile");
+
+        Files.writeString(separate.preferenceFile, "999");
+        check(new FullWindow(separate).mLastSelectedTimePeriod == TimePeriod.LAST_HOUR, "full fallback changed");
+        check(new QuickWindow(separate).spinner.period() == TimePeriod.LAST_HOUR, "quick fallback differs from full window");
+        check(profile.clearCalls == 0 && profile.checkboxWrites == 0, "selection/cancellation changed deletion options or cleared data");
+        System.out.println("PASS: Chromium deletion periods — all ranges, both dialogs, cancellation, navigation, reused spinner, stored profile and isolation");
+    }
+}
