@@ -42,6 +42,7 @@ RELEASE_PAYLOAD_FILES = {
     "docker/chromium/Dockerfile",
     "scripts/VerifyReleaseKey.java",
     "scripts/apply_scoped_ca.py",
+    "scripts/apply_browsing_data_period.py",
     "scripts/configure_build.py",
     "scripts/fetch_pinned_extension.py",
     "scripts/fetch_pinned_filter_lists.py",
