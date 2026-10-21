@@ -1,13 +1,16 @@
 """Exercise saved deletion periods and reject unreviewed Chromium upgrades."""
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch as mock_patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import apply_browsing_data_period as patch
+import browsing_data_period_flow as flow
 from browsing_data_period_flow import run_flow
 
 
@@ -92,6 +95,31 @@ class BrowsingDataPeriodTests(unittest.TestCase):
         result = run_flow(self.sources(), self.fixture["time_utils"])
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("PASS: Chromium deletion periods", result.stdout)
+
+    def test_prepared_jdk_runs_the_flow_without_java_or_javac_on_path(self):
+        # Match the prepared-image environment: Chromium's JDK is installed,
+        # but no system Java launcher or compiler is available on PATH.
+        java = shutil.which("java")
+        if not java:
+            java = str(ROOT / "chromium/src/third_party/jdk/current/bin/java")
+        prepared_java = self.src / "chromium/src/third_party/jdk/current/bin/java"
+        prepared_java.parent.mkdir(parents=True)
+        prepared_java.symlink_to(Path(java).resolve())
+        template = self.src / "tests/fixtures/BrowsingDataPeriodFlow.java.in"
+        template.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / template.relative_to(self.src), template)
+        patch.apply(self.src)
+        with mock_patch.object(flow, "ROOT", self.src), \
+                mock_patch.object(flow.shutil, "which", return_value=None):
+            result = run_flow(self.sources(), self.fixture["time_utils"])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("PASS: Chromium deletion periods", result.stdout)
+
+    def test_missing_jdk_fails_instead_of_skipping_the_regression(self):
+        with mock_patch.object(flow, "ROOT", self.src), \
+                mock_patch.object(flow.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "JDK required"):
+                run_flow(self.sources(), self.fixture["time_utils"])
 
 
 if __name__ == "__main__":

@@ -17,9 +17,14 @@ import apply_browsing_data_period as patch
 
 
 def run_flow(sources, time_utils):
-    java = shutil.which("java")
+    # Chromium fetches a pinned JDK, but its bin directory is not on PATH in
+    # the prepared Docker image. Prefer that same toolchain when it exists.
+    prepared_java = ROOT / "chromium/src/third_party/jdk/current/bin/java"
+    java = str(prepared_java) if prepared_java.is_file() else shutil.which("java")
     if not java:
         raise RuntimeError("JDK required for browsing-data period regression")
+    java = str(Path(java).resolve())
+    javac = Path(java).with_name("javac")
     fragment = sources[str(patch.FRAGMENT)]
     start = fragment.index("        // The time range selection spinner.")
     end_anchor = (
@@ -60,7 +65,7 @@ def run_flow(sources, time_utils):
         root = Path(temporary)
         source = root / "BrowsingDataPeriodFlow.java"
         source.write_text(code)
-        compiler = ([shutil.which("javac")] if shutil.which("javac") else
+        compiler = ([str(javac)] if javac.is_file() else
                     [java, "-m", "jdk.compiler/com.sun.tools.javac.Main"])
         compiled = subprocess.run(
             [*compiler, "-d", str(root / "classes"), str(source)],
