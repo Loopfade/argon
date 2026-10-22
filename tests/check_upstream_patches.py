@@ -2,7 +2,7 @@
 """Check Argon's patches against the pinned upstream sources.
 
 This small integration check downloads the Chromium files needed to validate
-the CA/JNI overlay, About screen, omnibox icon dependency and M154/M155
+the CA/JNI overlay, About screen, omnibox icon dependency and M154+
 extension-install dialog regression, applies the relevant Vanadium patches,
 and applies Argon's overlay twice. A small GN project checks source catalogs,
 the upstream strings consumer and Android locale packaging. This does not
@@ -52,6 +52,9 @@ TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl
 TAB_OBSCURING = Path("chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObscuringHandler.java")
 SCRIM_MANAGER = Path("components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/scrim/ScrimManager.java")
 ROOT_UI = Path("chrome/android/java/src/org/chromium/chrome/browser/ui/RootUiCoordinator.java")
+DEVTOOLS_WINDOW = Path("chrome/browser/devtools/android/java/src/org/chromium/chrome/browser/devtools/DevToolsWindowAndroid.java")
+DEVTOOLS_MENU = Path("chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/MoreToolsItemBuilder.java")
+CONTEXT_MENU = Path("chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java")
 WEB_CONTENTS_ANDROID = Path("content/browser/web_contents/web_contents_android.cc")
 RENDER_FRAME_HOST = Path("content/browser/renderer_host/render_frame_host_impl.cc")
 BASE_PATHS = (modulemap.GENERATOR, modulemap.CONFIG,
@@ -63,7 +66,8 @@ BASE_PATHS = (modulemap.GENERATOR, modulemap.CONFIG,
               APPLICATION_STATUS, TAB, TAB_OBSERVER, TAB_IMPL, TAB_OBSCURING, SCRIM_MANAGER, ROOT_UI,
               WEB_CONTENTS_ANDROID, RENDER_FRAME_HOST, MEDIA_SESSION,
               NATIVE_MEDIA_SESSION, MEDIA_SESSION_CONTROLLER, HTML_MEDIA_ELEMENT,
-              MEDIA_SESSION_MOJOM, MEDIA_PLAYBACK_OPTIONS)
+              MEDIA_SESSION_MOJOM, MEDIA_PLAYBACK_OPTIONS,
+              DEVTOOLS_WINDOW, DEVTOOLS_MENU, CONTEXT_MENU)
 TRANSLATION_PATHS = tuple(dict.fromkeys(
     Path(group[key]) for group in patch.russian_translation_groups()
     for key in ("source", "catalog")
@@ -141,7 +145,7 @@ def verify_extension_install_dialog(source):
         raise ValueError("Pinned Chromium unexpectedly restored the retired end anchor")
 
     # The retired sed range has no end anchor in either reviewed version.
-    # M155 adds two headers and uses OpenURLParams::CreateBrowserInitiated;
+    # M155/M156 add two headers and use OpenURLParams::CreateBrowserInitiated;
     # it keeps the parent-window fix and must also remain byte-for-byte intact.
     if (len(lines), old_range_start + 1) not in ((203, 57), (206, 59)):
         raise ValueError(
@@ -169,6 +173,44 @@ def verify_omnibox_icon_dependency(build_file, searchbox_source):
     required = '  if (!is_ios) {\n    deps += [ ":vector_icons" ]\n  }'
     if required not in browser[1]:
         raise ValueError("Omnibox vector icons must be dependencies on Android without VR")
+
+
+def verify_devtools_version_gate(src, version):
+    """Run the real version-dependent sed block on pinned Chromium sources."""
+    script = (ROOT / "patch.sh").read_text()
+    block = re.search(r'^if version_lt "\$VERSION" "156\.0\.8060\.0"; then\n.*?^fi$',
+                      script, re.MULTILINE | re.DOTALL)
+    if not block:
+        raise ValueError("DevTools version gate moved; review the integration check")
+    paths = (DEVTOOLS_WINDOW, DEVTOOLS_MENU, CONTEXT_MENU)
+    before = {path: (src / path).read_text() for path in paths}
+    expected = dict(before)
+    if tuple(map(int, version.split("."))) >= (156, 0, 8060, 0):
+        replacements = ((DEVTOOLS_WINDOW,
+                         "DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)",
+                         "(true || DeviceFormFactor.isNonMultiDisplayContextOnTablet(context))"),)
+    else:
+        replacements = (
+            (DEVTOOLS_MENU, "!DeviceFormFactor.isNonMultiDisplayContextOnTablet(mContext)",
+             "(false && !DeviceFormFactor.isNonMultiDisplayContextOnTablet(mContext))"),
+            (CONTEXT_MENU, "boolean shouldShowDeveloperMenu() {",
+             "boolean shouldShowDeveloperMenu() { if (true) return "
+             "DevToolsWindowAndroid.isDevToolsAllowedFor(getProfile(), mItemDelegate.getWebContents());"),
+        )
+    for path, anchor, replacement in replacements:
+        if expected[path].count(anchor) != 1:
+            raise ValueError(f"DevTools source changed: {path}: {anchor}")
+        expected[path] = expected[path].replace(anchor, replacement, 1)
+    result = subprocess.run(
+        ["bash", "-c", 'set -e; source "$1/common.sh"; VERSION=$2; eval "$3"',
+         "argon-devtools-check", str(ROOT), version, block[0]],
+        cwd=src, capture_output=True, text=True,
+    )
+    if result.returncode:
+        raise ValueError("DevTools patch failed:\n" + result.stdout + result.stderr)
+    if expected != {path: (src / path).read_text() for path in paths}:
+        raise ValueError("DevTools patch did not preserve the pinned feature and policy checks")
+    print(f"PASS: Chromium {version} DevTools version gate and unchanged feature/policy checks")
 
 
 def verify_background_media_observer_api(src):
@@ -513,6 +555,7 @@ def main():
         # Validate the dialog after Vanadium patches, matching build.sh ordering:
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
+        verify_devtools_version_gate(src, lock["chromium_version"])
         verify_background_media_observer_api(src)
         modulemap.apply(src)
         verify_pinned_generator(src)

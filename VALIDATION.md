@@ -21,11 +21,11 @@
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
 
-- Chromium: `155.0.8059.84`, commit
-  `5869fe313571d75152b77813cf0a4ee26a4e6df0`;
-- Titanium: `e59e03dc83bc940d73cf29a7683286fca390b393`;
-- Vanadium: `20526e052e304b62cf3e80114b423934e2d1c540`;
-- BoringSSL: `b780f192ce515ed8ed358f6c0947bd7acce438b9`;
+- Chromium: `156.0.8078.47`, commit
+  `1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775`;
+- Titanium: `a3e4b86339a8db237d95d8e8e78248c8f6a1df68`;
+- Vanadium: `2ae4335402eabcc6e025f3400185fe25094d8521`;
+- BoringSSL: `2ea3200c3a3ec176613ab7a0b9a4ffc6db846120`;
 - release revision: автоматически, отдельно для каждой версии Chromium.
 
 Старое поле `argon_revision` в `build-lock.json` сохраняется для совместимости
@@ -63,10 +63,18 @@ Validation:
    закреплённого Chromium. Prepared image предоставляет sources/toolchain;
    header и тесты берутся из проверяемого checkout, включая pull requests.
 
+   При совпадении отпечатка подготовленных входов используется immutable digest
+   общего образа. Если pins или Argon-патчи изменились, job собирает временный
+   локальный образ из проверяемого checkout и запускает тесты в нём. Это позволяет
+   проверить обновление Chromium в отдельной ветке до слияния. Временный образ
+   не публикуется в GHCR и не заменяет `branch-main`; проверка соответствия
+   исходников и toolchain остаётся обязательной. На подготовку и тесты отведено
+   до шести часов.
+
 Проверка CA/JNI использует те же исключения патчей Vanadium, что и `build.sh`,
 включая раннюю инициализацию внешнего config app. Python-тесты отдельно
 проверяют выбор ветки DevTools до Chromium `156.0.8060.0` и на этой границе:
-закреплённый Chromium 155 должен использовать прежнюю ветку.
+закреплённый Chromium 156 должен использовать новую ветку.
 
 Эта стадия не собирает релизный APK. Конфигурация, подготовка Android-модулей
 и release pipeline поддерживают только `arm64-v8a` и `armeabi-v7a`.
