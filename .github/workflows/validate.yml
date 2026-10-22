@@ -119,26 +119,25 @@ jobs:
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "cache=ghcr.io/$owner/argon-build:branch-main" >> "$GITHUB_OUTPUT"
           python3 .github/ci/full-build.py probe-image --image "ghcr.io/$owner/argon-build:branch-main"
-      - name: Prepare this checkout for validation when source inputs change
+      - name: Prepare checkout and run domain policy tests inside BuildKit
         if: steps.prepared.outputs.exists != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: docker/chromium/Dockerfile
-          load: true
+          target: domain-policy-tests
+          load: false
           push: false
-          tags: argon-validation:local
-          build-args: |
-            ARGON_REVISION=${{ github.sha }}
           cache-from: type=registry,ref=${{ steps.prepared.outputs.cache }}
           provenance: false
           sbom: false
       - name: Compile and run Chromium domain policy tests
+        if: steps.prepared.outputs.exists == 'true'
         env:
           PREPARED_IMAGE: ${{ steps.prepared.outputs.image }}
         run: |
           set -euo pipefail
-          image="${PREPARED_IMAGE:-argon-validation:local}"
+          image="${PREPARED_IMAGE:?Missing compatible prepared image}"
           docker run --rm --user 0 --volume "$GITHUB_WORKSPACE:/workspace:ro" \
             "$image" bash -c '
               git config --global --add safe.directory "*"

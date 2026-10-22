@@ -57,10 +57,16 @@
 ## Проверка CI до слияния
 
 `validate.yml` сначала проверяет отпечаток общего prepared image. При совпадении
-используется его immutable digest. При изменении входов собирается локальный
-`argon-validation:local` из checkout этой ветки с использованием registry cache.
-Образ загружается только в Docker runner; `push: false`, публикации в GHCR нет.
-Проверка точных pins перед запуском production domain tests остаётся обязательной.
+используется его immutable digest. При изменении входов target
+`domain-policy-tests` подготавливает checkout этой ветки и выполняет production
+domain tests внутри BuildKit с использованием registry cache. `load: false` и
+`push: false` оставляют результат в build cache без экспорта и повторного импорта
+большого checkout в Docker daemon. Проверка точных pins остаётся обязательной.
+
+Первый прогон подтвердил полную подготовку Chromium, C++ constraints и GN,
+но импорт дополнительной копии образа завершился `no space left on device`.
+Отдельный test target устраняет именно этот расход диска. Финальный production
+stage по-прежнему наследуется от `prepared` и сохраняет пользователя `argon`.
 
 Это устраняет зависимость проверки Chromium 156 от предварительного обновления
 общего `branch-main` image. Релизные workflows, разрешение публикации только из
