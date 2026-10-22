@@ -19,6 +19,8 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 
+from upstream_sources import chromium_url, download
+
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "org/chromium/chrome/browser/media/"
 OVERLAY = ROOT / "chromium_overlay/titanium/chromium_src/chrome/android/java"
@@ -67,10 +69,9 @@ def verify_preference_pin():
         raise ValueError("Expected a pinned Chromium commit")
     path = CACHE / f"preference-{revision}.README.chromium"
     if not path.exists():
-        url = (f"https://raw.githubusercontent.com/chromium/chromium/{revision}/"
-               "third_party/androidx/committed/libs/androidx_preference_preference/README.chromium")
-        with urllib.request.urlopen(url, timeout=30) as response:
-            metadata = response.read()
+        url = chromium_url(revision,
+            "third_party/androidx/committed/libs/androidx_preference_preference/README.chromium")
+        metadata = download(url).encode("utf-8")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(metadata)
     pinned = re.search(r"^URL: (.+)$", path.read_text(), re.MULTILINE)
@@ -78,10 +79,9 @@ def verify_preference_pin():
         raise ValueError("Chromium's AndroidX Preference changed; review the playback UI integration fixture")
     api = CACHE / f"UrlUtilities-{revision}.java"
     if not api.exists():
-        url = (f"https://raw.githubusercontent.com/chromium/chromium/{revision}/"
-               "components/embedder_support/android/java/src/org/chromium/components/embedder_support/util/UrlUtilities.java")
-        with urllib.request.urlopen(url, timeout=30) as response:
-            api.write_bytes(response.read())
+        url = chromium_url(revision,
+            "components/embedder_support/android/java/src/org/chromium/components/embedder_support/util/UrlUtilities.java")
+        api.write_text(download(url))
     if not re.search(r"public static @Nullable String getDomainAndRegistry\(\s*"
                      r"@Nullable String uri, boolean includePrivateRegistries\)", api.read_text()):
         raise ValueError("Chromium's native domain-validation API changed; review the playback store")

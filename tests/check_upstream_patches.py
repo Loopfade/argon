@@ -32,6 +32,7 @@ import apply_modulemap as modulemap
 import apply_browsing_data_period as deletion_period
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
+from upstream_sources import chromium_url, download
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 LOCALE_CONSUMER = Path("components/strings/BUILD.gn")
@@ -93,11 +94,6 @@ EXTENSION_PATHS = (
 DIALOG_PATH = Path(
     "chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc"
 )
-
-
-def download(url):
-    with urllib.request.urlopen(url, timeout=60) as response:
-        return response.read().decode("utf-8")
 
 
 def vanadium_patch_exclusions(build_script):
@@ -517,10 +513,10 @@ def main():
     for key in ("chromium_commit", "boringssl_commit", "titanium_commit", "vanadium_commit"):
         if not re.fullmatch(r"[0-9a-f]{40}", lock[key]):
             raise ValueError(f"Invalid commit pin: {key}")
-    chromium = "https://raw.githubusercontent.com/chromium/chromium/" + lock["chromium_commit"]
     upstream_paths = (*BASE_PATHS, DIALOG_PATH)
-    urls = {str(path): f"{chromium}/{path}" for path in upstream_paths}
-    urls.update({"chrome/VERSION": chromium + "/chrome/VERSION", "DEPS": chromium + "/DEPS",
+    urls = {str(path): chromium_url(lock["chromium_commit"], path) for path in upstream_paths}
+    urls.update({"chrome/VERSION": chromium_url(lock["chromium_commit"], "chrome/VERSION"),
+                 "DEPS": chromium_url(lock["chromium_commit"], "DEPS"),
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
