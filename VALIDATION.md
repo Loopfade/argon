@@ -21,11 +21,11 @@
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
 
-- Chromium: `155.0.8059.84`, commit
-  `5869fe313571d75152b77813cf0a4ee26a4e6df0`;
-- Titanium: `e59e03dc83bc940d73cf29a7683286fca390b393`;
-- Vanadium: `20526e052e304b62cf3e80114b423934e2d1c540`;
-- BoringSSL: `b780f192ce515ed8ed358f6c0947bd7acce438b9`;
+- Chromium: `156.0.8078.47`, commit
+  `1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775`;
+- Titanium: `a3e4b86339a8db237d95d8e8e78248c8f6a1df68`;
+- Vanadium: `2ae4335402eabcc6e025f3400185fe25094d8521`;
+- BoringSSL: `2ea3200c3a3ec176613ab7a0b9a4ffc6db846120`;
 - release revision: автоматически, отдельно для каждой версии Chromium.
 
 Старое поле `argon_revision` в `build-lock.json` сохраняется для совместимости
@@ -58,15 +58,27 @@ Validation:
    идемпотентность. [Поведение и сопровождение патча](docs/browsing-data-period.md).
 5. Собирает и запускает `scoped_ca_test` с закреплённым BoringSSL для
    production DNS/IP constraints.
-6. В отдельной job собирает host target `argon_domain_policy_tests` и запускает
-   `TitaniumRuDomainPolicyTest.*` с настоящими GURL, ICU и public/private PSL
+6. В отдельной job генерирует полные Android GN-графы для ARM64 и ARMv7,
+   проверяет наличие явных JNI, Java и APK-целей основного `build.sh`,
+   затем собирает host target `argon_domain_policy_tests` и запускает
+   `TitaniumRuDomainPolicyTest.*` и `ArgonRussianCaPolicyTest.*`
+   с настоящими GURL, ICU и public/private PSL
    закреплённого Chromium. Prepared image предоставляет sources/toolchain;
    header и тесты берутся из проверяемого checkout, включая pull requests.
+
+   При совпадении отпечатка подготовленных входов используется immutable digest
+   общего образа. Если pins или Argon-патчи изменились, job выполняет target
+   `domain-policy-tests` Dockerfile: подготавливает текущий checkout и запускает
+   тесты непосредственно внутри BuildKit. Это позволяет проверить обновление
+   Chromium в отдельной ветке до слияния. Результат остаётся в локальном build
+   cache: экспорт и импорт второй копии Chromium в Docker daemon, публикация
+   в GHCR и замена `branch-main` не выполняются. Проверка соответствия исходников
+   и toolchain остаётся обязательной. На подготовку и тесты отведено до шести часов.
 
 Проверка CA/JNI использует те же исключения патчей Vanadium, что и `build.sh`,
 включая раннюю инициализацию внешнего config app. Python-тесты отдельно
 проверяют выбор ветки DevTools до Chromium `156.0.8060.0` и на этой границе:
-закреплённый Chromium 155 должен использовать прежнюю ветку.
+закреплённый Chromium 156 должен использовать новую ветку.
 
 Эта стадия не собирает релизный APK. Конфигурация, подготовка Android-модулей
 и release pipeline поддерживают только `arm64-v8a` и `armeabi-v7a`.
@@ -109,7 +121,10 @@ Ninja работает одним непрерывным процессом. П�
 сохраняется отдельный снимок живого ccache; Java и линковка не прерываются
 промежуточным таймером. Перед шестичасовым лимитом оставляется 30 минут на
 финальный снимок и артефакты плюс три минуты на остановку процессов.
-Удаление старых снимков разрешается после подтверждения нового через API.
+В пределах одной версии и ревизии удаление старых снимков разрешается после
+подтверждения нового через API. Кеши более старых версий Chromium удаляются
+отдельно перед восстановлением, только для текущей ABI и ветки; кеши другой
+ABI, ветки или более новой версии не затрагиваются.
 
 `continue-build.yml` — используемый служебный controller. Он продолжает
 исходный вручную запущенный цикл с тем же SHA, образом и областью кеша,
@@ -235,12 +250,14 @@ CI не заменяет проверки на реальном Android-устр
 
 ## Что запускается при изменениях
 
-- Prepared Chromium inputs → учитываются при следующем ручном запуске;
-  автоматической подготовки образа нет.
+- Prepared Chromium inputs → validation проверяет текущий checkout; при
+  несовпадении общего образа выполняет временную подготовку внутри BuildKit.
+  Публикация нового prepared image происходит при следующем ручном запуске.
 - Push в `main` → **не запускает релизный `Build Argon`**.
 - `Build Argon (full pipeline)` в `main` → запускается только вручную.
 - Pull request → обычная validation; сборка APK автоматически не запускается.
-- `README.md` и `VALIDATION.md` → не запускают APK или prepared-image
-  build; для них выполняется обычная validation.
+- `README.md` и `VALIDATION.md` → выполняется обычная validation, без APK
+  и публикации prepared image. Совместимый общий образ переиспользуется;
+  при его отсутствии validation выполняет временную подготовку checkout.
 - Dashboard-only файлы и workflows snapshot/deploy → не запускают
   `Build Argon`; изменения snapshot/site публикуют только dashboard.

@@ -19,18 +19,20 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 
+from upstream_sources import chromium_url, download
+
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "org/chromium/chrome/browser/media/"
 OVERLAY = ROOT / "chromium_overlay/titanium/chromium_src/chrome/android/java"
 CACHE = ROOT / ".build/settings-upstream"
-PREFERENCE_URL = ("https://androidx.dev/snapshots/builds/16323643/artifacts/repository/"
+PREFERENCE_URL = ("https://androidx.dev/snapshots/builds/16459101/artifacts/repository/"
                   "androidx/preference/preference/1.3.0-SNAPSHOT/"
-                  "preference-1.3.0-20260911.204457-1")
+                  "preference-1.3.0-20260928.125204-1")
 DEPENDENCIES = {
     "preference.aar": (PREFERENCE_URL + ".aar",
-                       "e9f817b424d5ac473f4cded8d3ed00b5c619db48ca844d8d95da422ffefd0507"),
+                       "a7fd8d404c9915bd69341bbd23319a7becf8f05a26f44fa7d8661c3caf2b76ff"),
     "preference-sources.jar": (PREFERENCE_URL + "-sources.jar",
-                               "e38f39fbb6ebdf5031d74c38539216e5ce1584c3cb5b7af3883d70ce790ac33f"),
+                               "80e89a8eaf2bc9c0fd52a3818815e59de891ef413433d81484359e084268d965"),
     # The standalone Android org.json implementation, rather than a fake store.
     "android-json.jar": (
         "https://repo.maven.apache.org/maven2/com/vaadin/external/google/android-json/"
@@ -67,10 +69,9 @@ def verify_preference_pin():
         raise ValueError("Expected a pinned Chromium commit")
     path = CACHE / f"preference-{revision}.README.chromium"
     if not path.exists():
-        url = (f"https://raw.githubusercontent.com/chromium/chromium/{revision}/"
-               "third_party/androidx/committed/libs/androidx_preference_preference/README.chromium")
-        with urllib.request.urlopen(url, timeout=30) as response:
-            metadata = response.read()
+        url = chromium_url(revision,
+            "third_party/androidx/committed/libs/androidx_preference_preference/README.chromium")
+        metadata = download(url).encode("utf-8")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(metadata)
     pinned = re.search(r"^URL: (.+)$", path.read_text(), re.MULTILINE)
@@ -78,10 +79,9 @@ def verify_preference_pin():
         raise ValueError("Chromium's AndroidX Preference changed; review the playback UI integration fixture")
     api = CACHE / f"UrlUtilities-{revision}.java"
     if not api.exists():
-        url = (f"https://raw.githubusercontent.com/chromium/chromium/{revision}/"
-               "components/embedder_support/android/java/src/org/chromium/components/embedder_support/util/UrlUtilities.java")
-        with urllib.request.urlopen(url, timeout=30) as response:
-            api.write_bytes(response.read())
+        url = chromium_url(revision,
+            "components/embedder_support/android/java/src/org/chromium/components/embedder_support/util/UrlUtilities.java")
+        api.write_text(download(url))
     if not re.search(r"public static @Nullable String getDomainAndRegistry\(\s*"
                      r"@Nullable String uri, boolean includePrivateRegistries\)", api.read_text()):
         raise ValueError("Chromium's native domain-validation API changed; review the playback store")

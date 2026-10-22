@@ -69,6 +69,16 @@ COPY --chown=argon:argon . .
 RUN BUILD_MODE=prepare ARGON_PREPATCHED_SOURCES=1 BUILD_JOBS=2 bash build.sh arm64 \
     && rm -rf .build/policy-tests chromium/src/out
 
+# Cold validation runs inside BuildKit, avoiding a second Chromium checkout
+# in the Docker daemon's image store on disk-limited hosted runners.
+FROM prepared AS domain-policy-tests
+USER root
+RUN git config --global --add safe.directory '*' \
+    && bash .github/ci/test-domain-policy.sh \
+        /opt/argon/chromium/src /opt/argon/depot_tools
+
+# Keep the published runtime image on the prepared stage and the argon user.
+FROM prepared AS final
 # Revision is metadata; it must not invalidate source preparation or tests.
 ARG ARGON_REVISION=unknown
 LABEL org.opencontainers.image.revision="${ARGON_REVISION}"

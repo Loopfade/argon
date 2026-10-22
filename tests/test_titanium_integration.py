@@ -10,13 +10,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TitaniumIntegrationTests(unittest.TestCase):
-    def test_developer_tools_version_gate_uses_the_pre_m156_branch(self):
+    def test_developer_tools_version_gate_matches_reviewed_chromium_versions(self):
         for version, expected in (("154.0.8037.57", "older"),
                                   ("154.0.8037.126", "older"),
                                   ("155.0.8059.79", "older"),
                                   ("156.0.8059.9", "older"),
                                   ("156.0.8060.0", "newer"),
-                                  ("156.0.8061.1", "newer")):
+                                  ("156.0.8061.1", "newer"),
+                                  ("156.0.8078.47", "newer")):
             with self.subTest(version=version):
                 result = subprocess.run(
                     ["bash", "-c", 'source "$1"; '
