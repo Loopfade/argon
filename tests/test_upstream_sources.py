@@ -41,7 +41,7 @@ class UpstreamSourceTests(unittest.TestCase):
             self.assertEqual(sources.download(url), "pinned DEPS")
             self.assertEqual(request.call_count, 3)
             self.assertTrue(all(call.args[0] == url for call in request.call_args_list))
-            self.assertEqual([call.args[0] for call in delay.call_args_list], [1, 2])
+            self.assertEqual([call.args[0] for call in delay.call_args_list], [30, 2])
 
     def test_missing_files_and_exhausted_retries_remain_failures(self):
         url = sources.chromium_url(self.revision, "missing")

@@ -43,6 +43,8 @@ def download(url):
             retry_after = (error.headers or {}).get("Retry-After", "")
             if retry_after.isdecimal():
                 delay = max(delay, min(int(retry_after), 60))
+            elif error.code == 429:
+                delay = 30
         except (urllib.error.URLError, TimeoutError) as error:
             if attempt == 2:
                 error.add_note("Upstream source URL: " + url)

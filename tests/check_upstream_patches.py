@@ -9,7 +9,6 @@ the upstream strings consumer and Android locale packaging. This does not
 replace full Chromium GN generation,
 Java/C++ compilation, or Android smoke tests.
 """
-import concurrent.futures
 import fnmatch
 import io
 import json
@@ -21,6 +20,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 import zipfile
 
@@ -519,8 +519,12 @@ def main():
                  "DEPS": chromium_url(lock["chromium_commit"], "DEPS"),
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        values = dict(zip(urls, executor.map(download, urls.values())))
+    # Gitiles applies a shared request quota to hosted-runner addresses. Pace
+    # this small source fixture instead of bursting hundreds of parallel reads.
+    values = {}
+    for name, url in urls.items():
+        time.sleep(1)
+        values[name] = download(url)
     verify_pins(lock, values["chrome/VERSION"], values["DEPS"],
                 json.loads(values["titanium-tree"]))
 
