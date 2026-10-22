@@ -83,7 +83,7 @@ jobs:
           set -euo pipefail
           [[ "$PREPARED_IMAGE" =~ ^ghcr\.io/[a-z0-9_.-]+/argon-build@sha256:[a-f0-9]{64}$ ]]
           echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-          docker pull "$PREPARED_IMAGE"
+          python3 .github/ci/pull-prepared-image.py "$PREPARED_IMAGE"
           mkdir -p "$CCACHE_DIR" "$CCACHE_LIVE_DIR"
           ln -s /opt/argon/chromium chromium
           ln -s /opt/argon/depot_tools depot_tools

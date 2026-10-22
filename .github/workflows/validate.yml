@@ -138,6 +138,7 @@ jobs:
         run: |
           set -euo pipefail
           image="${PREPARED_IMAGE:?Missing compatible prepared image}"
+          python3 .github/ci/pull-prepared-image.py "$image"
           docker run --rm --user 0 --volume "$GITHUB_WORKSPACE:/workspace:ro" \
             "$image" bash -c '
               git config --global --add safe.directory "*"
