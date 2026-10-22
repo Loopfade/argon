@@ -11,6 +11,23 @@ export DEPOT_TOOLS_UPDATE=0
 python3 "$ROOT/.github/ci/check-domain-test-inputs.py" \
   --lock "$ROOT/build-lock.json" --src "$src" --depot "$depot"
 
+# Validate the full Android graphs for both APK architectures before narrowing
+# the host-test graph. Query the same explicit JNI, Java and APK targets used by
+# build.sh; missing targets must fail validation before the manual build starts.
+# Compilation and APK verification still belong to the full build workflow.
+for arch in arm64 arm; do
+  graph_out="$src/out/Argon-graph-$arch"
+  python3 "$ROOT/scripts/configure_build.py" --arch "$arch" --output "$graph_out/args.gn"
+  (
+    cd "$src"
+    gn gen "$graph_out"
+    ninja -C "$graph_out" -t query \
+      obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
+      chrome_java chrome_public_apk > "$graph_out/argon-targets.txt"
+  )
+  echo "PASS: $arch Android graph contains the production JNI, Java and APK targets"
+done
+
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert" "$src/chrome/browser/net"
 cp "$ROOT/tests/domain_policy/"* "$src/argon_tests/"

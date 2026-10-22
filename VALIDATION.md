@@ -58,8 +58,11 @@ Validation:
    идемпотентность. [Поведение и сопровождение патча](docs/browsing-data-period.md).
 5. Собирает и запускает `scoped_ca_test` с закреплённым BoringSSL для
    production DNS/IP constraints.
-6. В отдельной job собирает host target `argon_domain_policy_tests` и запускает
-   `TitaniumRuDomainPolicyTest.*` с настоящими GURL, ICU и public/private PSL
+6. В отдельной job генерирует полные Android GN-графы для ARM64 и ARMv7,
+   проверяет наличие явных JNI, Java и APK-целей основного `build.sh`,
+   затем собирает host target `argon_domain_policy_tests` и запускает
+   `TitaniumRuDomainPolicyTest.*` и `ArgonRussianCaPolicyTest.*`
+   с настоящими GURL, ICU и public/private PSL
    закреплённого Chromium. Prepared image предоставляет sources/toolchain;
    header и тесты берутся из проверяемого checkout, включая pull requests.
 
@@ -244,12 +247,14 @@ CI не заменяет проверки на реальном Android-устр
 
 ## Что запускается при изменениях
 
-- Prepared Chromium inputs → учитываются при следующем ручном запуске;
-  автоматической подготовки образа нет.
+- Prepared Chromium inputs → validation проверяет текущий checkout; при
+  несовпадении общего образа выполняет временную подготовку внутри BuildKit.
+  Публикация нового prepared image происходит при следующем ручном запуске.
 - Push в `main` → **не запускает релизный `Build Argon`**.
 - `Build Argon (full pipeline)` в `main` → запускается только вручную.
 - Pull request → обычная validation; сборка APK автоматически не запускается.
-- `README.md` и `VALIDATION.md` → не запускают APK или prepared-image
-  build; для них выполняется обычная validation.
+- `README.md` и `VALIDATION.md` → выполняется обычная validation, без APK
+  и публикации prepared image. Совместимый общий образ переиспользуется;
+  при его отсутствии validation выполняет временную подготовку checkout.
 - Dashboard-only файлы и workflows snapshot/deploy → не запускают
   `Build Argon`; изменения snapshot/site публикуют только dashboard.
