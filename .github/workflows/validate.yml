@@ -72,6 +72,8 @@ jobs:
           bash -n scripts/prepare_chromium.sh
           for script in .github/ci/*.sh; do bash -n "$script"; done
       - name: Check CA and JNI patches against pinned upstream sources
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 tests/check_upstream_patches.py
       - name: Check background playback from domain input to live media rules
         run: python3 tests/check_background_playback_flow.py

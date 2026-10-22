@@ -519,7 +519,7 @@ def main():
                  "DEPS": chromium_url(lock["chromium_commit"], "DEPS"),
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         values = dict(zip(urls, executor.map(download, urls.values())))
     verify_pins(lock, values["chrome/VERSION"], values["DEPS"],
                 json.loads(values["titanium-tree"]))

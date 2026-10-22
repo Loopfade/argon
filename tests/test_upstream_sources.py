@@ -54,6 +54,29 @@ class UpstreamSourceTests(unittest.TestCase):
                 sources.download(url)
             self.assertEqual(request.call_count, attempts)
 
+    def test_server_retry_after_is_respected(self):
+        url = sources.chromium_url(self.revision, "DEPS")
+        with patch.object(sources.urllib.request, "urlopen", side_effect=[
+                urllib.error.HTTPError(url, 429, "rate limit", {"Retry-After": "7"}, None),
+                io.BytesIO(base64.b64encode(b"DEPS"))]), \
+                patch.object(sources.time, "sleep") as delay:
+            self.assertEqual(sources.download(url), "DEPS")
+            delay.assert_called_once_with(7)
+
+    def test_github_credentials_are_only_sent_to_the_github_api(self):
+        with patch.dict(sources.os.environ, {"GH_TOKEN": "test-token"}), \
+                patch.object(sources.urllib.request, "urlopen",
+                             return_value=io.BytesIO(b'{"tree": []}')) as request:
+            sources.download("https://api.github.com/repos/owner/repo/git/trees/sha")
+            self.assertEqual(request.call_args.args[0].get_header("Authorization"),
+                             "Bearer test-token")
+        url = sources.chromium_url(self.revision, "DEPS")
+        with patch.dict(sources.os.environ, {"GH_TOKEN": "test-token"}), \
+                patch.object(sources.urllib.request, "urlopen",
+                             return_value=io.BytesIO(base64.b64encode(b"DEPS"))) as request:
+            sources.download(url)
+            request.assert_called_once_with(url, timeout=60)
+
     def test_invalid_source_encoding_is_not_silently_accepted(self):
         with patch.object(sources.urllib.request, "urlopen", return_value=io.BytesIO(b"invalid!")):
             with self.assertRaises(binascii.Error):
