@@ -2,6 +2,7 @@
 
 python3 "$SCRIPT_DIR/scripts/apply_modulemap.py" --chromium-src "$PWD"
 python3 "$SCRIPT_DIR/scripts/apply_browsing_data_period.py" --chromium-src "$PWD"
+python3 "$SCRIPT_DIR/scripts/apply_homepage.py" --chromium-src "$PWD"
 
 # Chromium M154 already handles extension-install dialogs through
 # ExtensionInstallPromptShowParams::GetParentWindow(). Keep this upstream file
@@ -196,3 +197,4 @@ if [[ "$(sha256sum "$DIALOG_SOURCE" | awk '{print $1}')" != "$DIALOG_SOURCE_SHA2
 fi
 
 export PATCHED=1
+

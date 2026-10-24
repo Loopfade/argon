@@ -57,7 +57,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 COPY --chown=argon:argon patch.sh ./
 COPY --chown=argon:argon scripts/apply_scoped_ca.py scripts/apply_background_playback.py \
-    scripts/apply_modulemap.py scripts/apply_browsing_data_period.py ./scripts/
+    scripts/apply_modulemap.py scripts/apply_browsing_data_period.py \
+    scripts/apply_homepage.py ./scripts/
 COPY --chown=argon:argon chromium_overlay/ ./chromium_overlay/
 COPY --chown=argon:argon certificates/ ./certificates/
 COPY --chown=argon:argon extensions/ ./extensions/
@@ -83,3 +84,4 @@ FROM prepared AS final
 ARG ARGON_REVISION=unknown
 LABEL org.opencontainers.image.revision="${ARGON_REVISION}"
 CMD ["/bin/bash"]
+

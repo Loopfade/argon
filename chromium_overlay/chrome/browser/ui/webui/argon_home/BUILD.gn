@@ -1,0 +1,18 @@
+# Copyright 2026 The Argon Authors
+# Use of this source code is governed by the repository's LICENSE file.
+
+source_set("argon_home") {
+  sources = [
+    "argon_home_ui.cc",
+    "argon_home_ui.h",
+  ]
+  public_deps = [
+    "//content/public/browser",
+    "//content/public/common",
+  ]
+  deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//services/network/public/mojom",
+  ]
+}
