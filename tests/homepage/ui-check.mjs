@@ -45,8 +45,9 @@ try {
   await add('Работа',null,'folder');
   let data=await saved();assert.equal(data.shortcuts.length,3);
   const site=data.shortcuts[0],folder=data.shortcuts[2];
-  await page.locator('[data-holder="'+site.id+'"]').dragTo(page.locator('[data-holder="'+folder.id+'"]'));
-  data=await saved();assert.equal(data.shortcuts.length,2);assert.equal(data.shortcuts[1].children[0].id,site.id);
+  await page.evaluate(()=>{window.argonDragTrace=[];for(const type of ['dragstart','dragover','drop','dragend'])document.addEventListener(type,e=>{if(window.argonDragTrace.length<30)window.argonDragTrace.push({type,id:e.target.closest('[data-holder]')?.dataset.holder});},true);});
+  await page.locator('[data-holder="'+site.id+'"] [data-grip]').dragTo(page.locator('[data-holder="'+folder.id+'"] .shortcut-icon'));
+  data=await saved();assert.equal(data.shortcuts.length,2,'drag trace: '+JSON.stringify(await page.evaluate(()=>window.argonDragTrace))+'; errors: '+JSON.stringify(errors));assert.equal(data.shortcuts[1].children[0].id,site.id);
   await page.getByRole('button',{name:'Папка Работа',exact:true}).click();
   await page.getByRole('button',{name:'Изменить Мой сайт',exact:true}).click();
   await page.locator('#shortcut-folder').selectOption('');

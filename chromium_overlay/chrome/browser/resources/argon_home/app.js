@@ -58,9 +58,9 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
   function favicon(url) { try { return 'https://icons.duckduckgo.com/ip3/'+new URL(url).hostname+'.ico'; } catch { return ''; } }
   function iconMarkup(item) {
-    if(item.customIcon&&validIcon(item.customIcon))return '<img src="'+esc(item.customIcon)+'" alt="" class="favicon" loading="lazy">';
+    if(item.customIcon&&validIcon(item.customIcon))return '<img src="'+esc(item.customIcon)+'" alt="" class="favicon" loading="lazy" draggable="false">';
     if(item.icon)return svg(item.icon);
-    return '<img src="'+esc(favicon(item.url))+'" alt="" class="favicon" loading="lazy">';
+    return '<img src="'+esc(favicon(item.url))+'" alt="" class="favicon" loading="lazy" draggable="false">';
   }
   function fallbackImages(root) { root.querySelectorAll('img.favicon').forEach(img=>img.addEventListener('error',()=>{const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);},{once:true})); }
   function folderMarkup(folder) {
@@ -69,8 +69,8 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
   }
   function shortcutMarkup(item,parent=null) {
     const folder=item.type==='folder',tag=folder?'button':'a';
-    const attrs=folder?'type="button"':'href="'+esc(item.url)+'"'+(state.newTab?' target="_blank" rel="noopener noreferrer"':'');
-    return '<div class="shortcut-holder" data-holder="'+esc(item.id)+'" data-parent="'+esc(parent||'')+'" draggable="'+editing()+'"><'+tag+' '+attrs+' class="shortcut" data-item="'+esc(item.id)+'" aria-label="'+esc((folder?'Папка ':'')+item.name)+'"><span class="shortcut-icon">'+(folder?folderMarkup(item):iconMarkup(item))+'</span><span class="shortcut-label">'+esc(item.name)+'</span></'+tag+'>'+(editing()?'<button type="button" class="shortcut-grip" data-grip aria-label="Переместить '+esc(item.name)+'">'+svg('grip')+'</button><button type="button" class="shortcut-edit" data-edit aria-label="Изменить '+esc(item.name)+'">'+svg('pencil')+'</button>':'')+'</div>';
+    const attrs=folder?'type="button"':'href="'+esc(item.url)+'" draggable="'+!editing()+'"'+(state.newTab?' target="_blank" rel="noopener noreferrer"':'');
+    return '<div class="shortcut-holder" data-holder="'+esc(item.id)+'" data-parent="'+esc(parent||'')+'"><'+tag+' '+attrs+' class="shortcut" data-item="'+esc(item.id)+'" aria-label="'+esc((folder?'Папка ':'')+item.name)+'"><span class="shortcut-icon">'+(folder?folderMarkup(item):iconMarkup(item))+'</span><span class="shortcut-label">'+esc(item.name)+'</span></'+tag+'>'+(editing()?'<button type="button" class="shortcut-grip" data-grip draggable="true" aria-label="Переместить '+esc(item.name)+'">'+svg('grip')+'</button><button type="button" class="shortcut-edit" data-edit aria-label="Изменить '+esc(item.name)+'">'+svg('pencil')+'</button>':'')+'</div>';
   }
   function addMarkup(parent=null) { return editing()?'<button type="button" class="shortcut shortcut-add" data-add data-parent="'+esc(parent||'')+'" aria-label="Добавить сайт'+(parent?' в папку':' или папку')+'"><span class="shortcut-icon">'+svg('plus')+'</span><span class="shortcut-label">Добавить</span></button>':''; }
   function renderShortcuts() {
@@ -177,13 +177,13 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
     renderShortcuts();
   }
   const holderInfo=holder=>({id:holder.dataset.holder,parent:holder.dataset.parent||null});
-  document.addEventListener('dragstart',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!editing()){if(holder)e.preventDefault();return;}drag=holderInfo(holder);holder.classList.add('drag-source');e.dataTransfer?.setData('text/plain',drag.id);if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
+  document.addEventListener('dragstart',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!editing()||!e.target.closest('[data-grip]')){if(holder&&editing())e.preventDefault();return;}drag=holderInfo(holder);holder.classList.add('drag-source');e.dataTransfer?.setData('text/plain',drag.id);if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
   document.addEventListener('dragover',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!drag)return;e.preventDefault();document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));if(holder.dataset.holder!==drag.id)holder.classList.add('drop-target');});
   document.addEventListener('drop',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!drag)return;e.preventDefault();const source=drag,target=holderInfo(holder);clearDrag();reorder(source,target);});
   document.addEventListener('dragend',clearDrag);
-  document.addEventListener('pointerdown',e=>{const grip=e.target.closest('[data-grip]');if(!grip||!editing()||e.pointerType==='mouse')return;touchDrag={...holderInfo(grip.closest('[data-holder]')),x:e.clientX,y:e.clientY,active:false,target:null};grip.setPointerCapture(e.pointerId);});
+  document.addEventListener('pointerdown',e=>{const grip=e.target.closest('[data-grip]');if(!grip||!editing()||e.pointerType==='mouse')return;e.preventDefault();touchDrag={...holderInfo(grip.closest('[data-holder]')),x:e.clientX,y:e.clientY,active:false,target:null};grip.setPointerCapture(e.pointerId);});
   document.addEventListener('pointermove',e=>{if(!touchDrag)return;const p=touchDrag;if(!p.active&&Math.hypot(e.clientX-p.x,e.clientY-p.y)<7)return;p.active=true;const holder=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-holder]');p.target=holder?holderInfo(holder):null;document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));if(holder&&holder.dataset.holder!==p.id)holder.classList.add('drop-target');});
-  document.addEventListener('pointerup',()=>{if(!touchDrag)return;const p=touchDrag;touchDrag=null;clearDrag();if(p.active){suppressClick=true;setTimeout(()=>{suppressClick=false;},0);if(p.target)reorder(p,p.target);}});
+  document.addEventListener('pointerup',()=>{if(!touchDrag)return;const p=touchDrag;touchDrag=null;clearDrag();suppressClick=true;setTimeout(()=>{suppressClick=false;},0);if(p.active){if(p.target)reorder(p,p.target);}else{try{const item=findItem(p.id,p.parent);if(item)openShortcutDialog(item,p.parent);}catch{}}});
   document.addEventListener('pointercancel',()=>{touchDrag=null;clearDrag();});
 
   function openEngineDialog() {
