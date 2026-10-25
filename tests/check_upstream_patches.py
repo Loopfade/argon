@@ -30,8 +30,10 @@ import apply_scoped_ca as patch
 import apply_background_playback as background
 import apply_modulemap as modulemap
 import apply_browsing_data_period as deletion_period
+import apply_exit as explicit_exit
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
+from test_exit_downloads import run_download_guard
 from upstream_sources import chromium_url, download
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
@@ -84,6 +86,10 @@ BASE_PATHS += tuple(path for path in background.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in (*deletion_period.INPUT_PATHS, *deletion_period.API_PATHS)
                     if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in explicit_exit.INPUT_PATHS
+                    if not str(path).startswith("titanium/") and path not in BASE_PATHS)
+EXIT_DOWNLOAD_API = Path("components/download/public/common/simple_download_manager.h")
+BASE_PATHS += (EXIT_DOWNLOAD_API,)
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
@@ -563,6 +569,14 @@ def main():
         patch.apply(src, product_name=False)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
+        explicit_exit.apply(src)
+        # Compile the real guard with the vector type from the pinned public API,
+        # including raw_ptr traits. No Android graph compilation is needed here.
+        download_api = (src / EXIT_DOWNLOAD_API).read_text()
+        vector_alias = re.search(r"using\s+DownloadVector\s*=.*?;", download_api, re.DOTALL)
+        if not vector_alias:
+            raise ValueError("Pinned download API no longer declares DownloadVector")
+        print(run_download_guard(vector_alias.group(0)).strip())
         verify_deletion_period_flow(src)
         java_sources = re.findall(
             r'"(java/src/[^"\n]*ArgonBackgroundPlayback[^"\n]*\.java)"',
@@ -597,6 +611,7 @@ def main():
         deletion_period.apply(src)
         patch.apply(src, product_name=False)
         background.apply(src)
+        explicit_exit.apply(src)
         after = {path: path.read_bytes() for path in src.rglob("*")
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
@@ -605,7 +620,7 @@ def main():
         verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and background media observer API; idempotent Argon CA/JNI/About/Russian translation/background playback/deletion period '
+          'and background media observer API; idempotent Argon CA/JNI/About/Russian translation/background playback/deletion period/explicit exit '
           'patches; pinned GN catalog, XTB consumer and two-language packaging checks '
           '(Android/desktop, official/development)')
 

@@ -11,6 +11,7 @@ from test_build_recovery import executable
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID_TARGETS = [
     "obj/chrome/browser/android/android/argon_certificate_domains_settings.o",
+    "obj/chrome/browser/android/android/argon_exit.o",
     "chrome_java",
     "chrome_public_apk",
 ]
@@ -86,7 +87,7 @@ touch "$2/apks/ChromePublic.apk"''')
     def test_checkpoint_explicitly_compiles_java_jni_and_apk(self):
         result, stages, compiler = self.run_build("checkpoint")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(compiler[-3:], ANDROID_TARGETS)
+        self.assertEqual(compiler[-len(ANDROID_TARGETS):], ANDROID_TARGETS)
         self.assertFalse(any("sign_and_verify.py" in line for line in stages))
 
     @unittest.skipUnless(Path("/dev/fd").exists(),
@@ -96,7 +97,7 @@ touch "$2/apks/ChromePublic.apk"''')
             with self.subTest(mode=mode):
                 result, stages, compiler = self.run_build(mode)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(compiler[-3:], ANDROID_TARGETS)
+                self.assertEqual(compiler[-len(ANDROID_TARGETS):], ANDROID_TARGETS)
                 self.assertTrue(any("sign_and_verify.py" in line for line in stages))
 
     def test_android_compiler_failure_prevents_signing_in_every_apk_mode(self):
@@ -104,7 +105,7 @@ touch "$2/apks/ChromePublic.apk"''')
             with self.subTest(mode=mode):
                 result, stages, compiler = self.run_build(mode, compiler_status=1)
                 self.assertEqual(result.returncode, 1, result.stderr)
-                self.assertEqual(compiler[-3:], ANDROID_TARGETS)
+                self.assertEqual(compiler[-len(ANDROID_TARGETS):], ANDROID_TARGETS)
                 self.assertFalse(any("sign_and_verify.py" in line for line in stages))
 
 

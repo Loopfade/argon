@@ -100,6 +100,7 @@ fi
 # future Chromium dependency change removes either from chrome_public_apk.
 android_targets=(
   obj/chrome/browser/android/android/argon_certificate_domains_settings.o
+  obj/chrome/browser/android/android/argon_exit.o
   chrome_java
   chrome_public_apk
 )

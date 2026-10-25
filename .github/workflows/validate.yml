@@ -18,6 +18,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: validate-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   cleanup:
     name: Clean caches of closed pull requests
@@ -55,6 +58,7 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -97,13 +101,13 @@ jobs:
           cmake --build .build/policy-tests --target scoped_ca_test -j 4
           ctest --test-dir .build/policy-tests --output-on-failure
   domain-policy:
-    name: Test production domain normalization (GURL and PSL)
+    name: Check Android graphs and test domain policy
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
     permissions:
       contents: read
       packages: read
     runs-on: ubuntu-24.04
-    timeout-minutes: 360
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:

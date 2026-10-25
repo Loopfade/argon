@@ -26,6 +26,7 @@ for arch in arm64 arm; do
       chrome_java chrome_public_apk > "$graph_out/argon-targets.txt"
   )
   echo "PASS: $arch Android graph contains the production JNI, Java and APK targets"
+  python3 "$ROOT/.github/ci/check-exit-integration.py" --out "$graph_out" --java
 done
 
 # Use this PR's header/tests even when the image predates the PR.
