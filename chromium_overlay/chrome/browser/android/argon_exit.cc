@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "chrome/browser/android/argon_exit.h"
 
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -13,6 +14,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/ref_counted.h"
 #include "base/no_destructor.h"
 #include "base/time/time.h"
 #include "chrome/browser/browser_process.h"
@@ -56,6 +58,90 @@ std::vector<Profile*> Profiles() {
     for (Profile* otr : profile->GetAllOffTheRecordProfiles()) profiles.push_back(otr);
   }
   return profiles;
+}
+
+// BEGIN ARGON_DOWNLOAD_GUARD
+// Also pause items loaded from history after Exit, and reject notification Resume.
+class DownloadGuard : public content::DownloadManager::Observer,
+                      public download::DownloadItem::Observer {
+ public:
+  explicit DownloadGuard(content::DownloadManager* manager) : manager_(manager) {
+    manager_->AddObserver(this);
+  }
+  ~DownloadGuard() override {
+    if (manager_) manager_->RemoveObserver(this);
+    DetachItems();
+  }
+  content::DownloadManager* manager() const { return manager_.get(); }
+  void PauseWhenReady(base::OnceCallback<void(bool)> done) {
+    if (!manager_) { std::move(done).Run(false); return; }
+    if (!manager_->IsManagerInitialized()) {
+      waiting_.push_back(std::move(done));
+      return;
+    }
+    PauseAll();
+    std::move(done).Run(true);
+  }
+  void OnManagerInitialized() override {
+    PauseAll();
+    FinishWaiting(true);
+  }
+  void ManagerGoingDown(content::DownloadManager* manager) override {
+    manager->RemoveObserver(this);
+    manager_ = nullptr;
+    DetachItems();
+    FinishWaiting(false);
+  }
+  void OnDownloadCreated(content::DownloadManager*, download::DownloadItem* item) override {
+    Watch(item);
+  }
+  void OnDownloadUpdated(download::DownloadItem* item) override { Pause(item); }
+  void OnDownloadDestroyed(download::DownloadItem* item) override {
+    item->RemoveObserver(this);
+    items_.erase(item);
+  }
+ private:
+  void Watch(download::DownloadItem* item) {
+    if (items_.insert(item).second) item->AddObserver(this);
+    Pause(item);
+  }
+  void Pause(download::DownloadItem* item) {
+    if (g_exiting && item->GetState() == download::DownloadItem::IN_PROGRESS && !item->IsPaused()) {
+      item->Pause();
+    }
+  }
+  void PauseAll() {
+    std::vector<download::DownloadItem*> items;
+    manager_->GetAllDownloads(&items);
+    for (auto* item : items) Watch(item);
+  }
+  void DetachItems() {
+    for (auto* item : items_) item->RemoveObserver(this);
+    items_.clear();
+  }
+  void FinishWaiting(bool success) {
+    auto waiting = std::move(waiting_);
+    waiting_.clear();
+    for (auto& done : waiting) std::move(done).Run(success);
+  }
+  raw_ptr<content::DownloadManager> manager_;
+  std::set<download::DownloadItem*> items_;
+  std::vector<base::OnceCallback<void(bool)>> waiting_;
+};
+// END ARGON_DOWNLOAD_GUARD
+
+std::vector<std::unique_ptr<DownloadGuard>>& DownloadGuards() {
+  static base::NoDestructor<std::vector<std::unique_ptr<DownloadGuard>>> guards;
+  return *guards;
+}
+DownloadGuard* GuardDownloads(content::DownloadManager* manager) {
+  for (const auto& guard : DownloadGuards()) {
+    if (guard->manager() == manager) return guard.get();
+  }
+  auto guard = std::make_unique<DownloadGuard>(manager);
+  auto* result = guard.get();
+  DownloadGuards().push_back(std::move(guard));
+  return result;
 }
 
 // A stop request alone is not a barrier: wait for running/starting renderers to exit.
@@ -110,15 +196,13 @@ void PrepareModels(bool close_tabs, bool recovery, base::OnceCallback<void(bool)
   if (TabModel* archived = TabModelList::GetArchivedTabModel()) {
     models.emplace_back(base::android::ScopedJavaGlobalRef<jobject>(archived->GetJavaObject()), close_tabs);
   }
+  bool prepared = true;
   for (const auto& [model, close_model] : models) {
     // Recovery's fresh launch/VIEW tab must survive. Its old session has already
     // been discarded by ChromeTabbedActivity before restoring any tab state.
-    if (!Java_ArgonExitBridge_prepareModel(env, model, close_model)) {
-      std::move(done).Run(false);
-      return;
-    }
+    if (!Java_ArgonExitBridge_prepareModel(env, model, close_model)) prepared = false;
   }
-  auto* barrier = new RendererBarrier(base::BindOnce(std::move(done), true));
+  auto* barrier = new RendererBarrier(base::BindOnce(std::move(done), prepared));
   barrier->Start();
 }
 
@@ -185,7 +269,10 @@ bool IsExitInProgress() {
 
 namespace {
 using argon::g_exiting;
+using argon::DownloadGuards;
+using argon::GuardDownloads;
 using argon::PrepareModels;
+using argon::RendererBarrier;
 using argon::Profiles;
 using argon::Removal;
 using argon::Suspended;
@@ -200,13 +287,10 @@ static void JNI_ArgonExitBridge_Prepare(
     const jni_zero::JavaRef<jobject>& callback) {
   g_exiting = true;
   auto profiles = Profiles();
+  std::vector<content::DownloadManager*> managers;
   std::vector<content::StoragePartition*> partitions;
   for (Profile* current : profiles) {
-    std::vector<download::DownloadItem*> downloads;
-    current->GetDownloadManager()->GetAllDownloads(&downloads);
-    for (auto* item : downloads) {
-      if (item->GetState() == download::DownloadItem::IN_PROGRESS) item->Pause();
-    }
+    managers.push_back(current->GetDownloadManager());
     auto* registry = extensions::ExtensionRegistry::Get(current);
     auto* registrar = extensions::ExtensionRegistrar::Get(current);
     if (registry && registrar) {
@@ -219,16 +303,34 @@ static void JNI_ArgonExitBridge_Prepare(
       partitions.push_back(partition);
     });
   }
-  auto done = base::BindOnce([](base::android::ScopedJavaGlobalRef<jobject> callback,
+  auto success = base::MakeRefCounted<base::RefCountedData<bool>>(true);
+  auto done = base::BindOnce([](scoped_refptr<base::RefCountedData<bool>> success,
+                                base::android::ScopedJavaGlobalRef<jobject> callback,
                                 bool close_tabs, bool recovery) {
+    if (!success->data) {
+      auto* barrier = new RendererBarrier(base::BindOnce(
+          [](base::android::ScopedJavaGlobalRef<jobject> callback) {
+            base::android::RunBooleanCallbackAndroid(callback, false);
+          }, std::move(callback)));
+      barrier->Start();
+      return;
+    }
     PrepareModels(close_tabs, recovery, base::BindOnce(
         [](base::android::ScopedJavaGlobalRef<jobject> callback, bool success) {
           base::android::RunBooleanCallbackAndroid(callback, success);
         }, std::move(callback)));
-  }, base::android::ScopedJavaGlobalRef<jobject>(env, callback), static_cast<bool>(close_tabs),
+  }, success, base::android::ScopedJavaGlobalRef<jobject>(env, callback), static_cast<bool>(close_tabs),
      static_cast<bool>(recovery));
-  if (partitions.empty()) { std::move(done).Run(); return; }
-  auto stopped = base::BarrierClosure(partitions.size(), std::move(done));
+  size_t tasks = partitions.size() + managers.size();
+  if (!tasks) { std::move(done).Run(); return; }
+  auto stopped = base::BarrierClosure(tasks, std::move(done));
+  for (auto* manager : managers) {
+    GuardDownloads(manager)->PauseWhenReady(base::BindOnce(
+        [](scoped_refptr<base::RefCountedData<bool>> success, base::RepeatingClosure done, bool paused) {
+          success->data &= paused;
+          done.Run();
+        }, success, stopped));
+  }
   for (auto* partition : partitions) partition->GetServiceWorkerContext()->StopAllServiceWorkers(stopped);
 }
 
@@ -263,6 +365,7 @@ static void JNI_ArgonExitBridge_Clear(JNIEnv* env, Profile* profile, jint types,
 
 static void JNI_ArgonExitBridge_Resume(JNIEnv*, Profile*) {
   g_exiting = false;
+  DownloadGuards().clear();
   auto suspended = std::move(Suspended());
   Suspended().clear();
   for (const auto& item : suspended) {
