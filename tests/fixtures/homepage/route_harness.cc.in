@@ -1,0 +1,80 @@
+// Exercise the patched production routing function with small API adapters.
+#include <cassert>
+#include <string>
+
+#define ENABLE_EXTENSIONS_CORE 1
+#define BUILDFLAG(value) value
+
+class GURL {
+ public:
+  explicit GURL(std::string value) : value_(std::move(value)) {}
+  bool SchemeIs(const char* scheme) const {
+    return value_.substr(0, value_.find(':')) == scheme;
+  }
+  std::string GetHost() const {
+    auto start = value_.find("://") + 3;
+    return value_.substr(start, value_.find_first_of("/#?", start) - start);
+  }
+  std::string GetRef() const {
+    auto offset = value_.find('#');
+    return offset == std::string::npos ? "" : value_.substr(offset + 1);
+  }
+  bool is_valid() const { return !value_.empty(); }
+  const std::string& spec() const { return value_; }
+ private:
+  std::string value_;
+};
+namespace content {
+struct BrowserContext { bool incognito = false; };
+constexpr char kChromeUIScheme[] = "chrome";
+}
+struct Profile : content::BrowserContext {
+  static Profile* FromBrowserContext(content::BrowserContext* context) {
+    return static_cast<Profile*>(context);
+  }
+  bool IsOffTheRecord() const { return incognito; }
+};
+namespace base {
+struct FeatureList { static bool IsEnabled(int) { return true; } };
+}
+struct ExtensionUrlOverrides {
+  static inline int count = 0;
+  static int GetNumberOfExtensionsOverridingURL(const GURL&, content::BrowserContext*) {
+    return count;
+  }
+};
+namespace search {
+bool IsWebUiNtpEnabledForDesktopAndroid() { return false; }
+GURL GetNewTabPageURL(Profile*) { return GURL("chrome://new-tab-page/"); }
+}
+namespace chrome {
+constexpr char kChromeNativeScheme[] = "chrome-native";
+constexpr char kChromeUINewTabHost[] = "newtab";
+constexpr char kChromeUINativeNewTabURL[] = "chrome-native://newtab/";
+constexpr char kChromeUIBookmarksHost[] = "bookmarks";
+constexpr char kChromeUINativeBookmarksURL[] = "chrome-native://bookmarks/";
+namespace android {
+constexpr int kChromeNativeUrlOverriding = 1;
+namespace { constexpr char kBookmarkFolderPath[] = "folder/"; }
+ARGON_HANDLER_BODY
+}
+}
+int main() {
+  Profile regular, incognito;
+  incognito.incognito = true;
+  auto check = [](const char* input, Profile* profile, bool rewritten, const char* expected) {
+    GURL url(input);
+    assert(chrome::android::HandleAndroidNativePageURL(&url, profile) == rewritten);
+    assert(url.spec() == expected);
+  };
+  check("chrome://newtab/", &regular, true, "chrome://argon/");
+  check("chrome-native://newtab/", &regular, true, "chrome://argon/");
+  check("chrome://newtab/", &incognito, true, "chrome-native://newtab/");
+  check("chrome-native://newtab/", &incognito, false, "chrome-native://newtab/");
+  check("chrome://argon/", &regular, false, "chrome://argon/");
+  check("http://newtab/", &regular, false, "http://newtab/");
+  check("https://example.com/", &regular, false, "https://example.com/");
+  check("chrome-native://bookmarks/#123", &regular, true, "chrome-native://bookmarks/folder/123");
+  ExtensionUrlOverrides::count = 1;
+  check("chrome://newtab/", &regular, false, "chrome://newtab/");
+}

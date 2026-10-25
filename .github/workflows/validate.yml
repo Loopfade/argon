@@ -71,6 +71,13 @@ jobs:
           bash -n build-arm64.sh
           bash -n scripts/prepare_chromium.sh
           for script in .github/ci/*.sh; do bash -n "$script"; done
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Test homepage settings and dump round trips
+        run: node --test tests/homepage/*.test.mjs
+      - name: Check homepage patch against pinned Chromium
+        run: python3 tests/check_homepage_upstream.py
       - name: Check CA and JNI patches against pinned upstream sources
         env:
           GH_TOKEN: ${{ github.token }}
@@ -143,3 +150,4 @@ jobs:
               git config --global --add safe.directory "*"
               bash /workspace/.github/ci/test-domain-policy.sh /opt/argon/chromium/src /opt/argon/depot_tools
             '
+
