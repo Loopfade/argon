@@ -160,9 +160,7 @@ public final class ArgonExitCoordinator {
                 ArgonBackgroundPlaybackController.stopForExit();
                 ArgonExitBridgeJni.get().prepare(mProfile, selection.closeTabs(), mRecovery, stopped -> {
                     // Explicit stop clears START_STICKY's started state; native downloads are paused.
-                    var context = ContextUtils.getApplicationContext();
-                    context.stopService(new Intent().setClassName(context.getPackageName(),
-                            "org.chromium.chrome.browser.download.DownloadForegroundService"));
+                    stopDownloadService();
                     done.accept(stopped);
                 });
             }
@@ -232,6 +230,11 @@ public final class ArgonExitCoordinator {
             mDialogOwner = new WeakReference<>(null);
         }
     }
+    private static void stopDownloadService() {
+        var context = ContextUtils.getApplicationContext();
+        context.stopService(new Intent().setClassName(context.getPackageName(),
+                "org.chromium.chrome.browser.download.DownloadForegroundService"));
+    }
     private void showStatus() {
         Activity activity = sActivity.get();
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
@@ -252,6 +255,8 @@ public final class ArgonExitCoordinator {
             }
             dialog.setNegativeButton(R.string.argon_exit_close_pending, (ignored, which) -> {
                 mFlow.abandon();
+                // A timeout may precede native's callback: clear START_STICKY before killing us.
+                stopDownloadService();
                 ApplicationLifetime.terminate(false);
             });
         } else {

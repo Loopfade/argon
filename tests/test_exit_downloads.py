@@ -70,6 +70,7 @@ class DownloadItem {
 namespace content {
 class DownloadManager {
  public:
+  using DownloadVector = std::vector<raw_ptr<download::DownloadItem>>;
   class Observer {
    public:
     virtual ~Observer() = default;
@@ -81,7 +82,7 @@ class DownloadManager {
   void AddObserver(Observer* observer) { observers.push_back(observer); }
   void RemoveObserver(Observer* observer) { std::erase(observers, observer); }
   bool IsManagerInitialized() { return initialized; }
-  void GetAllDownloads(std::vector<download::DownloadItem*>* result) { *result = items; }
+  void GetAllDownloads(DownloadVector* result) { result->assign(items.begin(), items.end()); }
   void Create(download::DownloadItem* item) {
     if (std::find(items.begin(), items.end(), item) == items.end()) items.push_back(item);
     auto copy = observers;

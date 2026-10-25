@@ -111,9 +111,9 @@ class DownloadGuard : public content::DownloadManager::Observer,
     }
   }
   void PauseAll() {
-    std::vector<download::DownloadItem*> items;
+    content::DownloadManager::DownloadVector items;
     manager_->GetAllDownloads(&items);
-    for (auto* item : items) Watch(item);
+    for (const auto& item : items) Watch(item.get());
   }
   void DetachItems() {
     for (auto* item : items_) item->RemoveObserver(this);
