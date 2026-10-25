@@ -102,7 +102,20 @@ def patch_tab(text):
                   f'\n        if ({PACKAGE}.isBlockingPages()) return false;')
     text = insert(text, '    public LoadUrlResult loadUrl(LoadUrlParams params) {', f'''
         if ({PACKAGE}.isBlockingPages()) {{
-            mPendingLoadParams = params;
+            // A frozen tab must not hold both serialized state and pending params.
+            // Preserve a new launch/VIEW navigation while recovery blocks renderers.
+            if (mWebContentsState != null) {{
+                if (mWebContentsState.appendPendingNavigation(
+                        getProfile(), getTitle(), params, false)) {{
+                    mPendingLoadParams = null;
+                }} else {{
+                    mWebContentsState.destroy();
+                    mWebContentsState = null;
+                    mPendingLoadParams = params;
+                }}
+            }} else {{
+                mPendingLoadParams = params;
+            }}
             mUrl = new GURL(params.getUrl());
             return new LoadUrlResult(TabLoadStatus.DEFAULT_PAGE_LOAD, null);
         }}''')

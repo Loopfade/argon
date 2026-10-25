@@ -59,6 +59,35 @@ class ExitTests(unittest.TestCase):
             with self.subTest(source=name):
                 with self.assertRaises(ValueError): transform('unreviewed source')
 
+    @unittest.skipUnless(shutil.which('java'), 'JDK required')
+    def test_pending_view_navigation_on_frozen_tab(self):
+        # Execute the inserted production branch with deterministic tab-state adapters.
+        source = exit_patch.patch_tab('''
+    public boolean loadIfNeeded(boolean forceBackingSize) {
+    public LoadUrlResult loadUrl(LoadUrlParams params) {
+        boolean eligibleToCreateWebContents = webContents == null && !isDormant();
+    private @TabDestroyStatus int destroyWebContents(boolean deleteNativeWebContents) {
+''')
+        start = source.index('if (' + exit_patch.PACKAGE + '.isBlockingPages())',
+                             source.index('public LoadUrlResult loadUrl'))
+        depth = 0
+        for end in range(source.index('{', start), len(source)):
+            depth += (source[end] == '{') - (source[end] == '}')
+            if depth == 0:
+                break
+        branch = source[start:end + 1].replace(exit_patch.PACKAGE, 'Gate')
+        harness = (ROOT / 'tests/java/ArgonExitTabTest.java').read_text()
+        compiler = ['javac'] if shutil.which('javac') else ['java', '-m', 'jdk.compiler/com.sun.tools.javac.Main']
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / 'ArgonExitTabTest.java'
+            fixture.write_text(harness.replace('// PRODUCTION_DEFERRED_LOAD', branch))
+            subprocess.run([*compiler, '-d', directory, str(fixture)],
+                           check=True, capture_output=True, text=True)
+            result = subprocess.run(['java', '-cp', directory, 'ArgonExitTabTest'],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('PASS: deferred VIEW navigation', result.stdout)
+
     def test_localized_resources_have_same_keys(self):
         english, russian = [ET.parse(OVERLAY / 'res' / folder / 'argon_exit_strings.xml').getroot()
                             for folder in ('values', 'values-ru')]
