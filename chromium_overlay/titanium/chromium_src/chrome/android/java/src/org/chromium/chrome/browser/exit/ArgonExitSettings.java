@@ -15,6 +15,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.components.browser_ui.settings.ChromeBaseCheckBoxPreference;
+import org.chromium.components.browser_ui.settings.SettingsFragment;
 
 /** Selection is independent of the time range used for manual browsing-data deletion. */
 @NullMarked
@@ -53,4 +54,9 @@ public final class ArgonExitSettings extends ChromeBaseSettingsFragment {
     }
     @Override
     public MonotonicObservableSupplier<String> getPageTitle() { return mTitle; }
+
+    @Override
+    public @SettingsFragment.AnimationType int getAnimationType() {
+        return SettingsFragment.AnimationType.PROPERTY;
+    }
 }

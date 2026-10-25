@@ -4,7 +4,7 @@ const BUILTIN_ENGINES = new Set(['google', 'yandex', 'duck', 'noai']);
 const ICONS = new Set(['google', 'yandex', 'duck', 'youtube', 'github', 'mail', 'music', 'figma', 'notion', 'book', 'wiki', 'globe']);
 
 export function initialState() {
-  return {schemaVersion: SCHEMA_VERSION, theme: 'system', engine: 'google', customEngines: [], showLabels: true, newTab: false, shortcuts: []};
+  return {schemaVersion: SCHEMA_VERSION, theme: 'system', engine: 'google', customEngines: [], showLabels: true, newTab: false, density: 'comfortable', shortcuts: []};
 }
 
 function object(value) {
@@ -38,6 +38,8 @@ function customIcon(value) {
 export function validateState(raw) {
   if (!object(raw) || raw.schemaVersion !== SCHEMA_VERSION) throw new Error('Версия настроек в дампе не поддерживается.');
   if (!['system', 'light', 'dark'].includes(raw.theme) || typeof raw.showLabels !== 'boolean' || typeof raw.newTab !== 'boolean') throw new Error('Некорректные настройки оформления в дампе.');
+  const density = raw.density ?? 'comfortable';
+  if (!['comfortable', 'compact', 'large'].includes(density)) throw new Error('Некорректный размер ярлыков.');
   if (!Array.isArray(raw.customEngines) || raw.customEngines.length > 100 || !Array.isArray(raw.shortcuts)) throw new Error('Некорректный список ярлыков или поисковиков в дампе.');
   const engineIds = new Set(BUILTIN_ENGINES);
   const customEngines = raw.customEngines.map(engine => {
@@ -80,7 +82,7 @@ export function validateState(raw) {
     if (item.customIcon !== undefined) result.customIcon = customIcon(item.customIcon);
     return result;
   }
-  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine: raw.engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, shortcuts: raw.shortcuts.map(item => shortcut(item))};
+  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine: raw.engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, shortcuts: raw.shortcuts.map(item => shortcut(item))};
 }
 
 // These IDs belong to the first mockup. Only unchanged examples are removed.
@@ -148,4 +150,76 @@ export function dumpStats(state) {
   let sites = 0, folders = 0;
   state.shortcuts.forEach(item => { if (item.type === 'folder') { folders++; sites += item.children.length; } else sites++; });
   return {sites, folders, engines: state.customEngines.length};
+}
+
+/** Saves each accepted edit atomically; the lock prevents unintended layout edits. */
+export class HomepageStore {
+  constructor(storage, key) {
+    this.storage = storage;
+    this.key = key;
+    this.locked = true;
+    this.state = initialState();
+    this.loadError = null;
+    try { this.state = this.latest(); } catch (error) { this.loadError = error; }
+  }
+
+  latest() {
+    const saved = this.storage.getItem(this.key);
+    return saved === null ? initialState() : loadStoredState(JSON.parse(saved)).state;
+  }
+
+  setLocked(locked) { this.locked = Boolean(locked); }
+
+  update(change, {shortcuts = false} = {}) {
+    if (shortcuts && this.locked) throw new Error('Откройте замок, чтобы изменить избранное.');
+    // Read the latest whole state before writing, preserving another tab's edits.
+    const next = structuredClone(this.latest());
+    change(next);
+    const saved = restoreState(this.storage, this.key, next);
+    this.state = saved;
+    this.loadError = null;
+    return saved;
+  }
+
+  replace(next) {
+    const saved = restoreState(this.storage, this.key, next);
+    this.state = saved;
+    this.loadError = null;
+    this.locked = true;
+    return saved;
+  }
+}
+
+export function shortcutList(shortcuts, parent = null) {
+  if (!parent) return shortcuts;
+  const folder = shortcuts.find(item => item.id === parent && item.type === 'folder');
+  if (!folder) throw new Error('Папка больше не существует.');
+  return folder.children;
+}
+
+export function moveShortcut(shortcuts, id, parent, newParent, position) {
+  const from = shortcutList(shortcuts, parent);
+  const index = from.findIndex(item => item.id === id);
+  if (index < 0) throw new Error('Ярлык больше не существует.');
+  const item = from[index];
+  if (item.type === 'folder' && newParent) throw new Error('Папку нельзя вложить в другую папку.');
+  const to = shortcutList(shortcuts, newParent);
+  if (!Number.isInteger(position) || position < 0) throw new Error('Некорректная позиция ярлыка.');
+  from.splice(index, 1);
+  to.splice(Math.min(position, to.length), 0, item);
+}
+
+export function navigationTarget(value, template) {
+  const query = value.trim();
+  if (!query) return null;
+  const address = !/\s/.test(query) && (
+    /^https?:\/\//i.test(query)
+    || /^localhost(?::\d+)?(?:[/?#].*)?$/i.test(query)
+    || /^(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}(?::\d+)?(?:[/?#].*)?$/u.test(query)
+    || /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:[/?#].*)?$/.test(query));
+  const target = address ? (/^https?:\/\//i.test(query) ? query : 'https://' + query)
+    : template.replaceAll('{query}', encodeURIComponent(query));
+  const url = new URL(target);
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) throw new Error('Проверьте адрес.');
+  return url.href;
 }

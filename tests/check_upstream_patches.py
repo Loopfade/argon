@@ -35,6 +35,7 @@ from browsing_data_period_flow import verify_upstream as verify_deletion_period_
 from test_modulemap import verify_pinned_generator
 from test_exit_downloads import run_download_guard
 from test_exit_renderer import verify_renderer_gate
+from test_exit_android_api import SETTINGS_API, verify_exit_android_api
 from upstream_sources import chromium_url, download
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
@@ -91,6 +92,7 @@ BASE_PATHS += tuple(path for path in explicit_exit.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 EXIT_DOWNLOAD_API = Path("components/download/public/common/simple_download_manager.h")
 BASE_PATHS += (EXIT_DOWNLOAD_API,)
+BASE_PATHS += (SETTINGS_API,)
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
@@ -572,6 +574,7 @@ def main():
         background.apply(src)
         explicit_exit.apply(src)
         print(verify_renderer_gate(src))
+        print(verify_exit_android_api((src / SETTINGS_API).read_text(), (src / TAB_IMPL).read_text()))
         # Compile the real guard with the vector type from the pinned public API,
         # including raw_ptr traits. No Android graph compilation is needed here.
         download_api = (src / EXIT_DOWNLOAD_API).read_text()

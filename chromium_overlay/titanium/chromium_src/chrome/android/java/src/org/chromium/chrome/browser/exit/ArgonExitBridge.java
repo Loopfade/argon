@@ -8,7 +8,8 @@ import org.jni_zero.NativeMethods;
 
 import org.chromium.base.Callback;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab.TabImpl;
+import org.chromium.chrome.browser.tab.ArgonExitTabHelper;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 
@@ -21,13 +22,15 @@ final class ArgonExitBridge {
 
     @CalledByNative
     private static boolean prepareModel(TabModel model, boolean closeTabs) {
-        var tabs = new ArrayList<TabImpl>();
+        var tabs = new ArrayList<Tab>();
         for (int i = 0; i < model.getCount(); ++i) {
             var tab = model.getTabAt(i);
-            if (tab instanceof TabImpl) tabs.add((TabImpl) tab);
+            if (tab != null) tabs.add(tab);
         }
-        for (TabImpl tab : tabs) {
-            if (!tab.prepareForArgonExit(!closeTabs && !model.isOffTheRecord())) return false;
+        for (Tab tab : tabs) {
+            if (!ArgonExitTabHelper.prepare(tab, !closeTabs && !model.isOffTheRecord())) {
+                return false;
+            }
         }
         if (closeTabs || model.isOffTheRecord()) {
             model.getTabRemover().forceCloseTabs(TabClosureParams.closeAllTabs()
