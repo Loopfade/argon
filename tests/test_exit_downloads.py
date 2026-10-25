@@ -15,7 +15,8 @@ ADAPTER = r"""
 #include <set>
 #include <utility>
 #include <vector>
-template<class T> class raw_ptr {
+constexpr int VectorExperimental = 1;
+template<class T, int Traits = 0> class raw_ptr {
  public:
   raw_ptr(T* value = nullptr) : value_(value) {}
   T* get() const { return value_; }
@@ -68,6 +69,7 @@ class DownloadItem {
 };
 }
 namespace content {
+using download::DownloadItem;
 class DownloadManager {
  public:
   using DownloadVector = std::vector<raw_ptr<download::DownloadItem>>;
@@ -167,18 +169,30 @@ int main() {
 }
 """
 
+def run_download_guard(download_vector_alias=None):
+    """Compile the production guard; upstream validation supplies its real vector alias."""
+    native = (ROOT / "chromium_overlay/chrome/browser/android/argon_exit.cc").read_text()
+    guard = native.split("// BEGIN ARGON_DOWNLOAD_GUARD", 1)[1].split("// END ARGON_DOWNLOAD_GUARD", 1)[0]
+    adapter = ADAPTER
+    if download_vector_alias is not None:
+        adapter = adapter.replace(
+            'using DownloadVector = std::vector<raw_ptr<download::DownloadItem>>;',
+            download_vector_alias)
+    with tempfile.TemporaryDirectory() as directory:
+        source = Path(directory) / "guard.cc"
+        binary = Path(directory) / "guard"
+        source.write_text(adapter + guard + SCENARIOS)
+        compiled = subprocess.run(["g++", "-std=c++20", "-Wall", "-Wextra", "-Werror",
+            str(source), "-o", str(binary)], capture_output=True, text=True)
+        if compiled.returncode:
+            raise AssertionError(compiled.stdout + compiled.stderr)
+        result = subprocess.run([str(binary)], capture_output=True, text=True)
+        if result.returncode:
+            raise AssertionError(result.stdout + result.stderr)
+        return result.stdout
+
+
 class ExitDownloadTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("g++"), "C++ compiler required")
     def test_late_history_resume_and_manager_destruction(self):
-        native = (ROOT / "chromium_overlay/chrome/browser/android/argon_exit.cc").read_text()
-        guard = native.split("// BEGIN ARGON_DOWNLOAD_GUARD", 1)[1].split("// END ARGON_DOWNLOAD_GUARD", 1)[0]
-        with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / "guard.cc"
-            binary = Path(directory) / "guard"
-            source.write_text(ADAPTER + guard + SCENARIOS)
-            compiled = subprocess.run(["g++", "-std=c++20", "-Wall", "-Wextra", "-Werror",
-                str(source), "-o", str(binary)], capture_output=True, text=True)
-            self.assertEqual(compiled.returncode, 0, compiled.stdout + compiled.stderr)
-            result = subprocess.run([str(binary)], capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("PASS: production download guard", result.stdout)
+        self.assertIn("PASS: production download guard", run_download_guard())
