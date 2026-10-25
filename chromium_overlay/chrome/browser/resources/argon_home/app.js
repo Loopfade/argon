@@ -99,7 +99,8 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
     document.querySelectorAll('body>.header,body>.workspace,body>.footer').forEach(el=>{el.inert=true;});
     $('modal-root').querySelector('.overlay').addEventListener('click',e=>{if(e.target.classList.contains('overlay'))closeModal();});
     $('modal-root').querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeModal));
-    requestAnimationFrame(()=>{const field=$('modal-root').querySelector('[autofocus]')||$('modal-root').querySelector('button,input,select');field?.focus();});
+    // A delayed focus can steal the cursor after the user selects another field.
+    const field=$('modal-root').querySelector('[autofocus]')||$('modal-root').querySelector('button,input,select');field?.focus();
   }
   function closeModal() {
     const focus=returnFocus;modalKind=null;currentFolder=null;returnFocus=null;setHtml($('modal-root'),'');
