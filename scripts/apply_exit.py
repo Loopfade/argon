@@ -229,7 +229,7 @@ def patch_native_sources(text):
 def patch_native_deps(text):
     return insert(text, '  "//chrome/android:chrome_jni_headers",', '''
   "//chrome/browser/browsing_data",
-  "//components/download/public/common",
+  "//components/download/public/common:public",
   "//components/services/storage/public/mojom",
   "//extensions/browser",
   "//extensions/common",''')
