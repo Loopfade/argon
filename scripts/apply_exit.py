@@ -237,7 +237,8 @@ def patch_java_sources(text):
     anchor = '  "java/src/org/chromium/chrome/browser/tab/ArgonBackgroundPlaybackVisibility.java",'
     return insert(text, anchor, ''.join('\n  "java/src/org/chromium/chrome/browser/exit/'
         + name + '.java",' for name in ('ArgonExitFlow', 'ArgonExitStore', 'ArgonExitBridge',
-                                       'ArgonExitCoordinator', 'ArgonExitSettings', 'ArgonExitBackgroundTask')))
+                                       'ArgonExitCoordinator', 'ArgonExitSettings', 'ArgonExitBackgroundTask'))
+        + '\n  "java/src/org/chromium/chrome/browser/tab/ArgonExitTabHelper.java",')
 
 
 def patch_resources(text):
@@ -296,7 +297,8 @@ def apply(src):
               for path, transform in TRANSFORMS.items()}
     for source in (ROOT / 'chromium_overlay').rglob('*'):
         if not source.is_file() or not ('/exit/' in source.as_posix()
-                or source.name in ('argon_exit.cc', 'argon_exit.h', 'argon_exit.xml', 'argon_exit_strings.xml')):
+                or source.name in ('argon_exit.cc', 'argon_exit.h', 'argon_exit.xml',
+                                   'argon_exit_strings.xml', 'ArgonExitTabHelper.java')):
             continue
         target = src / source.relative_to(ROOT / 'chromium_overlay')
         value = source.read_text()

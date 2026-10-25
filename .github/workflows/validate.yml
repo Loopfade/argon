@@ -80,6 +80,21 @@ jobs:
           node-version: '22'
       - name: Test homepage settings and dump round trips
         run: node --test tests/homepage/*.test.mjs
+      - name: Test homepage interactions in Chromium
+        env:
+          ARGON_UI_ARTIFACTS: ${{ runner.temp }}/argon-homepage-screenshots
+        run: |
+          npm install --prefix "$RUNNER_TEMP/argon-homepage-ui" --no-save --ignore-scripts playwright@1.56.1
+          "$RUNNER_TEMP/argon-homepage-ui/node_modules/.bin/playwright" install --with-deps chromium
+          ARGON_PLAYWRIGHT_MODULE="$RUNNER_TEMP/argon-homepage-ui/node_modules/playwright/index.mjs" node tests/homepage/ui-check.mjs
+      - name: Upload homepage screenshots
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: homepage-ui-${{ github.sha }}
+          path: ${{ runner.temp }}/argon-homepage-screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Check homepage patch against pinned Chromium
         run: python3 tests/check_homepage_upstream.py
       - name: Check CA and JNI patches against pinned upstream sources
