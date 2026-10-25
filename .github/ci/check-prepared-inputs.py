@@ -13,6 +13,7 @@ PREPARED_INPUTS = (
     "scripts/apply_background_playback.py",
     "scripts/apply_modulemap.py",
     "scripts/apply_browsing_data_period.py",
+    "scripts/apply_homepage.py", "scripts/apply_exit.py",
     "scripts/fetch_pinned_filter_lists.py", "chromium_overlay", "certificates",
     "extensions", "res",
 )

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="argon_background_title">Background playback</string>
-    <string name="argon_background_description">On. Only sites with permission enabled can play audio and video in the background. Playback pauses on other sites.</string>
+    <string name="argon_background_description">On. Only sites with permission enabled can play audio and video in the background. Playback pauses on other sites. When minimized, the browser may continue playback within the time limit. Minimizing does not run exit cleanup. The Exit command stops playback, clears the selected data and closes every browser window.</string>
     <string name="argon_background_description_disabled">Off. Audio and video pause in the background on all sites. Saved permissions and limits do not apply.</string>
     <string name="argon_background_state_enabled">The feature is on.</string>
     <string name="argon_background_state_disabled">The feature is off</string>

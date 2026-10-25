@@ -1,5 +1,9 @@
 # Background playback
 
+Minimizing and turning the screen off do not run Exit or cleanup. The explicit
+Exit command stops playback even while the feature is enabled, preserving its
+saved switch and site rules. See [Exit and cleanup](exit.md).
+
 User-managed background playback for Argon on Android.
 
 ## Entry point and user interface

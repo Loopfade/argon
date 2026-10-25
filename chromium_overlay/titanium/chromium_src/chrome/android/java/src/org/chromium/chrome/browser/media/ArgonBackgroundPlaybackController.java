@@ -44,6 +44,7 @@ import java.util.Set;
 /** Uses Chromium's existing player, audio focus, media notification and lock-screen controls. */
 @NullMarked
 public final class ArgonBackgroundPlaybackController {
+    private static boolean sExitQuiescing;
     private static final Map<Activity, ArgonBackgroundPlaybackController> sControllers = new HashMap<>();
     private final Activity mActivity;
     private final Context mContext = ContextUtils.getApplicationContext();
@@ -109,8 +110,20 @@ public final class ArgonBackgroundPlaybackController {
         if (controller != null) controller.destroy();
     }
 
+    /** Temporary process state: never changes the saved master switch or site rules. */
+    public static void stopForExit() {
+        sExitQuiescing = true;
+        for (var controller : new ArrayList<>(sControllers.values())) controller.refresh();
+    }
+
+    public static void resumeAfterRecovery() {
+        sExitQuiescing = false;
+        for (var controller : new ArrayList<>(sControllers.values())) controller.refresh();
+    }
+
     /** Called by TabImpl before sending its visibility decision to the renderer. */
     public static @Visibility int resolveVisibility(Tab tab, @Visibility int requested) {
+        if (sExitQuiescing) return Visibility.HIDDEN;
         if (requested == Visibility.VISIBLE || tab.isOffTheRecord() || tab.isDestroyed()) return requested;
         for (var controller : sControllers.values()) {
             State state = controller.mTabs.get(tab);
@@ -316,6 +329,16 @@ public final class ArgonBackgroundPlaybackController {
     private void refresh() {
         if (mDestroyed) return;
         mHandler.removeCallbacks(mTick);
+        if (sExitQuiescing) {
+            for (State state : new ArrayList<>(mTabs.values())) {
+                pause(state);
+                if (state.keepVisible) {
+                    state.keepVisible = false;
+                    updateNativeVisibility(state);
+                }
+            }
+            return;
+        }
         // Budgets are process-wide. Collect real visits in every window before
         // enforcing any tab, independent of map/receiver/registration order.
         for (var controller : new ArrayList<>(sControllers.values())) {

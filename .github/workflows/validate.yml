@@ -18,6 +18,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: validate-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
 jobs:
   cleanup:
     name: Clean caches of closed pull requests
@@ -97,7 +100,7 @@ jobs:
           cmake --build .build/policy-tests --target scoped_ca_test -j 4
           ctest --test-dir .build/policy-tests --output-on-failure
   domain-policy:
-    name: Test production domain normalization (GURL and PSL)
+    name: Compile Android integration and test domain policy
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
     permissions:
       contents: read
