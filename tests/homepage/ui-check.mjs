@@ -26,12 +26,28 @@ const page=await context.newPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
 const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
-async function add(name,url,type='site'){
+async function add(name,url,type='site',deferFrame=false){
+  if(deferFrame)await page.evaluate(()=>{
+    window.argonOriginalFrame=window.requestAnimationFrame;
+    window.argonDeferredFrames=[];
+    window.requestAnimationFrame=callback=>window.argonDeferredFrames.push(callback);
+  });
   await page.getByRole('button',{name:'Добавить сайт или папку',exact:true}).click();
   if(type==='folder')await page.locator('[data-type=folder]').click();
   await page.getByLabel('Название',{exact:true}).fill(name);
+  if(deferFrame){
+    await page.locator('#shortcut-url').focus();
+    await page.evaluate(()=>{
+      window.requestAnimationFrame=window.argonOriginalFrame;
+      const frames=window.argonDeferredFrames;
+      delete window.argonOriginalFrame;delete window.argonDeferredFrames;
+      for(const callback of frames)callback(performance.now());
+    });
+    assert.equal(await page.evaluate(()=>document.activeElement?.id),'shortcut-url','opening a dialog must not steal focus back after the user selects the address field');
+  }
   if(type==='site')await page.locator('#shortcut-url').fill(url);
   await formSubmit();
+  await page.locator('#shortcut-form').waitFor({state:'hidden'});
 }
 try {
   await page.goto(base);
@@ -41,7 +57,7 @@ try {
   if(out)await page.screenshot({path:resolve(out,'home-empty.png'),fullPage:true});
   await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
   await add('Мой сайт','example.com');
-  await add('Документы','docs.example.com');
+  await add('Документы','docs.example.com','site',true);
   await add('Работа',null,'folder');
   let data=await saved();assert.equal(data.shortcuts.length,3);
   const site=data.shortcuts[0],folder=data.shortcuts[2];
