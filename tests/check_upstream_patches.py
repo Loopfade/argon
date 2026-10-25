@@ -34,6 +34,7 @@ import apply_exit as explicit_exit
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
 from test_exit_downloads import run_download_guard
+from test_exit_renderer import verify_renderer_gate
 from upstream_sources import chromium_url, download
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
@@ -570,6 +571,7 @@ def main():
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
         explicit_exit.apply(src)
+        print(verify_renderer_gate(src))
         # Compile the real guard with the vector type from the pinned public API,
         # including raw_ptr traits. No Android graph compilation is needed here.
         download_api = (src / EXIT_DOWNLOAD_API).read_text()

@@ -18,7 +18,9 @@ INPUT_PATHS = tuple(map(Path, (
     'chrome/browser/lifetime/android/java/src/org/chromium/chrome/browser/lifetime/ApplicationLifetime.java',
     'chrome/browser/android/tab_android.cc', 'chrome/browser/android/BUILD.gn',
     'content/public/browser/content_browser_client.h',
+    'content/public/browser/content_browser_client.cc',
     'chrome/browser/chrome_content_browser_client.h',
+    'chrome/browser/chrome_content_browser_client.cc',
     'content/browser/renderer_host/render_process_host_impl.cc',
     'chrome/android/BUILD.gn', EXT + 'chrome_java_ext_sources.gni',
     EXT + 'chrome_app_java_resources_ext_sources.gni',
@@ -158,23 +160,40 @@ def patch_content_client(text):
     return insert(text, '  virtual ~ContentBrowserClient() = default;', '''
 
   // Allows an embedder to quiesce every renderer (including background workers)
-  // before deleting data during explicit shutdown. Other embedders keep normal startup.
-  virtual bool IsRendererProcessLaunchAllowed() { return true; }
+  // before deleting data during explicit shutdown. Other embedders keep normal
+  // startup.
+  virtual bool IsRendererProcessLaunchAllowed();
 ''')
 
 
+def patch_content_client_source(text):
+    return insert(text, 'namespace content {', '''
+
+bool ContentBrowserClient::IsRendererProcessLaunchAllowed() {
+  return true;
+}''')
+
+
 def patch_chrome_client(text):
+    return insert(text, '  ~ChromeContentBrowserClient() override;', '''
+#if BUILDFLAG(IS_ANDROID)
+  bool IsRendererProcessLaunchAllowed() override;
+#endif''')
+
+
+def patch_chrome_client_source(text):
     text = insert(text, '#include "build/build_config.h"', '''
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/android/argon_exit.h"
 #endif''')
-    return insert(text, '  ~ChromeContentBrowserClient() override;', '''
-#if BUILDFLAG(IS_ANDROID)
-  bool IsRendererProcessLaunchAllowed() override {
-    return !argon::IsExitInProgress();
-  }
+    before = 'ChromeContentBrowserClient::ChromeContentBrowserClient() {'
+    return replace(text, before, '''#if BUILDFLAG(IS_ANDROID)
+bool ChromeContentBrowserClient::IsRendererProcessLaunchAllowed() {
+  return !argon::IsExitInProgress();
+}
 #endif
-''')
+
+''' + before)
 
 
 def patch_renderer(text):
@@ -265,7 +284,8 @@ def patch_preferences(text):
 TRANSFORMS = dict(zip(INPUT_PATHS, (
     patch_activity, patch_quit, patch_tabbed_activity, patch_controller, patch_tab, patch_launch,
     patch_background_tasks, patch_menu, patch_lifetime, patch_tab_native,
-    patch_android_gn, patch_content_client, patch_chrome_client, patch_renderer,
+    patch_android_gn, patch_content_client, patch_content_client_source,
+    patch_chrome_client, patch_chrome_client_source, patch_renderer,
     patch_jni, patch_java_sources, patch_resources, patch_native_sources, patch_native_deps,
     patch_preferences,
 )))
