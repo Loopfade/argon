@@ -15,6 +15,9 @@ on:
       signing:
         type: string
         required: true
+      standalone_test:
+        type: boolean
+        default: false
       fingerprint:
         type: string
         required: true
@@ -47,6 +50,7 @@ env:
   BUILD_CONTAINER_NAME: argon-build
   AUTO_CONTINUE_MAX: 10
   TARGET_ARCH: ${{ inputs.arch }}
+  ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}
 
 jobs:
   build:
@@ -185,7 +189,7 @@ jobs:
         run: |
           # Signing created these files as the container user; record provenance
           # there too, with the exact source SHA from this workflow run.
-          docker exec --env GITHUB_SHA "$BUILD_CONTAINER_NAME" \
+          docker exec --env GITHUB_SHA --env ARGON_STANDALONE_TEST "$BUILD_CONTAINER_NAME" \
             python3 /workspace/.github/ci/full-build.py record --arch "$TARGET_ARCH" --mode "$SIGNING_MODE" \
             --fingerprint "$BUILD_FINGERPRINT" --certificate "$BUILD_CERTIFICATE" --image "$PREPARED_IMAGE"
       - name: Show cache statistics and stop compiler processes
