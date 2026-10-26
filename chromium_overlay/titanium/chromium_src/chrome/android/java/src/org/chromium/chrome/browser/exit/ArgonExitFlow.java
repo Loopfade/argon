@@ -8,12 +8,21 @@ import java.util.function.Consumer;
 public final class ArgonExitFlow {
     public static final int ALL_TYPES = 63;
     public enum Phase { IDLE, SAVING, QUIESCING, CLEARING, COMMITTING, FAILED, DONE }
-    public record Selection(int types, boolean closeTabs) {
-        public Selection {
+    /** Immutable snapshot; Chromium's Android DEX build does not support Java records. */
+    public static final class Selection {
+        private final int mTypes;
+        private final boolean mCloseTabs;
+
+        public Selection(int types, boolean closeTabs) {
             if (types < 0 || (types & ~ALL_TYPES) != 0) {
                 throw new IllegalArgumentException("Unknown exit data category");
             }
+            mTypes = types;
+            mCloseTabs = closeTabs;
         }
+
+        public int types() { return mTypes; }
+        public boolean closeTabs() { return mCloseTabs; }
     }
     public interface Backend {
         void saveJournal(Selection selection, Consumer<Boolean> done);
