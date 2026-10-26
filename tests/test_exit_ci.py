@@ -14,7 +14,8 @@ args = sys.argv[1:]
 with open(os.environ['ARGON_QUERY_LOG'], 'a') as stream:
     stream.write(json.dumps(args) + '\\n')
 if args[2:] == ['-t', 'targets', 'all']:
-    for name in ('argon_exit', 'render_process_host_impl', 'chrome_content_browser_client'):
+    for name in ('argon_exit', 'render_process_host_impl', 'chrome_content_browser_client',
+                 'render_frame_host_manager', 'navigation_request'):
         if name != os.environ.get('ARGON_OMIT_TARGET'):
             print('obj/chrome/browser/android/android/' + name + '.o: cxx')
 elif args[2:4] == ['-t', 'query']:
