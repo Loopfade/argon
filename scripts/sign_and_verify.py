@@ -14,6 +14,7 @@ import tempfile
 import zipfile
 
 from configure_build import TARGET_ABIS, target_cpu
+from build_identity import application_identity
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -118,6 +119,7 @@ def main():
     # Reject a wrong or mixed architecture before accessing signing keys.
     verify_apk_abi(args.apk, abi)
     lock = json.loads((ROOT / "build-lock.json").read_text())
+    identity = application_identity(lock, args.mode)
     build_tools = signing_tools(args.sdk, args.jdk)
     artifacts = ROOT / "artifacts" / abi
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -159,9 +161,9 @@ def main():
              env["TITANIUM_RU_KEY_ALIAS"], "-file", artifacts / "signing-certificate.pem"], env=env)
     run([build_tools / "zipalign", "-c", "-P", "16", "4", output])
     badging = run([build_tools / "aapt2", "dump", "badging", output], capture_output=True, text=True).stdout
-    if not re.search(r"^package: name='" + re.escape(lock["application_id"]) + "'", badging, re.M):
+    if not re.search(r"^package: name='" + re.escape(identity["application_id"]) + "'", badging, re.M):
         raise SystemExit("APK application ID mismatch")
-    if "application-label:'Argon'" not in badging:
+    if f"application-label:'{identity['application_label']}'" not in badging:
         raise SystemExit("APK application label mismatch")
     verify_apk_abi(output, abi)
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
@@ -171,6 +173,7 @@ def main():
         "inputs": lock,
         "ca_der_sha256": json.loads((ROOT / "certificates/ministry-ca-lock.json").read_text())["der_sha256"],
         "signing_mode": args.mode,
+        "application_identity": identity,
         "apk_sha256": digest,
         "abi": abi,
         "target_cpu": args.arch,

@@ -116,6 +116,11 @@ class FullBuildTests(unittest.TestCase):
             changed[index] = replacement
             self.assertNotEqual(before, pipeline.artifact_fingerprint(*changed))
 
+    def test_standalone_test_never_reuses_the_standard_test_apk(self):
+        args = (self.sha, "arm64", "test", "temporary-test-key", "prepared")
+        self.assertNotEqual(pipeline.artifact_fingerprint(*args),
+                            pipeline.artifact_fingerprint(*args, standalone_test=True))
+
     def plan(self, results):
         output, summary = self.root / "output", self.root / "summary"
         with patch.dict(os.environ, {"GITHUB_REF": "refs/heads/main", "GITHUB_SHA": self.sha,
@@ -144,10 +149,19 @@ class FullBuildTests(unittest.TestCase):
         self.assertEqual([build["arch"] for build in builds], ["arm64", "arm"])
         self.assertNotEqual(builds[0]["fingerprint"], builds[1]["fingerprint"])
 
-    def fixture_artifact(self, arch="arm64"):
+    def test_artifacts_test_plan_uses_the_standalone_identity_for_both_abis(self):
+        with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}):
+            outputs = self.plan([None, None])
+        for arch in ("arm64", "arm"):
+            self.assertEqual(outputs[f"fingerprint_{arch}"], pipeline.artifact_fingerprint(
+                self.sha, arch, "test", "temporary-test-key", outputs["prepared_inputs"], True))
+        self.assertIn("Argon Test", (self.root / "summary").read_text())
+        self.assertIn("app.titaniumru.browser.test", (self.root / "summary").read_text())
+
+    def fixture_artifact(self, arch="arm64", mode="release"):
         lock = json.loads((ROOT / "build-lock.json").read_text())
         abi = pipeline.TARGET_ABIS[arch]
-        self.apk = self.root / f"Argon-{lock['chromium_version']}-release-{abi}.apk"
+        self.apk = self.root / f"Argon-{lock['chromium_version']}-{mode}-{abi}.apk"
         with zipfile.ZipFile(self.apk, "w") as zipped:
             zipped.writestr(f"lib/{abi}/libchrome.so", b"native library")
         digest = hashlib.sha256(self.apk.read_bytes()).hexdigest()
@@ -159,7 +173,7 @@ class FullBuildTests(unittest.TestCase):
         for name in ("Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
             (self.root / name).write_text("license")
         self.metadata = {"source_commit": self.sha, "target_cpu": arch, "abi": abi,
-                         "signing_mode": "release", "inputs": lock, "apk_sha256": digest,
+                         "signing_mode": mode, "inputs": lock, "apk_sha256": digest,
                          "ca_der_sha256": json.loads((ROOT / "certificates/ministry-ca-lock.json").read_text())["der_sha256"],
                          "pipeline": {"fingerprint": "expected"}}
         self.metadata_path = self.root / "build-info.json"
@@ -173,6 +187,7 @@ class FullBuildTests(unittest.TestCase):
         for path in self.root.iterdir():
             if path.is_file():
                 path.rename(directory / path.name)
+        shutil.copy(ROOT / "build-lock.json", self.root / "build-lock.json")
         self.metadata_path = directory / "build-info.json"
         self.apk = directory / self.apk.name
         return directory
@@ -237,7 +252,7 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
                                         cwd=self.root, env=env, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(json.loads(captured.read_text()), {"sha": self.sha, "args": [
-                    "exec", "--env", "GITHUB_SHA", "argon-build", "python3",
+                    "exec", "--env", "GITHUB_SHA", "--env", "ARGON_STANDALONE_TEST", "argon-build", "python3",
                     "/workspace/.github/ci/full-build.py", "record", "--arch", arch,
                     "--mode", "release", "--fingerprint", "planned-fingerprint",
                     "--certificate", "planned-certificate", "--image", "planned-image"]})
@@ -255,6 +270,29 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
              patch.object(pipeline.subprocess, "run") as align:
             self.assertEqual(self.verify(), self.root)
             align.assert_called_once()
+
+    def test_reused_standalone_test_checks_actual_package_and_label(self):
+        lock = self.fixture_artifact(mode="test")
+        self.metadata["application_identity"] = pipeline.application_identity(
+            lock, "test", standalone_test=True)
+        self.metadata_path.write_text(json.dumps(self.metadata))
+        for package, label, valid in ((lock["application_id"] + ".test", "Argon Test", True),
+                                      (lock["application_id"], "Argon Test", False),
+                                      (lock["application_id"] + ".test", "Argon", False)):
+            with self.subTest(package=package, label=label), \
+                 patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}), \
+                 patch.object(pipeline, "signing_tools", return_value=Path("/tools")), \
+                 patch.object(pipeline, "command", side_effect=[
+                     f"Signer #1 certificate SHA-256 digest: {self.certificate}\n",
+                     f"package: name='{package}'\napplication-label:'{label}'\n"]), \
+                 patch.object(pipeline.subprocess, "run"):
+                args = (self.root, self.sha, "arm64", "test", "expected",
+                        "temporary-test-key", Path("/sdk"), Path("/jdk"))
+                if valid:
+                    self.assertEqual(pipeline.verify_artifact(*args), self.root)
+                else:
+                    with self.assertRaisesRegex(ValueError, "package or application label"):
+                        pipeline.verify_artifact(*args)
 
     def test_both_manual_workflows_reuse_only_after_payload_verification(self):
         payload = self.root / "verified-payload"

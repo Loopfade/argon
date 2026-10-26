@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       signing:
-        description: 'release uses the permanent key; test uses a temporary key; APKs stay in run artifacts'
+        description: 'release: Argon with permanent key; test: separate Argon Test app with temporary key; artifacts only'
         type: choice
         options: [release, test]
         default: release
@@ -29,6 +29,9 @@ permissions:
 concurrency:
   group: argon-full-${{ github.ref }}
   cancel-in-progress: false
+
+env:
+  ARGON_STANDALONE_TEST: ${{ inputs.signing == 'test' }}
 
 jobs:
   plan:
@@ -99,6 +102,7 @@ jobs:
       image: ${{ needs.image.outputs.image }}
       runner: ${{ inputs.runner }}
       signing: ${{ inputs.signing }}
+      standalone_test: ${{ inputs.signing == 'test' }}
       auto_continue: ${{ inputs.auto_continue }}
     secrets: inherit
 

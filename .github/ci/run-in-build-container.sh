@@ -6,6 +6,7 @@ container=${BUILD_CONTAINER_NAME:-argon-build}
 
 docker_args=(
   --env "BUILD_MODE=${BUILD_MODE:-apk}"
+  --env "ARGON_STANDALONE_TEST=${ARGON_STANDALONE_TEST:-false}"
   --env "TARGET_ARCH=$TARGET_ARCH"
   --env "BUILD_JOBS=${BUILD_JOBS:-4}"
   --env "BUILD_TIME_LIMIT_MINUTES=${BUILD_TIME_LIMIT_MINUTES:-240}"

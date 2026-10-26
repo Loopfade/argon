@@ -18,6 +18,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from configure_build import TARGET_ABIS
+from build_identity import application_identity
 from sign_and_verify import check_release_key, signing_tools, verify_apk_abi, write_release_key
 
 IMAGE_LABEL = "io.argon.prepared-inputs"
@@ -70,11 +71,14 @@ def image_fingerprint(root=ROOT):
     return digest_inputs(files)
 
 
-def artifact_fingerprint(sha, arch, mode, certificate, prepared):
-    return digest_inputs({"build": json.dumps({
+def artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test=False):
+    build = {
         "schema": 1, "source_commit": sha, "arch": arch, "mode": mode,
         "certificate": certificate, "prepared_inputs": prepared,
-    }, sort_keys=True).encode()})
+    }
+    if standalone_test:
+        build["application_variant"] = "standalone-test"
+    return digest_inputs({"build": json.dumps(build, sort_keys=True).encode()})
 
 
 def certificate_digest(path):
@@ -108,12 +112,15 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
     metadata_path = candidates[0]
     metadata = json.loads(metadata_path.read_text())
     lock = json.loads((ROOT / "build-lock.json").read_text())
+    identity = application_identity(lock, mode)
+    standard_identity = application_identity(lock, mode, standalone_test=False)
     if (metadata.get("source_commit") != sha or metadata.get("target_cpu") != arch
             or metadata.get("abi") != abi or metadata.get("signing_mode") != mode
             or metadata.get("inputs") != lock
             or metadata.get("ca_der_sha256") != json.loads(
                 (ROOT / "certificates/ministry-ca-lock.json").read_text())["der_sha256"]
-            or metadata.get("pipeline", {}).get("fingerprint") != fingerprint):
+            or metadata.get("pipeline", {}).get("fingerprint") != fingerprint
+            or metadata.get("application_identity", standard_identity) != identity):
         raise ValueError("APK provenance does not match this build")
     directory = metadata_path.parent
     name = f"Argon-{lock['chromium_version']}-{mode}-{abi}.apk"
@@ -137,8 +144,8 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
         raise ValueError("APK signature does not match its certificate")
     subprocess.run([str(tools / "zipalign"), "-c", "-P", "16", "4", str(apk)], check=True)
     badging = command([tools / "aapt2", "dump", "badging", apk], text=True)
-    if (not re.search(r"^package: name='" + re.escape(lock["application_id"]) + "'", badging, re.M)
-            or "application-label:'Argon'" not in badging):
+    if (not re.search(r"^package: name='" + re.escape(identity["application_id"]) + "'", badging, re.M)
+            or f"application-label:'{identity['application_label']}'" not in badging):
         raise ValueError("APK package or application label mismatch")
     verify_apk_abi(apk, abi)
     for license_name in ("Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
@@ -196,6 +203,8 @@ def plan(mode):
     if os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise ValueError("Run the full pipeline from main; other refs must not replace its prepared image")
     sha = os.environ["GITHUB_SHA"]
+    identity = application_identity(json.loads((ROOT / "build-lock.json").read_text()), mode)
+    standalone_test = identity["variant"] == "standalone-test"
     jdk = Path(os.environ["JAVA_HOME"])
     sdk = Path(os.environ.get("ANDROID_HOME") or os.environ["ANDROID_SDK_ROOT"])
     certificate = release_certificate(jdk, os.environ) if mode == "release" else "temporary-test-key"
@@ -203,7 +212,7 @@ def plan(mode):
     builds, decisions = [], []
     outputs = {"prepared_inputs": prepared, "certificate": certificate}
     for arch in ("arm64", "arm"):
-        fingerprint = artifact_fingerprint(sha, arch, mode, certificate, prepared)
+        fingerprint = artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test)
         name = f"Argon-{arch}-{sha}-{fingerprint}"
         reused = reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
         outputs[f"reuse_{arch}"] = bool(reused)
@@ -214,6 +223,7 @@ def plan(mode):
     emit(**outputs, build=bool(builds), matrix=json.dumps({"include": builds}, separators=(",", ":")))
     with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
         summary.write("## Manual build plan\n\n" + f"- Commit: `{sha}`\n- Signing: `{mode}`\n"
+                      + f"- Application: `{identity['application_label']}` (`{identity['application_id']}`)\n"
                       + f"- Prepared inputs: `{prepared}`\n" + "\n".join(decisions)
                       + "\n- Prepared image: " + ("resolve or build once" if builds else "not needed; both APKs reused") + "\n")
 
@@ -242,10 +252,15 @@ def record(arch, mode, fingerprint, certificate, image):
     directory = ROOT / "artifacts" / TARGET_ABIS[arch]
     path = directory / "build-info.json"
     data = json.loads(path.read_text())
+    identity = application_identity(json.loads((ROOT / "build-lock.json").read_text()), mode)
+    standard_identity = application_identity(data["inputs"], mode, standalone_test=False)
+    if data.get("application_identity", standard_identity) != identity:
+        raise ValueError("Built APK uses a different application identity")
     signer = certificate_digest(directory / "signing-certificate.pem")
     if mode == "release" and signer != certificate:
         raise ValueError("Built APK uses a different release certificate")
-    expected = artifact_fingerprint(os.environ["GITHUB_SHA"], arch, mode, certificate, image_fingerprint())
+    expected = artifact_fingerprint(os.environ["GITHUB_SHA"], arch, mode, certificate,
+                                   image_fingerprint(), identity["variant"] == "standalone-test")
     if expected != fingerprint or data["source_commit"] != os.environ["GITHUB_SHA"]:
         raise ValueError("Build fingerprint changed after planning")
     data["pipeline"] = {"fingerprint": fingerprint, "prepared_inputs": image_fingerprint(),

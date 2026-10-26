@@ -37,7 +37,7 @@ if [[ "$BUILD_MODE" == finish || "$BUILD_MODE" == checkpoint || ${ARGON_PREPATCH
 fi
 python3 scripts/preflight.py "${preflight_args[@]}"
 # The image's source reuse flag must not reach fresh-checkout test fixtures.
-env -u ARGON_PREPATCHED_SOURCES python3 -m unittest discover -s tests -v
+env -u ARGON_PREPATCHED_SOURCES -u ARGON_STANDALONE_TEST python3 -m unittest discover -s tests -v
 if [[ ( "$BUILD_MODE" == apk || "$BUILD_MODE" == finish ) && "$SIGNING_MODE" == release ]]; then
   : "${TITANIUM_RU_KEYSTORE_BASE64:?Missing release keystore}"
   : "${TITANIUM_RU_STORE_PASSWORD:?Missing release store password}"
@@ -86,7 +86,8 @@ if [[ -n ${CCACHE_DIR:-} ]]; then
   ccache --max-size "${CCACHE_MAXSIZE:-7G}"
   configure_args+=(--ccache)
 fi
-python3 "$SCRIPT_DIR/scripts/configure_build.py" "${configure_args[@]}"
+python3 "$SCRIPT_DIR/scripts/build_identity.py" --chromium-src "$PWD" \
+  --mode "$SIGNING_MODE" "${configure_args[@]}"
 gn gen "$OUT_DIR"
 if [[ "$BUILD_MODE" == prepare ]]; then
   # Publish the sources after patches, policy tests and GN generation. A
