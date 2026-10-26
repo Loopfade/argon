@@ -2,6 +2,7 @@
 """Run the production exit flow through Chromium's pinned incremental DEX compiler."""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -33,20 +34,24 @@ def compile_jar(javac, source, work, name, src):
 
 def dex(src, jar, work, name):
     output = work / (name + '.dex.jar')
+    # Chromium's Ninja depfile writer rejects absolute outputs and inputs.
+    # dex.py runs from src, including when the temporary files live in /tmp.
+    relative_work = Path(os.path.relpath(work, src))
+    relative_jar = os.path.relpath(jar, src)
     result = invoke([
         src / 'third_party/cpython3/host/bin/python3',
         src / 'build/android/gyp/dex.py',
-        '--output', output,
-        '--depfile', work / (name + '.d'),
+        '--output', relative_work / (name + '.dex.jar'),
+        '--depfile', relative_work / (name + '.d'),
         '--min-api=29',
-        '--r8-jar-path', src / 'third_party/r8/d8/cipd/lib/r8.jar',
-        '--custom-d8-jar-path', src / 'third_party/r8/custom_d8.jar',
+        '--r8-jar-path', 'third_party/r8/d8/cipd/lib/r8.jar',
+        '--custom-d8-jar-path', 'third_party/r8/custom_d8.jar',
         '--warnings-as-errors',
-        '--incremental-dir', work / (name + '-incremental'),
+        '--incremental-dir', relative_work / (name + '-incremental'),
         '--intermediate',
-        '--class-inputs=' + json.dumps([str(jar)]),
+        '--class-inputs=' + json.dumps([relative_jar]),
         '--desugar',
-        '--classpath=' + json.dumps([str(jar)]),
+        '--classpath=' + json.dumps([relative_jar]),
     ], src)
     return result, output
 
