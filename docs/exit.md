@@ -79,6 +79,12 @@ Host-тесты компилируют и выполняют реальную Ja
 порядок этапов, восстановление, ошибки, повторы и старые callback. Обычный CI
 проверяет закреплённые Chromium/Vanadium и наличие целей выхода, renderer guard
 и Java в обоих Android-графах. Запросы Ninja выполняются через `-t query`.
+До проверки графов `check-exit-dex.py` компилирует production `ArgonExitFlow`
+закреплённым JDK и упаковывает его настоящим Chromium `dex.py`/CustomD8:
+min API 29, incremental, intermediate и warnings-as-errors, как в обоих APK.
+Контрольный `record` обязан воспроизвести запрет записей, а машина состояний и
+неизменяемый `Selection` — создать DEX с обоими production-классами. Это
+проверяет этап, которого нет у обычного запуска Java host-теста.
 Полная Android-компиляция выполняется существующей ручной сборкой с сохраняемым
 ccache; `argon_exit.o` добавлен в её обязательные цели. Эта сборка не запускается
 обычной проверкой PR.
@@ -87,3 +93,32 @@ ccache; `argon_exit.o` добавлен в её обязательные цел�
 Play из уведомления, активная загрузка, сохранение домашней страницы, входящая
 ссылка и поворот экрана во время очистки, прерывание процесса на каждом этапе
 и оба значения настройки сохранения вкладок.
+
+## Сверка с Bare, Vanadium и Chromium
+
+Проверены [Bare 0118](https://github.com/BareBrowser/bare-browser/blob/a5a7ef74f3b77d45720b8c502cbacc30f2f3dbd5/patches/0118-Add-Exit-to-the-app-menu-and-let-it-clear-browsing-d.patch),
+[Bare 0126](https://github.com/BareBrowser/bare-browser/blob/a5a7ef74f3b77d45720b8c502cbacc30f2f3dbd5/patches/0126-Clear-the-pending-flag-when-there-is-nothing-left-to.patch)
+и закреплённый [Vanadium 0154](https://github.com/GrapheneOS/Vanadium/blob/2ae4335402eabcc6e025f3400185fe25094d8521/patches/0154-Toggle-for-closing-tabs-on-exit.patch).
+API и инструменты сборки Argon сверяются с Chromium
+`1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775`.
+
+| Вопрос | Проверенное решение | Argon |
+| --- | --- | --- |
+| Категории и период | Bare использует битовую маску и BrowsingDataBridge с ALL_TIME | Те же шесть категорий, нулевая маска допустима, результат native-удаления сохраняется |
+| Прерванная очистка | Bare хранит pending; 0126 исправляет его сброс при пустой выборке | Версионированный снимок категорий и вкладок; подтверждаются запись начала и завершение, восстановление не зависит от последующего изменения настроек |
+| Несколько окон | Bare передаёт finishAndRemoveTask для текущего Activity | Остановка страниц всех моделей и ожидание renderer-процессов перед завершением приложения |
+| Сохранение вкладок | Vanadium управляет восстановлением через shouldCloseTabsOnExit | Та же настройка; при выходе сохраняется навигация либо закрываются модели без Undo |
+| Совместимость Java | Chromium запрещает records и AutoValue в Android-коде | Selection — static final class с final-полями и прежними аксессорами; явная проверка настоящим D8 |
+
+В [сборке 40250577813](https://github.com/Loopfade/argon/actions/runs/40250577813)
+`argon_exit.o` успешно скомпилировался на ARM64 и ARMv7; следующей ошибкой стал
+запрещённый `record` при создании `chrome_java.dex.jar`. Успех javac и наличие
+GN-целей не подтверждают DEX, линковку, упаковку и подпись. Эти этапы проверяет
+полный artifacts-only workflow для обеих архитектур с проверкой ABI, ZIP,
+zipalign, сертификата, подписи и метаданных APK.
+
+Правило запрета records взято из
+[Java style guide закреплённого Chromium](https://github.com/chromium/chromium/blob/1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775/styleguide/java/java.md).
+Закладки, домашняя страница, дампы, категории удаления и ключи журнала при
+замене Selection не меняются; его содержимое сохраняется как отдельные
+примитивные значения, а не сериализованный Java-объект.

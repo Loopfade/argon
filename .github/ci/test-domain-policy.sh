@@ -11,6 +11,9 @@ export DEPOT_TOOLS_UPDATE=0
 python3 "$ROOT/.github/ci/check-domain-test-inputs.py" \
   --lock "$ROOT/build-lock.json" --src "$src" --depot "$depot"
 
+# Exercise actual D8 packaging without starting a cold Android target build.
+python3 "$ROOT/.github/ci/check-exit-dex.py" --src "$src"
+
 # Validate the full Android graphs for both APK architectures before narrowing
 # the host-test graph. Query the same explicit JNI, Java and APK targets used by
 # build.sh; missing targets must fail validation before the manual build starts.

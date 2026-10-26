@@ -80,7 +80,16 @@ public final class ArgonExitFlowTest {
                 "A late callback cleared the interrupted journal after an explicit close");
     }
     public static void main(String[] args) {
-        for (int mask = 0; mask <= 63; ++mask) { success(mask, false); success(mask, true); }
+        check(!ArgonExitFlow.Selection.class.isRecord(),
+                "Chromium DEX does not support Java records");
+        for (int mask = 0; mask <= 63; ++mask) {
+            for (boolean closeTabs : new boolean[] {false, true}) {
+                var selection = new ArgonExitFlow.Selection(mask, closeTabs);
+                check(selection.types() == mask && selection.closeTabs() == closeTabs,
+                        "Selection changed the requested exit settings");
+            }
+            success(mask, false); success(mask, true);
+        }
         failuresAndRetry(); closeWhilePending();
         for (int invalid : new int[] {-1, 64, Integer.MAX_VALUE}) {
             try { new ArgonExitFlow.Selection(invalid, false); throw new AssertionError("Unknown category accepted"); }
