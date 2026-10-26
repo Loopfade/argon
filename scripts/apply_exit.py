@@ -22,6 +22,9 @@ INPUT_PATHS = tuple(map(Path, (
     'chrome/browser/chrome_content_browser_client.h',
     'chrome/browser/chrome_content_browser_client.cc',
     'content/browser/renderer_host/render_process_host_impl.cc',
+    'content/browser/renderer_host/render_frame_host_manager.h',
+    'content/browser/renderer_host/render_frame_host_manager.cc',
+    'content/browser/renderer_host/navigation_request.cc',
     'chrome/android/BUILD.gn', EXT + 'chrome_java_ext_sources.gni',
     EXT + 'chrome_app_java_resources_ext_sources.gni',
     'titanium/chromium_src/chrome/browser/android/android_cc_ext_sources.gni',
@@ -124,18 +127,17 @@ def patch_tab(text):
     text = insert(text, '        boolean eligibleToCreateWebContents = webContents == null && !isDormant();',
                   f'\n        initializeRenderer &= !{PACKAGE}.isBlockingPages();')
     before = '    private @TabDestroyStatus int destroyWebContents(boolean deleteNativeWebContents) {'
-    after = '''    /** Snapshot regular tabs, then synchronously destroy their live page for explicit Exit. */
+    after = '''    /** Stop loads while keeping WebContents alive for tab-model observer notifications. */
     public boolean prepareForArgonExit(boolean preserveNavigation) {
         if (isDestroyed() || mWebContents == null) return true;
         if (preserveNavigation) {
-            WebContentsState state = TabStateExtractor.getWebContentsState(this);
-            if (state == null) return false;
             mUrl = getUrl();
             mTitle = getTitle();
-            mWebContentsState = state;
-            mPendingLoadParams = null;
         }
-        destroyWebContents(true);
+        // Normal closure must notify observers before destroying WebContents.
+        // Preserved tabs keep browser-side navigation until saveState(); the
+        // native renderer barrier stops all page execution before data removal.
+        mWebContents.stop();
         return true;
     }
 
@@ -197,10 +199,52 @@ bool ChromeContentBrowserClient::IsRendererProcessLaunchAllowed() {
 
 
 def patch_renderer(text):
-    return insert(text, 'bool RenderProcessHostImpl::Init() {', '''
+    # Init is idempotent; an existing host does not launch another renderer.
+    return insert(text, '''bool RenderProcessHostImpl::Init() {
+  // calling Init() more than once does nothing, this makes it more convenient
+  // for the view host which may not be sure in some cases
+  if (IsInitializedAndNotDead())
+    return true;''', '''
   if (!GetContentClient()->browser()->IsRendererProcessLaunchAllowed())
     return false;
 ''')
+
+
+def patch_frame_manager_header(text):
+    return insert(text, '  kBlockedByPendingCommit,', '''
+  // The embedder is quiescing pages; cancel without allocating a renderer.
+  kBlockedByEmbedder,''')
+
+
+def patch_frame_manager(text):
+    # Init failure alone is unsafe: Chromium CHECKs speculative RFH creation.
+    return insert(text, '''RenderFrameHostManager::GetFrameHostForNavigation(
+    NavigationRequest* request,
+    BrowsingContextGroupSwap* browsing_context_group_swap,
+    const ProcessAllocationContext& process_allocation_context,
+    std::string* reason) {''', '''
+  if (!GetContentClient()->browser()->IsRendererProcessLaunchAllowed()) {
+    return base::unexpected(
+        GetFrameHostForNavigationFailed::kBlockedByEmbedder);
+  }
+''')
+
+
+def patch_navigation_request(text):
+    # All three owning call sites return after ResetNavigationRequest, which
+    # deletes this request. Neither an error page nor a retry may follow.
+    for indent, count in (('      ', 2), ('        ', 1)):
+        before = indent + 'case GetFrameHostForNavigationFailed::kCouldNotReinitializeMainFrame:'
+        after = (indent + 'case GetFrameHostForNavigationFailed::kBlockedByEmbedder:\n'
+                 + indent + '  frame_tree_node_->ResetNavigationRequest(\n'
+                 + indent + '      NavigationDiscardReason::kInternalCancellation);\n'
+                 + indent + '  return;\n' + before)
+        if len(re.findall('^' + re.escape(after), text, re.M)) == count:
+            continue
+        if len(re.findall('^' + re.escape(before), text, re.M)) != count:
+            raise ValueError('Navigation failure ownership changed')
+        text = re.sub('^' + re.escape(before), lambda _: after, text, flags=re.M)
+    return text
 
 
 def patch_background_tasks(text):
@@ -288,6 +332,7 @@ TRANSFORMS = dict(zip(INPUT_PATHS, (
     patch_background_tasks, patch_menu, patch_lifetime, patch_tab_native,
     patch_android_gn, patch_content_client, patch_content_client_source,
     patch_chrome_client, patch_chrome_client_source, patch_renderer,
+    patch_frame_manager_header, patch_frame_manager, patch_navigation_request,
     patch_jni, patch_java_sources, patch_resources, patch_native_sources, patch_native_deps,
     patch_preferences,
 )))

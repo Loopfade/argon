@@ -35,6 +35,7 @@ from browsing_data_period_flow import verify_upstream as verify_deletion_period_
 from test_modulemap import verify_pinned_generator
 from test_exit_downloads import run_download_guard
 from test_exit_renderer import verify_renderer_gate
+from test_exit_navigation import verify_navigation_gate
 from test_exit_android_api import SETTINGS_API, verify_exit_android_api
 from upstream_sources import chromium_url, download
 
@@ -574,6 +575,7 @@ def main():
         background.apply(src)
         explicit_exit.apply(src)
         print(verify_renderer_gate(src))
+        print(verify_navigation_gate(src))
         print(verify_exit_android_api((src / SETTINGS_API).read_text(), (src / TAB_IMPL).read_text()))
         # Compile the real guard with the vector type from the pinned public API,
         # including raw_ptr traits. No Android graph compilation is needed here.

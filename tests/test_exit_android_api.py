@@ -6,6 +6,8 @@ import subprocess
 import tempfile
 import unittest
 
+from test_exit import exit_patch
+
 ROOT = Path(__file__).resolve().parents[1]
 JAVA = ROOT / 'chromium_overlay/titanium/chromium_src/chrome/android/java/src'
 SETTINGS_API = Path('components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/SettingsFragment.java')
@@ -80,15 +82,22 @@ STUBS = {
         public interface Tab { boolean isDestroyed(); Object getWebContents(); }''',
     'org/chromium/chrome/browser/tab/TabImpl.java': '''package org.chromium.chrome.browser.tab;
         class TabImpl implements Tab {
-            boolean preserve; boolean destroyed; boolean ready=true;
+            static class WebContents { boolean stopped; void stop() { stopped=true; } }
+            WebContents mWebContents=new WebContents();
+            String mUrl,mTitle; boolean destroyed;
             public boolean isDestroyed() { return destroyed; }
-            public Object getWebContents() { return null; }
-            public boolean prepareForArgonExit(boolean value) { preserve=value; return ready; }
+            public Object getWebContents() { return mWebContents; }
+            String getUrl() {return "url";} String getTitle() {return "title";}
+            // PRODUCTION_PREPARE_METHOD
         }''',
     'org/chromium/chrome/browser/tab/TabFixture.java': '''package org.chromium.chrome.browser.tab;
         public class TabFixture {
-            public static Tab create(boolean ready) { TabImpl t=new TabImpl();t.ready=ready;return t; }
-            public static boolean preserved(Tab t) { return ((TabImpl)t).preserve; }
+            public static Tab create(boolean live) {
+                TabImpl t=new TabImpl();if(!live)t.mWebContents=null;return t;
+            }
+            public static boolean preserved(Tab t) {return "url".equals(((TabImpl)t).mUrl);}
+            public static boolean stopped(Tab t) {return ((TabImpl)t).mWebContents.stopped;}
+            public static void close(Tab t) {((TabImpl)t).mWebContents=null;}
         }''',
     'org/chromium/chrome/browser/tabmodel/TabClosureParams.java': '''package org.chromium.chrome.browser.tabmodel;
         public class TabClosureParams {
@@ -136,7 +145,11 @@ public class ExitAndroidApiTest {
         public boolean isOffTheRecord() {return privateMode;}
         public TabRemover getTabRemover() {return p -> {
             assert p.exit && !p.undo && !p.restore && p.hide && !p.unload;
+            // Chromium TabsEventRouter::OnTabRemoved CHECKs this before
+            // normal closure destroys WebContents. Reproduce that contract.
+            assert tab.getWebContents()!=null : "contents destroyed before closure observers";
             closed=true;
+            TabFixture.close(tab);
         };}
         public void commitAllTabClosures() {committed=true;}
     }
@@ -147,12 +160,13 @@ public class ExitAndroidApiTest {
     public static void main(String[] args) throws Exception {
         Model regular=new Model(TabFixture.create(true),false);
         assert prepare(regular,false) && TabFixture.preserved(regular.tab) && !regular.closed;
+        assert regular.tab.getWebContents()!=null && TabFixture.stopped(regular.tab);
         Model close=new Model(TabFixture.create(true),false);
         assert prepare(close,true) && !TabFixture.preserved(close.tab) && close.closed && close.committed;
         Model privateTabs=new Model(TabFixture.create(true),true);
         assert prepare(privateTabs,false) && !TabFixture.preserved(privateTabs.tab) && privateTabs.closed;
-        Model failed=new Model(TabFixture.create(false),false);
-        assert !prepare(failed,true) && !failed.closed && !failed.committed;
+        Model frozen=new Model(TabFixture.create(false),false);
+        assert prepare(frozen,false) && !frozen.closed && !frozen.committed;
         Tab unknown=new Tab() {public boolean isDestroyed(){return false;} public Object getWebContents(){return new Object();}};
         assert !prepare(new Model(unknown,false),true);
         ArgonExitSettings page=new ArgonExitSettings();
@@ -168,12 +182,27 @@ public class ExitAndroidApiTest {
 '''
 
 
-def verify_exit_android_api(settings_api=None, tab_impl=None):
+def production_prepare_method(tab_impl=None):
+    if tab_impl is None:
+        tab_impl = exit_patch.patch_tab('''
+    public boolean loadIfNeeded(boolean forceBackingSize) {
+    public LoadUrlResult loadUrl(LoadUrlParams params) {
+        boolean eligibleToCreateWebContents = webContents == null && !isDormant();
+    private @TabDestroyStatus int destroyWebContents(boolean deleteNativeWebContents) {
+''')
+    return re.search(r'    public boolean prepareForArgonExit\(boolean preserveNavigation\) \{.*?\n    \}',
+                     tab_impl, re.S)[0]
+
+
+def verify_exit_android_api(settings_api=None, tab_impl=None, prepare_method=None):
     if settings_api is None:
         settings_api = (ROOT / 'tests/fixtures/exit/SettingsFragment.java.in').read_text()
     if tab_impl is not None and not re.search(r'^class TabImpl implements Tab, TabInternal', tab_impl, re.M):
         raise ValueError('Review the pinned TabImpl visibility contract')
     sources = dict(STUBS)
+    sources['org/chromium/chrome/browser/tab/TabImpl.java'] = sources[
+        'org/chromium/chrome/browser/tab/TabImpl.java'].replace(
+            '// PRODUCTION_PREPARE_METHOD', prepare_method or production_prepare_method(tab_impl))
     sources['org/chromium/components/browser_ui/settings/SettingsFragment.java'] = settings_api
     for relative in ('exit/ArgonExitBridge.java', 'exit/ArgonExitSettings.java', 'tab/ArgonExitTabHelper.java'):
         name = 'org/chromium/chrome/browser/' + relative
@@ -205,3 +234,9 @@ class ExitAndroidApiTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which('java'), 'JDK required')
     def test_complete_production_bridge_and_settings_compile_and_run(self):
         self.assertIn('PASS:', verify_exit_android_api())
+
+    @unittest.skipUnless(shutil.which('java'), 'JDK required')
+    def test_destroying_contents_before_closure_observers_is_rejected(self):
+        broken = production_prepare_method().replace('mWebContents.stop();', 'mWebContents = null;')
+        with self.assertRaises(AssertionError):
+            verify_exit_android_api(prepare_method=broken)
