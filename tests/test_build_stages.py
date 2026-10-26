@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -18,6 +19,16 @@ ANDROID_TARGETS = [
 
 
 class BuildStageTests(unittest.TestCase):
+    def test_app_identity_checks_run_with_standard_library_python(self):
+        # -S excludes PyYAML and every other site package, as in the prepared
+        # image. Keep the identity/workflow checks executing in this environment.
+        result = subprocess.run([sys.executable, "-S", "-m", "unittest", "discover",
+                                 "-s", "tests", "-p", "test_app_identity.py", "-q"],
+                                cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertRegex(result.stderr, r"Ran [1-9]\d* tests")
+        self.assertNotIn("skipped", result.stderr)
+
     def run_build(self, mode, compiler_status=0):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

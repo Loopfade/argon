@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -81,22 +82,30 @@ class AppIdentityTests(unittest.TestCase):
             self.assertIn("Unexpected", resource.read_text())
 
     def test_only_the_artifacts_workflow_opts_in_for_test_signing(self):
-        import yaml
+        # Keep build.sh's container tests stdlib-only, like the other workflow
+        # wiring checks. Job boundaries and these fields use fixed YAML indents.
         workflows = ROOT / ".github/workflows"
+        expression = "${{ inputs.signing == 'test' }}"
+        callers = []
         for path in workflows.glob("*.yml"):
-            workflow = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
-            for job in workflow.get("jobs", {}).values():
-                if job.get("uses") != "./.github/workflows/build-unified-arch.yml":
+            jobs = path.read_text().split("\njobs:\n", 1)[1]
+            for job in re.split(r"(?m)^  [\w-]+:\n", jobs)[1:]:
+                if not re.search(r"(?m)^    uses: \./\.github/workflows/build-unified-arch\.yml$", job):
                     continue
-                selected = job.get("with", {}).get("standalone_test", "false")
-                self.assertEqual(selected, "${{ inputs.signing == 'test' }}"
-                                 if path.name == "build-all-no-publish.yml" else "false", path.name)
-        artifacts = yaml.load((workflows / "build-all-no-publish.yml").read_text(), Loader=yaml.BaseLoader)
-        self.assertEqual(artifacts["env"]["ARGON_STANDALONE_TEST"], "${{ inputs.signing == 'test' }}")
-        self.assertNotIn("publish", artifacts["jobs"])
-        reusable = yaml.load((workflows / "build-unified-arch.yml").read_text(), Loader=yaml.BaseLoader)
-        self.assertEqual(reusable["on"]["workflow_call"]["inputs"]["standalone_test"]["default"], "false")
-        self.assertEqual(reusable["env"]["ARGON_STANDALONE_TEST"], "${{ inputs.standalone_test }}")
+                callers.append(path.name)
+                selected = re.findall(r"(?m)^      standalone_test: (.+)$", job)
+                if path.name == "build-all-no-publish.yml":
+                    self.assertEqual(selected, [expression], path.name)
+                else:
+                    self.assertIn(selected, ([], ["false"]), path.name)
+        self.assertIn("build-all-no-publish.yml", callers)
+        self.assertIn("build-all.yml", callers)
+        artifacts = (workflows / "build-all-no-publish.yml").read_text()
+        self.assertRegex(artifacts, r"(?m)^  ARGON_STANDALONE_TEST: " + re.escape(expression) + r"$")
+        self.assertNotRegex(artifacts.split("\njobs:\n", 1)[1], r"(?m)^  publish:")
+        reusable = (workflows / "build-unified-arch.yml").read_text()
+        self.assertIn("      standalone_test:\n        type: boolean\n        default: false\n", reusable)
+        self.assertIn("  ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}\n", reusable)
 
     def test_build_container_receives_the_explicit_variant(self):
         from test_build_recovery import executable
