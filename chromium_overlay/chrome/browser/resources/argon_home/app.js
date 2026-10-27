@@ -58,7 +58,7 @@ import {imageSource, faviconSources} from './icons.js';
   });
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
   function imageMarkup(source,fallback='',eager=false) {
-    return '<span data-icon-source="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" data-icon-loading="'+(eager?'eager':'lazy')+'"></span>';
+    return '<img src="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" class="favicon" loading="'+(eager?'eager':'lazy')+'" alt="" draggable="false">';
   }
   function iconMarkup(item,eager=false) {
     if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return imageMarkup(imageSource(item.customIcon,location.protocol),'',eager);
@@ -66,14 +66,10 @@ import {imageSource, faviconSources} from './icons.js';
     const [source,fallback]=faviconSources(item.url,location.protocol);
     return source?imageMarkup(source,fallback,eager):svg('globe');
   }
-  function fallbackImages(root) { root.querySelectorAll('[data-icon-source]').forEach(marker=>{
-    // Build off-DOM: inserting an <img> with no src can queue an error for
-    // the empty source and race the real request before its first load.
-    const img=document.createElement('img');img.className='favicon';img.alt='';img.draggable=false;
-    let fallback=marker.dataset.iconFallback;
+  function fallbackImages(root) { root.querySelectorAll('img.favicon').forEach(img=>{
+    let fallback=img.dataset.iconFallback;delete img.dataset.iconFallback;
     const fail=()=>{if(fallback){const next=fallback;fallback='';img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
     img.addEventListener('error',fail);
-    img.src=marker.dataset.iconSource;img.loading=marker.dataset.iconLoading;marker.replaceWith(img);
   }); }
   function folderMarkup(folder) {
     const children=folder.children||[];

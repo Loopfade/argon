@@ -32,7 +32,7 @@ await context.route('https://**/*',route=>{
   const request=route.request(),url=new URL(request.url());
   if(request.isNavigationRequest())return route.fulfill({contentType:'text/html',body:'<p>Navigation test</p>'});
   iconRequests.push(url.href);
-  if(url.href==='https://primary-icon.example/favicon.ico'||url.href==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico')return route.fulfill({contentType:'image/png',body:iconPng});
+  if(url.href==='https://fixture-icon.example/check.png'||url.href==='https://primary-icon.example/favicon.ico'||url.href==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico')return route.fulfill({contentType:'image/png',body:iconPng});
   return route.abort();
 });
 const page=await context.newPage(),errors=[];
@@ -68,6 +68,13 @@ try {
   const iconPage=await context.newPage();
   iconPage.on('pageerror',error=>errors.push(error.message));
   await iconPage.goto(base);
+  await iconPage.evaluate(()=>new Promise((resolve,reject)=>{
+    const image=new Image();
+    const timer=setTimeout(()=>reject(Error('Image fixture timed out')),5000);
+    image.onload=()=>{clearTimeout(timer);resolve();};
+    image.onerror=()=>{clearTimeout(timer);reject(Error('Image fixture did not decode'));};
+    image.src='https://fixture-icon.example/check.png';
+  }));
   await iconPage.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
   await iconPage.locator('[data-add]').click();
   await iconPage.locator('#shortcut-title').fill('Иконка');
