@@ -173,6 +173,9 @@ try {
   assert.equal(await page.locator('#selected-engine-icon img').getAttribute('src'),googleIcon);
   await page.locator('#engine-trigger').click();await page.locator('[data-engine=noai]').click();
   await page.locator('#settings-button').click();await page.locator('#density-select').selectOption('compact');
+  // The opening animation scales the entire dialog. Measure settled geometry,
+  // otherwise getBoundingClientRect() reports a transient, smaller sample.
+  await page.locator('.dialog').evaluate(async dialog=>{await Promise.all(dialog.getAnimations().map(animation=>animation.finished));});
   for(const width of [1100,320]){
     await page.setViewportSize({width,height:850});
     const sizes={};
