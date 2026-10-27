@@ -21,7 +21,11 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const base='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1100,height:850},acceptDownloads:true});
-const iconRequests=[];
+const iconRequests=[],imageFailures=[],browserErrors=[];
+context.on('page',p=>{
+  p.on('requestfailed',r=>{if(r.resourceType()==='image')imageFailures.push({url:r.url(),error:r.failure()?.errorText});});
+  p.on('console',m=>{if(m.type()==='error')browserErrors.push(m.text());});
+});
 const iconPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64');
 await context.route('https://**/*',route=>{
   const request=route.request(),url=new URL(request.url());
@@ -166,7 +170,7 @@ try {
   console.log('PASS: production homepage under Trusted Types; icons, fallback, previews, lock, drag, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
 } catch(error) {
   const active=context.pages().find(p=>p.url().startsWith(base))||page;
-  console.error(JSON.stringify({pageErrors:errors,iconRequests,preview:await active.evaluate(()=>document.querySelector('#icon-preview')?.outerHTML).catch(()=>null)}));
+  console.error(JSON.stringify({pageErrors:errors,iconRequests,imageFailures,browserErrors:browserErrors.slice(-20),preview:await active.evaluate(()=>document.querySelector('#icon-preview')?.outerHTML).catch(()=>null)}));
   if(out)await active.screenshot({path:resolve(out,'failure.png'),fullPage:true}).catch(()=>{});
   throw error;
 } finally {await browser.close();await new Promise(r=>server.close(r));}

@@ -57,17 +57,23 @@ import {imageSource, faviconSources} from './icons.js';
     if(store.locked)notify('Изменения закреплены');
   });
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
+  function imageMarkup(source,fallback='',eager=false) {
+    return '<span data-icon-source="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" data-icon-loading="'+(eager?'eager':'lazy')+'"></span>';
+  }
   function iconMarkup(item,eager=false) {
-    if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return '<img data-icon-source="'+esc(imageSource(item.customIcon,location.protocol))+'" alt="" class="favicon" loading="'+(eager?'eager':'lazy')+'" draggable="false">';
+    if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return imageMarkup(imageSource(item.customIcon,location.protocol),'',eager);
     if(item.iconMode!=='favicon'&&item.icon)return svg(item.icon);
     const [source,fallback]=faviconSources(item.url,location.protocol);
-    return source?'<img data-icon-source="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" alt="" class="favicon" loading="'+(eager?'eager':'lazy')+'" draggable="false">':svg('globe');
+    return source?imageMarkup(source,fallback,eager):svg('globe');
   }
-  function fallbackImages(root) { root.querySelectorAll('img.favicon').forEach(img=>{
-    const fail=()=>{const next=img.dataset.iconFallback;if(next){delete img.dataset.iconFallback;img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
+  function fallbackImages(root) { root.querySelectorAll('[data-icon-source]').forEach(marker=>{
+    // Build off-DOM: inserting an <img> with no src can queue an error for
+    // the empty source and race the real request before its first load.
+    const img=document.createElement('img');img.className='favicon';img.alt='';img.draggable=false;img.loading=marker.dataset.iconLoading;
+    let fallback=marker.dataset.iconFallback;
+    const fail=()=>{if(fallback){const next=fallback;fallback='';img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
     img.addEventListener('error',fail);
-    // Attach the listener before starting the request, including cached errors.
-    img.src=img.dataset.iconSource;delete img.dataset.iconSource;
+    img.src=marker.dataset.iconSource;marker.replaceWith(img);
   }); }
   function folderMarkup(folder) {
     const children=folder.children||[];
