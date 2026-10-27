@@ -3,6 +3,7 @@
 
 #include "chrome/browser/ui/webui/argon_home/argon_home_ui.h"
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -10,6 +11,8 @@
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/webui/sanitized_image/sanitized_image_source.h"
+#include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
@@ -34,6 +37,9 @@ std::string_view GetResource(std::string_view path) {
   if (path == "state.js") {
     return kArgonHomeState;
   }
+  if (path == "icons.js") {
+    return kArgonHomeIcons;
+  }
   return {};
 }
 
@@ -45,8 +51,11 @@ bool ArgonHomeUIConfig::IsWebUIEnabled(
 }
 
 ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
+  auto* profile = Profile::FromWebUI(web_ui);
+  content::URLDataSource::Add(profile,
+                            std::make_unique<SanitizedImageSource>(profile));
   auto* source = content::WebUIDataSource::CreateAndAdd(
-      Profile::FromWebUI(web_ui), "argon");
+      profile, "argon");
   source->SetRequestFilter(
       base::BindRepeating([](const std::string& path) {
         return !GetResource(path).empty();
@@ -61,7 +70,7 @@ ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
       "trusted-types argon-home;");
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ImgSrc,
-      "img-src 'self' data: https: http:;");
+      "img-src 'self' data: chrome://image;");
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ConnectSrc, "connect-src 'none';");
   source->OverrideContentSecurityPolicy(
