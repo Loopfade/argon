@@ -51,6 +51,9 @@ const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
 const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
+async function enableEditing(p=page){await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
+async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
+async function actions(name,p=page){await p.getByRole('button',{name:'Действия с ярлыком '+name,exact:true}).click();}
 async function add(name,url,type='site',deferFrame=false){
   if(deferFrame)await page.evaluate(()=>{
     window.argonOriginalFrame=window.requestAnimationFrame;
@@ -87,7 +90,7 @@ try {
     image.onerror=()=>{clearTimeout(timer);reject(Error('Image fixture did not decode'));};
     image.src='https://fixture-icon.example/check.png';
   }));
-  await iconPage.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
+  await enableEditing(iconPage);
   await iconPage.locator('[data-add]').click();
   await iconPage.locator('#shortcut-title').fill('Иконка');
   await iconPage.locator('#shortcut-url').fill('primary-icon.example/private/path');
@@ -103,7 +106,7 @@ try {
   let iconState=await iconPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
   assert.equal(iconState.shortcuts[0].iconMode,'favicon');
   assert.equal(iconState.shortcuts[0].customIcon,undefined);
-  await iconPage.locator('[data-edit]').click();
+  await editFirst(iconPage);
   await iconPage.locator('#shortcut-url').fill('fallback-icon.example');
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.src==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'&&document.querySelector('#icon-preview img')?.naturalWidth===1);
   assert(iconRequests.indexOf('https://fallback-icon.example/favicon.ico')<iconRequests.indexOf('https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'));
@@ -111,8 +114,8 @@ try {
   await iconPage.reload();
   await iconPage.waitForFunction(()=>document.querySelector('.shortcut-icon img')?.naturalWidth===1);
   assert.equal(await iconPage.locator('.shortcut-icon img').getAttribute('src'),'https://icons.duckduckgo.com/ip3/fallback-icon.example.ico');
-  await iconPage.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
-  await iconPage.locator('[data-edit]').click();
+  await enableEditing(iconPage);
+  await editFirst(iconPage);
   await iconPage.locator('#shortcut-url').fill('missing-icon.example');
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview use')?.getAttribute('href')==='#i-globe');
   assert(iconRequests.includes('https://icons.duckduckgo.com/ip3/missing-icon.example.ico'));
@@ -125,50 +128,77 @@ try {
   await iconPage.evaluate(()=>localStorage.clear());
   await iconPage.close();
   await page.goto(base);
-  assert(await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).isChecked());
+  assert(await page.locator('#edit-done').isHidden());
   assert.equal(await page.locator('[data-add]').count(),0);
   assert.equal(await page.locator('[data-item]').count(),0);
   if(out)await page.screenshot({path:resolve(out,'home-empty.png'),fullPage:true});
-  await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
+  await enableEditing();
   await add('Мой сайт','example.com');
   await add('Документы','docs.example.com','site',true);
   await add('Работа',null,'folder');
   let data=await saved();assert.equal(data.shortcuts.length,3);
+  assert.equal(await page.locator('[data-edit],[data-grip],#edit-lock').count(),0);
+  await actions('Документы');await page.locator('#shortcut-move').click();
+  await page.keyboard.press('Escape');assert(await page.locator('#move-toolbar').isHidden());assert(await page.locator('#edit-done').isVisible());
   const site=data.shortcuts[0],folder=data.shortcuts[2];
   await page.evaluate(()=>{window.argonDragTrace=[];for(const type of ['dragstart','dragover','drop','dragend'])document.addEventListener(type,e=>{if(window.argonDragTrace.length<30)window.argonDragTrace.push({type,id:e.target.closest('[data-holder]')?.dataset.holder});},true);});
-  await page.locator('[data-holder="'+site.id+'"] [data-grip]').dragTo(page.locator('[data-holder="'+folder.id+'"] .shortcut-icon'));
+  await actions('Мой сайт');await page.locator('#shortcut-move').click();
+  await page.locator('[data-holder="'+site.id+'"] [data-item]').dragTo(page.locator('[data-holder="'+folder.id+'"] .shortcut-icon'));
   data=await saved();assert.equal(data.shortcuts.length,2,'drag trace: '+JSON.stringify(await page.evaluate(()=>window.argonDragTrace))+'; errors: '+JSON.stringify(errors));assert.equal(data.shortcuts[1].children[0].id,site.id);
-  await page.getByRole('button',{name:'Папка Работа',exact:true}).click();
-  await page.getByRole('button',{name:'Изменить Мой сайт',exact:true}).click();
+  await actions('Работа');await page.locator('#open-folder').click();
+  await actions('Мой сайт');await page.locator('#shortcut-edit').click();
   await page.locator('#shortcut-folder').selectOption('');
   await page.getByLabel('Название',{exact:true}).fill('Личный сайт');
   await formSubmit();
   data=await saved();assert.equal(data.shortcuts.length,3);assert.equal(data.shortcuts[1].children.length,0);
   assert.equal(data.shortcuts[2].name,'Личный сайт');
-  const remove=page.getByRole('button',{name:'Изменить Документы',exact:true});await remove.click();
+  await actions('Документы');await page.locator('#shortcut-edit').click();
   await page.getByRole('button',{name:'Удалить',exact:true}).click();
   assert.equal((await saved()).shortcuts.length,2);
   await page.locator('#toast').getByRole('button',{name:'Отменить'}).click();
   assert.equal((await saved()).shortcuts.length,3);
-  await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).check();
+  await actions('Личный сайт');await page.locator('#shortcut-move').click();
+  await page.getByRole('button',{name:'Переместить: Документы',exact:true}).click();
+  assert.equal((await saved()).shortcuts[0].name,'Личный сайт');
+  await page.locator('#edit-done').click();
   assert.equal(await page.locator('[data-edit],[data-grip],[data-add]').count(),0);
   await page.reload();assert.equal((await saved()).shortcuts.length,3);
-  assert(await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).isChecked());
+  assert(await page.locator('#edit-done').isHidden());
   await page.getByRole('link',{name:'Личный сайт',exact:true}).click({button:'right'});
   assert.equal(await page.getByRole('dialog').count(),0);
   await page.locator('[data-theme-choice=dark]').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+  assert.equal(await page.locator('[data-engine=yandex]').count(),0);
+  const googleIcon=await page.locator('[data-engine=google] img').getAttribute('src');
+  assert.equal(await page.locator('#selected-engine-icon img').getAttribute('src'),googleIcon);
   await page.locator('#engine-trigger').click();await page.locator('[data-engine=noai]').click();
-  await page.locator('#settings-button').click();await page.locator('#density-select').selectOption('large');
+  await page.locator('#settings-button').click();await page.locator('#density-select').selectOption('compact');
+  for(const width of [1100,320]){
+    await page.setViewportSize({width,height:850});
+    const sizes={};
+    for(const size of ['comfortable','compact']){
+      await page.locator('#density-select').selectOption(size);
+      sizes[size]=await page.evaluate(()=>{
+        const real=document.querySelector('#shortcut-grid .shortcut-icon'),sample=document.querySelector('#size-preview .shortcut-icon');
+        return {icon:real.getBoundingClientRect().width,preview:sample.getBoundingClientRect().width,columns:getComputedStyle(document.querySelector('#shortcut-grid')).gridTemplateColumns.split(' ').length};
+      });
+      assert.equal(sizes[size].icon,sizes[size].preview,'settings preview must use the real icon size');
+    }
+    assert(sizes.compact.icon<sizes.comfortable.icon);
+    assert(sizes.compact.columns>sizes.comfortable.columns,'small icons must fit more columns at '+width);
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    if(out)await page.screenshot({path:resolve(out,'home-size-preview-'+width+'.png'),fullPage:true});
+  }
+  await page.setViewportSize({width:1100,height:850});
   const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Снять дамп'}).click();
   const dump=JSON.parse(await readFile(await(await downloadPromise).path(),'utf8'));
-  assert.equal(dump.state.engine,'noai');assert.equal(dump.state.density,'large');assert.equal(dump.state.shortcuts.length,3);
+  assert.equal(dump.state.engine,'noai');assert.equal(dump.state.density,'compact');assert.equal(dump.state.shortcuts.length,3);
   await page.locator('#backup-file').setInputFiles({name:'argon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(dump))});
   await page.locator('#confirm-restore').click();
-  assert(await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).isChecked());
+  assert(await page.locator('#edit-done').isHidden());
   assert.equal((await saved()).shortcuts.length,3);
   if(out)await page.screenshot({path:resolve(out,'home-dark.png'),fullPage:true});
-  await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
+  await enableEditing();
   await page.getByRole('button',{name:'Добавить сайт или папку',exact:true}).click();
   await page.locator('#shortcut-title').fill('Не сохранять');await page.locator('#shortcut-url').fill('failed.example');
   await page.evaluate(()=>{window.argonOriginalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('Storage full','QuotaExceededError');};});
@@ -187,7 +217,7 @@ try {
   const search=page.waitForRequest(r=>r.isNavigationRequest()&&r.url().startsWith('https://noai.duckduckgo.com/?q='));
   await page.locator('#search-form button[type=submit]').click();await search;
   assert.deepEqual(errors,[]);
-  console.log('PASS: production homepage under Trusted Types; icons, fallback, previews, lock, drag, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
+  console.log('PASS: production homepage under Trusted Types; icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
 } catch(error) {
   const active=context.pages().find(p=>p.url().startsWith(base))||page;
   console.error(JSON.stringify({pageErrors:errors,iconRequests,allImageRequests,imageFailures,browserErrors:browserErrors.slice(-20),preview:await active.evaluate(async()=>({markup:document.querySelector('#icon-preview')?.outerHTML,address:document.querySelector('#shortcut-url')?.value,protocol:location.protocol,sources:(await import('./icons.js')).faviconSources('https://primary-icon.example/private/path',location.protocol)})).catch(()=>null)}));

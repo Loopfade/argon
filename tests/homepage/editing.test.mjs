@@ -8,20 +8,20 @@ function fixture(value=initialState()) {
 }
 const site=(id)=>({id,name:id,url:'https://'+id+'.example/'});
 
-test('a closed lock prevents layout changes; accepted edits survive reload',()=>{
+test('settings-only editing prevents layout changes outside the session; accepted edits survive reload',()=>{
   const {storage}=fixture(),page=new HomepageStore(storage,'home');
-  assert.equal(page.locked,true);
-  assert.throws(()=>page.update(s=>s.shortcuts.push(site('one')),{shortcuts:true}),/замок/);
-  page.setLocked(false);
+  assert.equal(page.editing,false);
+  assert.throws(()=>page.update(s=>s.shortcuts.push(site('one')),{shortcuts:true}),/редактирование/);
+  page.setEditing(true);
   page.update(s=>s.shortcuts.push(site('one')),{shortcuts:true});
-  page.setLocked(true);
+  page.setEditing(false);
   const reopened=new HomepageStore(storage,'home');
-  assert.equal(reopened.locked,true);
+  assert.equal(reopened.editing,false);
   assert.deepEqual(reopened.state.shortcuts,[site('one')]);
 });
 
 test('failed saving cannot change the active layout or the stored copy',()=>{
-  const {storage,values}=fixture(); const page=new HomepageStore(storage,'home');page.setLocked(false);
+  const {storage,values}=fixture(); const page=new HomepageStore(storage,'home');page.setEditing(true);
   const previous=values.get('home'),state=page.state;
   storage.setItem=()=>{throw Error('quota');};
   assert.throws(()=>page.update(s=>s.shortcuts.push(site('one')),{shortcuts:true}),/quota/);
@@ -30,7 +30,7 @@ test('failed saving cannot change the active layout or the stored copy',()=>{
 
 test('settings and layout changes preserve edits made in another home tab',()=>{
   const {storage}=fixture(),a=new HomepageStore(storage,'home'),b=new HomepageStore(storage,'home');
-  a.setLocked(false);a.update(s=>s.shortcuts.push(site('one')),{shortcuts:true});
+  a.setEditing(true);a.update(s=>s.shortcuts.push(site('one')),{shortcuts:true});
   b.update(s=>{s.theme='dark';});
   a.update(s=>s.shortcuts.push(site('two')),{shortcuts:true});
   assert.equal(a.state.theme,'dark');assert.deepEqual(a.state.shortcuts,[site('one'),site('two')]);
@@ -69,4 +69,17 @@ test('web addresses open directly while text and unsafe protocols use the search
   assert.equal(navigationTarget('ищем сайт',engine),'https://search.example/?q='+encodeURIComponent('ищем сайт'));
   assert.equal(navigationTarget('javascript:alert(1)',engine),'https://search.example/?q='+encodeURIComponent('javascript:alert(1)'));
   assert.equal(navigationTarget(' ',engine),null);
+});
+
+
+test('editing is never exported or resumed from storage and restore ends the session',()=>{
+  const {storage,values}=fixture(),page=new HomepageStore(storage,'home');
+  page.setEditing(true);page.update(s=>s.shortcuts.push(site('one')),{shortcuts:true});
+  const dump=createDump(page.state);
+  assert.equal(dump.state.editing,undefined);assert.equal(dump.state.locked,undefined);
+  const stored=JSON.parse(values.get('home'));stored.editing=true;stored.locked=false;
+  values.set('home',JSON.stringify(stored));
+  assert.equal(new HomepageStore(storage,'home').editing,false);
+  page.replace(dump.state);assert.equal(page.editing,false);
+  assert.throws(()=>page.update(s=>s.shortcuts.push(site('two')),{shortcuts:true}),/редактирование/);
 });

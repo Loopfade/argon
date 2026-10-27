@@ -92,3 +92,22 @@ test('rejects broken references, duplicate IDs, nested folders and unsafe icon d
     assert.throws(() => parseDump(JSON.stringify(dump)));
   }
 });
+
+
+test('removed built-in Yandex remains readable in old profiles and dumps',()=>{
+  const old={...sample(),engine:'yandex'};
+  assert.equal(loadStoredState(old).state.engine,'google');
+  const dump={app:'argon-start',version:1,createdAt:'2026-10-27T10:00:00Z',state:old};
+  const restored=parseDump(JSON.stringify(dump)).state;
+  assert.equal(restored.engine,'google');
+  assert.deepEqual(restored.shortcuts,old.shortcuts);
+  assert.deepEqual(restored.customEngines,old.customEngines);
+});
+
+test('Bing and manually added Yandex are valid search choices',()=>{
+  for(const engine of ['bing','yandex']){
+    const state={...initialState(),engine};
+    if(engine==='yandex')state.customEngines=[{id:'yandex',name:'Яндекс',url:'https://yandex.ru/search/?text={query}'}];
+    assert.deepEqual(parseDump(JSON.stringify(createDump(state))).state,state);
+  }
+});
