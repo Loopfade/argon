@@ -30,6 +30,7 @@ INPUT_PATHS = tuple(map(Path, (
     'titanium/chromium_src/chrome/browser/android/android_cc_ext_sources.gni',
     'titanium/chromium_src/chrome/browser/android/android_cc_ext_deps.gni',
     EXT + 'java/res/xml/privacy_preferences_ext.xml',
+    EXT + 'java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderHooks.java',
 )))
 
 
@@ -327,6 +328,21 @@ def patch_preferences(text):
 ''')
 
 
+def patch_search_index(text):
+    # PrivacySettings indexes its upstream XML, not privacy_preferences_ext.xml.
+    # Extend the existing CA hook so both patches remain idempotent together.
+    text = insert(text, 'import org.chromium.chrome.R;',
+                  '\nimport org.chromium.chrome.browser.exit.ArgonExitSettings;')
+    return insert(text,
+        '                    ArgonCertificateDomainsSettings.class.getName());', '''
+            indexData.addEntryForKey(
+                    fragmentName,
+                    "argon_clear_on_exit",
+                    R.string.argon_exit_settings_title,
+                    R.string.argon_exit_settings_summary,
+                    ArgonExitSettings.class.getName());''')
+
+
 TRANSFORMS = dict(zip(INPUT_PATHS, (
     patch_activity, patch_quit, patch_tabbed_activity, patch_controller, patch_tab, patch_launch,
     patch_background_tasks, patch_menu, patch_lifetime, patch_tab_native,
@@ -334,7 +350,7 @@ TRANSFORMS = dict(zip(INPUT_PATHS, (
     patch_chrome_client, patch_chrome_client_source, patch_renderer,
     patch_frame_manager_header, patch_frame_manager, patch_navigation_request,
     patch_jni, patch_java_sources, patch_resources, patch_native_sources, patch_native_deps,
-    patch_preferences,
+    patch_preferences, patch_search_index,
 )))
 
 

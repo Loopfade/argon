@@ -1,0 +1,73 @@
+import java.util.HashMap;
+import java.util.Map;
+
+final class UrlResolverFlow {
+    static boolean extensionOverride;
+    static boolean privateOverride;
+    static boolean webUiOverride;
+    static boolean isNtpOverrideEnabled() { return extensionOverride; }
+    static boolean isWebUiNtpOverrideEnabled() { return webUiOverride; }
+    static boolean isIncognitoNtpOverrideEnabled() { return privateOverride; }
+    static boolean isBookmarksPageOverrideEnabled() { return extensionOverride; }
+    static boolean isIncognitoBookmarksPageOverrideEnabled() { return privateOverride; }
+    static boolean isHistoryPageOverrideEnabled() { return extensionOverride; }
+    static String getOriginalNativeNtpUrl() { return UrlConstantResolver.getOriginalNativeNtpUrl(); }
+    static String getOriginalNtpUrl() { return UrlConstantResolver.getOriginalNtpUrl(); }
+    static String getOriginalNativeBookmarksUrl() { return UrlConstantResolver.getOriginalNativeBookmarksUrl(); }
+    static String getOriginalBookmarksUrl() { return UrlConstantResolver.getOriginalBookmarksUrl(); }
+    static String getOriginalNativeHistoryUrl() { return UrlConstantResolver.getOriginalNativeHistoryUrl(); }
+    static String getOriginalHistoryUrl() { return UrlConstantResolver.getOriginalHistoryUrl(); }
+    static final class ChromeFeatureList {
+        static final Flag sChromeNativeUrlOverriding = new Flag();
+        static final class Flag {
+            boolean enabled;
+            boolean isEnabled() { return enabled; }
+        }
+    }
+    static final class ResettersForTesting {
+        static void register(Runnable reset) {}
+    }
+    record Profile(boolean isOffTheRecord) {}
+    record GURL(String getSpec) {}
+    static final class UrlConstants {
+        static final String NTP_URL = "chrome-native://newtab/";
+        static final String NTP_NON_NATIVE_URL = "chrome://newtab/";
+        static final String NEW_TAB_PAGE_URL_LEGACY = "chrome://new-tab-page/";
+        static final String BOOKMARKS_NATIVE_URL = "chrome-native://bookmarks/";
+        static final String BOOKMARKS_URL = "chrome://bookmarks/";
+        static final String NATIVE_HISTORY_URL = "chrome-native://history/";
+        static final String HISTORY_URL = "chrome://history/";
+    }
+    ARGON_RESOLVER_CLASS
+    ARGON_RESOLVER_FACTORY_CLASS
+    static void check(Object actual, Object expected) {
+        if (!actual.equals(expected)) throw new AssertionError(actual + " != " + expected);
+    }
+    public static void main(String[] args) {
+        for (boolean feature : new boolean[] {false, true}) {
+            ChromeFeatureList.sChromeNativeUrlOverriding.enabled = feature;
+            for (boolean overrides : new boolean[] {false, true}) {
+                extensionOverride = overrides;
+                webUiOverride = overrides;
+                privateOverride = false;
+                UrlConstantResolverFactory.resetResolvers();
+                var regular = UrlConstantResolverFactory.getForProfile(new Profile(false));
+                var privateResolver = UrlConstantResolverFactory.getForProfile(new Profile(true));
+                check(regular.getNtpUrl(), "chrome://newtab/");
+                check(regular.getNtpGurl().getSpec(), "chrome://newtab/");
+                check(UrlConstantResolverFactory.getForProfile(null).getNtpUrl(), "chrome://newtab/");
+                check(privateResolver.getNtpUrl(), "chrome-native://newtab/");
+                check(regular.getBookmarksPageUrl(), feature && overrides
+                        ? "chrome://bookmarks/" : "chrome-native://bookmarks/");
+                check(regular.getHistoryPageUrl(), feature && overrides
+                        ? "chrome://history/" : "chrome-native://history/");
+                check(UrlConstantResolver.getOriginalNativeNtpUrl(), "chrome-native://newtab/");
+                privateOverride = true;
+                check(privateResolver.getNtpUrl(), feature
+                        ? "chrome://newtab/" : "chrome-native://newtab/");
+                check(privateResolver.getBookmarksPageUrl(), feature
+                        ? "chrome://bookmarks/" : "chrome-native://bookmarks/");
+            }
+        }
+    }
+}

@@ -1,5 +1,6 @@
 import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
   dumpStats, shortcutList, moveShortcut, navigationTarget} from './state.js';
+import {imageSource, faviconSources} from './icons.js';
 
 (() => {
   'use strict';
@@ -56,13 +57,20 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
     if(store.locked)notify('Изменения закреплены');
   });
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
-  function favicon(url) { try { return 'https://icons.duckduckgo.com/ip3/'+new URL(url).hostname+'.ico'; } catch { return ''; } }
-  function iconMarkup(item) {
-    if(item.customIcon&&validIcon(item.customIcon))return '<img src="'+esc(item.customIcon)+'" alt="" class="favicon" loading="lazy" draggable="false">';
-    if(item.icon)return svg(item.icon);
-    return '<img src="'+esc(favicon(item.url))+'" alt="" class="favicon" loading="lazy" draggable="false">';
+  function imageMarkup(source,fallback='',eager=false) {
+    return '<img src="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" class="favicon" loading="'+(eager?'eager':'lazy')+'" alt="" draggable="false">';
   }
-  function fallbackImages(root) { root.querySelectorAll('img.favicon').forEach(img=>img.addEventListener('error',()=>{const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);},{once:true})); }
+  function iconMarkup(item,eager=false) {
+    if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return imageMarkup(imageSource(item.customIcon,location.protocol),'',eager);
+    if(item.iconMode!=='favicon'&&item.icon)return svg(item.icon);
+    const [source,fallback]=faviconSources(item.url,location.protocol);
+    return source?imageMarkup(source,fallback,eager):svg('globe');
+  }
+  function fallbackImages(root) { root.querySelectorAll('img.favicon').forEach(img=>{
+    let fallback=img.dataset.iconFallback;delete img.dataset.iconFallback;
+    const fail=()=>{if(fallback){const next=fallback;fallback='';img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
+    img.addEventListener('error',fail);
+  }); }
   function folderMarkup(folder) {
     const children=folder.children||[];
     return children.length?'<span class="folder-stack">'+Array.from({length:4},(_,i)=>children[i]?'<span>'+iconMarkup(children[i])+'</span>':'<span class="blank"></span>').join('')+'</span>':svg('folder');
@@ -130,11 +138,13 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
     const folders=state.shortcuts.filter(s=>s.type==='folder');
     const position=item?shortcutList(state.shortcuts,parent).findIndex(s=>s.id===item.id):null;
     openModal(heading(item?'Изменить '+(type==='folder'?'папку':'ярлык'):'Добавить в избранное')+'<form id="shortcut-form">'+(!item&&!parent?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+'Сайт</button><button type="button" data-type="folder">'+svg('folder')+'Папка</button></div>':'')+'<label class="field"><span class="field-label">Название</span><input id="shortcut-title" value="'+esc(item?.name||'')+'" maxlength="40" required autofocus placeholder="Название '+(type==='folder'?'папки':'сайта')+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+'><label class="field"><span class="field-label">Адрес сайта</span><input id="shortcut-url" value="'+esc(item?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+'></label><div class="field"><span class="field-label">Иконка</span><div class="icon-choices"><button type="button" id="favicon-choice" class="icon-choice'+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+'С сайта</button><button type="button" id="custom-choice" class="icon-choice'+(draftMode==='custom'?' active':'')+'">'+svg('image')+'Своя</button><span id="icon-preview" class="icon-preview">'+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+'<span>Загрузить изображение</span></button><input type="file" id="icon-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden><p class="field-help">PNG, JPG, SVG или WebP, до 1 МБ.</p></div>'+(folders.length?'<label class="field"><span class="field-label">Расположение</span><select id="shortcut-folder"><option value="">Избранное</option>'+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?'<label class="field"><span class="field-label">Позиция</span><select id="shortcut-position">'+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?'<button type="button" class="btn btn-delete" id="delete-shortcut">Удалить</button>':'')+'<button type="button" class="btn btn-secondary" data-close>Отмена</button><button class="btn btn-primary" type="submit">'+(item?'Сохранить':'Добавить')+'</button></div></form>','shortcut');
-    const form=$('shortcut-form');fallbackImages($('modal-root'));
+    const form=$('shortcut-form');
     $('modal-root').querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{type=b.dataset.type;$('modal-root').querySelectorAll('[data-type]').forEach(t=>t.classList.toggle('active',t===b));$('site-fields').hidden=type==='folder';$('shortcut-url').required=type==='site';}));
-    function preview() { const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?'<img src="'+esc(draftIcon)+'" alt="">':(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,'<img class="favicon" src="'+esc(favicon(normalizedUrl($('shortcut-url').value.trim())))+'" alt="">');fallbackImages(p);}catch{setHtml(p,svg('globe'));}} }
+    let previewTimer;
+    function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
     function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';preview(); }
     $('favicon-choice').addEventListener('click',()=>chooseIcon('favicon'));$('custom-choice').addEventListener('click',()=>chooseIcon('custom'));
+    $('shortcut-url').addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(preview,250);});
     $('shortcut-url').addEventListener('change',preview);$('upload-button').addEventListener('click',()=>$('icon-file').click());
     $('icon-file').addEventListener('change',()=>{const file=$('icon-file').files[0];if(!file)return;if(file.size>1024*1024||!/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(file.type)){showError('Выберите изображение подходящего формата размером до 1 МБ.');return;}const reader=new FileReader();reader.onload=()=>{if($('shortcut-form')!==form)return;draftIcon=String(reader.result);chooseIcon('custom');$('form-error').hidden=true;};reader.onerror=()=>{if($('shortcut-form')===form)showError('Не удалось прочитать изображение.');};reader.readAsDataURL(file);});
     form.addEventListener('submit',e=>{
@@ -145,13 +155,14 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
       if(!commit(next=>{
         let current;
         if(editId){const from=shortcutList(next.shortcuts,originalParent),index=from.findIndex(s=>s.id===editId);if(index<0||JSON.stringify(from[index])!==original)throw Error('Ярлык изменился в другой вкладке. Откройте его заново.');current=from.splice(index,1)[0];}
-        const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(item?.icon&&normalizedUrl(item.url)===url&&(!draftIcon||draftMode==='favicon')?{icon:item.icon}:{})};
+        const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(draftMode==='custom'&&item?.icon&&normalizedUrl(item.url)===url&&!draftIcon?{icon:item.icon}:{})};
         const to=shortcutList(next.shortcuts,targetParent);
         const index=editId&&targetParent===originalParent?Math.min(desiredPosition,to.length):to.length;to.splice(index,0,result);
       },true,'form-error'))return;
       closeModal();renderShortcuts();notify(item?'Изменения сохранены':type==='folder'?'Папка добавлена':'Сайт добавлен');
     });
     $('delete-shortcut')?.addEventListener('click',()=>{if(item.type==='folder'&&item.children.length){openDeleteFolder(item);return;}deleteShortcut(editId,originalParent);});
+    preview();
   }
   function deleteShortcut(id,parent) {
     let previous,after;

@@ -13,6 +13,7 @@ source_set("argon_home") {
   deps = [
     "//base",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
     "//services/network/public/mojom",
   ]
 }

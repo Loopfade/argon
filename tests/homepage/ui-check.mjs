@@ -9,7 +9,7 @@ const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE)
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs'};
+const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -21,8 +21,33 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const base='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1100,height:850},acceptDownloads:true});
-await context.route('https://**/*',route=>route.request().isNavigationRequest()?route.fulfill({contentType:'text/html',body:'<p>Navigation test</p>'}):route.abort());
-const page=await context.newPage(),errors=[];
+const iconRequests=[],allImageRequests=[],imageFailures=[],browserErrors=[];
+context.on('request',r=>{if(r.resourceType()==='image')allImageRequests.push(r.url());});
+context.on('page',p=>{
+  p.on('requestfailed',r=>{if(r.resourceType()==='image')imageFailures.push({url:r.url(),error:r.failure()?.errorText});});
+  p.on('console',m=>{if(m.type()==='error')browserErrors.push(m.text());});
+});
+const iconPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64');
+async function mockPage(){
+  const p=await context.newPage(),cdp=await context.newCDPSession(p);
+  // Playwright 1.56 silently aborts every /favicon.ico URL before context.route,
+  // including <img> requests. Fetch provides real image responses for the exact
+  // production URLs without changing the application to suit that test quirk.
+  cdp.on('Fetch.requestPaused',async({requestId,request,resourceType})=>{
+    try {
+      const url=new URL(request.url);
+      const fulfill=(contentType,body)=>cdp.send('Fetch.fulfillRequest',{requestId,responseCode:200,responseHeaders:[{name:'content-type',value:contentType}],body:Buffer.from(body).toString('base64')});
+      if(resourceType==='Document'){await fulfill('text/html','<p>Navigation test</p>');return;}
+      iconRequests.push(url.href);
+      if(url.href==='https://fixture-icon.example/check.png'||url.href==='https://primary-icon.example/favicon.ico'||url.href==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico')await fulfill('image/png',iconPng);
+      else await cdp.send('Fetch.failRequest',{requestId,errorReason:'Failed'});
+    } catch(error) {if(!p.isClosed())browserErrors.push('Image mock: '+error.message);}
+  });
+  await cdp.send('Fetch.enable',{patterns:[{urlPattern:'https://*',requestStage:'Request'}]});
+  await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});
+  return p;
+}
+const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
 const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
@@ -50,6 +75,55 @@ async function add(name,url,type='site',deferFrame=false){
   await page.locator('#shortcut-form').waitFor({state:'hidden'});
 }
 try {
+  // Real image responses, service fallback, total failure, and switching back
+  // from an uploaded image. These used to be hidden by aborting every image.
+  const iconPage=await mockPage();
+  iconPage.on('pageerror',error=>errors.push(error.message));
+  await iconPage.goto(base);
+  await iconPage.evaluate(()=>new Promise((resolve,reject)=>{
+    const image=new Image();
+    const timer=setTimeout(()=>reject(Error('Image fixture timed out')),5000);
+    image.onload=()=>{clearTimeout(timer);resolve();};
+    image.onerror=()=>{clearTimeout(timer);reject(Error('Image fixture did not decode'));};
+    image.src='https://fixture-icon.example/check.png';
+  }));
+  await iconPage.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
+  await iconPage.locator('[data-add]').click();
+  await iconPage.locator('#shortcut-title').fill('Иконка');
+  await iconPage.locator('#shortcut-url').fill('primary-icon.example/private/path');
+  await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.naturalWidth===1);
+  assert.equal(await iconPage.evaluate(()=>document.activeElement.id),'shortcut-url','icon preview should update while the address is still focused');
+  assert.equal(await iconPage.locator('#icon-preview img').getAttribute('src'),'https://primary-icon.example/favicon.ico');
+  await iconPage.locator('#custom-choice').click();
+  await iconPage.locator('#icon-file').setInputFiles({name:'icon.png',mimeType:'image/png',buffer:iconPng});
+  await iconPage.locator('#icon-preview img[src^="data:"]').waitFor();
+  await iconPage.locator('#favicon-choice').click();
+  await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.naturalWidth===1);
+  await iconPage.locator('#shortcut-form button[type=submit]').click();
+  let iconState=await iconPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+  assert.equal(iconState.shortcuts[0].iconMode,'favicon');
+  assert.equal(iconState.shortcuts[0].customIcon,undefined);
+  await iconPage.locator('[data-edit]').click();
+  await iconPage.locator('#shortcut-url').fill('fallback-icon.example');
+  await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.src==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'&&document.querySelector('#icon-preview img')?.naturalWidth===1);
+  assert(iconRequests.indexOf('https://fallback-icon.example/favicon.ico')<iconRequests.indexOf('https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'));
+  await iconPage.locator('#shortcut-form button[type=submit]').click();
+  await iconPage.reload();
+  await iconPage.waitForFunction(()=>document.querySelector('.shortcut-icon img')?.naturalWidth===1);
+  assert.equal(await iconPage.locator('.shortcut-icon img').getAttribute('src'),'https://icons.duckduckgo.com/ip3/fallback-icon.example.ico');
+  await iconPage.getByRole('switch',{name:'Закрепить изменения ярлыков'}).uncheck();
+  await iconPage.locator('[data-edit]').click();
+  await iconPage.locator('#shortcut-url').fill('missing-icon.example');
+  await iconPage.waitForFunction(()=>document.querySelector('#icon-preview use')?.getAttribute('href')==='#i-globe');
+  assert(iconRequests.includes('https://icons.duckduckgo.com/ip3/missing-icon.example.ico'));
+  // Closing while a preview is debounced must not touch the next dialog.
+  await iconPage.locator('#shortcut-url').fill('primary-icon.example');
+  await iconPage.getByRole('button',{name:'Отмена',exact:true}).click();
+  await iconPage.locator('#settings-button').click();
+  await iconPage.waitForTimeout(300);
+  assert(await iconPage.locator('#density-select').isVisible());
+  await iconPage.evaluate(()=>localStorage.clear());
+  await iconPage.close();
   await page.goto(base);
   assert(await page.getByRole('switch',{name:'Закрепить изменения ярлыков'}).isChecked());
   assert.equal(await page.locator('[data-add]').count(),0);
@@ -113,8 +187,10 @@ try {
   const search=page.waitForRequest(r=>r.isNavigationRequest()&&r.url().startsWith('https://noai.duckduckgo.com/?q='));
   await page.locator('#search-form button[type=submit]').click();await search;
   assert.deepEqual(errors,[]);
-  console.log('PASS: production homepage under Trusted Types; lock, drag, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
+  console.log('PASS: production homepage under Trusted Types; icons, fallback, previews, lock, drag, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
 } catch(error) {
-  if(out)await page.screenshot({path:resolve(out,'failure.png'),fullPage:true}).catch(()=>{});
+  const active=context.pages().find(p=>p.url().startsWith(base))||page;
+  console.error(JSON.stringify({pageErrors:errors,iconRequests,allImageRequests,imageFailures,browserErrors:browserErrors.slice(-20),preview:await active.evaluate(async()=>({markup:document.querySelector('#icon-preview')?.outerHTML,address:document.querySelector('#shortcut-url')?.value,protocol:location.protocol,sources:(await import('./icons.js')).faviconSources('https://primary-icon.example/private/path',location.protocol)})).catch(()=>null)}));
+  if(out)await active.screenshot({path:resolve(out,'failure.png'),fullPage:true}).catch(()=>{});
   throw error;
 } finally {await browser.close();await new Promise(r=>server.close(r));}

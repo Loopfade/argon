@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ def input_tree(root):
     values = {
         homepage.NATIVE_FACTORY: (FIXTURES / 'native_page_factory_method.java.in').read_text(),
         homepage.NATIVE_HANDLER: (FIXTURES / 'new_tab_page_url_handler.cc.in').read_text(),
+        homepage.URL_RESOLVER_FACTORY: (FIXTURES / 'UrlConstantResolverFactory.java.in').read_text(),
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
     }
@@ -41,7 +43,7 @@ class HomepageTests(unittest.TestCase):
             homepage.apply(src)
             self.assertEqual(before, snapshot(src))
             generated = (src / homepage.UI / 'argon_home_resources.inc').read_text()
-            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs'):
+            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs'):
                 self.assertIn((homepage.OVERLAY / homepage.RESOURCES / filename).read_text(), generated)
             self.assertTrue((src / homepage.UI / 'BUILD.gn').is_file())
 
@@ -51,6 +53,17 @@ class HomepageTests(unittest.TestCase):
             input_tree(src)
             path = src / homepage.NATIVE_HANDLER
             path.write_text(path.read_text().replace('  return false;', '  return true;', 1))
+            before = snapshot(src)
+            with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+                homepage.apply(src)
+            self.assertEqual(before, snapshot(src))
+
+    def test_unknown_resolver_change_is_rejected_before_any_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            path = src / homepage.URL_RESOLVER_FACTORY
+            path.write_text(path.read_text().replace('isNtpOverrideEnabled() ||', 'true ||'))
             before = snapshot(src)
             with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
                 homepage.apply(src)
@@ -73,6 +86,10 @@ class HomepageTests(unittest.TestCase):
         self.assertIn("connect-src 'none';", controller)
         self.assertIn('SetRequestFilter(', controller)
         self.assertNotIn('AddMessageHandler', controller)
+        self.assertIn('std::make_unique<SanitizedImageSource>(profile)', controller)
+        self.assertIn("img-src 'self' data: chrome://image;", controller)
+        self.assertIn('//chrome/browser/ui/webui/sanitized_image:sanitized_image_source',
+                      (homepage.OVERLAY / homepage.UI / 'BUILD.gn').read_text())
 
     def test_build_copies_the_patcher_before_applying_it(self):
         docker = (ROOT / 'docker/chromium/Dockerfile').read_text()
@@ -101,6 +118,24 @@ class HomepageTests(unittest.TestCase):
             src.write_text(harness)
             subprocess.run(['javac', '--release', '17', str(src)], check=True, capture_output=True, text=True)
             subprocess.run(['java', '-cp', directory, 'NativeRoutingFlow'], check=True, capture_output=True, text=True)
+
+    @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK is required')
+    def test_real_resolver_sends_new_tabs_to_chrome_rewriter_even_without_native_override_flag(self):
+        def nested_class(text):
+            text = re.sub(r'^(package|import) .*\n', '', text, flags=re.MULTILINE)
+            text = re.sub(r'@(NullMarked|Nullable|VisibleForTesting)\b', '', text)
+            return text.replace('public class UrlConstantResolver', 'static class UrlConstantResolver')
+
+        resolver = (FIXTURES / 'UrlConstantResolver.java.in').read_text()
+        factory = homepage.patch_resolver_factory((FIXTURES / 'UrlConstantResolverFactory.java.in').read_text())
+        harness = (FIXTURES / 'UrlResolverFlow.java.in').read_text()
+        harness = harness.replace('ARGON_RESOLVER_CLASS', nested_class(resolver))
+        harness = harness.replace('ARGON_RESOLVER_FACTORY_CLASS', nested_class(factory))
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory) / 'UrlResolverFlow.java'
+            src.write_text(harness)
+            subprocess.run(['javac', '--release', '17', str(src)], check=True, capture_output=True, text=True)
+            subprocess.run(['java', '-cp', directory, 'UrlResolverFlow'], check=True, capture_output=True, text=True)
 
 
 if __name__ == '__main__':
