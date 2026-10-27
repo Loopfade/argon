@@ -69,11 +69,11 @@ import {imageSource, faviconSources} from './icons.js';
   function fallbackImages(root) { root.querySelectorAll('[data-icon-source]').forEach(marker=>{
     // Build off-DOM: inserting an <img> with no src can queue an error for
     // the empty source and race the real request before its first load.
-    const img=document.createElement('img');img.className='favicon';img.alt='';img.draggable=false;img.loading=marker.dataset.iconLoading;
+    const img=document.createElement('img');img.className='favicon';img.alt='';img.draggable=false;
     let fallback=marker.dataset.iconFallback;
     const fail=()=>{if(fallback){const next=fallback;fallback='';img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
     img.addEventListener('error',fail);
-    img.src=marker.dataset.iconSource;marker.replaceWith(img);
+    img.src=marker.dataset.iconSource;img.loading=marker.dataset.iconLoading;marker.replaceWith(img);
   }); }
   function folderMarkup(folder) {
     const children=folder.children||[];
