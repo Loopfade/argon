@@ -57,11 +57,11 @@ import {imageSource, faviconSources} from './icons.js';
     if(store.locked)notify('Изменения закреплены');
   });
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
-  function iconMarkup(item) {
-    if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return '<img data-icon-source="'+esc(imageSource(item.customIcon,location.protocol))+'" alt="" class="favicon" draggable="false">';
+  function iconMarkup(item,eager=false) {
+    if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return '<img data-icon-source="'+esc(imageSource(item.customIcon,location.protocol))+'" alt="" class="favicon" loading="'+(eager?'eager':'lazy')+'" draggable="false">';
     if(item.iconMode!=='favicon'&&item.icon)return svg(item.icon);
     const [source,fallback]=faviconSources(item.url,location.protocol);
-    return source?'<img data-icon-source="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" alt="" class="favicon" draggable="false">':svg('globe');
+    return source?'<img data-icon-source="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" alt="" class="favicon" loading="'+(eager?'eager':'lazy')+'" draggable="false">':svg('globe');
   }
   function fallbackImages(root) { root.querySelectorAll('img.favicon').forEach(img=>{
     const fail=()=>{const next=img.dataset.iconFallback;if(next){delete img.dataset.iconFallback;img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
@@ -139,7 +139,7 @@ import {imageSource, faviconSources} from './icons.js';
     const form=$('shortcut-form');
     $('modal-root').querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{type=b.dataset.type;$('modal-root').querySelectorAll('[data-type]').forEach(t=>t.classList.toggle('active',t===b));$('site-fields').hidden=type==='folder';$('shortcut-url').required=type==='site';}));
     let previewTimer;
-    function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'}):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'}));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
+    function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
     function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';preview(); }
     $('favicon-choice').addEventListener('click',()=>chooseIcon('favicon'));$('custom-choice').addEventListener('click',()=>chooseIcon('custom'));
     $('shortcut-url').addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(preview,250);});
