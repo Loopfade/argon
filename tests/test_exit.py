@@ -35,6 +35,11 @@ class ExitTests(unittest.TestCase):
              [ca.patch_titanium_android_cc_deps, exit_patch.patch_native_deps]),
             ('<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">\n</PreferenceScreen>',
              [ca.patch_titanium_privacy_preferences, exit_patch.patch_preferences]),
+            ('import org.chromium.build.annotations.NullMarked;\n'
+             'import org.chromium.chrome.browser.privacy.settings.PrivacySettings;\n'
+             '        if (PrivacySettings.SEARCH_INDEX_DATA_PROVIDER == baseProvider) {\n'
+             '            String fragmentName = baseProvider.getPrefFragmentName();',
+             [ca.patch_titanium_search_index_provider_hooks, exit_patch.patch_search_index]),
         ]
         for value, transforms in cases:
             with self.subTest(transforms=[x.__name__ for x in transforms]):
