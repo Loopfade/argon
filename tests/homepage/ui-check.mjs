@@ -28,14 +28,26 @@ context.on('page',p=>{
   p.on('console',m=>{if(m.type()==='error')browserErrors.push(m.text());});
 });
 const iconPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64');
-await context.route('https://**/*',route=>{
-  const request=route.request(),url=new URL(request.url());
-  if(request.isNavigationRequest())return route.fulfill({contentType:'text/html',body:'<p>Navigation test</p>'});
-  iconRequests.push(url.href);
-  if(url.href==='https://fixture-icon.example/check.png'||url.href==='https://primary-icon.example/favicon.ico'||url.href==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico')return route.fulfill({contentType:'image/png',body:iconPng});
-  return route.abort();
-});
-const page=await context.newPage(),errors=[];
+async function mockPage(){
+  const p=await context.newPage(),cdp=await context.newCDPSession(p);
+  // Playwright 1.56 silently aborts every /favicon.ico URL before context.route,
+  // including <img> requests. Fetch provides real image responses for the exact
+  // production URLs without changing the application to suit that test quirk.
+  cdp.on('Fetch.requestPaused',async({requestId,request,resourceType})=>{
+    try {
+      const url=new URL(request.url);
+      const fulfill=(contentType,body)=>cdp.send('Fetch.fulfillRequest',{requestId,responseCode:200,responseHeaders:[{name:'content-type',value:contentType}],body:Buffer.from(body).toString('base64')});
+      if(resourceType==='Document'){await fulfill('text/html','<p>Navigation test</p>');return;}
+      iconRequests.push(url.href);
+      if(url.href==='https://fixture-icon.example/check.png'||url.href==='https://primary-icon.example/favicon.ico'||url.href==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico')await fulfill('image/png',iconPng);
+      else await cdp.send('Fetch.failRequest',{requestId,errorReason:'Failed'});
+    } catch(error) {if(!p.isClosed())browserErrors.push('Image mock: '+error.message);}
+  });
+  await cdp.send('Fetch.enable',{patterns:[{urlPattern:'https://*',requestStage:'Request'}]});
+  await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});
+  return p;
+}
+const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
 const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
@@ -65,7 +77,7 @@ async function add(name,url,type='site',deferFrame=false){
 try {
   // Real image responses, service fallback, total failure, and switching back
   // from an uploaded image. These used to be hidden by aborting every image.
-  const iconPage=await context.newPage();
+  const iconPage=await mockPage();
   iconPage.on('pageerror',error=>errors.push(error.message));
   await iconPage.goto(base);
   await iconPage.evaluate(()=>new Promise((resolve,reject)=>{
