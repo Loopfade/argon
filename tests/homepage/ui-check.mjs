@@ -22,7 +22,7 @@ const base='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1100,height:850},acceptDownloads:true});
 const iconRequests=[];
-const iconPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
+const iconPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64');
 await context.route('https://**/*',route=>{
   const request=route.request(),url=new URL(request.url());
   if(request.isNavigationRequest())return route.fulfill({contentType:'text/html',body:'<p>Navigation test</p>'});
@@ -165,6 +165,8 @@ try {
   assert.deepEqual(errors,[]);
   console.log('PASS: production homepage under Trusted Types; icons, fallback, previews, lock, drag, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
 } catch(error) {
-  if(out)await page.screenshot({path:resolve(out,'failure.png'),fullPage:true}).catch(()=>{});
+  const active=context.pages().find(p=>p.url().startsWith(base))||page;
+  console.error(JSON.stringify({pageErrors:errors,iconRequests,preview:await active.evaluate(()=>document.querySelector('#icon-preview')?.outerHTML).catch(()=>null)}));
+  if(out)await active.screenshot({path:resolve(out,'failure.png'),fullPage:true}).catch(()=>{});
   throw error;
 } finally {await browser.close();await new Promise(r=>server.close(r));}
