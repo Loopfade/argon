@@ -1,6 +1,6 @@
 import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
   dumpStats, shortcutList, moveShortcut, navigationTarget} from './state.js';
-import {imageSource, faviconSources} from './icons.js';
+import {imageSource, faviconSources, engineIcon} from './icons.js';
 
 (() => {
   'use strict';
@@ -16,12 +16,12 @@ import {imageSource, faviconSources} from './icons.js';
   const storage = {getItem:key=>localStorage.getItem(key), setItem:(key,value)=>localStorage.setItem(key,value)};
   const store = new HomepageStore(storage, storageKey);
   let state = store.state;
-  let modalKind=null, currentFolder=null, returnFocus=null, toastTimer, drag=null, touchDrag=null, suppressClick=false;
-  const editing = () => !store.locked;
+  let modalKind=null, currentFolder=null, returnFocus=null, toastTimer, drag=null, touchDrag=null, suppressClick=false, moving=null;
+  const editing = () => store.editing;
   const media = matchMedia('(prefers-color-scheme: dark)');
   const builtins = [
     {id:'google',name:'Google',icon:'google',url:'https://www.google.com/search?q={query}'},
-    {id:'yandex',name:'Яндекс',icon:'yandex',url:'https://yandex.ru/search/?text={query}'},
+    {id:'bing',name:'Bing',url:'https://www.bing.com/search?q={query}'},
     {id:'duck',name:'DuckDuckGo',icon:'duck',url:'https://duckduckgo.com/?q={query}'},
     {id:'noai',name:'DuckDuckGo NoAI',short:'DDG NoAI',icon:'duck',url:'https://noai.duckduckgo.com/?q={query}'}
   ];
@@ -39,23 +39,26 @@ import {imageSource, faviconSources} from './icons.js';
   function applyTheme() {
     const theme=state.theme==='system'?(media.matches?'dark':'light'):state.theme;
     document.documentElement.dataset.theme=theme;
-    document.documentElement.dataset.density=state.density;
+    document.documentElement.dataset.density=state.density==='compact'?'compact':'comfortable';
     document.querySelector('meta[name="theme-color"]').content=theme==='dark'?'#141715':'#f7f7f4';
     document.querySelectorAll('[data-theme-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeChoice===state.theme)));
   }
   media.addEventListener('change',applyTheme);
   document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-choice]');if(b&&commit(s=>{s.theme=b.dataset.themeChoice;}))applyTheme();});
-  function updateLock() {
-    $('edit-lock').checked=store.locked;
-    $('edit-lock-label').textContent=store.locked?'Закреплено':'Редактирование';
-    $('edit-lock-note').textContent=store.locked?'':'Автосохранение';
-    setHtml($('edit-lock-icon'),svg(store.locked?'lock':'unlock'));
+  function updateEditing() {
     document.body.classList.toggle('editing',editing());
+    $('edit-done').hidden=!editing();
+    $('editing-hint').hidden=!editing()||!!moving;
+    $('move-toolbar').hidden=!moving;
+    $('move-title').textContent=moving?'Переместить «'+(findItem(moving.id,moving.parent)?.name||'ярлык')+'»':'';
   }
-  $('edit-lock').addEventListener('change',()=>{
-    store.setLocked($('edit-lock').checked); touchDrag=null; clearDrag(); updateLock(); renderShortcuts();
-    if(store.locked)notify('Изменения закреплены');
-  });
+  function setEditing(enabled) {
+    store.setEditing(enabled);moving=null;touchDrag=null;clearDrag();
+    if(!enabled)$('toast').hidden=true;
+    updateEditing();renderShortcuts();
+  }
+  $('edit-done').addEventListener('click',()=>setEditing(false));
+  $('move-cancel').addEventListener('click',cancelMove);
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
   function imageMarkup(source,fallback='',eager=false) {
     return '<img src="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" class="favicon" loading="'+(eager?'eager':'lazy')+'" alt="" draggable="false">';
@@ -76,23 +79,32 @@ import {imageSource, faviconSources} from './icons.js';
     return children.length?'<span class="folder-stack">'+Array.from({length:4},(_,i)=>children[i]?'<span>'+iconMarkup(children[i])+'</span>':'<span class="blank"></span>').join('')+'</span>':svg('folder');
   }
   function shortcutMarkup(item,parent=null) {
-    const folder=item.type==='folder',tag=folder?'button':'a';
-    const attrs=folder?'type="button"':'href="'+esc(item.url)+'" draggable="'+!editing()+'"'+(state.newTab?' target="_blank" rel="noopener noreferrer"':'');
-    return '<div class="shortcut-holder" data-holder="'+esc(item.id)+'" data-parent="'+esc(parent||'')+'"><'+tag+' '+attrs+' class="shortcut" data-item="'+esc(item.id)+'" aria-label="'+esc((folder?'Папка ':'')+item.name)+'"><span class="shortcut-icon">'+(folder?folderMarkup(item):iconMarkup(item))+'</span><span class="shortcut-label">'+esc(item.name)+'</span></'+tag+'>'+(editing()?'<button type="button" class="shortcut-grip" data-grip draggable="true" aria-label="Переместить '+esc(item.name)+'">'+svg('grip')+'</button><button type="button" class="shortcut-edit" data-edit aria-label="Изменить '+esc(item.name)+'">'+svg('pencil')+'</button>':'')+'</div>';
+    const folder=item.type==='folder',tag=folder||editing()?'button':'a',selected=moving?.id===item.id;
+    const attrs=tag==='button'?'type="button" draggable="'+selected+'"':'href="'+esc(item.url)+'" draggable="false"'+(state.newTab?' target="_blank" rel="noopener noreferrer"':'');
+    const label=moving?'Переместить: '+item.name:editing()?'Действия с ярлыком '+item.name:(folder?'Папка ':'')+item.name;
+    return '<div class="shortcut-holder'+(selected?' moving':'')+'" data-holder="'+esc(item.id)+'" data-parent="'+esc(parent||'')+'"><'+tag+' '+attrs+' class="shortcut" data-item="'+esc(item.id)+'" aria-label="'+esc(label)+'"><span class="shortcut-icon">'+(folder?folderMarkup(item):iconMarkup(item))+'</span><span class="shortcut-label">'+esc(item.name)+'</span></'+tag+'></div>';
   }
-  function addMarkup(parent=null) { return editing()?'<button type="button" class="shortcut shortcut-add" data-add data-parent="'+esc(parent||'')+'" aria-label="Добавить сайт'+(parent?' в папку':' или папку')+'"><span class="shortcut-icon">'+svg('plus')+'</span><span class="shortcut-label">Добавить</span></button>':''; }
+  function addMarkup(parent=null) { return editing()&&!moving?'<button type="button" class="shortcut shortcut-add" data-add data-parent="'+esc(parent||'')+'" aria-label="Добавить сайт'+(parent?' в папку':' или папку')+'"><span class="shortcut-icon">'+svg('plus')+'</span><span class="shortcut-label">Добавить</span></button>':''; }
   function renderShortcuts() {
+    const positions=new Map([...document.querySelectorAll('[data-holder]')].map(el=>[el.dataset.holder,el.getBoundingClientRect()]));
     const content=state.shortcuts.map(s=>shortcutMarkup(s)).join('')+addMarkup();
-    setHtml($('shortcut-grid'),content||'<div class="empty-favorites"><span class="empty-favorites-icon">'+svg('folder')+'</span><span>Нет ярлыков</span><small>Откройте замок, чтобы добавить свои</small></div>');
+    setHtml($('shortcut-grid'),content||'<div class="empty-favorites"><span class="empty-favorites-icon">'+svg('folder')+'</span><span>Нет ярлыков</span><small>Добавьте сайты через «Настроить → Редактировать ярлыки».</small></div>');
     document.body.classList.toggle('hidden-labels',!state.showLabels); fallbackImages($('shortcut-grid'));
     if(modalKind==='folder')renderFolderContents();
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.querySelectorAll('[data-holder]').forEach(el=>{const from=positions.get(el.dataset.holder),to=el.getBoundingClientRect();if(from?.width&&typeof el.animate==='function'&&(from.x!==to.x||from.y!==to.y))el.animate([{transform:'translate('+(from.x-to.x)+'px,'+(from.y-to.y)+'px)'},{transform:'translate(0,0)'}],{duration:230,easing:'ease-out'});});
   }
   function findItem(id,parent=null) { return shortcutList(state.shortcuts,parent).find(item=>item.id===id); }
-  function refresh() { applyTheme();renderEngine();updateLock();renderShortcuts(); }
+  function refresh() { applyTheme();renderEngine();updateEditing();renderShortcuts(); }
+  function engineMarkup(engine) {
+    const url=engine.url.replaceAll('{query}','example');
+    const source=engineIcon(url,location.protocol),fallback=faviconSources(url,location.protocol)[1]||'';
+    return source?imageMarkup(source,fallback,true):svg('globe');
+  }
   function renderEngine() {
-    const engine=selectedEngine();setHtml($('selected-engine-icon'),svg(engine.icon||'globe'));$('selected-engine-name').textContent=engine.short||engine.name;
+    const engine=selectedEngine();setHtml($('selected-engine-icon'),engineMarkup(engine));$('selected-engine-name').textContent=engine.short||engine.name;
     $('engine-trigger').title='Поисковая система: '+engine.name;
-    setHtml($('engine-menu'),'<div class="popover-title">Поисковая система</div>'+engines().map(e=>'<button type="button" class="engine-option'+(e.id===engine.id?' active':'')+'" data-engine="'+esc(e.id)+'" aria-pressed="'+(e.id===engine.id)+'"><span class="engine-icon">'+svg(e.icon||'globe')+'</span><span>'+esc(e.id==='noai'?'DuckDuckGo':e.name)+'</span>'+(e.id==='noai'?'<span class="noai-badge">БЕЗ ИИ</span>':'')+(e.id===engine.id?svg('check','check'):'')+'</button>').join('')+'<div class="popover-divider"></div><button type="button" class="engine-option engine-add" id="add-engine">'+svg('plus')+'Добавить свою</button>');
+    setHtml($('engine-menu'),'<div class="popover-title">Поисковая система</div>'+engines().map(e=>'<button type="button" class="engine-option'+(e.id===engine.id?' active':'')+'" data-engine="'+esc(e.id)+'" aria-pressed="'+(e.id===engine.id)+'"><span class="engine-icon">'+engineMarkup(e)+'</span><span>'+esc(e.id==='noai'?'DuckDuckGo':e.name)+'</span>'+(e.id==='noai'?'<span class="noai-badge">БЕЗ ИИ</span>':'')+(e.id===engine.id?svg('check','check'):'')+'</button>').join('')+'<div class="popover-divider"></div><button type="button" class="engine-option engine-add" id="add-engine">'+svg('plus')+'Добавить свою</button>');
+    fallbackImages($('selected-engine-icon'));fallbackImages($('engine-menu'));
   }
   function closeEngine() { $('engine-menu').hidden=true;$('engine-trigger').setAttribute('aria-expanded','false'); }
   $('engine-trigger').addEventListener('click',()=>{const open=$('engine-menu').hidden;$('engine-menu').hidden=!open;$('engine-trigger').setAttribute('aria-expanded',String(open));if(open)$('engine-menu').querySelector('button')?.focus();});
@@ -111,9 +123,12 @@ import {imageSource, faviconSources} from './icons.js';
     const field=$('modal-root').querySelector('[autofocus]')||$('modal-root').querySelector('button,input,select');field?.focus();
   }
   function closeModal() {
+    const cancelFolderMove=modalKind==='folder'&&moving?.parent===currentFolder;
+    if(cancelFolderMove){moving=null;touchDrag=null;clearDrag();}
     const focus=returnFocus;modalKind=null;currentFolder=null;returnFocus=null;setHtml($('modal-root'),'');
     document.querySelectorAll('body>.header,body>.workspace,body>.footer').forEach(el=>{el.inert=false;});
-    if(focus?.isConnected)focus.focus();else $('edit-lock').focus();
+    if(cancelFolderMove){updateEditing();renderShortcuts();}
+    if(focus?.isConnected)focus.focus();else (editing()?$('edit-done'):$('settings-button')).focus();
   }
   const closeButton = () => '<button class="icon-button" type="button" data-close aria-label="Закрыть">'+svg('close')+'</button>';
   const heading = title => '<div class="dialog-header"><h2 id="dialog-title">'+esc(title)+'</h2>'+closeButton()+'</div>';
@@ -125,11 +140,21 @@ import {imageSource, faviconSources} from './icons.js';
     const holder=e.target.closest('[data-holder]');if(!holder)return;
     const id=holder.dataset.holder,parent=holder.dataset.parent||null;
     let item;try{item=findItem(id,parent);}catch{return;}if(!item)return;
-    if(e.target.closest('[data-edit],[data-grip]')){e.preventDefault();if(editing())openShortcutDialog(item,parent);return;}
     if(!e.target.closest('[data-item]'))return;
-    if(item.type==='folder'){e.preventDefault();openFolder(item.id);}else if(editing()){e.preventDefault();openShortcutDialog(item,parent);}
+    if(editing()){e.preventDefault();if(moving){if(moving.id===id)cancelMove();else reorder(moving,{id,parent});}else openShortcutActions(item,parent);}
+    else if(item.type==='folder'){e.preventDefault();openFolder(item.id);}
   });
-  document.addEventListener('contextmenu',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!editing())return;e.preventDefault();try{const item=findItem(holder.dataset.holder,holder.dataset.parent||null);if(item)openShortcutDialog(item,holder.dataset.parent||null);}catch{notify('Избранное изменилось в другой вкладке.');}});
+  document.addEventListener('contextmenu',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!editing()||moving)return;e.preventDefault();try{const item=findItem(holder.dataset.holder,holder.dataset.parent||null);if(item)openShortcutActions(item,holder.dataset.parent||null);}catch{notify('Избранное изменилось в другой вкладке.');}});
+
+  function openShortcutActions(item,parent=null) {
+    if(!editing())return;
+    openModal(heading(item.name)+'<div class="shortcut-actions">'+(item.type==='folder'?'<button type="button" class="engine-option" id="open-folder">'+svg('folder')+'Открыть папку</button>':'')+'<button type="button" class="engine-option" id="shortcut-move">'+svg('arrow')+'Переместить</button><button type="button" class="engine-option" id="shortcut-edit">'+svg('pencil')+'Изменить</button><button type="button" class="engine-option danger" id="shortcut-delete">'+svg('close')+'Удалить</button></div>','shortcut-actions');
+    $('open-folder')?.addEventListener('click',()=>openFolder(item.id));
+    $('shortcut-edit').addEventListener('click',()=>openShortcutDialog(item,parent));
+    $('shortcut-delete').addEventListener('click',()=>{if(item.type==='folder'&&item.children.length)openDeleteFolder(item);else deleteShortcut(item.id,parent);});
+    $('shortcut-move').addEventListener('click',()=>{closeModal();moving={id:item.id,parent};if(parent)openFolder(parent);updateEditing();renderShortcuts();document.querySelector('[data-holder="'+CSS.escape(item.id)+'"] [data-item]')?.focus();});
+  }
+  function cancelMove() {moving=null;touchDrag=null;clearDrag();updateEditing();renderShortcuts();}
 
   function openShortcutDialog(item,parent=null) {
     if(!editing())return;
@@ -174,28 +199,32 @@ import {imageSource, faviconSources} from './icons.js';
     const folder=state.shortcuts.find(s=>s.id===currentFolder&&s.type==='folder');if(!folder){closeModal();return;}
     $('dialog-title').textContent=folder.name;const target=$('folder-grid');
     if(target){setHtml(target,folder.children.map(s=>shortcutMarkup(s,folder.id)).join('')+addMarkup(folder.id)+(folder.children.length||editing()?'':'<p class="folder-empty">В папке пока нет сайтов</p>'));fallbackImages(target);}
+    const tools=$('folder-move-toolbar');
+    if(tools){tools.hidden=!moving;setHtml(tools,moving?'<p class="editing-hint">Нажмите новое место или перетащите ярлык.</p><div class="dialog-actions"><button type="button" class="btn btn-secondary" id="move-to-root">В избранное</button><button type="button" class="btn btn-secondary" id="cancel-folder-move">Отмена переноса</button></div>':'');
+      $('cancel-folder-move')?.addEventListener('click',cancelMove);
+      $('move-to-root')?.addEventListener('click',()=>{const source=moving;if(!source||!commit(next=>moveShortcut(next.shortcuts,source.id,source.parent,null,next.shortcuts.length),true))return;moving=null;closeModal();updateEditing();renderShortcuts();notify('Ярлык перемещён');});}
   }
-  function openFolder(id) {const folder=state.shortcuts.find(s=>s.id===id);if(!folder)return;openModal(heading(folder.name)+'<div class="shortcut-grid" id="folder-grid"></div><div class="dialog-actions">'+(editing()?'<button class="btn btn-secondary" id="edit-folder">Изменить папку</button>':'')+'<button class="btn btn-primary" data-close>Готово</button></div>','folder','folder-dialog');currentFolder=id;renderFolderContents();$('edit-folder')?.addEventListener('click',()=>openShortcutDialog(folder));}
+  function openFolder(id) {const folder=state.shortcuts.find(s=>s.id===id);if(!folder)return;openModal(heading(folder.name)+'<div id="folder-move-toolbar" hidden></div><div class="shortcut-grid" id="folder-grid"></div><div class="dialog-actions">'+(editing()&&!moving?'<button class="btn btn-secondary" id="edit-folder">Изменить папку</button>':'')+'<button class="btn btn-primary" data-close>Готово</button></div>','folder','folder-dialog');currentFolder=id;renderFolderContents();$('edit-folder')?.addEventListener('click',()=>openShortcutDialog(folder));}
 
   function clearDrag() {document.querySelectorAll('.drag-source,.drop-target').forEach(el=>el.classList.remove('drag-source','drop-target'));drag=null;}
   function reorder(source,target) {
-    if(!editing()||!source||!target||source.id===target.id)return;
+    if(!editing()||!moving||!source||source.id!==moving.id||!target||source.id===target.id)return;
     if(!commit(next=>{
       const from=shortcutList(next.shortcuts,source.parent),item=from.find(s=>s.id===source.id),to=shortcutList(next.shortcuts,target.parent),onto=to.find(s=>s.id===target.id);
       if(!item||!onto)throw Error('Избранное изменилось. Повторите перенос.');
       if(onto.type==='folder'&&item.type!=='folder')moveShortcut(next.shortcuts,item.id,source.parent,onto.id,onto.children.length);
       else {if(source.parent!==target.parent)throw Error('Выберите папку в настройках ярлыка.');moveShortcut(next.shortcuts,item.id,source.parent,target.parent,to.indexOf(onto));}
     },true))return;
-    renderShortcuts();
+    moving=null;touchDrag=null;clearDrag();updateEditing();renderShortcuts();notify('Ярлык перемещён');
   }
   const holderInfo=holder=>({id:holder.dataset.holder,parent:holder.dataset.parent||null});
-  document.addEventListener('dragstart',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!editing()||!e.target.closest('[data-grip]')){if(holder&&editing())e.preventDefault();return;}drag=holderInfo(holder);holder.classList.add('drag-source');e.dataTransfer?.setData('text/plain',drag.id);if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
+  document.addEventListener('dragstart',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!editing()||moving?.id!==holder.dataset.holder){if(holder)e.preventDefault();return;}drag=holderInfo(holder);holder.classList.add('drag-source');e.dataTransfer?.setData('text/plain',drag.id);if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
   document.addEventListener('dragover',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!drag)return;e.preventDefault();document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));if(holder.dataset.holder!==drag.id)holder.classList.add('drop-target');});
   document.addEventListener('drop',e=>{const holder=e.target.closest('[data-holder]');if(!holder||!drag)return;e.preventDefault();const source=drag,target=holderInfo(holder);clearDrag();reorder(source,target);});
   document.addEventListener('dragend',clearDrag);
-  document.addEventListener('pointerdown',e=>{const grip=e.target.closest('[data-grip]');if(!grip||!editing()||e.pointerType==='mouse')return;e.preventDefault();touchDrag={...holderInfo(grip.closest('[data-holder]')),x:e.clientX,y:e.clientY,active:false,target:null};grip.setPointerCapture(e.pointerId);});
+  document.addEventListener('pointerdown',e=>{const tile=e.target.closest('[data-holder]');if(!tile||!editing()||moving?.id!==tile.dataset.holder||e.pointerType==='mouse')return;touchDrag={...holderInfo(tile),x:e.clientX,y:e.clientY,active:false,target:null};tile.setPointerCapture?.(e.pointerId);});
   document.addEventListener('pointermove',e=>{if(!touchDrag)return;const p=touchDrag;if(!p.active&&Math.hypot(e.clientX-p.x,e.clientY-p.y)<7)return;p.active=true;const holder=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-holder]');p.target=holder?holderInfo(holder):null;document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));if(holder&&holder.dataset.holder!==p.id)holder.classList.add('drop-target');});
-  document.addEventListener('pointerup',()=>{if(!touchDrag)return;const p=touchDrag;touchDrag=null;clearDrag();suppressClick=true;setTimeout(()=>{suppressClick=false;},0);if(p.active){if(p.target)reorder(p,p.target);}else{try{const item=findItem(p.id,p.parent);if(item)openShortcutDialog(item,p.parent);}catch{}}});
+  document.addEventListener('pointerup',()=>{if(!touchDrag)return;const p=touchDrag;touchDrag=null;clearDrag();if(p.active){suppressClick=true;setTimeout(()=>{suppressClick=false;},0);if(p.target)reorder(p,p.target);}});
   document.addEventListener('pointercancel',()=>{if(touchDrag){touchDrag=null;clearDrag();}});
 
   function openEngineDialog() {
@@ -217,17 +246,21 @@ import {imageSource, faviconSources} from './icons.js';
     $('confirm-restore').addEventListener('click',()=>{try{state=store.replace(dump.state);}catch{backupError('Не удалось сохранить дамп. Прежние данные остаются на месте.');return;}closeModal();refresh();notify('Дамп восстановлен');});
   }
   function openSettings() {
-    openModal(heading('Настроить страницу')+'<span class="setting-label">Оформление</span><div class="theme-options">'+[['light','sun','Светлая'],['dark','moon','Тёмная'],['system','monitor','Системная']].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+'</div><label class="setting-row"><span>Размер ярлыков</span><select id="density-select" aria-label="Размер ярлыков"><option value="compact">Компактный</option><option value="comfortable">Обычный</option><option value="large">Крупный</option></select></label><div class="setting-row"><span>Названия ярлыков</span><button id="labels-toggle" class="toggle" role="switch" aria-label="Показывать названия ярлыков" aria-checked="'+state.showLabels+'"></button></div><div class="setting-row"><span>Открывать в новой вкладке</span><button id="newtab-toggle" class="toggle" role="switch" aria-label="Открывать сайты в новой вкладке" aria-checked="'+state.newTab+'"></button></div><div class="backup-section"><span class="setting-label">Резервная копия</span><p class="backup-description">Ярлыки, папки, свои иконки, поисковики и оформление — в одном файле JSON.</p><div class="backup-actions"><button class="btn btn-secondary" id="backup-export" type="button">'+svg('download')+'Снять дамп</button><button class="btn btn-secondary" id="backup-import" type="button">'+svg('upload')+'Восстановить</button></div><input type="file" id="backup-file" accept=".json,application/json" hidden><p id="backup-error" class="error" role="alert" hidden></p></div><div class="dialog-actions"><button class="btn btn-primary" data-close type="button">Готово</button></div>','settings');
-    $('density-select').value=state.density;
-    $('density-select').addEventListener('change',e=>{if(commit(s=>{s.density=e.target.value;})){applyTheme();renderShortcuts();}else e.target.value=state.density;});
+    if(moving)cancelMove();
+    openModal(heading('Настроить страницу')+'<button type="button" id="edit-shortcuts" class="setting-row edit-shortcuts"><span><strong>'+ (editing()?'Завершить редактирование':'Редактировать ярлыки')+'</strong><small>Добавление, изменение, перемещение и удаление ярлыков.</small></span>'+svg('pencil')+'</button><span class="setting-label">Оформление</span><div class="theme-options">'+[['light','sun','Светлая'],['dark','moon','Тёмная'],['system','monitor','Системная']].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+'</div><label class="setting-row"><span>Размер значков</span><select id="density-select" aria-label="Размер значков" aria-describedby="density-help"><option value="comfortable">Крупные</option><option value="compact">Мелкие</option></select></label><div id="size-preview" class="shortcut-grid size-preview" aria-label="Образец размеров значков"></div><p id="density-help" class="field-help">Мелкие значки расположены плотнее: в строке помещается больше ярлыков.</p><div class="setting-row"><span>Названия ярлыков</span><button id="labels-toggle" class="toggle" role="switch" aria-label="Показывать названия ярлыков" aria-checked="'+state.showLabels+'"></button></div><div class="setting-row"><span>Открывать в новой вкладке</span><button id="newtab-toggle" class="toggle" role="switch" aria-label="Открывать сайты в новой вкладке" aria-checked="'+state.newTab+'"></button></div><div class="backup-section"><span class="setting-label">Резервная копия</span><p class="backup-description">Ярлыки, папки, свои иконки, поисковики и оформление — в одном файле JSON.</p><div class="backup-actions"><button class="btn btn-secondary" id="backup-export" type="button">'+svg('download')+'Снять дамп</button><button class="btn btn-secondary" id="backup-import" type="button">'+svg('upload')+'Восстановить</button></div><input type="file" id="backup-file" accept=".json,application/json" hidden><p id="backup-error" class="error" role="alert" hidden></p></div><div class="dialog-actions"><button class="btn btn-primary" data-close type="button">Готово</button></div>','settings');
+    $('edit-shortcuts').addEventListener('click',()=>{const enabled=!editing();closeModal();setEditing(enabled);if(enabled)$('edit-done').focus();});
+    $('density-select').value=state.density==='compact'?'compact':'comfortable';
+    setHtml($('size-preview'),[{name:'Argon'},...builtins.filter(e=>['noai','google','bing'].includes(e.id))].map(e=>'<span class="shortcut"><span class="shortcut-icon">'+(e.url?engineMarkup(e):svg('brand'))+'</span><span class="shortcut-label">'+esc(e.name==='DuckDuckGo NoAI'?'DuckDuckGo':e.name)+'</span></span>').join(''));
+    fallbackImages($('size-preview'));
+    $('density-select').addEventListener('change',e=>{if(commit(s=>{s.density=e.target.value;})){applyTheme();renderShortcuts();}else e.target.value=state.density==='compact'?'compact':'comfortable';});
     $('labels-toggle').addEventListener('click',()=>{if(commit(s=>{s.showLabels=!s.showLabels;})){$('labels-toggle').setAttribute('aria-checked',String(state.showLabels));renderShortcuts();}});
     $('newtab-toggle').addEventListener('click',()=>{if(commit(s=>{s.newTab=!s.newTab;})){$('newtab-toggle').setAttribute('aria-checked',String(state.newTab));renderShortcuts();}});
     $('backup-export').addEventListener('click',exportBackup);$('backup-import').addEventListener('click',()=>$('backup-file').click());$('backup-file').addEventListener('change',readBackup);
   }
   $('settings-button').addEventListener('click',openSettings);
-  window.addEventListener('storage',event=>{if(event.key!==storageKey&&event.key!==null)return;try{state=store.state=store.latest();refresh();}catch{notify('Не удалось прочитать настройки из другой вкладки.');}});
+  window.addEventListener('storage',event=>{if(event.key!==storageKey&&event.key!==null)return;try{state=store.state=store.latest();if(modalKind)closeModal();setEditing(false);refresh();}catch{notify('Не удалось прочитать настройки из другой вкладки.');}});
   document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'){if(modalKind){closeModal();return;}if(!$('engine-menu').hidden){closeEngine();$('engine-trigger').focus();return;}if(editing()){store.setLocked(true);updateLock();renderShortcuts();return;}$('search-input').blur();}
+    if(e.key==='Escape'){if(moving){cancelMove();return;}if(modalKind){closeModal();return;}if(!$('engine-menu').hidden){closeEngine();$('engine-trigger').focus();return;}if(editing()){setEditing(false);return;}$('search-input').blur();}
     const typing=e.target.matches('input,textarea,select,[contenteditable=true]');
     if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!modalKind){e.preventDefault();closeEngine();$('search-input').focus();}
     if(e.key==='Tab'&&modalKind){const controls=[...$('modal-root').querySelectorAll('a[href],button:not([disabled]),input:not([type=hidden]),select')].filter(el=>el.offsetParent!==null);const first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}

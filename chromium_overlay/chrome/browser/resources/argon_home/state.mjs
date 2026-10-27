@@ -1,6 +1,6 @@
 export const MAX_DUMP_BYTES = 10 * 1024 * 1024;
 const SCHEMA_VERSION = 2;
-const BUILTIN_ENGINES = new Set(['google', 'yandex', 'duck', 'noai']);
+const BUILTIN_ENGINES = new Set(['google', 'bing', 'duck', 'noai']);
 const ICONS = new Set(['google', 'yandex', 'duck', 'youtube', 'github', 'mail', 'music', 'figma', 'notion', 'book', 'wiki', 'globe']);
 
 export function initialState() {
@@ -56,7 +56,10 @@ export function validateState(raw) {
     }
     return result;
   });
-  if (!engineIds.has(raw.engine)) throw new Error('Выбранный поисковик отсутствует в дампе.');
+  // Yandex is no longer a built-in. Old profiles/dumps remain readable; a
+  // manually added engine with that ID still retains the user's choice.
+  const engine = raw.engine === 'yandex' && !engineIds.has('yandex') ? 'google' : raw.engine;
+  if (!engineIds.has(engine)) throw new Error('Выбранный поисковик отсутствует в дампе.');
   const ids = new Set();
   function shortcut(item, inFolder = false) {
     if (!object(item)) throw new Error('Некорректный ярлык в дампе.');
@@ -82,7 +85,7 @@ export function validateState(raw) {
     if (item.customIcon !== undefined) result.customIcon = customIcon(item.customIcon);
     return result;
   }
-  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine: raw.engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, shortcuts: raw.shortcuts.map(item => shortcut(item))};
+  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, shortcuts: raw.shortcuts.map(item => shortcut(item))};
 }
 
 // These IDs belong to the first mockup. Only unchanged examples are removed.
@@ -152,12 +155,12 @@ export function dumpStats(state) {
   return {sites, folders, engines: state.customEngines.length};
 }
 
-/** Saves each accepted edit atomically; the lock prevents unintended layout edits. */
+/** Saves accepted edits atomically. Editing is local to this page session. */
 export class HomepageStore {
   constructor(storage, key) {
     this.storage = storage;
     this.key = key;
-    this.locked = true;
+    this.editing = false;
     this.state = initialState();
     this.loadError = null;
     try { this.state = this.latest(); } catch (error) { this.loadError = error; }
@@ -168,10 +171,10 @@ export class HomepageStore {
     return saved === null ? initialState() : loadStoredState(JSON.parse(saved)).state;
   }
 
-  setLocked(locked) { this.locked = Boolean(locked); }
+  setEditing(editing) { this.editing = Boolean(editing); }
 
   update(change, {shortcuts = false} = {}) {
-    if (shortcuts && this.locked) throw new Error('Откройте замок, чтобы изменить избранное.');
+    if (shortcuts && !this.editing) throw new Error('Включите редактирование ярлыков в настройках.');
     // Read the latest whole state before writing, preserving another tab's edits.
     const next = structuredClone(this.latest());
     change(next);
@@ -185,7 +188,7 @@ export class HomepageStore {
     const saved = restoreState(this.storage, this.key, next);
     this.state = saved;
     this.loadError = null;
-    this.locked = true;
+    this.editing = false;
     return saved;
   }
 }

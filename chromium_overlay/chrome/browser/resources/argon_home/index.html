@@ -23,9 +23,6 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L20 8a2.1 2.1 0 0 0-5-4L4 15Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></g></symbol>
-    <symbol id="i-unlock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 7.8-1.2M12 15v2"/></g></symbol>
-    <symbol id="i-grip" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8" cy="5" r="1.3"/><circle cx="16" cy="5" r="1.3"/><circle cx="8" cy="12" r="1.3"/><circle cx="16" cy="12" r="1.3"/><circle cx="8" cy="19" r="1.3"/><circle cx="16" cy="19" r="1.3"/></g></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h7m5 0h4M4 17h3m5 0h8"/><circle cx="13.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></g></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10H3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.7" ry="8.5"/><path d="M4 9h16M4 15h16"/></g></symbol>
@@ -63,7 +60,9 @@
       <div id="engine-menu" class="popover" hidden></div>
     </div>
     <section class="favorites" aria-labelledby="favorites-heading">
-      <div class="section-row"><h1 id="favorites-heading" class="section-label">Избранное</h1><label class="edit-lock"><span class="edit-lock-copy"><span id="edit-lock-label">Закреплено</span><small id="edit-lock-note"></small></span><input id="edit-lock" type="checkbox" role="switch" aria-label="Закрепить изменения ярлыков" checked><span class="edit-lock-rail" aria-hidden="true"><span class="edit-lock-thumb" id="edit-lock-icon"><svg><use href="#i-lock"/></svg></span></span></label></div>
+      <div class="section-row"><h1 id="favorites-heading" class="section-label">Избранное</h1><button id="edit-done" class="btn btn-secondary" type="button" hidden>Готово</button></div>
+      <p id="editing-hint" class="editing-hint" hidden>Нажмите на ярлык, чтобы изменить, переместить или удалить его.</p>
+      <div id="move-toolbar" class="move-toolbar" hidden><div><strong id="move-title"></strong><p id="move-hint">Нажмите новое место или перетащите ярлык. На папку — перенести внутрь.</p></div><button id="move-cancel" class="btn btn-secondary" type="button">Отмена</button></div>
       <div id="shortcut-grid" class="shortcut-grid"></div>
     </section>
   </main>
