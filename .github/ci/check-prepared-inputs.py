@@ -26,9 +26,14 @@ def inputs(root):
         if not source.exists():
             raise ValueError(f"Missing prepared input: {source}")
         for path in source.rglob("*") if source.is_dir() else [source]:
+            relative = path.relative_to(root)
+            # Match Docker's context exclusions: local Python validation must
+            # not change the identity of the sources baked into the image.
+            if "__pycache__" in relative.parts or relative.suffix == ".pyc":
+                continue
             if not path.is_file():
                 continue
-            name = path.relative_to(root).as_posix()
+            name = relative.as_posix()
             # Generated extension payloads are pinned in build-lock.json.
             if name.startswith("extensions/dist/"):
                 continue
