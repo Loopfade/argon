@@ -19,6 +19,7 @@ def input_tree(root):
         homepage.NATIVE_FACTORY: (FIXTURES / 'native_page_factory_method.java.in').read_text(),
         homepage.NATIVE_HANDLER: (FIXTURES / 'new_tab_page_url_handler.cc.in').read_text(),
         homepage.URL_RESOLVER_FACTORY: (FIXTURES / 'UrlConstantResolverFactory.java.in').read_text(),
+        homepage.TABBED_ACTIVITY: (FIXTURES / 'startup_draw_block.java.in').read_text(),
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
     }
@@ -64,6 +65,17 @@ class HomepageTests(unittest.TestCase):
             input_tree(src)
             path = src / homepage.URL_RESOLVER_FACTORY
             path.write_text(path.read_text().replace('isNtpOverrideEnabled() ||', 'true ||'))
+            before = snapshot(src)
+            with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+                homepage.apply(src)
+            self.assertEqual(before, snapshot(src))
+
+    def test_unknown_startup_draw_change_is_rejected_before_any_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            path = src / homepage.TABBED_ACTIVITY
+            path.write_text(path.read_text().replace('!isTabWebUiNtp', 'isTabWebUiNtp', 1))
             before = snapshot(src)
             with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
                 homepage.apply(src)
@@ -118,6 +130,30 @@ class HomepageTests(unittest.TestCase):
             src.write_text(harness)
             subprocess.run(['javac', '--release', '17', str(src)], check=True, capture_output=True, text=True)
             subprocess.run(['java', '-cp', directory, 'NativeRoutingFlow'], check=True, capture_output=True, text=True)
+
+    @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK is required')
+    def test_restored_webui_ntp_unblocks_first_draw_without_another_content_change(self):
+        original = (FIXTURES / 'startup_draw_block.java.in').read_text()
+        factory = homepage.method_source(homepage.patch_factory(
+            (FIXTURES / 'native_page_factory_method.java.in').read_text()), homepage.FACTORY_SIGNATURE)
+        template = (FIXTURES / 'StartupDrawFlow.java.in').read_text()
+        for patched in (False, True):
+            with self.subTest(patched=patched), tempfile.TemporaryDirectory() as directory:
+                text = homepage.patch_startup_draw(original) if patched else original
+                block = homepage.method_source(text, homepage.STARTUP_SIGNATURE)
+                harness = template.replace('ARGON_STARTUP_BLOCK', block)
+                harness = harness.replace('ARGON_FACTORY_METHOD', factory)
+                src = Path(directory) / 'StartupDrawFlow.java'
+                src.write_text(harness)
+                subprocess.run(['javac', '--release', '17', str(src)], check=True,
+                               capture_output=True, text=True)
+                result = subprocess.run(['java', '-cp', directory, 'StartupDrawFlow'],
+                                        capture_output=True, text=True)
+                if patched:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('restored regular NTP still blocks first draw', result.stderr)
 
     @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK is required')
     def test_real_resolver_sends_new_tabs_to_chrome_rewriter_even_without_native_override_flag(self):

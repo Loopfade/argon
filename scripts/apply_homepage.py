@@ -17,14 +17,30 @@ GN = Path('chrome/browser/ui/webui/BUILD.gn')
 NATIVE_FACTORY = Path('chrome/android/java/src/org/chromium/chrome/browser/native_page/NativePageFactory.java')
 NATIVE_HANDLER = Path('chrome/browser/android/ntp/new_tab_page_url_handler.cc')
 URL_RESOLVER_FACTORY = Path('chrome/browser/url_constants/android/java/src/org/chromium/chrome/browser/url_constants/UrlConstantResolverFactory.java')
-INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY)
+TABBED_ACTIVITY = Path('chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java')
+INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY)
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
 RESOLVER_SIGNATURE = '    private static UrlConstantResolver buildOriginalResolver() {'
+STARTUP_SIGNATURE = '            if (!mPendingInitialTabCreation) {'
 FACTORY_DIGEST = '905c86c4d9066d43abfa512b02ae1649961991706ec493fe026a16f386b7d315'
 HANDLER_DIGEST = '6420fc2dfc3a1bea11edf3ea5c2fa928f93d79b12f00b16f83d31b040b0a6c7d'
 RESOLVER_DIGEST = 'c8676f48d70c326f26086693906f9fd97473ced55a21ff3c80053613f06748d3'
+STARTUP_DIGEST = '51130d436dad54a975a79a9ab5977a26cdf02768b3c18af6e75641fab357f6ac'
+
+STARTUP_BEFORE = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
+                if (isTabNtp && !currentTab.isNativePage() && !isTabWebUiNtp) {'''
+STARTUP_AFTER = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
+                // ARGON: regular chrome://newtab and chrome-native://newtab use WebUI.
+                // Restored tabs may already have WebContents, so waiting for a later
+                // NativePage/onContentChanged event can keep the launch window hidden forever.
+                boolean isArgonHomeNtp =
+                        isTabNtp && UrlConstants.NTP_HOST.equals(currentTab.getUrl().getHost());
+                if (isTabNtp
+                        && !currentTab.isNativePage()
+                        && !isTabWebUiNtp
+                        && !isArgonHomeNtp) {'''
 
 RESOLVER_BEFORE = '''        UrlConstantResolver resolver = new UrlConstantResolver();
         resolver.registerOverride(
@@ -125,6 +141,11 @@ def patch_resolver_factory(text):
                            RESOLVER_BEFORE, RESOLVER_AFTER)
 
 
+def patch_startup_draw(text):
+    return reviewed_method(text, STARTUP_SIGNATURE, STARTUP_DIGEST,
+                           STARTUP_BEFORE, STARTUP_AFTER)
+
+
 def patch_configs(text):
     text = replace_once(text,
         '#include "build/build_config.h"',
@@ -164,7 +185,8 @@ def resource_header(resources):
 def apply(src):
     transforms = [(CONFIGS, patch_configs), (GN, patch_gn),
                   (NATIVE_FACTORY, patch_factory), (NATIVE_HANDLER, patch_handler),
-                  (URL_RESOLVER_FACTORY, patch_resolver_factory)]
+                  (URL_RESOLVER_FACTORY, patch_resolver_factory),
+                  (TABBED_ACTIVITY, patch_startup_draw)]
     writes = {src / path: transform((src / path).read_text()) for path, transform in transforms}
     for source in (OVERLAY / UI).iterdir():
         if source.is_file():

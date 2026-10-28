@@ -1,0 +1,41 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
+            if (!mPendingInitialTabCreation) {
+                Tab currentTab = getActivityTab();
+                boolean isTabNtp = isTabRegularNtp(currentTab);
+                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
+                if (isTabNtp && !currentTab.isNativePage() && !isTabWebUiNtp) {
+                    // This will be a NTP, but the native page hasn't been created yet. Need to wait
+                    // for this to be created before allowing the toolbar to draw. The WebUI NTP is
+                    // not a native Tab, so we don't wait for it to be created, otherwise it hangs
+                    // the rendering thread.
+                    currentTab.addObserver(
+                            new TabObserver() {
+                                @Override
+                                public void onContentChanged(Tab tab) {
+                                    tab.removeObserver(this);
+                                    mAppLaunchDrawBlocker.onActiveTabAvailable();
+                                }
+                            });
+                } else {
+                    mAppLaunchDrawBlocker.onActiveTabAvailable();
+                }
+
+                // During Activity recreation, delay unblocking pre-draw until the native
+                // compositor swaps the first frame to avoid a blank page flash.
+                if (isFromRecreating()) {
+                    getCompositorViewHolderSupplier()
+                            .addSyncObserverAndCallIfNonNull(
+                                    cvh ->
+                                            cvh.addDidSwapBuffersCallback(
+                                                    mAppLaunchDrawBlocker
+                                                            ::onActiveTabAvailableForRecreation));
+                } else {
+                    mAppLaunchDrawBlocker.onActiveTabAvailableForRecreation();
+                }
+
+                // Launch history as a resumption of a previous Chrome journey.
+                maybeLaunchHistory();
+            }
