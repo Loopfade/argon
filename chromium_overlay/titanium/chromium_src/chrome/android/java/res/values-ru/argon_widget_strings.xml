@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="bookmark_widget_title">Закладки Argon</string>
+    <string name="search_widget_title">Поиск Argon</string>
+    <string name="quick_action_search_widget_title">Быстрый поиск Argon</string>
+</resources>

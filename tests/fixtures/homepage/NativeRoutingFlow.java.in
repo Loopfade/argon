@@ -1,0 +1,42 @@
+final class NativeRoutingFlow {
+    static boolean extensionOverride;
+    static boolean privateOverride;
+    static boolean isNtpOverrideEnabled() { return extensionOverride; }
+    static boolean isWebUiNtpOverrideEnabled() { return false; }
+    static boolean isIncognitoNtpOverrideEnabled() { return privateOverride; }
+    static boolean isBookmarksPageOverrideEnabled() { return extensionOverride; }
+    static boolean isIncognitoBookmarksPageOverrideEnabled() { return privateOverride; }
+    static boolean isHistoryPageOverrideEnabled() { return extensionOverride; }
+    static final class UrlConstants {
+        static final String CHROME_SCHEME = "chrome";
+        static final String NTP_HOST = "newtab";
+        static final String BOOKMARKS_HOST = "bookmarks";
+        static final String HISTORY_HOST = "history";
+    }
+    record GURL(String url) {
+        String getScheme() { return url.substring(0, url.indexOf(':')); }
+        String getHost() { return url.substring(url.indexOf("://") + 3).split("[/#?]", 2)[0]; }
+    }
+    ARGON_FACTORY_METHOD
+    static void check(String url, boolean incognito, boolean expected) {
+        if (isChromePageUrlOverridden(new GURL(url), incognito) != expected) {
+            throw new AssertionError(url + ": incognito=" + incognito);
+        }
+    }
+    public static void main(String[] args) {
+        check("chrome://newtab/", false, true);
+        check("chrome-native://newtab/", false, true);
+        check("chrome://newtab/", true, false);
+        check("chrome-native://newtab/", true, false);
+        check("https://newtab/", false, false);
+        check("chrome://bookmarks/", false, false);
+        check("chrome://history/", false, false);
+        extensionOverride = true;
+        check("chrome://bookmarks/", false, true);
+        check("chrome://history/", false, true);
+        check("chrome://bookmarks/", true, false);
+        privateOverride = true;
+        check("chrome://newtab/", true, true);
+        check("chrome://bookmarks/", true, true);
+    }
+}

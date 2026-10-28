@@ -17,13 +17,9 @@ hooks = [
     'name': 'fetch_filter_lists',
     'condition': 'checkout_android',
     'action': ['python3',
-              '../vanadium/tools/filter_lists/filter_list_download.py',
+              '../scripts/fetch_pinned_filter_lists.py',
               '--output',
-              'src/titanium/android_config/filter_lists/filter_lists_easylist.txt',
-              '--urls',
-              'https://easylist-downloads.adblockplus.org/antiadblockfilters.txt',
-              'https://easylist.to/easylist/easylist.txt',
-              'https://easylist.to/easylist/easyprivacy.txt']
+              'src/titanium/android_config/filter_lists/filter_lists_easylist.txt']
   },
   {
     'name': 'apply_subprojects_patches',
@@ -38,11 +34,7 @@ hooks = [
   {
     'name': 'fetch_titanium_extension',
     'condition': 'checkout_android',
-    'action': ['python3',
-              '../extensions/bundle.py',
-              '../extensions/dist',
-              'titanium',
-              'https://github.com/jqssun/android-titanium-extension/releases/latest/download/titanium.crx']
+    'action': ['python3', '../scripts/fetch_pinned_extension.py']
   },
 ]
 target_os = ['android']

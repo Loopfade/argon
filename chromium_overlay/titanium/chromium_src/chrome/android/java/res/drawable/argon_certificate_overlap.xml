@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#F9AB00"
+        android:pathData="M12,2 L1,22 L23,22 Z" />
+    <path
+        android:fillColor="#202124"
+        android:pathData="M11,8 L13,8 L13,15 L11,15 Z M11,17 L13,17 L13,19 L11,19 Z" />
+</vector>

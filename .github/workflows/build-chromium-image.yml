@@ -1,0 +1,140 @@
+name: Подготовка образа Chromium
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: Неизменяемый digest образа для всех архитектур и повторных попыток
+        value: ${{ jobs.image.outputs.image }}
+
+permissions:
+  actions: read
+  contents: read
+  packages: write
+
+concurrency:
+  group: argon-chromium-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    # Only main may publish the shared moving tag.
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      image: ${{ steps.resolved.outputs.image }}
+    name: Подготовить Chromium и опубликовать образ OCI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Проверить закреплённые входные данные исходников
+        run: python3 scripts/preflight.py --inputs-only
+
+      - name: Выбрать тег образа
+        id: image
+        shell: bash
+        run: |
+          owner=${GITHUB_REPOSITORY_OWNER,,}
+          version=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["chromium_version"])')
+          image="ghcr.io/${owner}/argon-build"
+          description=$(tr -d '\r\n' < .github/package-metadata/argon-build-description.txt)
+          [[ -n "$description" ]]
+          [[ ${#description} -le 512 ]]
+          {
+            echo "tag=${image}:branch-main"
+            echo "version=${version}"
+            echo "description=${description}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Войти в реестр контейнеров GitHub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Настроить Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Использовать образ с совпадающими входными данными
+        id: existing
+        env:
+          PREPARED_TAG: ${{ steps.image.outputs.tag }}
+        run: python3 .github/ci/full-build.py probe-image --image "$PREPARED_TAG"
+
+      - name: Освободить место на временном исполнителе
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+            /opt/swift
+          df -h .
+
+      - name: Собрать и опубликовать образ подготовленных исходников
+        id: build
+        if: steps.existing.outputs.exists != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/chromium/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.tag }}
+          labels: |
+            io.argon.prepared-inputs=${{ steps.existing.outputs.fingerprint }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.image.outputs.version }}
+            org.opencontainers.image.description=${{ steps.image.outputs.description }}
+          annotations: |
+            org.opencontainers.image.description=${{ steps.image.outputs.description }}
+          build-args: |
+            ARGON_REVISION=${{ github.sha }}
+          # A single-platform image without attestations is one GHCR package
+          # version, so retention can safely delete every superseded version.
+          provenance: false
+          sbom: false
+          cache-from: type=registry,ref=${{ steps.image.outputs.tag }}
+          cache-to: type=inline
+
+      - name: Определить неизменяемый digest выбранного образа
+        id: resolved
+        env:
+          EXISTING_IMAGE: ${{ steps.existing.outputs.image }}
+          BUILT_DIGEST: ${{ steps.build.outputs.digest }}
+          PREPARED_TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          set -euo pipefail
+          image="$EXISTING_IMAGE"
+          if [[ -z "$image" ]]; then
+            image="${PREPARED_TAG%:*}@$BUILT_DIGEST"
+          fi
+          [[ "$image" =~ @sha256:[a-f0-9]{64}$ ]]
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Оставить последний успешно подготовленный образ
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: argon-build
+          KEEP_TAG: branch-main
+        run: python3 .github/ci/prune-prepared-images.py
+
+      - name: Опубликовать сводку
+        run: |
+          {
+            echo '## Подготовленный образ Chromium'
+            echo
+            echo '- Образ: `${{ steps.image.outputs.tag }}`'
+            echo '- Chromium: `${{ steps.image.outputs.version }}`'
+            echo '- Digest образа: `${{ steps.resolved.outputs.image }}`'
+            echo '- Использованы совпадающие входные данные: ${{ steps.existing.outputs.exists == 'true' && 'да' || 'нет' }}'
+            echo '- Проверки: закреплённые исходники, патчи, тесты Python, тесты политики C++ и генерация GN.'
+            echo '- Компиляция Android JNI/Java и подпись APK проверяются в полном цикле сборки Argon.'
+          } >> "$GITHUB_STEP_SUMMARY"

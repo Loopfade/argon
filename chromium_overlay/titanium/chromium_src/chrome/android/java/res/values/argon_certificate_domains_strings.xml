@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_certificates_title">Ministry certificates</string>
+    <string name="argon_certificates_summary">Trust Russian Ministry certificates for selected sites</string>
+    <string name="argon_certificates_state_domains">Selected domains only</string>
+    <string name="argon_certificates_state_zones">Enabled zones: %1$s</string>
+    <string name="argon_certificates_state_disabled">Trust in this certificate is disabled</string>
+    <string name="argon_certificates_description_domains">Argon trusts Russian Ministry certificates for listed domains and their subdomains.</string>
+    <string name="argon_certificates_description_zones">Trust is enabled for all sites in these zones. Domains outside them can be allowed individually.</string>
+    <string name="argon_certificates_description_disabled">To allow trust, enable a zone or add an individual domain.</string>
+    <string name="argon_certificates_more">Learn more</string>
+    <string name="argon_certificates_close">Close</string>
+    <string name="argon_certificates_details_title">About the Ministry certificate</string>
+    <string name="argon_certificates_details_description">Argon includes the Russian Ministry of Digital Development root certificate. These settings select the sites for which it is trusted. Certificates from other authorities follow the usual rules.\n\nA domain entry includes its subdomains. IP addresses, wildcards such as *.example.com, and entire zones such as .com cannot be added.\n\nAdding a domain does not bypass other certificate checks. Every domain name in the site certificate must be covered by an allowed rule.\n\nChanges apply to new certificate checks.</string>
+    <string name="argon_certificates_root_issuer">Issuer</string>
+    <string name="argon_certificates_root_validity">Validity period</string>
+    <string name="argon_certificates_root_fingerprint">SHA-256 fingerprint</string>
+    <string name="argon_certificates_root_read_error">Unable to read the built-in certificate details.</string>
+    <string name="argon_certificates_built_in_domains">Domain zones</string>
+    <string name="argon_certificates_additional_domains">Individual domains</string>
+    <string name="argon_certificates_no_additional_domains">No individual domains yet</string>
+    <string name="argon_certificates_domains_footer">Individual domains apply independently of the zone switches.</string>
+    <string name="argon_certificates_add_domain">Add domain</string>
+    <string name="argon_certificates_add">Add</string>
+    <string name="argon_certificates_domain_label">Domain</string>
+    <string name="argon_certificates_domain_hint">example.com</string>
+    <string name="argon_certificates_domain_help">No https://, path, or port. Trust also applies to subdomains.</string>
+    <string name="argon_certificates_domain_scope">Individual rule: domain and subdomains</string>
+    <string name="argon_certificates_domain_actions">Actions for %1$s</string>
+    <string name="argon_certificates_domain_details">Rules for %1$s</string>
+    <string name="argon_certificates_domain_details_message">An individual rule applies: the built-in Russian Ministry root certificate is allowed for this domain and its subdomains. No broader rule covers this entry.</string>
+    <string name="argon_certificates_domain_ascii">Technical name: %1$s</string>
+    <string name="argon_certificates_remove">Remove</string>
+    <string name="argon_certificates_remove_domain">Remove %1$s?</string>
+    <string name="argon_certificates_remove_domain_message">The saved rule for this domain and its subdomains will be removed. Other rules remain in effect.</string>
+    <string name="argon_certificates_error_invalid">Enter a site name, such as example.com or пример.рф.</string>
+    <string name="argon_certificates_error_domain_only">Enter only the domain: %1$s</string>
+    <string name="argon_certificates_error_wildcard">Enter the domain without *. Subdomains are already included.</string>
+    <string name="argon_certificates_error_public_suffix">Enter a specific site. Entire domain zones such as .com or .рф cannot be added.</string>
+    <string name="argon_certificates_error_covered">Trust is already provided through: %1$s. An individual rule cannot be added.</string>
+    <string name="argon_certificates_error_duplicate">This domain is already in the list.</string>
+    <string name="argon_certificates_error_too_many">The limit of 100 domains has been reached. Remove an unused entry before adding another.</string>
+    <string name="argon_certificates_zone_enabled">Enabled for the entire zone</string>
+    <string name="argon_certificates_zone_disabled">Disabled for the entire zone</string>
+    <string name="argon_certificates_covered_zone">Zone rule %1$s applies</string>
+    <string name="argon_certificates_covered_domain">Domain rule %1$s applies</string>
+    <string name="argon_certificates_covered_multiple">Trust is provided by broader rules: %1$d</string>
+    <string name="argon_certificates_overlap_button">Explain the trust rule conflict</string>
+    <string name="argon_certificates_overlap_title">Overlapping rules for %1$s</string>
+    <string name="argon_certificates_actions_button">Domain actions</string>
+    <string name="argon_certificates_overlap_zone_source">Zone %1$s</string>
+    <string name="argon_certificates_overlap_domain_source">Domain %1$s and its subdomains</string>
+    <string name="argon_certificates_overlap_message">The rules overlap. Trust in Russian Ministry certificates is currently provided by broader rules:\n%1$s\n\nThe individual entry is saved but does not extend trust. It will apply independently once all the rules above are disabled or removed.\n\nThis is a trust rule conflict, not a site certificate error.</string>
+    <string name="argon_certificates_remove_covered_domain_message">The entry will be removed, but trust in Russian Ministry certificates will remain through:\n%1$s</string>
+</resources>

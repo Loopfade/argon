@@ -1,0 +1,29 @@
+# Copyright 2026 Argon contributors
+# SPDX-License-Identifier: GPL-2.0-only
+
+# The prepared checkout targets Android. Run the production domain validator
+# with Chromium's Linux host toolchain and real GURL/ICU/registry dependencies.
+if (current_toolchain == host_toolchain) {
+  executable("argon_domain_policy_tests") {
+    testonly = true
+    sources = [
+      "argon_ca_policy_unittest.cc",
+      "domain_policy_test_main.cc",
+      "//net/cert/titanium_ru_domain_policy_unittest.cc",
+    ]
+    deps = [
+      "//base",
+      "//base:i18n",
+      "//components/prefs",
+      "//components/prefs:test_support",
+      "//net/base:registry_controlled_domains",
+      "//testing/gtest",
+      "//url",
+    ]
+  }
+} else {
+  group("argon_domain_policy_tests") {
+    testonly = true
+    deps = [ ":argon_domain_policy_tests($host_toolchain)" ]
+  }
+}

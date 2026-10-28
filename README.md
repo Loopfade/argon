@@ -1,105 +1,207 @@
-# Titanium Browser for Android
+# Argon
 
-[![Stars](https://img.shields.io/github/stars/jqssun/android-titanium-browser?label=Stars&logo=GitHub)](https://github.com/jqssun/android-titanium-browser)
-[![GitHub](https://img.shields.io/github/downloads/jqssun/android-titanium-browser/total?label=GitHub&logo=GitHub)](https://github.com/jqssun/android-titanium-browser/releases)
-[![license](https://img.shields.io/badge/License-GPLv2-blue.svg)](https://github.com/jqssun/android-titanium-browser/blob/main/LICENSE)
-[![build](https://img.shields.io/github/actions/workflow/status/jqssun/android-titanium-browser/build.yml)](https://github.com/jqssun/android-titanium-browser/actions/workflows/build.yml)
-[![release](https://img.shields.io/github/v/release/jqssun/android-titanium-browser)](https://github.com/jqssun/android-titanium-browser/releases)
+Android-браузер на базе Titanium и Chromium с расширениями Chrome, фоновым воспроизведением и поддержкой сайтов, использующих российский корневой сертификат.
 
-A secure and fully open-source, Chromium-based web browser with support for extensions, based on [Vanadium](https://github.com/GrapheneOS/Vanadium) by [GrapheneOS](https://github.com/GrapheneOS). This project was formerly known as [Helium Browser for Android](https://github.com/jqssun/android-helium-browser) but was later renamed to avoid branding confusion. To maintain a fast and native experience for everyone, advanced features are modularized into [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension).
+**[Скачать последнюю версию](https://github.com/Loopfade/argon/releases/latest)** · [Обсуждение на 4PDA](https://4pda.to/forum/index.php?showtopic=1127809) · [Сообщить об ошибке](https://github.com/Loopfade/argon/issues/new/choose)
 
-For the latest builds, see [**Releases**](https://github.com/jqssun/android-titanium-browser/releases/latest). You can also update between GitHub and Google Play releases seamlessly.
+## Возможности
 
-[<img height="48" alt="Get it on Google Play" src="https://jqssun.github.io/images/badges/google-play-store.svg">](https://play.google.com/store/apps/details?id=io.github.jqssun.helium)
-[<img height="48" alt="Get it on GitHub" src="https://jqssun.github.io/images/badges/github.svg">](https://github.com/jqssun/android-titanium-browser/releases/latest)
+- **Расширения Chrome на Android.** Устанавливайте из Chrome Web Store блокировщики рекламы, переводчики и другие дополнения прямо на телефон. Chrome для Android не поддерживает их запуск. Argon также поддерживает Manifest V2 — старый формат расширений, от которого [Google Chrome отказался](https://developer.chrome.com/docs/extensions/develop/migrate/mv2-deprecation-timeline).
+- **Фоновое воспроизведение для выбранных сайтов.** Когда браузер свёрнут или экран выключен, воспроизведение аудио и видео продолжается только на сайтах, которым вы дали разрешение в настройках. Для каждого сайта можно отдельно настроить разрешение, поддомены и лимит времени.
+- **Очистка при выходе.** Команда «Выход» закрывает все окна браузера и удаляет выбранные данные. Можно настроить категории очистки; если она прервётся, браузер завершит её при следующем запуске.
+- **Российские сертификаты для `.ru`, `.рф` и `.su` без установки в Android.** Для этих зон, например `rosreestr.gov.ru`, доверие к встроенному российскому корневому УЦ уже разрешено. Его сертификат входит в Argon, поэтому вручную добавлять его в системное хранилище устройства не требуется.
+- **Доверие для выбранных сайтов в других зонах.** Добавьте нужный домен, например `example.com`, в **Сертификаты Минцифры**, чтобы разрешить использование сертификатов этого УЦ для выбранного сайта и его поддоменов, например `www.example.com`. Так можно пользоваться нужными сайтами, сохраняя ограничение доверия к этому УЦ для остальных доменов.
 
-<img alt="Titanium Browser for Android" src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" />
+Интерфейс приложения доступен только на **русском и английском языках**. При другом языке системы используется английский.
 
-## Usage
+## Скачать и установить
 
-### Installing Extensions
+Для текущих сборок требуется **Android 10 или новее** и устройство с ARM-процессором.
 
-You can install extensions from the following sources:
-- [Chrome Web Store (Recommended)](https://chromewebstore.google.com/)
-- [Opera Add-ons](https://addons.opera.com/)
-- [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/)
+1. Откройте [последний релиз](https://github.com/Loopfade/argon/releases/latest) и разверните список **Assets**.
+2. Выберите APK для своего устройства:
 
-You can also install from local CRX (or ZIP) file in the options page of the built-in [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension). 
+| Файл APK | Для какого устройства |
+| --- | --- |
+| `…-release-arm64-v8a.apk` | Устройства с 64-битной версией Android — большинство современных телефонов |
+| `…-release-armeabi-v7a.apk` | Устройства с 32-битной версией Android на ARM |
 
-Additionally, you can load an unpacked extension manually for testing purposes by navigating to [`chrome://extensions`](chrome://extensions). Enable **Developer mode**, select **Load unpacked**, and choose the folder containing the extension in the Storage Access Framework (SAF) picker. It may take a moment for the extension to load.
+3. Откройте скачанный APK. Если Android запросит разрешение на установку из этого источника, предоставьте его и завершите установку.
 
-### Using Extensions
+Для обновления скачайте APK нового релиза для той же архитектуры и установите его поверх текущей версии. Рядом с каждым APK опубликован файл `.sha256` для проверки целостности загрузки.
 
-To run an extension in Incognito (OTR) mode, go to **Manage extensions**, find the extension you want to use in Incognito mode, select **Details**, and turn on **Allow in Incognito**.
+## Расширения
 
-For advanced features including external download manager, enhanced dark mode, and additional privacy options, you can use the built-in [**Titanium Extension for Android**](https://github.com/jqssun/android-titanium-extension).
+Откройте один из магазинов в Argon, найдите расширение и подтвердите его установку:
 
-### Debug URLs
+- [Chrome Web Store](https://chromewebstore.google.com/) — рекомендуемый источник; версия сайта для компьютера включается автоматически.
+- [Opera Add-ons](https://addons.opera.com/).
+- [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/).
 
-To view and access the debug URLs, use [`chrome://chrome-urls`](chrome://chrome-urls). For **Experiments**, use [`chrome://flags`](chrome://flags).
+Управлять установленными расширениями можно на странице `chrome://extensions`. Там же можно включить режим разработчика и загрузить распакованное расширение из папки.
 
-### WebRTC IP Policy
+Локальные файлы CRX и ZIP можно установить через страницу настроек встроенного [Titanium Extension for Android](https://github.com/jqssun/android-titanium-extension). Оно также предоставляет дополнительные настройки, включая внешний менеджер загрузок и расширенный тёмный режим.
 
-The option is available by using the menu button <kbd>⋮</kbd> in the top right corner, then selecting **Settings**, **Privacy and security**. If you experience issues with WebRTC due to IPs being shielded by default (e.g. [Discord Voice](https://discord.com/blog/how-discord-handles-two-and-half-million-concurrent-voice-users-using-webrtc)), try changing it to **Default public interface only**, or **Default**.
+Расширения Manifest V2 больше не доступны в Chrome Web Store. Для них используйте загрузку распакованного расширения, полученного от его разработчика.
 
-## Implementation
+Для работы расширения в режиме инкогнито откройте его сведения и включите соответствующее разрешение. Совместимость конкретного расширения с мобильным интерфейсом может различаться.
 
-> [!WARNING]
-> [Titanium Browser for Android](#titanium-browser-for-android) only attempts to improve security and privacy where possible. For better protection on Android, you should instead use [GrapheneOS](https://grapheneos.org) with [Vanadium](https://vanadium.app), which additionally integrates patches into Android System WebView and provides significant kernel and memory management hardening on the OS level.
+## Фоновое воспроизведение
 
-```mermaid
----
-config:
-  layout: dagre
----
-flowchart TD
- subgraph s1["Additional Patches"]
-        n5["Feature Overrides"]
-        n6["UI Overrides"]
-        n7["Manifest V2 + Secure Off Store Install Support"]
-        n8["Miscellaneous Fixes + Improvements"]
-  end
- subgraph s2["Vanadium"]
-        n9["Generic Patches<small><br>patches/*.patch</small>"]
-        n10["Subprojects Patches<small><br>subprojects_patches/**/*.patch</small>"]
-  end
- subgraph s3["Titanium Browser for Android"]
-        n11["GN Build Configuration<small><br>args.gn</small>"]
-        n12["Signed Release"]
-  end
-    n1["Chromium"] --> s1 & s2
-    n5 --> n6
-    n6 --> n7
-    n7 --> n8
-    s1 --> s3
-    s2 --> s3
-    n11 --> n12
-    n5@{ shape: subproc}
-    n6@{ shape: subproc}
-    n7@{ shape: subproc}
-    n8@{ shape: subproc}
-    n9@{ shape: subproc}
-    n10@{ shape: subproc}
-    n11@{ shape: subproc}
-    n12@{ shape: subproc}
-    n1@{ shape: rounded}
-    classDef Aqua stroke-width:1px, stroke-dasharray:none, stroke:#46EDC8, fill:#DEFFF8, color:#378E7A
-    style n5 stroke:#FF6D00
-    style n7 stroke:#FF6D00
-```
+Argon позволяет воспроизводить аудио и видео на выбранных HTTPS-сайтах в обычных вкладках, когда браузер свёрнут или экран выключен. По умолчанию функция выключена, а список сайтов пуст.
 
-## Building
+Откройте **Настройки → Фоновое воспроизведение** и включите **Включить функцию**. Аудио и видео в фоне разрешены только на сайтах с включённым разрешением. На остальных сайтах воспроизведение приостанавливается.
 
-All releases are built using [Actions](https://github.com/jqssun/android-titanium-browser/actions). Current releases can also be attested using [GitHub CLI](https://github.com/cli/cli).
+Верхняя карточка показывает текущее состояние функции. Нажмите **Как это работает**, чтобы прочитать правила разрешений, приоритет поддоменов и порядок отсчёта времени.
 
-```shell
-gh attestation verify *.apk -R jqssun/android-titanium-browser
-```
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/background-playback.png"><img src="docs/images/background-playback.png" width="260" alt="Фоновое воспроизведение: включение функции и список настроек сайтов"></a></td>
+    <td align="center"><a href="docs/images/background-playback-site-settings.png"><img src="docs/images/background-playback-site-settings.png" width="260" alt="Настройки сайта: разрешение фонового воспроизведения, поддомены и лимит сеанса"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Общий экран.</strong> Включение функции и список сайтов с отдельными разрешениями и лимитами.</td>
+    <td align="center"><strong>Настройки сайта.</strong> Разрешение фонового воспроизведения, область действия и лимит сеанса.</td>
+  </tr>
+</table>
 
-This repository provides the build script to compile on the latest Ubuntu, and may also work with other Linux distributions.
+### Добавление сайтов
 
-To build these releases yourself via CI (e.g. GitHub Actions), fork this repository. Supply your `base64` encoded `keystore.jks` and `local.properties` (containing `keyAlias`, `keyPassword` and `storePassword`) to [**Repository secrets**](https://github.com/jqssun/android-titanium-browser/blob/main/.github/workflows/build.yml#L49-L50) under **Settings** > **Secrets and variables** > **Actions**. To generate a release, go to **Actions**, select **Build**, and select **Run workflow**. Under **Runner**, you can either use a GitHub-hosted runner by entering `ubuntu-latest`, or `self-hosted` for your own hardware.
+1. В разделе **Настройки сайтов** нажмите **Добавить сайт**.
+2. Откройте карточку **Домен сайта** и введите имя сайта без `https://`, пути, порта и маски.
+3. Настройте переключатели **Разрешать в фоне** и **Включая поддомены**.
+4. Задайте **Лимит сеанса, в минутах** от **1 до 120** и нажмите **Сохранить**.
 
-## Credits
+У нового правила разрешение и поддомены включены по умолчанию, а лимит составляет **60 минут**. Поддерживаются домены на кириллице. IP-адреса, целые доменные зоны и точные дубликаты добавлять нельзя. При недопустимом вводе под кнопкой появляется пояснение, а **Сохранить** недоступно.
 
-This project would not have been possible without the huge community contributions from [Vanadium](https://github.com/GrapheneOS/Vanadium), and without the privacy-focused, open-source approach shared by various other Chromium projects. All credit goes to the original authors and contributors. This project started around the same time as [Helium Browser for Linux](https://github.com/imputnet/helium-linux) but it is not affiliated with the desktop Helium project.
+### Разрешения и поддомены
+
+Нажмите на сайт в списке, чтобы изменить его настройки. Переключатель рядом с сайтом сразу меняет разрешение, сохраняя остальные параметры. Чтобы удалить запись, откройте её настройки, нажмите **Удалить правило** и подтвердите действие.
+
+Переключатель **Включая поддомены** распространяет правило на поддомены сайта. Для отдельного поддомена можно задать своё разрешение и лимит. Если правила пересекаются, действует наиболее конкретное: выключенное разрешение поддомена запрещает воспроизведение в фоне, даже когда более широкое правило его разрешает.
+
+Выключение функции сохраняет список и настройки сайтов, но приостанавливает воспроизведение в фоне. После включения сохранённые разрешения снова действуют; приостановленное воспроизведение нужно возобновить самостоятельно.
+
+### Лимит сеанса
+
+Отсчёт начинается с первого воспроизведения в фоне и включает паузы. Лимит общий для всех вкладок и окон, использующих одно правило, в том числе в разных группах. По истечении времени воспроизведение приостанавливается.
+
+Для нового сеанса вернитесь на вкладку с сайтом на разблокированном экране. Простое включение экрана, перезагрузка страницы или смена видео не обновляют лимит. Возврат на вкладку сам по себе не запускает приостановленное воспроизведение.
+
+## Российские сертификаты
+
+По умолчанию Argon доверяет встроенному российскому корневому удостоверяющему центру для сайтов в зонах **`.ru`, `.рф` и `.su`**. У каждой зоны есть отдельный переключатель: её можно выключить, сохранив запись на экране. Для выбранных доменов доверие можно разрешить отдельно в настройках.
+
+Откройте **Настройки → Конфиденциальность и безопасность → Сертификаты Минцифры**.
+
+Верхняя карточка показывает текущее состояние: включённые зоны, доверие только выбранным доменам или полное отключение. Нажмите **Подробнее**, чтобы прочитать правила проверки, посмотреть издателя, срок действия и отпечаток SHA-256 встроенного корневого сертификата. Эти сведения читаются из самого сертификата.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/certificate-domains-overlap.png"><img src="docs/images/certificate-domains-overlap.png" width="260" alt="Настройки сертификатов Минцифры: включены зоны .ru, .рф и .su, добавлены отдельные домены"></a></td>
+    <td align="center"><a href="docs/images/certificate-details.png"><img src="docs/images/certificate-details.png" width="260" alt="Справка о правилах доверия и сведения о встроенном корневом сертификате Минцифры"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Зоны и отдельные домены.</strong> На снимке включены все три зоны. Для <code>bank.com</code> действует отдельное правило, а записи <code>bank.ru</code> и <code>банк.рф</code> уже покрыты правилами зон.</td>
+    <td align="center"><strong>Справка о сертификате.</strong> Здесь собраны ограничения для доменов, правила проверки, издатель, срок действия и отпечаток SHA-256 встроенного корневого сертификата.</td>
+  </tr>
+</table>
+
+Чтобы вести только свой список, выключите все встроенные зоны и добавьте нужные домены. Если все зоны выключены и список пуст, доверие к этому УЦ полностью отключено. Это также действует, если тот же корневой сертификат установлен в Android. Сертификаты других доверенных УЦ проверяются по обычным правилам.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/connection-rosreestr.png"><img src="docs/images/connection-rosreestr.png" width="260" alt="Информация о защищённом соединении с rosreestr.gov.ru"></a></td>
+  </tr>
+  <tr>
+    <td align="center">rosreestr.gov.ru — пример сайта в зоне .ru</td>
+  </tr>
+</table>
+
+### Пересечения правил доверия
+
+Новый домен нельзя добавить, если его уже покрывает включённая зона или существующая запись. Например, при включённой `.ru` нельзя добавить `bank.ru`, а запись `example.com` уже покрывает `www.example.com`.
+
+Если сначала добавить `bank.ru` при выключенной `.ru`, а затем включить зону, запись останется в списке. То же происходит, когда сохранённую запись начинает покрывать добавленный родительский домен: записи не удаляются автоматически.
+
+У покрытых записей появляется **жёлтый треугольник с восклицательным знаком**. Под доменом указано, какое более широкое правило обеспечивает доверие. У остальных записей подпись сообщает, что действует отдельное правило для домена и его поддоменов.
+
+Нажмите значок **!**, чтобы увидеть все покрывающие правила и пояснение. Пока включена `.ru`, отдельная запись `bank.ru` не расширяет область доверия. После выключения или удаления всех покрывающих правил значок исчезнет, а сохранённая запись будет обеспечивать доверие самостоятельно.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/certificate-overlap-details.png"><img src="docs/images/certificate-overlap-details.png" width="260" alt="Пояснение пересечения правил: отдельная запись bank.ru покрыта включённой зоной .ru"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Диалог по значку <strong>!</strong> показывает, что доверие для <code>bank.ru</code> уже обеспечивает зона <code>.ru</code>. Отдельная запись сохранена; предупреждение относится к пересечению правил доверия.</td>
+  </tr>
+</table>
+
+При удалении покрытой записи Argon показывает, какие правила сохранят доверие. Например, после удаления `bank.ru` при включённой `.ru` доверие к этому УЦ для домена и его поддоменов сохранится через правило зоны.
+
+### Добавление доменов
+
+1. В разделе **Сертификаты Минцифры → Отдельные домены** нажмите **Добавить домен** над списком.
+2. Введите имя сайта, например `example.com` или `пример.рф`, без `https://`, пути и порта.
+3. Нажмите **Добавить**. Если запись недопустима, под полем появляется пояснение, а кнопка недоступна.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/certificate-domain-covered.png"><img src="docs/images/certificate-domain-covered.png" width="260" alt="Добавление домена недоступно: доверие для него уже обеспечивает включённая зона .рф"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Включённая зона <code>.рф</code> уже обеспечивает доверие для домена и его поддоменов. Под полем показана причина, а кнопка <strong>Добавить</strong> недоступна, поскольку отдельное правило не требуется.</td>
+  </tr>
+</table>
+
+Кириллические имена показываются в читаемом виде с проверками Chromium на подмену символов. Техническая запись Punycode доступна в сведениях о домене; для хранения и проверки продолжает использоваться нормализованное имя.
+
+Запись разрешает доверие этому УЦ для указанного домена и его поддоменов. Например, `example.com` также охватывает `www.example.com`. Изменения применяются к новым проверкам сертификатов.
+
+На скриншоте ниже показано защищённое соединение с сайтом, домен которого добавлен пользователем. Этот домен не входит во встроенный список.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/images/connection-tochka.png"><img src="docs/images/connection-tochka.png" width="260" alt="Информация о защищённом соединении после добавления домена"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Соединение с добавленным доменом</td>
+  </tr>
+</table>
+
+Нажатие на домен открывает сведения о действующих правилах. Чтобы удалить запись, откройте меню **⋮ → Удалить** рядом с ней и подтвердите действие. IP-адреса, подстановки вроде `*.example.com` и публичные суффиксы вроде `.com` добавлять нельзя. Добавление домена не отключает остальные проверки сертификата.
+
+Проверяются все доменные имена внутри сертификата: если он содержит разрешённый и неразрешённый домены, доверие отклоняется. Это может потребовать дополнительных записей при использовании узкого списка.
+
+## Домашняя страница
+
+Вместо стандартной страницы новой вкладки Argon открывает собственную домашнюю страницу `chrome://argon/`. На ней можно искать в интернете, переходить на сохранённые сайты и организовывать избранное. Страница встроена в браузер и доступна без подключения к сети; для поиска и открытия сайтов нужен интернет. В режиме инкогнито остаётся стандартная приватная страница Chromium.
+
+- **Поиск и адреса.** В строке можно выбрать Google, Bing, DuckDuckGo, DuckDuckGo NoAI или добавить свой поисковик. Введённый адрес открывается как сайт, а текстовый запрос отправляется выбранному поисковику.
+- **Избранное.** Добавляйте ярлыки сайтов и папки, задавайте названия и собственные иконки. Через **Настроить → Редактировать ярлыки** можно изменять, удалять и перемещать элементы, в том числе переносить сайты в папки.
+- **Оформление.** Доступны светлая, тёмная и системная темы. В настройках можно выбрать крупные или мелкие значки с предварительным просмотром, показать или скрыть названия ярлыков и настроить открытие сайтов в новой вкладке.
+- **Резервная копия.** Кнопки **Снять дамп** и **Восстановить** позволяют сохранить настройки домашней страницы в JSON-файл и восстановить их позже. Ярлыки, папки, свои иконки, поисковики и оформление сохраняются в профиле браузера.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/homepage.webp" width="260" alt="Домашняя страница Argon: строка поиска, избранное и переключение темы"></td>
+    <td align="center"><img src="docs/images/homepage-settings.webp" width="260" alt="Настройки домашней страницы Argon: редактирование ярлыков, оформление, размер значков и резервная копия"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Домашняя страница.</strong> Поиск, избранное и быстрый доступ к настройкам.</td>
+    <td align="center"><strong>Настройка страницы.</strong> Ярлыки, тема, размер значков и резервная копия.</td>
+  </tr>
+</table>
+
+## Помощь и обратная связь
+
+Нашли проблему? [Создайте issue](https://github.com/Loopfade/argon/issues/new/choose) и укажите версию Argon, версию Android, модель устройства и шаги для повторения ошибки.
+
+## О проекте
+
+Argon основан на [Titanium](https://github.com/jqssun/android-titanium-browser) и [Chromium](https://www.chromium.org/). Поддержка российского сертификата адаптирована из [Ruthenium for Android](https://github.com/rutheniumteam/ruthenium-android).
+
+В **Настройки → О браузере Argon** (на английском — **About Argon**) есть описание форка и ссылки на исходный код Argon, сообщения об ошибках и исходный проект Titanium. На том же экране доступны версия приложения, версия Android и юридическая информация.
+
+[Лицензия Argon](https://github.com/Loopfade/argon/blob/main/LICENSE) · [Лицензия Ruthenium](https://github.com/Loopfade/argon/blob/main/licenses/Ruthenium-BSD-3-Clause.txt) · [Сборка и проверки](https://github.com/Loopfade/argon/blob/main/VALIDATION.md) · [Полная ручная сборка](docs/build-pipeline.md)
+

@@ -6,11 +6,9 @@
     <g clip-path="url(#disc)">
       <rect x="-500" y="-500" width="1512" height="1512" fill="#1c1c31"/>
     </g>
-    <g id="motif">
-      <ellipse cx="256" cy="256" rx="156" ry="78" fill="none" stroke="#50507a" stroke-width="12" transform="rotate(-30 256 256)"/>
-      <circle cx="256" cy="256" r="94.5" fill="#23233b" stroke="#ffffff" stroke-width="19"/>
-      <circle cx="391" cy="178" r="36" fill="#9393bf"/>
-      <circle cx="121" cy="334" r="36" fill="#9393bf"/>
-    </g>
+    <ellipse cx="256" cy="256" rx="168" ry="82" fill="none" stroke="#50507a" stroke-width="14" transform="rotate(-28 256 256)"/>
+    <path d="M161 354 L256 153 L351 354 M207 283 H305" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="401" cy="179" r="28" fill="#9393bf"/>
+    <circle cx="111" cy="333" r="28" fill="#9393bf"/>
   </g>
 </svg>

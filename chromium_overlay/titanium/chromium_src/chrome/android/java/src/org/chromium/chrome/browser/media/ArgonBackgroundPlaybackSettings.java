@@ -1,0 +1,514 @@
+// Copyright 2026 Argon contributors
+// SPDX-License-Identifier: GPL-2.0-only
+
+package org.chromium.chrome.browser.media;
+
+import android.app.AlertDialog;
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.widget.SwitchCompat;
+import androidx.preference.EditTextPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceCategory;
+import androidx.preference.PreferenceScreen;
+import androidx.preference.PreferenceViewHolder;
+import androidx.preference.SeekBarPreference;
+import androidx.preference.SwitchPreferenceCompat;
+
+import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.R;
+import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
+import org.chromium.components.browser_ui.settings.SettingsFragment;
+import org.chromium.components.url_formatter.SchemeDisplay;
+import org.chromium.components.url_formatter.UrlFormatter;
+import org.chromium.url.GURL;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** Settings > Background playback. There are no preconfigured sites. */
+@NullMarked
+public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFragment {
+    private final SettableMonotonicObservableSupplier<String> mTitle = ObservableSuppliers.createMonotonic();
+
+    @Override
+    public void onCreatePreferences(@Nullable Bundle saved, @Nullable String rootKey) {
+        mTitle.set(getString(R.string.argon_background_title));
+        rebuild();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        ArgonBackgroundPlaybackStore.get().reload();
+        rebuild();
+    }
+
+    private void rebuild() {
+        var store = ArgonBackgroundPlaybackStore.get();
+        PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext());
+        setPreferenceScreen(screen);
+        SwitchPreferenceCompat master = new OverviewPreference();
+        master.setKey("argon_background_overview");
+        master.setPersistent(false);
+        master.setTitle(R.string.argon_background_enable);
+        master.setSingleLineTitle(false);
+        master.setSummary(getString(store.policy.isEnabled()
+                ? R.string.argon_background_description : R.string.argon_background_description_disabled)
+                + "\n\n" + getString(R.string.argon_background_master_description));
+        master.setChecked(store.policy.isEnabled());
+        master.setOnPreferenceChangeListener((preference, value) -> {
+            store.preferences.edit().putBoolean(ArgonBackgroundPlaybackStore.ENABLED, (Boolean) value).apply();
+            store.reload();
+            rebuild();
+            return true;
+        });
+        screen.addPreference(master);
+
+        PreferenceCategory sites = new PreferenceCategory(requireContext());
+        sites.setTitle(R.string.argon_background_sites);
+        screen.addPreference(sites);
+        Preference add = new Preference(requireContext());
+        add.setTitle(R.string.argon_background_add_site);
+        add.setIcon(R.drawable.argon_certificate_add);
+        add.setFragment(RuleEditor.class.getName());
+        sites.addPreference(add);
+        for (var rule : store.policy.getRules()) sites.addPreference(new RulePreference(rule));
+        if (store.policy.getRules().isEmpty()) {
+            Preference empty = new Preference(requireContext());
+            empty.setTitle(R.string.argon_background_empty_title);
+            empty.setSummary(R.string.argon_background_empty);
+            empty.setSelectable(false);
+            sites.addPreference(empty);
+        }
+
+        Preference help = new Preference(requireContext());
+        help.setSummary(store.policy.getRules().isEmpty()
+                ? (store.policy.isEnabled() ? R.string.argon_background_empty_enabled
+                        : R.string.argon_background_empty_disabled)
+                : (store.policy.isEnabled() ? R.string.argon_background_reset_description
+                        : R.string.argon_background_reset_description_disabled));
+        help.setSelectable(false);
+        screen.addPreference(help);
+    }
+
+    /** One native switch row with a separate help action in the same card. */
+    private final class OverviewPreference extends SwitchPreferenceCompat {
+        OverviewPreference() {
+            super(ArgonBackgroundPlaybackSettings.this.requireContext());
+            setLayoutResource(R.layout.argon_background_overview);
+            setWidgetLayoutResource(0); // The layout embeds AndroidX's switchWidget.
+        }
+
+        @Override
+        public void onBindViewHolder(PreferenceViewHolder holder) {
+            super.onBindViewHolder(holder);
+            View help = holder.findViewById(R.id.argon_background_help);
+            if (help != null) {
+                help.setOnClickListener(view -> showDetails(ArgonBackgroundPlaybackSettings.this,
+                        getString(R.string.argon_background_how_it_works),
+                        getString(R.string.argon_background_details_description)));
+            }
+        }
+    }
+
+    private final class RulePreference extends Preference {
+        private ArgonBackgroundPlaybackPolicy.Rule mRule;
+
+        RulePreference(ArgonBackgroundPlaybackPolicy.Rule rule) {
+            super(ArgonBackgroundPlaybackSettings.this.requireContext());
+            mRule = rule;
+            setKey("argon_background_site_" + rule.host);
+            setTitle(displayHost(rule.host));
+            setSingleLineTitle(false);
+            setSummary(summary(rule));
+            setWidgetLayoutResource(R.layout.argon_background_rule_switch);
+            setFragment(RuleEditor.class.getName());
+            getExtras().putString("host", rule.host);
+        }
+
+        @Override
+        public void onBindViewHolder(PreferenceViewHolder holder) {
+            super.onBindViewHolder(holder);
+            SwitchCompat toggle = (SwitchCompat) holder.findViewById(R.id.argon_background_rule_enabled);
+            if (toggle == null) return;
+            toggle.setOnCheckedChangeListener(null);
+            toggle.setChecked(mRule.enabled);
+            toggle.setContentDescription(getString(R.string.argon_background_toggle_site, displayHost(mRule.host)));
+            toggle.setOnCheckedChangeListener((button, checked) -> {
+                var store = ArgonBackgroundPlaybackStore.get();
+                List<ArgonBackgroundPlaybackPolicy.Rule> rules = store.policy.getRules();
+                for (int i = 0; i < rules.size(); i++) {
+                    var current = rules.get(i);
+                    if (!current.host.equals(mRule.host)) continue;
+                    // Another settings screen may have edited this rule since binding.
+                    mRule = new ArgonBackgroundPlaybackPolicy.Rule(current.host, current.minutes, checked, current.subdomains);
+                    rules.set(i, mRule);
+                    store.save(rules);
+                    rebuild();
+                    break;
+                }
+            });
+        }
+
+        private String summary(ArgonBackgroundPlaybackPolicy.Rule rule) {
+            return ruleSummary(ArgonBackgroundPlaybackSettings.this,
+                    ArgonBackgroundPlaybackStore.get().policy, rule, rule.host);
+        }
+    }
+
+    private static String displayHost(String host) {
+        return UrlFormatter.formatUrlForSecurityDisplay(new GURL("https://" + host + "/"),
+                SchemeDisplay.OMIT_HTTP_AND_HTTPS);
+    }
+
+    private static String duration(ChromeBaseSettingsFragment page, int minutes) {
+        return page.getResources().getQuantityString(R.plurals.argon_background_minutes, minutes, minutes);
+    }
+
+    private static String scope(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy.Rule rule) {
+        return page.getString(rule.subdomains ? R.string.argon_background_scope_subdomains
+                : R.string.argon_background_scope_exact);
+    }
+
+    private static String ruleState(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy.Rule rule) {
+        return page.getString(rule.enabled ? R.string.argon_background_rule_allowed : R.string.argon_background_rule_blocked);
+    }
+
+    private static String ruleSummary(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy policy,
+            ArgonBackgroundPlaybackPolicy.Rule rule, String replacedHost) {
+        String summary;
+        if (!policy.isEnabled()) {
+            summary = rule.enabled
+                    ? page.getString(R.string.argon_background_saved_allowed,
+                            duration(page, rule.minutes), scope(page, rule))
+                    : page.getString(R.string.argon_background_saved_blocked, scope(page, rule));
+        } else {
+            summary = rule.enabled
+                    ? page.getString(R.string.argon_background_rule_summary,
+                            ruleState(page, rule), duration(page, rule.minutes), scope(page, rule))
+                    : page.getString(R.string.argon_background_blocked_summary,
+                            ruleState(page, rule), scope(page, rule));
+        }
+        int overlaps = policy.getOverlappingRules(rule, replacedHost).size();
+        if (overlaps > 0) summary += "\n" + page.getString(R.string.argon_background_overlap_count, overlaps);
+        return summary;
+    }
+
+    private static String ruleNames(ChromeBaseSettingsFragment page, List<ArgonBackgroundPlaybackPolicy.Rule> rules) {
+        List<String> labels = new ArrayList<>();
+        for (var rule : rules) {
+            labels.add("• " + page.getString(R.string.argon_background_overlap_rule, displayHost(rule.host),
+                    ruleState(page, rule), duration(page, rule.minutes), scope(page, rule)));
+        }
+        return String.join("\n", labels);
+    }
+
+    private static String ruleDetails(ChromeBaseSettingsFragment page, ArgonBackgroundPlaybackPolicy policy,
+            ArgonBackgroundPlaybackPolicy.Rule rule, String replacedHost) {
+        String message = page.getString(R.string.argon_background_rule_details_description,
+                displayHost(rule.host), ruleState(page, rule), scope(page, rule), duration(page, rule.minutes));
+        if (!policy.isEnabled()) message += "\n\n" + page.getString(R.string.argon_background_description_disabled);
+        List<ArgonBackgroundPlaybackPolicy.Rule> overlaps = policy.getOverlappingRules(rule, replacedHost);
+        message += "\n\n" + (overlaps.isEmpty() ? page.getString(R.string.argon_background_no_overlaps)
+                : page.getString(R.string.argon_background_overlap_description, ruleNames(page, overlaps)));
+        message += "\n\n" + page.getString(R.string.argon_background_rule_priority);
+        if (!rule.host.equals(displayHost(rule.host))) {
+            message += "\n\n" + page.getString(R.string.argon_background_domain_ascii, rule.host);
+        }
+        return message;
+    }
+
+    private static void showDetails(ChromeBaseSettingsFragment page, String title, String message) {
+        new AlertDialog.Builder(page.requireContext()).setTitle(title).setMessage(message)
+                .setPositiveButton(R.string.argon_background_close, null).show();
+    }
+
+    private static String removalDescription(ChromeBaseSettingsFragment page, String host) {
+        var policy = ArgonBackgroundPlaybackStore.get().policy;
+        String message = page.getString(R.string.argon_background_delete_description, displayHost(host));
+        var covering = policy.getCoveringRules(host, host);
+        message += "\n\n" + (covering.isEmpty()
+                ? page.getString(R.string.argon_background_delete_uncovered, displayHost(host))
+                : page.getString(R.string.argon_background_delete_covered, displayHost(host),
+                        ruleNames(page, covering.subList(0, 1))));
+        List<ArgonBackgroundPlaybackPolicy.Rule> children = new ArrayList<>();
+        for (var rule : policy.getRules()) {
+            if (!rule.host.equals(host) && rule.host.endsWith("." + host)) children.add(rule);
+        }
+        if (!children.isEmpty()) {
+            message += "\n\n" + page.getString(R.string.argon_background_delete_children, ruleNames(page, children));
+        }
+        return message;
+    }
+
+    @Override
+    public MonotonicObservableSupplier<String> getPageTitle() {
+        return mTitle;
+    }
+
+    @Override
+    public @SettingsFragment.AnimationType int getAnimationType() {
+        return SettingsFragment.AnimationType.PROPERTY;
+    }
+
+    /** Separate native screen; changes are committed together by Save. */
+    public static final class RuleEditor extends ChromeBaseSettingsFragment {
+        private final SettableMonotonicObservableSupplier<String> mTitle = ObservableSuppliers.createMonotonic();
+        private String mOriginalHost = "";
+        private String mHost = "";
+        private int mMinutes = 60;
+        private boolean mEnabled = true;
+        private boolean mSubdomains = true;
+        private @Nullable DomainPreference mDomain;
+        private @Nullable Preference mSave;
+        private @Nullable Preference mAllow;
+        private @Nullable Preference mSubdomainPreference;
+        private @Nullable Preference mLimit;
+
+        @Override
+        public void onCreatePreferences(@Nullable Bundle saved, @Nullable String rootKey) {
+            mTitle.set(getString(R.string.argon_background_rule_title));
+            Bundle args = getArguments();
+            mOriginalHost = args == null ? "" : args.getString("host", "");
+            for (var rule : ArgonBackgroundPlaybackStore.get().policy.getRules()) {
+                if (rule.host.equals(mOriginalHost)) {
+                    mHost = displayHost(rule.host);
+                    mMinutes = rule.minutes;
+                    mEnabled = rule.enabled;
+                    mSubdomains = rule.subdomains;
+                }
+            }
+            if (saved != null) {
+                mHost = saved.getString("domain", mHost);
+                mMinutes = saved.getInt("minutes", mMinutes);
+                mEnabled = saved.getBoolean("enabled", mEnabled);
+                mSubdomains = saved.getBoolean("subdomains", mSubdomains);
+            }
+            mMinutes = Math.max(1, Math.min(ArgonBackgroundPlaybackPolicy.MAX_MINUTES, mMinutes));
+            PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext());
+            setPreferenceScreen(screen);
+
+            // Keep domain input and the live scope preview in one native preference card.
+            mDomain = new DomainPreference();
+            screen.addPreference(mDomain);
+            mAllow = toggle(R.string.argon_background_allow_site, mEnabled,
+                    value -> { mEnabled = value; refreshDescription(); });
+            screen.addPreference(mAllow);
+            mSubdomainPreference = toggle(R.string.argon_background_subdomains, mSubdomains,
+                    value -> { mSubdomains = value; refreshDescription(); });
+            screen.addPreference(mSubdomainPreference);
+
+            SeekBarPreference limit = new SeekBarPreference(requireContext());
+            mLimit = limit;
+            // Chromium's PreferenceTheme does not define seekBarPreferenceStyle.
+            // The generic row lacks seekbar_value and crashes during AndroidX binding.
+            // chrome_java exposes dependency resources through org.chromium.chrome.R.
+            limit.setLayoutResource(R.layout.preference_widget_seekbar_material);
+            limit.setPersistent(false);
+            limit.setTitle(R.string.argon_background_time_limit);
+            limit.setSummary(R.string.argon_background_time_description);
+            limit.setMin(1);
+            limit.setMax(ArgonBackgroundPlaybackPolicy.MAX_MINUTES);
+            limit.setAdjustable(true);
+            limit.setShowSeekBarValue(true);
+            limit.setValue(mMinutes);
+            limit.setOnPreferenceChangeListener((preference, value) -> {
+                mMinutes = (Integer) value;
+                refreshDescription();
+                return true;
+            });
+            screen.addPreference(limit);
+            Preference save = new Preference(requireContext());
+            mSave = save;
+            save.setTitle(R.string.argon_background_save);
+            save.setOnPreferenceClickListener(preference -> { save(); return true; });
+            screen.addPreference(save);
+            if (!mOriginalHost.isEmpty()) {
+                Preference remove = new Preference(requireContext());
+                remove.setTitle(R.string.argon_background_delete);
+                remove.setOnPreferenceClickListener(preference -> {
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle(R.string.argon_background_delete)
+                            .setMessage(removalDescription(this, mOriginalHost))
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .setPositiveButton(R.string.argon_background_delete, (dialog, which) -> {
+                                var store = ArgonBackgroundPlaybackStore.get();
+                                var rules = store.policy.getRules();
+                                rules.removeIf(rule -> rule.host.equals(mOriginalHost));
+                                store.save(rules);
+                                close();
+                            }).show();
+                    return true;
+                });
+                screen.addPreference(remove);
+            }
+            refreshDescription();
+        }
+
+        /** Domain editor with an independent scope-details action in the same card. */
+        private final class DomainPreference extends EditTextPreference {
+            DomainPreference() {
+                super(RuleEditor.this.requireContext());
+                setKey("argon_background_domain");
+                setPersistent(false);
+                setLayoutResource(R.layout.argon_background_domain_card);
+                setTitle(R.string.argon_background_domain);
+                setDialogTitle(R.string.argon_background_domain);
+                setDialogMessage(R.string.argon_background_domain_hint);
+                // Chromium's PreferenceTheme has no EditTextPreference dialog style.
+                setDialogLayoutResource(R.layout.preference_dialog_edittext);
+                setPositiveButtonText(android.R.string.ok);
+                setNegativeButtonText(android.R.string.cancel);
+                setText(mHost);
+                setSummary(mHost.trim().isEmpty()
+                        ? getString(R.string.argon_background_domain_example) : mHost);
+                setOnBindEditTextListener(input -> {
+                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+                    input.setSingleLine(true);
+                    input.setImeOptions(EditorInfo.IME_ACTION_DONE
+                            | EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);
+                });
+                setOnPreferenceChangeListener((preference, value) -> {
+                    mHost = (String) value;
+                    setSummary(mHost.trim().isEmpty()
+                            ? getString(R.string.argon_background_domain_example) : mHost);
+                    refreshDescription();
+                    return true;
+                });
+            }
+
+            void refreshScope() {
+                notifyChanged();
+            }
+
+            @Override
+            public void onBindViewHolder(PreferenceViewHolder holder) {
+                super.onBindViewHolder(holder);
+                View group = holder.findViewById(R.id.argon_background_scope_group);
+                if (group == null) return;
+                String domain = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
+                if (domain == null || validationError(domain) != 0) {
+                    group.setVisibility(View.GONE);
+                    group.setOnClickListener(null);
+                    return;
+                }
+                var rule = new ArgonBackgroundPlaybackPolicy.Rule(
+                        domain, mMinutes, mEnabled, mSubdomains);
+                TextView scopeSummary = (TextView) holder.findViewById(
+                        R.id.argon_background_scope_summary);
+                TextView overlapsSummary = (TextView) holder.findViewById(
+                        R.id.argon_background_scope_overlaps);
+                if (scopeSummary != null) scopeSummary.setText(scope(RuleEditor.this, rule));
+                int overlaps = ArgonBackgroundPlaybackStore.get().policy
+                        .getOverlappingRules(rule, mOriginalHost).size();
+                if (overlapsSummary != null) {
+                    overlapsSummary.setText(overlaps == 0
+                            ? getString(R.string.argon_background_no_overlaps_short)
+                            : getString(R.string.argon_background_overlap_count, overlaps));
+                }
+                group.setVisibility(View.VISIBLE);
+                group.setOnClickListener(view -> showDetails(RuleEditor.this,
+                        getString(R.string.argon_background_rule_details_for, displayHost(domain)),
+                        ruleDetails(RuleEditor.this, ArgonBackgroundPlaybackStore.get().policy,
+                                rule, mOriginalHost)));
+            }
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            ArgonBackgroundPlaybackStore.get().reload();
+            refreshDescription();
+        }
+
+        private void refreshDescription() {
+            Preference save = mSave;
+            if (save == null) return;
+            String host = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
+            int error = validationError(host);
+            boolean active = ArgonBackgroundPlaybackStore.get().policy.isEnabled();
+            save.setEnabled(error == 0);
+            save.setSummary(error == 0 ? getString(active ? R.string.argon_background_save_description
+                    : R.string.argon_background_save_description_disabled) : getString(error));
+            if (mAllow != null) mAllow.setSummary(mEnabled ? R.string.argon_background_allow_description
+                    : R.string.argon_background_block_description);
+            if (mSubdomainPreference != null) mSubdomainPreference.setSummary(mSubdomains
+                    ? R.string.argon_background_subdomains_description
+                    : R.string.argon_background_exact_description);
+            if (mLimit != null) mLimit.setSummary(mEnabled ? R.string.argon_background_time_description
+                    : R.string.argon_background_time_description_blocked);
+            if (mDomain != null) mDomain.refreshScope();
+        }
+
+        private int validationError(@Nullable String host) {
+            if (host == null) return R.string.argon_background_invalid_domain;
+            var rules = ArgonBackgroundPlaybackStore.get().policy.getRules();
+            rules.removeIf(rule -> rule.host.equals(mOriginalHost));
+            for (var rule : rules) {
+                if (rule.host.equals(host)) return R.string.argon_background_duplicate;
+            }
+            return rules.size() >= ArgonBackgroundPlaybackPolicy.MAX_SITES ? R.string.argon_background_too_many : 0;
+        }
+
+        private interface BooleanChange { void accept(boolean value); }
+
+        private Preference toggle(int title, boolean checked, BooleanChange onChange) {
+            SwitchPreferenceCompat preference = new SwitchPreferenceCompat(requireContext());
+            preference.setPersistent(false);
+            preference.setTitle(title);
+            preference.setChecked(checked);
+            preference.setOnPreferenceChangeListener((ignored, value) -> {
+                onChange.accept((Boolean) value);
+                return true;
+            });
+            return preference;
+        }
+
+        private void save() {
+            String host = ArgonBackgroundPlaybackStore.normalizeHost(mHost);
+            int error = validationError(host);
+            if (error != 0 || host == null) { refreshDescription(); error(error); return; }
+            var store = ArgonBackgroundPlaybackStore.get();
+            var rules = store.policy.getRules();
+            rules.removeIf(rule -> rule.host.equals(mOriginalHost));
+            rules.add(new ArgonBackgroundPlaybackPolicy.Rule(host, mMinutes, mEnabled, mSubdomains));
+            store.save(rules);
+            close();
+        }
+
+        private void error(int message) {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+        }
+
+        private void close() {
+            requireActivity().getOnBackPressedDispatcher().onBackPressed();
+        }
+
+        @Override
+        public void onSaveInstanceState(Bundle out) {
+            super.onSaveInstanceState(out);
+            out.putString("domain", mHost);
+            out.putInt("minutes", mMinutes);
+            out.putBoolean("enabled", mEnabled);
+            out.putBoolean("subdomains", mSubdomains);
+        }
+
+        @Override
+        public MonotonicObservableSupplier<String> getPageTitle() { return mTitle; }
+
+        @Override
+        public @SettingsFragment.AnimationType int getAnimationType() {
+            return SettingsFragment.AnimationType.PROPERTY;
+        }
+    }
+}

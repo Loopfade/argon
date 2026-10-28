@@ -1,0 +1,57 @@
+name: Проверка кеша компиляции ARM
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: Архитектура Android
+        required: true
+        type: choice
+        default: arm64
+        options:
+          - arm64
+          - arm
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    name: Проверить кеш компиляции
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Определить префикс кеша архитектуры
+        id: prefix
+        env:
+          TARGET_ARCH: ${{ inputs.arch }}
+        run: |
+          prefix=$(python3 .github/ci/prune-compiler-cache.py --prefix-for "$TARGET_ARCH")
+          echo "value=$prefix" >> "$GITHUB_OUTPUT"
+      - name: Установить инструменты проверки кеша
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ccache llvm-18
+          ccache --version
+      - name: Восстановить кеш компиляции для проверки
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ steps.prefix.outputs.value }}-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ steps.prefix.outputs.value }}-
+      - name: Проверить хеши зависимостей и модули в кеше
+        env:
+          CACHE_PATH: ${{ runner.temp }}/ccache
+          MATCHED_CACHE: ${{ steps.cache.outputs.cache-matched-key }}
+        run: |
+          test -n "$MATCHED_CACHE"
+          printf 'Восстановленный кеш: %s\n' "$MATCHED_CACHE"
+          python3 .github/ci/inspect-compiler-cache.py "$CACHE_PATH"
+          python3 .github/ci/inspect-cached-modules.py "$CACHE_PATH"

@@ -1,1 +1,1 @@
-Private, secure, open-source Chromium-based browser with support for extensions
+Argon: Android browser with extensions and scoped Russian CA trust

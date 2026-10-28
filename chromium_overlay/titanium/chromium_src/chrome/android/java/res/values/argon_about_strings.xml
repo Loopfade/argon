@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026 Argon contributors. SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <string name="argon_about_title">About Argon</string>
+    <string name="argon_about_project_title">About the project</string>
+    <string name="argon_about_description">Argon is an independent fork of Titanium, built on Chromium. It retains Chrome extension support and adds control over trust in the built-in Russian Ministry of Digital Development root certificate for selected sites.</string>
+    <string name="argon_about_links_title" translatable="false">GitHub</string>
+    <string name="argon_about_github_title">Argon source code</string>
+    <string name="argon_about_github_url" translatable="false">https://github.com/Loopfade/argon</string>
+    <string name="argon_about_issues_title">Report an issue</string>
+    <string name="argon_about_issues_summary">Bug reports and suggestions on GitHub</string>
+    <string name="argon_about_issues_url" translatable="false">https://github.com/Loopfade/argon/issues</string>
+    <string name="argon_about_upstream_title">Titanium — original project</string>
+    <string name="argon_about_upstream_url" translatable="false">https://github.com/jqssun/android-titanium-browser</string>
+</resources>

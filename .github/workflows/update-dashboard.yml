@@ -1,0 +1,55 @@
+name: Обновление данных панели Argon
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-dashboard.yml'
+      - '.github/ci/update-dashboard.py'
+  workflow_run:
+    workflows: [Build Argon, 'Сборка Argon (полный цикл)']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: argon-dashboard-snapshot
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Обновить данные панели GitHub Pages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Подготовить данные панели через авторизованный API
+        id: snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/ci/update-dashboard.py
+
+      - name: Сохранить данные панели в main
+        id: publish
+        if: steps.snapshot.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/ci/update-dashboard.py --publish

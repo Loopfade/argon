@@ -1,5 +1,16 @@
 #!/bin/bash
 
+python3 "$SCRIPT_DIR/scripts/apply_modulemap.py" --chromium-src "$PWD"
+python3 "$SCRIPT_DIR/scripts/apply_browsing_data_period.py" --chromium-src "$PWD"
+python3 "$SCRIPT_DIR/scripts/apply_homepage.py" --chromium-src "$PWD"
+
+# Chromium M154 already handles extension-install dialogs through
+# ExtensionInstallPromptShowParams::GetParentWindow(). Keep this upstream file
+# byte-for-byte unchanged: the retired range-based sed patch truncated it when
+# its old end anchor disappeared.
+DIALOG_SOURCE=chrome/browser/ui/android/extensions/extension_install_dialog_view_android.cc
+DIALOG_SOURCE_SHA256_BEFORE=$(sha256sum "$DIALOG_SOURCE" | awk '{print $1}')
+
 mkdir -p chrome/android/java/res_titanium_base
 cp $SCRIPT_DIR/res/drawable/themed_app_icon.xml chrome/android/java/res_titanium_base/drawable/themed_app_icon.xml
 for icon in $(find chrome/android/java/res_titanium_base -type f -name '*.png'); do convert $icon -fill navy -tint 36 $icon && $SCRIPT_DIR/res/icon.sh $icon; done
@@ -75,9 +86,6 @@ sed -i '$a@media (max-width: 600px) { .settings-window-title, .tabbed-pane-heade
 sed -i 's|document_->GetSettings() ? |document_->GetSettings() \&\& !document_->IsViewSource() ? |' third_party/blink/renderer/core/css/resolver/viewport_style_resolver.cc
 sed -i 's|kViewSourceLineWrappingEnabled, false|kViewSourceLineWrappingEnabled, true|' chrome/browser/prefs/browser_prefs.cc
 
-# playback
-sed -i 's|#if BUILDFLAG(IS_ANDROID)|#if 0|' content/public/renderer/render_frame_media_playback_options.cc
-
 # ext: viewport
 sed -i 's|<meta name="color-scheme" content="light dark">|&\n<meta name="viewport" content="width=device-width">|' chrome/browser/resources/extensions/extensions.html
 sed -i 's|--extensions-card-width: 400px;|--extensions-card-width: 96%;|' chrome/browser/resources/extensions/item_list.css # card width
@@ -133,6 +141,7 @@ sed -i 's|^ *if (!ApplicationStatus.isInitialized()) return;$|mIsExtensionProces
 sed -i 's|@ChildProcessImportance int importance) {$|&if (mIsExtensionProcess) importance = ChildProcessImportance.IMPORTANT;|' content/public/android/java/src/org/chromium/content/browser/ChildProcessLauncherHelperImpl.java
 
 # ext: settings
+# Chromium M154+ already contains the parent-window fix; do not patch this file.
 sed -i 's|"platforms": \["win", "mac"\]|"platforms": ["win", "mac", "desktop_android"]|' chrome/common/extensions/api/_manifest_features.json
 
 # ext: dialog
@@ -143,13 +152,8 @@ sed -i 's|while (!(locale_path = locales.Next()).empty()) {|&if (locale_path.IsC
 sed -i 's|while (!(locale_folder = locales.Next()).empty()) {|&if (locale_folder.IsContentUri()) { locale_folder = locale_path.Append(locales.GetInfo().GetName()); }|' extensions/common/extension_l10n_util.cc
 sed -i '/extension_l10n_util::ValidateExtensionLocales($/,/error) &&$/{s|extension_l10n_util::ValidateExtensionLocales(|(extension_path_.IsVirtualDocumentPath() \|\| &|;s|error) &&|error)) \&\&|}' extensions/browser/unpacked_installer.cc
 
-# ext: ntp
-if version_lt "$VERSION" "152.0.7969.0"; then
-sed -i 's|import org.chromium.chrome.browser.url_constants.UrlConstantResolverFactory;|&\nimport org.chromium.chrome.browser.url_constants.UrlOverrideUtils;|' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-sed -i 's|if (isTabNtp \&\& !currentTab.isNativePage()) {|if (isTabNtp \&\& !currentTab.isNativePage() \&\& !UrlOverrideUtils.isNtpOverrideEnabled() \&\& !UrlOverrideUtils.isWebUiNtpOverrideEnabled()) {|' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-else
+# ext: ntp (Chromium M152+)
 sed -i 's|if (isTabNtp \&\& !currentTab.isNativePage() \&\& !isTabWebUiNtp) {|if (isTabNtp \&\& !currentTab.isNativePage() \&\& !isTabWebUiNtp \&\& !UrlOverrideUtils.isNtpOverrideEnabled()) {|' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
-fi
 
 # ext: app
 sed -i 's|^  "app": {$|&\n    "platforms": ["chromeos", "linux", "mac", "win"],|' chrome/common/extensions/api/_api_features.json
@@ -187,4 +191,10 @@ if (content::WebContents::HasLiveWebContentsForBrowserContext(profile)) { return
 sed -i 's/|| mSupportedProfileType == SupportedProfileType.REGULAR) {/|| mSupportedProfileType == SupportedProfileType.REGULAR || mSupportedProfileType == SupportedProfileType.MIXED) {/' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 sed -i 's/|| mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD) {/|| mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD || mSupportedProfileType == SupportedProfileType.MIXED) {/' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 
+if [[ "$(sha256sum "$DIALOG_SOURCE" | awk '{print $1}')" != "$DIALOG_SOURCE_SHA256_BEFORE" ]]; then
+    echo "error: extension install dialog source changed unexpectedly; refusing to continue" >&2
+    exit 1
+fi
+
 export PATCHED=1
+

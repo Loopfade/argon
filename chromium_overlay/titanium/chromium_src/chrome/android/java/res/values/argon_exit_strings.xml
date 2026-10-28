@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="argon_exit_title">Exit</string>
+    <string name="argon_exit_settings_title">Clear on exit</string>
+    <string name="argon_exit_settings_summary">Choose what the Exit command deletes</string>
+    <string name="argon_exit_settings_description">Exit stops playback and downloads, closes all browser windows and deletes the selected data from the regular profile for all time. Nothing is selected by default. Bookmarks, extensions and browser and homepage settings are retained. The existing Close tabs on exit setting controls whether regular tabs can be restored on your next launch.\n\nMinimizing, turning the screen off, pausing playback and reaching its time limit do not run Exit or its cleanup. Background playback does not prevent the explicit Exit command. Removing a window from Recents is not this command.</string>
+    <string name="argon_exit_progress">Stopping pages and playback, then clearing the selected data…</string>
+    <string name="argon_exit_recovering">Finishing an interrupted exit before opening pages…</string>
+    <string name="argon_exit_failed">Cleanup could not be confirmed. Pages remain stopped. Retry, or close the browser and finish cleanup on your next launch.</string>
+    <string name="argon_exit_save_failed">The cleanup journal could not be saved or read. Successful cleanup cannot be confirmed. Close the browser and try again.</string>
+    <string name="argon_exit_retry">Retry</string>
+    <string name="argon_exit_close_pending">Close browser</string>
+</resources>

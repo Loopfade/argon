@@ -1,53 +1,141 @@
-#!/bin/bash
-source common.sh
-set_keys
-export VERSION=$(grep -m1 -o '[0-9]\+\(\.[0-9]\+\)\{3\}' vanadium/args.gn)
-export CHROMIUM_SOURCE=https://chromium.googlesource.com/chromium/src.git # https://github.com/chromium/chromium.git
-export DEBIAN_FRONTEND=noninteractive
-sudo apt-get update
-sudo apt-get install -y sudo lsb-release file nano git curl python3 python3-pillow imagemagick librsvg2-bin
-sudo dpkg --add-architecture i386; sudo apt-get update; sudo apt-get install -y libgcc-s1:i386
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$(realpath "$0")")"
+source ./common.sh
 
-git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
-export PATH="$PWD/depot_tools:$PATH"
-mkdir -p chromium/src/out/Default; cd chromium/src
-git init
-git remote add origin $CHROMIUM_SOURCE
-git fetch --depth 1 $CHROMIUM_SOURCE +refs/tags/$VERSION:chromium_$VERSION
-git checkout $VERSION
-cp $SCRIPT_DIR/.gclient ../.gclient
+if (( $# > 1 )); then
+  echo 'Usage: bash build.sh [arm64|arm|arm64-v8a|armeabi-v7a]' >&2
+  exit 2
+fi
+if [[ ${1:-} == --help || ${1:-} == -h ]]; then
+  echo 'Usage: bash build.sh [arm64|arm|arm64-v8a|armeabi-v7a] (default: arm64)'
+  exit 0
+fi
+TARGET_CPU=$(python3 scripts/configure_build.py --arch "${1:-arm64}" --print-cpu)
+OUT_DIR="out/Argon-${TARGET_CPU}"
 
-# https://grapheneos.org/build#browser-and-webview
-rm -rf $SCRIPT_DIR/vanadium/patches/*trichrome-{apk-build-targets,browser-apk-targets}.patch
-rm -rf $SCRIPT_DIR/vanadium/patches/*{detailed,supported}-language*.patch
-rm -rf $SCRIPT_DIR/vanadium/patches/*javascript-optimizer-{site-setting,settings-UI}.patch
-rm -rf $SCRIPT_DIR/vanadium/patches/*component-updates.patch
-rm -rf $SCRIPT_DIR/vanadium/patches/*{pdf,PDF,for-content-public,toolbar-button,configs-from-config-app,config-app-parsing,new-tab-card,predictive-back}*.patch
-# rm -rf $SCRIPT_DIR/vanadium/patches/*crashpad*.patch
-replace "$SCRIPT_DIR/vanadium/patches" "VANADIUM" "TITANIUM"
-replace "$SCRIPT_DIR/vanadium/patches" "Vanadium" "Titanium"
-replace "$SCRIPT_DIR/vanadium/patches" "vanadium" "titanium"
-git am --whitespace=nowarn --keep-non-patch $SCRIPT_DIR/vanadium/patches/*.patch
+BUILD_MODE=${BUILD_MODE:-apk}
+case "$BUILD_MODE" in
+  apk|prepare|checkpoint|finish) ;;
+  *) echo 'BUILD_MODE must be apk, prepare, checkpoint, or finish' >&2; exit 2;;
+esac
+BUILD_TIME_LIMIT_MINUTES=${BUILD_TIME_LIMIT_MINUTES:-240}
+if [[ ! "$BUILD_TIME_LIMIT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
+  echo 'BUILD_TIME_LIMIT_MINUTES must be a positive integer' >&2
+  exit 2
+fi
+if [[ "$BUILD_MODE" == checkpoint && -z ${CCACHE_DIR:-} ]]; then
+  echo 'CCACHE_DIR is required when BUILD_MODE=checkpoint' >&2
+  exit 2
+fi
 
-gclient sync -D --no-history --nohooks
-gclient runhooks
-./build/install-build-deps.sh --no-prompt
+SIGNING_MODE=${SIGNING_MODE:-test}
+case "$SIGNING_MODE" in test|release) ;; *) echo 'SIGNING_MODE must be test or release' >&2; exit 1;; esac
+preflight_args=(--arch "$TARGET_CPU")
+if [[ "$BUILD_MODE" == finish || "$BUILD_MODE" == checkpoint || ${ARGON_PREPATCHED_SOURCES:-0} == 1 ]]; then
+  preflight_args+=(--inputs-only)
+fi
+python3 scripts/preflight.py "${preflight_args[@]}"
+# The image's source reuse flag must not reach fresh-checkout test fixtures.
+env -u ARGON_PREPATCHED_SOURCES -u ARGON_STANDALONE_TEST python3 -m unittest discover -s tests -v
+if [[ ( "$BUILD_MODE" == apk || "$BUILD_MODE" == finish ) && "$SIGNING_MODE" == release ]]; then
+  : "${TITANIUM_RU_KEYSTORE_BASE64:?Missing release keystore}"
+  : "${TITANIUM_RU_STORE_PASSWORD:?Missing release store password}"
+  : "${TITANIUM_RU_KEY_PASSWORD:?Missing release key password}"
+  : "${TITANIUM_RU_KEY_ALIAS:?Missing release alias}"
+fi
+if [[ "$BUILD_MODE" != finish && "$BUILD_MODE" != checkpoint && ${ARGON_PREPATCHED_SOURCES:-0} != 1 && ( -e chromium/src || -e depot_tools ) ]]; then
+  echo 'Use a fresh dedicated checkout: chromium/src or depot_tools already exists.' >&2
+  exit 1
+fi
 
-source $SCRIPT_DIR/patch.sh
-cp $SCRIPT_DIR/args.gn out/Default/args.gn
-gn gen out/Default # gn args out/Default; echo 'treat_warnings_as_errors = false' >> out/Default/args.gn
-mkdir -p out/tmp out/release
+if [[ "$BUILD_MODE" == finish || "$BUILD_MODE" == checkpoint ]]; then
+  if [[ ! -d chromium/src || ! -d depot_tools ]]; then
+    echo "BUILD_MODE=$BUILD_MODE requires a prepared Chromium checkout." >&2
+    exit 1
+  fi
+  export PATH="$SCRIPT_DIR/depot_tools:$PATH"
+  export DEPOT_TOOLS_UPDATE=0
+  cd chromium/src
+else
+# BEGIN PREPARED SOURCES
+  if [[ ${ARGON_PREPATCHED_SOURCES:-0} != 1 ]]; then
+    bash scripts/prepare_chromium.sh sources
+    bash scripts/prepare_chromium.sh patch
+  fi
+  bash scripts/prepare_chromium.sh validate
+  export PATH="$SCRIPT_DIR/depot_tools:$PATH"
+  export DEPOT_TOOLS_UPDATE=0
+  cd chromium/src
+# END PREPARED SOURCES
+fi
 
-autoninja -C out/Default chrome_public_apk
-mv $(find out/Default/apks -name 'Chrome*.apk') out/tmp/$VERSION-armeabi-v7a.apk
-sed -i 's/target_cpu = "arm"/target_cpu = "arm64"/' out/Default/args.gn
-autoninja -C out/Default chrome_public_apk chrome_public_bundle
-mv $(find out/Default/apks -name 'Chrome*.apk') out/tmp/$VERSION-arm64-v8a.apk
-mv $(find out/Default/apks -name 'Chrome*.aab') out/tmp/$VERSION-arm64-v8a.aab
+configure_args=(--arch "$TARGET_CPU" --output "$OUT_DIR/args.gn")
+if [[ -n ${CCACHE_DIR:-} ]]; then
+  export CCACHE_DIR
+  export CCACHE_BASEDIR="$PWD"
+  CCACHE_TOOLCHAIN_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["chromium_commit"])' "$SCRIPT_DIR/build-lock.json")
+  export CCACHE_COMPILERCHECK="string:chromium-$CCACHE_TOOLCHAIN_ID"
+  export CCACHE_DEPEND=true
+  export CCACHE_DIRECT=true
+  export CCACHE_NOHASHDIR=true
+  export CCACHE_SLOPPINESS=modules,include_file_mtime,include_file_ctime
+  mkdir -p "$CCACHE_DIR"
+  ccache --set-config compression=true
+  ccache --set-config compression_level=3
+  ccache --max-size "${CCACHE_MAXSIZE:-7G}"
+  configure_args+=(--ccache)
+fi
+python3 "$SCRIPT_DIR/scripts/build_identity.py" --chromium-src "$PWD" \
+  --mode "$SIGNING_MODE" "${configure_args[@]}"
+gn gen "$OUT_DIR"
+if [[ "$BUILD_MODE" == prepare ]]; then
+  # Publish the sources after patches, policy tests and GN generation. A
+  # Docker RUN cannot checkpoint a partially compiled tree on a hosted-job
+  # timeout; Android compilation belongs in the resumable APK workflow below.
+  echo 'Chromium sources are prepared; Android compilation is checked by the APK build.'
+  exit 0
+fi
+# Keep the injected JNI and Java targets explicit in every APK build mode.
+# Their failures must prevent a successful APK build and signing, even if a
+# future Chromium dependency change removes either from chrome_public_apk.
+android_targets=(
+  obj/chrome/browser/android/android/argon_certificate_domains_settings.o
+  obj/chrome/browser/android/android/argon_exit.o
+  chrome_java
+  chrome_public_apk
+)
+if [[ "$BUILD_MODE" == checkpoint ]]; then
+  echo "Warming compiler cache for up to $BUILD_TIME_LIMIT_MINUTES minutes"
+  build_started_at=$(date +%s)
+  set +e
+  timeout --signal=INT --kill-after=3m "${BUILD_TIME_LIMIT_MINUTES}m" \
+    autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" "${android_targets[@]}"
+  build_status=$?
+  set -e
+  build_elapsed=$(( $(date +%s) - build_started_at ))
+  if (( build_status == 137 && build_elapsed < BUILD_TIME_LIMIT_MINUTES * 60 )); then
+    echo 'Build killed before its time limit (possible OOM); refusing automatic timeout recovery.' >&2
+    exit "$build_status"
+  fi
+  ccache --show-stats
+  case "$build_status" in
+    0)
+      mkdir -p "$SCRIPT_DIR/.build"
+      touch "$SCRIPT_DIR/.build/cache-warm-complete-$TARGET_CPU"
+      echo 'Cache warm-up reached the APK target.'
+      ;;
+    124|137)
+      echo 'Cache warm-up time slice completed; the next slice will resume from the compiler cache.'
+      ;;
+    *) exit "$build_status" ;;
+  esac
+  exit 0
+fi
 
-export PATH=$PWD/third_party/jdk/current/bin/:$PATH
-export ANDROID_HOME=$PWD/third_party/android_sdk/public
-sign_apk out/tmp/$VERSION-armeabi-v7a.apk out/release/$VERSION-armeabi-v7a.apk
-sign_apk out/tmp/$VERSION-arm64-v8a.apk out/release/$VERSION-arm64-v8a.apk
-sign_aab out/tmp/$VERSION-arm64-v8a.aab out/release/$VERSION-arm64-v8a.aab
-rm -rf $SCRIPT_DIR/keys
+autoninja -C "$OUT_DIR" -j "${BUILD_JOBS:-4}" "${android_targets[@]}"
+mapfile -t apks < <(find "$OUT_DIR/apks" -maxdepth 1 -name 'Chrome*.apk' -type f)
+[[ ${#apks[@]} == 1 ]] || { echo "Expected one $TARGET_CPU APK" >&2; exit 1; }
+python3 "$SCRIPT_DIR/scripts/sign_and_verify.py" --apk "${apks[0]}" \
+  --sdk "$PWD/third_party/android_sdk/public" --jdk "$PWD/third_party/jdk/current" \
+  --mode "$SIGNING_MODE" --arch "$TARGET_CPU"

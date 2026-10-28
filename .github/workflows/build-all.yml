@@ -1,0 +1,144 @@
+name: Сборка Argon (полный цикл)
+run-name: Полная сборка Argon (${{ inputs.signing }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      signing:
+        description: 'Подпись: релизная публикует оба проверенных APK, тестовая использует временный ключ'
+        type: choice
+        options: [Релизная, Тестовая]
+        default: Релизная
+        required: true
+      runner:
+        description: 'Исполнитель сборки Linux x64: не менее 100 ГиБ свободного места'
+        type: string
+        default: ubuntu-24.04
+        required: true
+      auto_continue:
+        description: 'Продолжать сборку того же коммита после тайм-аута с сохранённым кешем'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+  packages: write
+  pull-requests: read
+
+concurrency:
+  group: argon-full-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Проверить входные данные и использовать готовые APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      certificate: ${{ steps.plan.outputs.certificate }}
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: Проверить закреплённые входные данные обеих архитектур
+        run: |
+          python3 scripts/preflight.py --inputs-only --arch arm64
+          python3 scripts/preflight.py --inputs-only --arch arm
+      - name: Составить план и проверить готовые APK
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_MODE: ${{ inputs.signing == 'Релизная' && 'release' || 'test' }}
+          TITANIUM_RU_KEYSTORE_BASE64: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_KEYSTORE_BASE64 || '' }}
+          TITANIUM_RU_STORE_PASSWORD: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_STORE_PASSWORD || '' }}
+          TITANIUM_RU_KEY_PASSWORD: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_KEY_PASSWORD || '' }}
+          TITANIUM_RU_KEY_ALIAS: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
+        run: python3 .github/ci/full-build.py plan --mode "$SIGNING_MODE"
+      - name: Прикрепить готовый APK ARM64 к этому запуску
+        if: steps.plan.outputs.reuse_arm64 == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Argon-arm64-${{ github.sha }}-${{ steps.plan.outputs.fingerprint_arm64 }}
+          path: artifacts/arm64-v8a/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+      - name: Прикрепить готовый APK ARMv7 к этому запуску
+        if: steps.plan.outputs.reuse_arm == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Argon-arm-${{ github.sha }}-${{ steps.plan.outputs.fingerprint_arm }}
+          path: artifacts/armeabi-v7a/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  image:
+    name: Подобрать совместимый подготовленный образ Chromium
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    uses: ./.github/workflows/build-chromium-image.yml
+    secrets: inherit
+
+  build:
+    name: Собрать и проверить ${{ matrix.arch }}
+    needs: [plan, image]
+    if: needs.plan.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/build-unified-arch.yml
+    with:
+      arch: ${{ matrix.arch }}
+      fingerprint: ${{ matrix.fingerprint }}
+      certificate: ${{ needs.plan.outputs.certificate }}
+      image: ${{ needs.image.outputs.image }}
+      runner: ${{ inputs.runner }}
+      signing: ${{ inputs.signing == 'Релизная' && 'release' || 'test' }}
+      auto_continue: ${{ inputs.auto_continue }}
+    secrets: inherit
+
+  publish:
+    name: Опубликовать проверенный релиз для двух архитектур ARM
+    needs: [plan, build]
+    if: >-
+      always() && !cancelled() && needs.plan.result == 'success' &&
+      (needs.plan.outputs.build == 'false' || needs.build.result == 'success') &&
+      inputs.signing == 'Релизная' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      run_id: ${{ github.run_id }}
+      source_sha: ${{ github.sha }}
+
+  cleanup:
+    name: Сохранить текущий образ после завершения всех сборок
+    needs: [plan, image, build, publish]
+    if: always() && !cancelled() && needs.image.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Удалить устаревшие образы после завершения остальных запусков
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: argon-build
+          KEEP_TAG: branch-main
+        run: python3 .github/ci/prune-prepared-images.py --ignore-current-consumer

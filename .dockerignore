@@ -1,0 +1,14 @@
+/.git
+/vanadium
+/chromium
+/depot_tools
+/.build
+/artifacts
+/keys
+/extensions/dist
+**/__pycache__
+**/*.pyc
+**/*.apk
+**/*.aab
+**/*.jks
+**/*.keystore

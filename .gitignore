@@ -1,9 +1,16 @@
 .DS_Store
 
-chromium/
+/chromium/
 depot_tools/
 extensions/dist/
 keys/
 
 *.aab
 *.apk
+
+.build/
+artifacts/
+__pycache__/
+*.pyc
+*.jks
+*.keystore

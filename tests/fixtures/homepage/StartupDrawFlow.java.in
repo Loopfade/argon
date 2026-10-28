@@ -1,0 +1,160 @@
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+final class StartupDrawFlow {
+    static final class UrlConstants {
+        static final String CHROME_SCHEME = "chrome";
+        static final String NTP_HOST = "newtab";
+        static final String BOOKMARKS_HOST = "bookmarks";
+        static final String HISTORY_HOST = "history";
+    }
+    static final class GURL {
+        final URI uri;
+        GURL(String value) { uri = URI.create(value); }
+        String getScheme() { return uri.getScheme(); }
+        String getHost() { return uri.getHost(); }
+    }
+    static final class UrlOverrideUtils {
+        static boolean webUi;
+        static boolean isWebUiNtpOverrideEnabled() { return webUi; }
+    }
+    static boolean isNtpOverrideEnabled() { return false; }
+    static boolean isWebUiNtpOverrideEnabled() { return UrlOverrideUtils.webUi; }
+    static boolean isIncognitoNtpOverrideEnabled() { return false; }
+    static boolean isBookmarksPageOverrideEnabled() { return false; }
+    static boolean isIncognitoBookmarksPageOverrideEnabled() { return false; }
+    static boolean isHistoryPageOverrideEnabled() { return false; }
+    ARGON_FACTORY_METHOD
+
+    interface TabObserver {
+        void onContentChanged(Tab tab);
+    }
+    static final class Tab {
+        final GURL url;
+        final boolean incognito;
+        final boolean nativePage;
+        final List<TabObserver> observers = new ArrayList<>();
+        Tab(String url, boolean incognito, boolean nativePage) {
+            this.url = new GURL(url);
+            this.incognito = incognito;
+            this.nativePage = nativePage;
+        }
+        GURL getUrl() { return url; }
+        boolean isNativePage() { return nativePage; }
+        void addObserver(TabObserver observer) { observers.add(observer); }
+        void removeObserver(TabObserver observer) { observers.remove(observer); }
+        void contentChanged() {
+            for (TabObserver observer : new ArrayList<>(observers)) {
+                observer.onContentChanged(this);
+            }
+        }
+    }
+    static final class DrawBlocker {
+        boolean initial = true;
+        boolean recreation = true;
+        void onActiveTabAvailable() { initial = false; }
+        void onActiveTabAvailableForRecreation() { recreation = false; }
+    }
+    static final class Compositor {
+        Runnable swapCallback;
+        void addDidSwapBuffersCallback(Runnable callback) { swapCallback = callback; }
+    }
+    final class CompositorSupplier {
+        void addSyncObserverAndCallIfNonNull(Consumer<Compositor> observer) {
+            observer.accept(compositor);
+        }
+    }
+
+    final DrawBlocker mAppLaunchDrawBlocker = new DrawBlocker();
+    final Compositor compositor = new Compositor();
+    Tab activeTab;
+    boolean mPendingInitialTabCreation;
+    boolean recreating;
+    int historyCalls;
+    Tab getActivityTab() { return activeTab; }
+    boolean isTabRegularNtp(Tab tab) {
+        if (tab == null || tab.incognito) return false;
+        String scheme = tab.url.getScheme();
+        if (!"chrome".equals(scheme) && !"chrome-native".equals(scheme)) return false;
+        return "newtab".equals(tab.url.getHost()) || "new-tab-page".equals(tab.url.getHost());
+    }
+    boolean isFromRecreating() { return recreating; }
+    CompositorSupplier getCompositorViewHolderSupplier() { return new CompositorSupplier(); }
+    void maybeLaunchHistory() { historyCalls++; }
+    void restoreActiveTab() {
+        ARGON_STARTUP_BLOCK
+    }
+
+    static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+    static StartupDrawFlow activity(String url, boolean incognito, boolean nativePage) {
+        StartupDrawFlow activity = new StartupDrawFlow();
+        activity.activeTab = url == null ? null : new Tab(url, incognito, nativePage);
+        return activity;
+    }
+    static void ready(String url, boolean incognito, boolean nativePage) {
+        StartupDrawFlow activity = activity(url, incognito, nativePage);
+        // The restored Tab's WebContents already exist before the startup observer is attached.
+        // No further content-change event is delivered during startup.
+        if (url != null && !incognito && "newtab".equals(activity.activeTab.url.getHost())
+                && activity.isTabRegularNtp(activity.activeTab)) {
+            check(isChromePageUrlOverridden(activity.activeTab.url, false),
+                    "regular NTP must use Argon's renderer route");
+        }
+        activity.restoreActiveTab();
+        check(!activity.mAppLaunchDrawBlocker.initial,
+                "restored regular NTP still blocks first draw: " + url);
+        check(!activity.mAppLaunchDrawBlocker.recreation, "non-recreated activity remains blocked");
+        check(activity.activeTab == null || activity.activeTab.observers.isEmpty(),
+                "startup still waits for an unnecessary content-change event");
+        check(activity.historyCalls == 1, "startup history callback was lost");
+    }
+    public static void main(String[] args) {
+        for (boolean webUi : new boolean[] {false, true}) {
+            UrlOverrideUtils.webUi = webUi;
+            for (String url : new String[] {"chrome://newtab/", "chrome-native://newtab/"}) {
+                ready(url, false, false);
+                ready(url, false, true);
+                ready(url, true, false);
+                ready(url, true, true);
+            }
+            for (String url : new String[] {"chrome://argon/", "https://example.com/",
+                    "https://newtab/", "chrome://bookmarks/", "chrome-extension://test/home.html"}) {
+                ready(url, false, false);
+            }
+            ready(null, false, false);
+        }
+
+        // The upstream native-page wait remains for NTPs outside Argon's newtab route.
+        UrlOverrideUtils.webUi = false;
+        StartupDrawFlow nativeNtp = activity("chrome://new-tab-page/", false, false);
+        nativeNtp.restoreActiveTab();
+        check(nativeNtp.mAppLaunchDrawBlocker.initial, "native NTP wait was removed");
+        check(nativeNtp.activeTab.observers.size() == 1, "native NTP lost its observer");
+        nativeNtp.activeTab.contentChanged();
+        check(!nativeNtp.mAppLaunchDrawBlocker.initial, "native NTP never became ready");
+        check(nativeNtp.activeTab.observers.isEmpty(), "native observer was not removed");
+        UrlOverrideUtils.webUi = true;
+        ready("chrome://new-tab-page/", false, false);
+
+        // Releasing the initial-tab gate must not bypass the independent first-frame callback.
+        UrlOverrideUtils.webUi = false;
+        StartupDrawFlow recreated = activity("chrome-native://newtab/", false, false);
+        recreated.recreating = true;
+        recreated.restoreActiveTab();
+        check(!recreated.mAppLaunchDrawBlocker.initial, "restored WebUI initial gate is blocked");
+        check(recreated.mAppLaunchDrawBlocker.recreation, "recreation bypassed its first frame");
+        check(recreated.compositor.swapCallback != null, "first-frame callback was lost");
+        recreated.compositor.swapCallback.run();
+        check(!recreated.mAppLaunchDrawBlocker.recreation, "first frame did not unblock recreation");
+
+        StartupDrawFlow pending = activity("chrome://newtab/", false, false);
+        pending.mPendingInitialTabCreation = true;
+        pending.restoreActiveTab();
+        check(pending.mAppLaunchDrawBlocker.initial, "pending initial creation was unblocked early");
+        check(pending.historyCalls == 0, "pending initial creation ran restoration callbacks");
+    }
+}

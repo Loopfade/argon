@@ -1,0 +1,46 @@
+name: Продолжение сборки Argon
+run-name: Продолжение сборки Argon №${{ inputs.resume_run }}, попытка ${{ inputs.resume_attempt }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      resume_run:
+        description: 'Номер исходного запуска сборки Argon'
+        required: true
+        type: string
+      resume_attempt:
+        description: 'Ожидаемый номер попытки исходной сборки Argon'
+        required: true
+        type: string
+      resume_sha:
+        description: 'Точный SHA исходного коммита сборки Argon'
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ format('argon-resume-{0}', inputs.resume_run) }}
+  cancel-in-progress: false
+
+jobs:
+  resume:
+    name: Продолжить исходный запуск сборки Argon
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Дождаться очистки и повторить исходное задание с ошибкой
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESUME_RUN: ${{ inputs.resume_run }}
+          RESUME_ATTEMPT: ${{ inputs.resume_attempt }}
+          RESUME_SHA: ${{ inputs.resume_sha }}
+          AUTO_CONTINUE_MAX: '10'
+        run: python3 .github/ci/continue-build.py resume

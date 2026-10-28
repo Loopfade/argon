@@ -1,37 +1,41 @@
-name: Report
-description: Report a bug or suggest a feature
+name: Ошибка или предложение
+description: Сообщить об ошибке или предложить улучшение Argon
 body:
   - type: markdown
     attributes:
       value: |
-        ### Important
-        Before reporting a new issue, please check if it already exists [upstream](https://crbug.com/) or in the [issue tracker](https://github.com/jqssun/android-titanium-browser/issues).
-        
-        We aim to keep things lightweight. The scope of accepted bugs is limited to current patches. If a feature can be achieved via an extension or a user script, please refrain from opening a report.
+        ### Перед отправкой
+        Проверьте, есть ли такая ошибка в [Chromium](https://crbug.com/),
+        [Titanium](https://github.com/jqssun/android-titanium-browser/issues)
+        или [обращениях Argon](https://github.com/Loopfade/argon/issues).
+
+        Опишите проблему, связанную с изменениями Argon. Для предложения новой
+        функции укажите, какую задачу она решает и можно ли решить её расширением
+        или пользовательским скриптом.
 
   - type: checkboxes
     id: checklist
     attributes:
-      label: Verification
-      description: Please verify the following before submitting.
+      label: Проверка перед отправкой
+      description: Подтвердите, что проверили существующие обращения.
       options:
-        - label: I have checked upstream at crbug.com and I confirm this is NOT a known issue from Chromium.
+        - label: Я проверил crbug.com — такая ошибка Chromium ещё не зарегистрирована.
           required: true
-        - label: I have checked the issue tracker and I confirm this is NOT a known issue in this project.
+        - label: Я проверил обращения Titanium и Argon — такого обращения ещё нет.
           required: true
 
   - type: textarea
     id: environment
     attributes:
-      label: Environment
-      description: Please provide the applicable device model, operating system version, and app version.
+      label: Устройство и версии
+      description: Укажите модель устройства, версию Android и версию Argon.
     validations:
       required: false
 
   - type: textarea
     id: description
     attributes:
-      label: Description
-      description: A clear and concise description of what the issue is.
+      label: Описание
+      description: Опишите шаги воспроизведения, ожидаемый и фактический результат. Для предложения опишите желаемое поведение.
     validations:
       required: true

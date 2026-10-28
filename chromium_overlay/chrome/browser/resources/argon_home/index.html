@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f7f7f4">
+  <meta name="description" content="Ваша домашняя страница Argon. Поиск, любимые сайты и ничего лишнего.">
+  <title>Argon — новая вкладка</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='20' fill='%23282f2a'/%3E%3Cpath d='M18 44 30 18h5l12 26h-7l-8-18-8 18Z' fill='%23c7d5bd'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-brand" viewBox="0 0 32 32"><path d="M6 25 14 7h4l8 18h-5l-5-12-5 12Z" fill="currentColor"/><path d="M10 22h12" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></g></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.4A8.5 8.5 0 0 1 9.6 4a8.5 8.5 0 1 0 10.4 10.4Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></g></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-return" viewBox="0 0 24 24"><path d="M20 5v8a3 3 0 0 1-3 3H4m4-4-4 4 4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L20 8a2.1 2.1 0 0 0-5-4L4 15Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h7m5 0h4M4 17h3m5 0h8"/><circle cx="13.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></g></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10H3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.7" ry="8.5"/><path d="M4 9h16M4 15h16"/></g></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3m-4 4 4-4 4 4M4 15v5h16v-5"/></g></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m-4-4 4 4 4-4M4 16v5h16v-5"/></g></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 5 5 3-3 5 5"/></g></symbol>
+    <symbol id="i-google" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.61 4.61 0 0 1-2 3.03v2.52h3.24c1.89-1.74 2.98-4.3 2.98-7.38Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.39l-3.24-2.52c-.9.6-2.04.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.06v2.6A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.93A6 6 0 0 1 6.09 12c0-.67.11-1.32.31-1.93v-2.6H3.06A10 10 0 0 0 2 12c0 1.61.39 3.14 1.06 4.53l3.34-2.6Z"/><path fill="#EA4335" d="M12 5.95c1.47 0 2.79.51 3.82 1.5l2.86-2.86A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.94 5.47l3.34 2.6c.79-2.36 3-4.12 5.6-4.12Z"/></symbol>
+    <symbol id="i-yandex" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#f24c41"/><path d="M14.2 18V6h-2.1C9.8 6 8.5 7.2 8.5 9.1c0 1.5.6 2.5 2 3.5L8 18h2.4l2.7-5.7-1.2-.8c-1-.7-1.4-1.4-1.4-2.4 0-1 .6-1.5 1.7-1.5h.2V18Z" fill="#fff"/></symbol>
+    <symbol id="i-duck" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#e77d52"/><path d="M9 18c1-3 1-4 .1-6C7.2 7.4 10 5 13 5c2.8 0 4.4 2.2 3.8 4.5-.5 2-2.3 3.9-2 6.6l.8 2.6Z" fill="#fff"/><path d="m11.9 11.1 7-.6c.5.1.7.7.1 1.2l-5.9 2Z" fill="#f4bb3e"/><circle cx="13" cy="8.5" r=".7" fill="#333"/><path d="m8 17.5 3 1.1 4.5-1 .2 2.4-4.2-.4-3.5.6Z" fill="#79a44d"/></symbol>
+    <symbol id="i-youtube" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="5" fill="#ed4d45"/><path d="m10 8 6 4-6 4Z" fill="#fff"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5a10.7 10.7 0 0 0-3.4 20.8c.5.1.7-.2.7-.5v-2c-2.9.6-3.5-1.2-3.5-1.2-.5-1.2-1.2-1.5-1.2-1.5-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.7 2.4 1.2 3 .9.1-.7.4-1.2.7-1.5-2.4-.3-4.9-1.2-4.9-5.3 0-1.2.4-2.2 1.1-2.9-.1-.3-.5-1.4.1-2.9 0 0 .9-.3 3 1.1a10.7 10.7 0 0 1 5.5 0c2.1-1.4 3-1.1 3-1.1.6 1.5.2 2.6.1 2.9.7.7 1.1 1.7 1.1 2.9 0 4.1-2.5 5-4.9 5.3.4.3.7 1 .7 2v2.9c0 .3.2.6.7.5A10.7 10.7 0 0 0 12 1.5Z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="4" fill="#7394bd"/><path d="m4 7 8 6 8-6" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><g fill="none" stroke="#a28ab2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V6l11-2v11M9 10l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/></g></symbol>
+    <symbol id="i-figma" viewBox="0 0 24 24"><rect x="4" y="1" width="8" height="8" rx="4" fill="#f56f5e"/><rect x="12" y="1" width="8" height="8" rx="4" fill="#fa9d8e"/><rect x="4" y="9" width="8" height="8" rx="4" fill="#aa8bd9"/><circle cx="16" cy="13" r="4" fill="#69b4d5"/><path d="M4 21a4 4 0 0 0 8 0v-4H8a4 4 0 0 0-4 4" fill="#79b5a4"/></symbol>
+    <symbol id="i-notion" viewBox="0 0 24 24"><rect x="3" y="2" width="18" height="20" rx="2" fill="var(--surface)" stroke="currentColor" stroke-width="1.3"/><path d="M7 18V6h2l6 9V6h2v12h-2L9 9v9Z" fill="currentColor"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5c3-1 5 0 8 2 3-2 5-3 8-2v14c-3-1-5 0-8 2-3-2-5-3-8-2Z" fill="none" stroke="#ad9868" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 7v14" stroke="#ad9868" stroke-width="1.5"/></symbol>
+    <symbol id="i-wiki" viewBox="0 0 24 24"><path d="m2 6 5 13 5-11 5 11 5-13M1 6h6m10 0h6M8 6h7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  </defs></svg>
+  <header class="header">
+    <div class="brand" aria-label="Argon — новая вкладка"><svg class="brand-icon" aria-hidden="true"><use href="#i-brand"/></svg><span class="brand-word">argon</span></div>
+    <div class="appearance" role="group" aria-label="Оформление страницы">
+      <button type="button" data-theme-choice="light" title="Светлая тема" aria-label="Светлая тема" aria-pressed="false"><svg aria-hidden="true"><use href="#i-sun"/></svg></button>
+      <button type="button" data-theme-choice="dark" title="Тёмная тема" aria-label="Тёмная тема" aria-pressed="false"><svg aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <button type="button" data-theme-choice="system" title="Как в системе" aria-label="Тема системы" aria-pressed="true"><svg aria-hidden="true"><use href="#i-monitor"/></svg></button>
+    </div>
+  </header>
+  <main class="workspace">
+    <div class="search-wrap">
+      <form id="search-form" class="search" role="search">
+        <button type="button" id="engine-trigger" class="engine-trigger" aria-label="Выбрать поисковую систему" aria-expanded="false" aria-controls="engine-menu"><span id="selected-engine-icon" class="engine-icon"></span><span id="selected-engine-name" class="engine-name">Google</span><svg class="chevron" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+        <span class="divider" aria-hidden="true"></span>
+        <input id="search-input" class="search-input" type="search" name="q" placeholder="Поиск или адрес сайта" aria-label="Поиск или адрес сайта" autocomplete="off" spellcheck="false">
+        <button class="search-submit" type="submit" title="Искать" aria-label="Искать"><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </form>
+      <div id="engine-menu" class="popover" hidden></div>
+    </div>
+    <section class="favorites" aria-labelledby="favorites-heading">
+      <div class="section-row"><h1 id="favorites-heading" class="section-label">Избранное</h1><button id="edit-done" class="btn btn-secondary" type="button" hidden>Готово</button></div>
+      <p id="editing-hint" class="editing-hint" hidden>Нажмите на ярлык, чтобы изменить, переместить или удалить его.</p>
+      <div id="move-toolbar" class="move-toolbar" hidden><div><strong id="move-title"></strong><p id="move-hint">Нажмите новое место или перетащите ярлык. На папку — перенести внутрь.</p></div><button id="move-cancel" class="btn btn-secondary" type="button">Отмена</button></div>
+      <div id="shortcut-grid" class="shortcut-grid"></div>
+    </section>
+  </main>
+  <footer class="footer"><div class="keyboard-hints" aria-hidden="true"><span><kbd>/</kbd> поиск</span><span><kbd>esc</kbd> закрыть</span></div><button class="settings-button" id="settings-button"><svg aria-hidden="true"><use href="#i-settings"/></svg>Настроить</button></footer>
+  <div id="modal-root"></div><div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

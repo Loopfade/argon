@@ -1,0 +1,24 @@
+// Copyright 2015 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file beside this fixture.
+
+     * <p>chrome-native:// scheme pages are not affected by this.
+    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {
+        if (!UrlConstants.CHROME_SCHEME.equals(url.getScheme())) {
+            return false;
+        }
+
+        String host = url.getHost();
+        return switch (host) {
+            case UrlConstants.NTP_HOST ->
+                    isIncognito
+                            ? isIncognitoNtpOverrideEnabled()
+                            : (isNtpOverrideEnabled() || isWebUiNtpOverrideEnabled());
+            case UrlConstants.BOOKMARKS_HOST ->
+                    isIncognito
+                            ? isIncognitoBookmarksPageOverrideEnabled()
+                            : isBookmarksPageOverrideEnabled();
+            case UrlConstants.HISTORY_HOST -> !isIncognito && isHistoryPageOverrideEnabled();
+            default -> false;
+        };
+    }

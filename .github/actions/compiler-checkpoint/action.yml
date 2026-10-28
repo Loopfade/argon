@@ -1,0 +1,38 @@
+name: Сохранение прогресса компиляции без остановки Ninja
+description: Дождаться часовой отметки, показать статистику кеша компиляции и сохранить согласованный снимок
+inputs:
+  number:
+    description: Номер контрольной точки в текущей попытке
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Показать прогресс непрерывной сборки
+      id: progress
+      shell: bash
+      run: python3 .github/ci/continuous-build.py wait --minutes 60
+    - name: Показать текущую статистику кеша компиляции
+      if: always() && !cancelled()
+      continue-on-error: true
+      shell: bash
+      run: docker exec --env CCACHE_DIR=/ccache "$BUILD_CONTAINER_NAME" ccache --show-stats --verbose
+    - name: Создать снимок кеша, пока Ninja продолжает сборку
+      if: steps.progress.outputs.done != 'true'
+      shell: bash
+      run: python3 .github/ci/continuous-build.py snapshot --source "$CCACHE_LIVE_DIR" --destination "$CCACHE_DIR"
+    - name: Сохранить прогресс компиляции
+      id: save
+      if: steps.progress.outputs.done != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/ccache
+        key: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-continuous-${{ inputs.number }}
+    - name: Удалить старые снимки после подтверждённой загрузки нового
+      if: steps.save.outcome == 'success'
+      continue-on-error: true
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        CURRENT_CACHE_KEY: ${{ env.CCACHE_CACHE_PREFIX }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-continuous-${{ inputs.number }}
+      run: python3 .github/ci/prune-compiler-cache.py "$CURRENT_CACHE_KEY"
