@@ -9,18 +9,25 @@ const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE)
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs'};
+const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
-  const type=name.endsWith('.css')?'text/css':name.endsWith('.html')?'text/html':'text/javascript';
+  // Match WebUIDataSourceImpl: unrecognized extensions (including .mjs) are HTML.
+  const path=req.url?.split('?')[0]||'/';
+  const type=path.endsWith('.css')?'text/css':path.endsWith('.js')?'text/javascript':'text/html';
   res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https: http:; connect-src 'none'; frame-src 'none'; trusted-types argon-home; require-trusted-types-for 'script'"});
-  res.end(await readFile(resolve(root,name)));
+  let data=await readFile(resolve(root,name),'utf8');
+  if(name==='index.html') {
+    const language=/^ru(?:[-_,;]|$)/i.test(req.headers['accept-language']||'')?'ru':'en';
+    data=data.replace('<html lang="ru"','<html lang="'+language+'"');
+  }
+  res.end(data);
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const base='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
-const context=await browser.newContext({viewport:{width:1100,height:850},acceptDownloads:true});
+const context=await browser.newContext({viewport:{width:1100,height:850},acceptDownloads:true,locale:'ru-RU'});
 const iconRequests=[],allImageRequests=[],imageFailures=[],browserErrors=[];
 context.on('request',r=>{if(r.resourceType()==='image')allImageRequests.push(r.url());});
 context.on('page',p=>{
@@ -78,6 +85,31 @@ async function add(name,url,type='site',deferFrame=false){
   await page.locator('#shortcut-form').waitFor({state:'hidden'});
 }
 try {
+  for(const locale of ['en-US','de-DE']) {
+    const english=await browser.newContext({locale,acceptDownloads:true});
+    const p=await english.newPage();
+    p.on('pageerror',error=>errors.push(error.message));
+    await p.goto(base);
+    await p.getByRole('button',{name:'Customize',exact:true}).waitFor();
+    assert.equal(await p.locator('html').getAttribute('lang'),'en');
+    assert.equal(await p.locator('#search-input').getAttribute('placeholder'),'Search or enter address');
+    await p.locator('#settings-button').click();
+    await p.getByRole('button',{name:'Edit shortcuts',exact:false}).click();
+    await p.getByRole('button',{name:'Add site or folder',exact:true}).click();
+    await p.getByLabel('Name',{exact:true}).fill('Избранное');
+    await p.getByLabel('Site address',{exact:true}).fill('example.com');
+    await p.locator('#shortcut-form button[type=submit]').click();
+    await p.locator('[data-item]').first().waitFor();
+    assert.equal(await p.locator('[data-item] .shortcut-label').first().textContent(),'Избранное');
+    await p.locator('#edit-done').click();
+    await p.locator('#settings-button').click();
+    assert(await p.getByRole('button',{name:'Export backup',exact:false}).isVisible());
+    const download=p.waitForEvent('download');
+    await p.locator('#backup-export').click();
+    assert((await download).suggestedFilename().startsWith('argon-dump-'));
+    if(out)await p.screenshot({path:resolve(out,'homepage-'+locale+'.png'),fullPage:true});
+    await english.close();
+  }
   // Real image responses, service fallback, total failure, and switching back
   // from an uploaded image. These used to be hidden by aborting every image.
   const iconPage=await mockPage();

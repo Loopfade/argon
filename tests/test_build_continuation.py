@@ -34,8 +34,16 @@ class ContinuationTests(unittest.TestCase):
                                "RESUME_RUN": "123", "RESUME_ATTEMPT": "3",
                                "RESUME_SHA": self.merge}
         self.writes = []
-        self.jobs = [{"id": 201 + index, "name": name, "conclusion": "failure"}
-                     for index, name in enumerate(continuation.BUILD_JOBS)]
+        workflows = ROOT / ".github/workflows"
+        import re
+        caller = re.search(r"(?m)^  build:\n    name: (.+)$",
+                           (workflows / "build-all.yml").read_text())[1]
+        callee = re.search(r"(?m)^  build:\n    name: (.+)$",
+                           (workflows / "build-unified-arch.yml").read_text())[1]
+        self.jobs = [{"id": 201 + index, "conclusion": "failure",
+                      "name": caller.replace("${{ matrix.arch }}", arch) + " / "
+                              + callee.replace("${{ inputs.arch }}", arch)}
+                     for index, arch in enumerate(("arm64", "arm"))]
         self.artifacts = [{"name": f"argon-continuation-3-{arch}", "expired": False}
                           for arch in ("arm64", "arm")]
 
@@ -56,6 +64,18 @@ class ContinuationTests(unittest.TestCase):
             return {"total_count": len(self.artifacts),
                     "artifacts": copy.deepcopy(self.artifacts)}
         self.fail(f"Unexpected API path {path}")
+
+    def test_current_workflows_and_historical_english_jobs_can_both_resume(self):
+        current = copy.deepcopy(self.jobs)
+        for names in ([job["name"] for job in current],
+                      [f"Build and verify {arch} / Build, sign and verify APK ({arch})"
+                       for arch in ("arm64", "arm")]):
+            self.writes.clear()
+            for job, name in zip(self.jobs, names):
+                job["name"] = name
+            with patch.object(continuation, "api", side_effect=self.api):
+                continuation.resume(self.controller_env)
+            self.assertEqual(self.writes, [("actions/runs/123/rerun-failed-jobs", {})])
 
     def test_pr_schedules_main_controller_with_original_merge_sha(self):
         with patch.object(continuation, "api", side_effect=self.api):

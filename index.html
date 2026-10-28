@@ -338,12 +338,15 @@
   }
 
   function findJobs(jobs) {
-    const find = predicate => jobs.find(predicate);
+    const find = (...prefixes) => jobs.find(job =>
+      prefixes.some(prefix => job.name === prefix || job.name.startsWith(prefix + " /")));
     return {
-      gate: find(j => j.name === "Require latest compatible prepared image"),
-      arm64: find(j => j.name.includes("Build and verify arm64")),
-      arm: find(j => j.name.includes("Build and verify arm /")),
-      publish: find(j => j.name.includes("Publish verified dual-ARM release"))
+      gate: find("Подобрать совместимый подготовленный образ Chromium",
+        "Ensure compatible prepared Chromium image", "Require latest compatible prepared image"),
+      arm64: find("Собрать и проверить arm64", "Build and verify arm64"),
+      arm: find("Собрать и проверить arm", "Build and verify arm"),
+      publish: find("Опубликовать проверенный релиз для двух архитектур ARM",
+        "Publish verified dual-ARM release")
     };
   }
 
@@ -449,18 +452,36 @@
   }
 
   function checkpointStats(job) {
-    const warm=allSteps(job).filter(s => /^Warm local compiler cache \(checkpoint \d+\/\d+\)$/.test(s.name));
+    const warm=allSteps(job).filter(s =>
+      /^Warm local compiler cache \(checkpoint \d+\/\d+\)$/.test(s.name) ||
+      /^Preserve progress after up to (?:one|two|three|four|five) hours?$/.test(s.name) ||
+      /^Сохранить прогресс за (?:первый|второй|третий|четвёртый|пятый) час$/.test(s.name));
     return {
       success:warm.filter(s => s.conclusion === "success").length,
       skipped:warm.filter(s => s.conclusion === "skipped").length,
-      total:warm.length
+      total:warm.length,
+      continuous:warm.some(step => !step.name.startsWith("Warm local compiler cache"))
     };
   }
 
-  function stepDuration(job, fragment) {
-    const values=allSteps(job).filter(step => step.name.includes(fragment))
+  function stepDuration(job, ...fragments) {
+    const values=allSteps(job).filter(step => fragments.some(fragment => step.name.includes(fragment)))
       .map(durationMs).filter(value => value != null);
     return values.length ? values.reduce((total,value) => total + value,0) : null;
+  }
+
+  function apkDuration(job) {
+    const intervals=jobAttempts(job).map(attempt => {
+      const steps=attempt.steps || [];
+      const start=steps.find(step => ["Запустить непрерывную сборку APK",
+        "Start one uninterrupted APK build"].includes(step.name));
+      const finish=steps.find(step => ["Получить результат сборки",
+        "Collect actual build result"].includes(step.name));
+      return start && finish ? durationMs({started_at:start.started_at,
+        completed_at:finish.completed_at}) : null;
+    }).filter(value => value != null);
+    return intervals.length ? intervals.reduce((total,value) => total + value,0)
+      : stepDuration(job,"Build, sign and verify APK");
   }
 
   function visibleSteps(job) {
@@ -509,8 +530,8 @@
     }
     const s=state(job);
     const stats=checkpointStats(job);
-    const apk=stepDuration(job,"Build, sign and verify APK");
-    const restore=stepDuration(job,"Restore compiler cache");
+    const apk=apkDuration(job);
+    const restore=stepDuration(job,"Restore compiler cache","Восстановить кеш компиляции");
     const attempts=jobAttempts(job);
 
     return '<details class="arch">' +
@@ -522,7 +543,7 @@
         (attempts.length === 1 ? ' attempt' : ' attempts') + '</div></summary>' +
       '<div class="arch-body">' +
         '<div class="arch-metrics">' +
-          '<div class="mini">Warm-up <strong>' + esc(stats.success) + '/' + esc(stats.total || 20) + '</strong></div>' +
+          '<div class="mini">' + (stats.continuous ? 'Checkpoints' : 'Warm-up') + ' <strong>' + esc(stats.success) + '/' + esc(stats.total) + '</strong></div>' +
           '<div class="mini">APK <strong>' + esc(formatDuration(apk)) + '</strong></div>' +
           '<div class="mini">Cache restore <strong>' + esc(formatDuration(restore)) + '</strong></div>' +
         '</div>' +

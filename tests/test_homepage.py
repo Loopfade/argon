@@ -44,7 +44,7 @@ class HomepageTests(unittest.TestCase):
             homepage.apply(src)
             self.assertEqual(before, snapshot(src))
             generated = (src / homepage.UI / 'argon_home_resources.inc').read_text()
-            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs'):
+            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js'):
                 self.assertIn((homepage.OVERLAY / homepage.RESOURCES / filename).read_text(), generated)
             self.assertTrue((src / homepage.UI / 'BUILD.gn').is_file())
 
@@ -102,6 +102,17 @@ class HomepageTests(unittest.TestCase):
         self.assertIn("img-src 'self' data: chrome://image;", controller)
         self.assertIn('//chrome/browser/ui/webui/sanitized_image:sanitized_image_source',
                       (homepage.OVERLAY / homepage.UI / 'BUILD.gn').read_text())
+
+    def test_module_imports_use_webui_javascript_mime_paths(self):
+        # The pinned WebUIDataSourceImpl serves .mjs as text/html, so browser
+        # tests must not hide unsupported import URLs behind a permissive server.
+        assets = homepage.OVERLAY / homepage.RESOURCES
+        controller = (homepage.OVERLAY / homepage.UI / 'argon_home_ui.cc').read_text()
+        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js'):
+            imports = re.findall(r"from ['\"](\./[^'\"]+)['\"]", (assets / filename).read_text())
+            for path in imports:
+                self.assertTrue(path.endswith('.js'), (filename, path))
+                self.assertIn('path == "' + path.removeprefix('./') + '"', controller)
 
     def test_build_copies_the_patcher_before_applying_it(self):
         docker = (ROOT / 'docker/chromium/Dockerfile').read_text()

@@ -9,6 +9,7 @@ the upstream strings consumer and Android locale packaging. This does not
 replace full Chromium GN generation,
 Java/C++ compilation, or Android smoke tests.
 """
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import fnmatch
 import io
 import json
@@ -518,6 +519,27 @@ toolchain("default") {
                     raise ValueError("Locale source catalogs or XTB inputs changed: " + args)
 
 
+def fetch_sources(urls):
+    """Read an immutable fixture with bounded concurrency and visible progress."""
+    def read(name, url):
+        time.sleep(0.25)
+        return name, download(url, prefer_mirror=True)
+
+    values = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(read, name, url) for name, url in urls.items()]
+        try:
+            for number, future in enumerate(as_completed(futures), 1):
+                name, value = future.result()
+                values[name] = value
+                print(f"Исходники [{number}/{len(urls)}]: {name}", flush=True)
+        except BaseException:
+            for future in futures:
+                future.cancel()
+            raise
+    return values
+
+
 def main():
     lock = json.loads((ROOT / "build-lock.json").read_text())
     for key in ("chromium_commit", "boringssl_commit", "titanium_commit", "vanadium_commit"):
@@ -529,12 +551,7 @@ def main():
                  "DEPS": chromium_url(lock["chromium_commit"], "DEPS"),
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
-    # Gitiles applies a shared request quota to hosted-runner addresses. Pace
-    # this small source fixture instead of bursting hundreds of parallel reads.
-    values = {}
-    for name, url in urls.items():
-        time.sleep(1)
-        values[name] = download(url)
+    values = fetch_sources(urls)
     verify_pins(lock, values["chrome/VERSION"], values["DEPS"],
                 json.loads(values["titanium-tree"]))
 

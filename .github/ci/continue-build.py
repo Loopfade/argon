@@ -13,6 +13,11 @@ FULL_WORKFLOW = ".github/workflows/build-all.yml"
 FULL_WORKFLOWS = (FULL_WORKFLOW, ".github/workflows/build-all-no-publish.yml")
 CONTROLLER_WORKFLOW = ".github/workflows/continue-build.yml"
 BUILD_JOBS = {
+    f"Собрать и проверить {arch} / Собрать, подписать и проверить APK ({arch})": arch
+    for arch in ("arm64", "arm")
+}
+
+LEGACY_BUILD_JOBS = {
     f"Build and verify {arch} / Build, sign and verify APK ({arch})": arch
     for arch in ("arm64", "arm")
 }
@@ -97,9 +102,10 @@ def continuation_jobs(repository, run_id, attempt):
         raise ValueError("Incomplete artifact list; refusing an unbounded retry")
     markers = {item["name"] for item in artifacts if item.get("expired") is False}
     failed = [job for job in jobs if job.get("conclusion") in ("failure", "timed_out")]
+    build_jobs = {**LEGACY_BUILD_JOBS, **BUILD_JOBS}
     eligible = [job for job in failed
-                if job.get("name") in BUILD_JOBS
-                and f"argon-continuation-{attempt}-{BUILD_JOBS[job['name']]}" in markers]
+                if job.get("name") in build_jobs
+                and f"argon-continuation-{attempt}-{build_jobs[job['name']]}" in markers]
     if not eligible:
         raise ValueError("No failed job has a saved-cache budget marker for this attempt")
     return failed, eligible
