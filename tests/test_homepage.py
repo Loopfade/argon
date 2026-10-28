@@ -44,7 +44,7 @@ class HomepageTests(unittest.TestCase):
             homepage.apply(src)
             self.assertEqual(before, snapshot(src))
             generated = (src / homepage.UI / 'argon_home_resources.inc').read_text()
-            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs'):
+            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.mjs'):
                 self.assertIn((homepage.OVERLAY / homepage.RESOURCES / filename).read_text(), generated)
             self.assertTrue((src / homepage.UI / 'BUILD.gn').is_file())
 
