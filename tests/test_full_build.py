@@ -86,6 +86,21 @@ class FullBuildTests(unittest.TestCase):
         dockerfile.write_text(dockerfile.read_text() + "\nRUN update-toolchain\n")
         self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
 
+    def test_prepared_image_ignores_python_cache_excluded_from_docker_context(self):
+        checkout = self.checkout()
+        before = pipeline.image_fingerprint(checkout)
+        for name in ("extensions/__pycache__/bundle.cpython-312.pyc",
+                     "extensions/__pycache__/metadata.bin",
+                     "extensions/bundle.pyc"):
+            generated = checkout / name
+            generated.parent.mkdir(parents=True, exist_ok=True)
+            generated.write_bytes(b"local Python cache")
+        self.assertEqual(before, pipeline.image_fingerprint(checkout))
+        # Ignoring bytecode must still detect changes to the extension bundler.
+        bundler = checkout / "extensions/bundle.py"
+        bundler.write_text(bundler.read_text() + "\n# Changed bundler input\n")
+        self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
+
     def test_deletion_overlay_preserves_the_cached_source_toolchain_stage(self):
         checkout = self.checkout()
         before = source_stage_inputs(checkout)
