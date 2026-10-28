@@ -1,4 +1,4 @@
-"""Fetch exact Chromium files from the canonical source used by the build."""
+"""Fetch exact Chromium commits from Gitiles or the official GitHub mirror."""
 import base64
 import os
 from pathlib import PurePosixPath
@@ -21,7 +21,37 @@ def chromium_url(revision, path):
     return CHROMIUM_SOURCE + revision + "/" + urllib.parse.quote(str(path)) + "?format=TEXT"
 
 
-def download(url):
+def chromium_mirror_url(url):
+    if not url.startswith(CHROMIUM_SOURCE):
+        return None
+    match = re.fullmatch(r"([0-9a-f]{40})/(.+)\?format=TEXT", url[len(CHROMIUM_SOURCE):])
+    if not match:
+        raise ValueError("Chromium mirrors require an immutable commit and file path")
+    revision, encoded_path = match.groups()
+    path = urllib.parse.unquote(encoded_path)
+    # Apply the same path and revision validation as the canonical origin.
+    chromium_url(revision, path)
+    return ("https://raw.githubusercontent.com/chromium/chromium/" + revision
+            + "/" + urllib.parse.quote(str(PurePosixPath(path))))
+
+
+def download(url, *, prefer_mirror=False):
+    mirror = chromium_mirror_url(url) if prefer_mirror else None
+    if not mirror:
+        return _download(url)
+    try:
+        return _download(mirror)
+    except urllib.error.HTTPError as error:
+        if error.code not in TRANSIENT_HTTP_ERRORS | {404}:
+            raise
+    except (urllib.error.URLError, TimeoutError):
+        pass
+    print("::warning::Зеркало Chromium недоступно; используется Gitiles для того же SHA: "
+          + url, flush=True)
+    return _download(url)
+
+
+def _download(url):
     request = url
     token = os.environ.get("GH_TOKEN")
     if token and url.startswith("https://api.github.com/"):
