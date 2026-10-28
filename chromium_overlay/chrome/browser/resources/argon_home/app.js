@@ -1,4 +1,4 @@
-import {t, language, localizePage} from './i18n.mjs';
+import {t, language, localizePage} from './i18n.js';
 import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
   dumpStats, shortcutList, moveShortcut, navigationTarget} from './state.js';
 import {imageSource, faviconSources, engineIcon} from './icons.js';

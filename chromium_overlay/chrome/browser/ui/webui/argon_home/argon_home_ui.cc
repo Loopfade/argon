@@ -43,7 +43,7 @@ std::string_view GetResource(std::string_view path) {
   if (path == "state.js") {
     return kArgonHomeState;
   }
-  if (path == "i18n.mjs") {
+  if (path == "i18n.js") {
     return kArgonHomeI18n;
   }
   if (path == "icons.js") {

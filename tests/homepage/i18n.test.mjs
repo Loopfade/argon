@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {language, t} from '../../chromium_overlay/chrome/browser/resources/argon_home/i18n.mjs';
+import {language, t} from '../../chromium_overlay/chrome/browser/resources/argon_home/i18n.js';
 import {initialState, createDump, parseDump, loadStoredState, validateState}
   from '../../chromium_overlay/chrome/browser/resources/argon_home/state.mjs';
 

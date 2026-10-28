@@ -9,11 +9,13 @@ const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE)
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.mjs':'i18n.mjs'};
+const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
-  const type=name.endsWith('.css')?'text/css':name.endsWith('.html')?'text/html':'text/javascript';
+  // Match WebUIDataSourceImpl: unrecognized extensions (including .mjs) are HTML.
+  const path=req.url?.split('?')[0]||'/';
+  const type=path.endsWith('.css')?'text/css':path.endsWith('.js')?'text/javascript':'text/html';
   res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https: http:; connect-src 'none'; frame-src 'none'; trusted-types argon-home; require-trusted-types-for 'script'"});
   let data=await readFile(resolve(root,name),'utf8');
   if(name==='index.html') {

@@ -1,4 +1,4 @@
-import {t} from './i18n.mjs';
+import {t} from './i18n.js';
 export const MAX_DUMP_BYTES = 10 * 1024 * 1024;
 const SCHEMA_VERSION = 2;
 const BUILTIN_ENGINES = new Set(['google', 'bing', 'duck', 'noai']);
