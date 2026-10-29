@@ -9,7 +9,7 @@ const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE)
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js'};
+const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -110,6 +110,70 @@ try {
     if(out)await p.screenshot({path:resolve(out,'homepage-'+locale+'.png'),fullPage:true});
     await english.close();
   }
+  // Import actual files under the same Trusted Types/CSP as the production UI.
+  // Use a separate profile so existing homepage scenarios retain their fixtures.
+  const bookmarkContext=await browser.newContext({viewport:{width:320,height:820},locale:'ru-RU'});
+  const bookmarkPage=await bookmarkContext.newPage(),bookmarkRequests=[];
+  bookmarkPage.on('pageerror',error=>errors.push(error.message));
+  bookmarkPage.on('request',request=>bookmarkRequests.push(request.url()));
+  await bookmarkContext.route('https://**/*',route=>route.abort());
+  await bookmarkPage.goto(base);
+  const originalBookmarks={schemaVersion:2,theme:'amoled',engine:'bing',customEngines:[],showLabels:false,newTab:true,density:'compact',
+    shortcuts:[{id:'existing',name:'Мой сайт',url:'https://existing.example/',iconMode:'custom',icon:'book'}]};
+  await bookmarkPage.evaluate(value=>localStorage.setItem('argon-start-v1',JSON.stringify(value)),originalBookmarks);
+  await bookmarkPage.reload();
+  const bookmarkState=()=>bookmarkPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+  const fileBookmarks={name:'bookmarks.html',mimeType:'text/html',buffer:Buffer.from(`<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p>
+    <DT><H3>Работа</H3><DL><DT><A HREF="https://docs.example/?a=1&amp;b=2">Документы &amp; заметки</A>
+    <DT><H3>Архив</H3><DL><DT><A HREF="https://archive.example/">Архив</A></DL></DL>
+    <DT><A HREF="https://existing.example/">Дубль</A><DT><A HREF="javascript:alert(1)">Не сайт</A>
+    <script>window.importScriptRan=true;</script><img src="https://import-should-not-load.example/image">
+    </DL>`)};
+  await bookmarkPage.locator('#settings-button').click();
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles(fileBookmarks);
+  await bookmarkPage.locator('#confirm-bookmarks').waitFor();
+  assert.deepEqual(await bookmarkState(),originalBookmarks,'preview cannot change storage');
+  assert(await bookmarkPage.getByText('Вложенные папки будут показаны отдельно с путём в названии.').isVisible());
+  assert(await bookmarkPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert.equal(await bookmarkPage.evaluate(()=>window.importScriptRan),undefined);
+  assert(!bookmarkRequests.some(url=>url.includes('import-should-not-load.example')));
+  if(out)await bookmarkPage.screenshot({path:resolve(out,'home-bookmarks-preview-320.png'),fullPage:true});
+  await bookmarkPage.locator('#cancel-bookmarks').click();
+  assert.deepEqual(await bookmarkState(),originalBookmarks);
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles(fileBookmarks);
+  await bookmarkPage.locator('#confirm-bookmarks').click();
+  let imported=await bookmarkState();
+  assert.equal(imported.shortcuts.length,3);assert.equal(imported.shortcuts[2].name,'Работа / Архив');
+  assert.deepEqual({...imported,shortcuts:[]},{...originalBookmarks,shortcuts:[]});
+  await bookmarkPage.getByRole('button',{name:'Папка Работа',exact:true}).click();
+  assert.equal(await bookmarkPage.getByRole('link',{name:'Документы & заметки',exact:true}).getAttribute('href'),'https://docs.example/?a=1&b=2');
+  await bookmarkPage.reload();
+  assert.equal((await bookmarkState()).shortcuts.length,3);
+  assert.equal(await bookmarkPage.locator('html').getAttribute('data-theme'),'amoled');
+  await bookmarkPage.locator('#settings-button').click();
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles(fileBookmarks);
+  assert(await bookmarkPage.locator('#confirm-bookmarks').isDisabled());
+  await bookmarkPage.locator('#cancel-bookmarks').click();
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{broken')});
+  await bookmarkPage.locator('#bookmarks-error:not([hidden])').waitFor();
+  assert.deepEqual(await bookmarkState(),imported);
+  const chromeBookmarks={roots:{bookmark_bar:{name:'Chrome',type:'folder',children:[{name:'Chrome bookmark',url:'https://chrome-bookmark.example/',type:'url'}]}}};
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'Bookmarks',mimeType:'application/octet-stream',buffer:Buffer.from(JSON.stringify(chromeBookmarks))});
+  await bookmarkPage.locator('#confirm-bookmarks').waitFor();
+  await bookmarkPage.evaluate(()=>{window.savedSetItem=Storage.prototype.setItem;Storage.prototype.setItem=()=>{throw new DOMException('Storage full','QuotaExceededError');};});
+  await bookmarkPage.locator('#confirm-bookmarks').click();
+  assert(await bookmarkPage.locator('#bookmarks-error').isVisible());
+  assert.deepEqual(await bookmarkState(),imported);
+  await bookmarkPage.evaluate(()=>{Storage.prototype.setItem=window.savedSetItem;delete window.savedSetItem;});
+  await bookmarkPage.locator('#confirm-bookmarks').click();
+  assert.equal((await bookmarkState()).shortcuts.length,4);
+  await bookmarkPage.locator('#settings-button').click();
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'firefox.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({root:'placesRoot',children:[{title:'Firefox',uri:'https://firefox-bookmark.example/',type:'text/x-moz-place'}]}))});
+  await bookmarkPage.locator('#confirm-bookmarks').click();
+  assert.equal((await bookmarkState()).shortcuts.length,5);
+  if(out)await bookmarkPage.screenshot({path:resolve(out,'home-bookmarks-imported-320.png'),fullPage:true});
+  await bookmarkContext.close();
+
   // Real image responses, service fallback, total failure, and switching back
   // from an uploaded image. These used to be hidden by aborting every image.
   const iconPage=await mockPage();
@@ -260,7 +324,7 @@ try {
   const search=page.waitForRequest(r=>r.isNavigationRequest()&&r.url().startsWith('https://noai.duckduckgo.com/?q='));
   await page.locator('#search-form button[type=submit]').click();await search;
   assert.deepEqual(errors,[]);
-  console.log('PASS: production homepage under Trusted Types; icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, quota, narrow screens and search');
+  console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');
 } catch(error) {
   const active=context.pages().find(p=>p.url().startsWith(base))||page;
   console.error(JSON.stringify({pageErrors:errors,iconRequests,allImageRequests,imageFailures,browserErrors:browserErrors.slice(-20),preview:await active.evaluate(async()=>({markup:document.querySelector('#icon-preview')?.outerHTML,address:document.querySelector('#shortcut-url')?.value,protocol:location.protocol,sources:(await import('./icons.js')).faviconSources('https://primary-icon.example/private/path',location.protocol)})).catch(()=>null)}));

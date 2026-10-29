@@ -44,7 +44,7 @@ class HomepageTests(unittest.TestCase):
             homepage.apply(src)
             self.assertEqual(before, snapshot(src))
             generated = (src / homepage.UI / 'argon_home_resources.inc').read_text()
-            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'theme.js'):
+            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'theme.js', 'bookmarks.mjs'):
                 self.assertIn((homepage.OVERLAY / homepage.RESOURCES / filename).read_text(), generated)
             self.assertTrue((src / homepage.UI / 'BUILD.gn').is_file())
 
@@ -109,7 +109,7 @@ class HomepageTests(unittest.TestCase):
         # tests must not hide unsupported import URLs behind a permissive server.
         assets = homepage.OVERLAY / homepage.RESOURCES
         controller = (homepage.OVERLAY / homepage.UI / 'argon_home_ui.cc').read_text()
-        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js'):
+        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'bookmarks.mjs'):
             imports = re.findall(r"from ['\"](\./[^'\"]+)['\"]", (assets / filename).read_text())
             for path in imports:
                 self.assertTrue(path.endswith('.js'), (filename, path))

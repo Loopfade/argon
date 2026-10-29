@@ -54,6 +54,9 @@ std::string_view GetResource(std::string_view path) {
   if (path == "icons.js") {
     return kArgonHomeIcons;
   }
+  if (path == "bookmarks.js") {
+    return kArgonHomeBookmarks;
+  }
   return {};
 }
 

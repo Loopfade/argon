@@ -156,6 +156,51 @@ export function dumpStats(state) {
   return {sites, folders, engines: state.customEngines.length};
 }
 
+/** Plan an additive import; neither the source nor the current state is changed. */
+export function mergeBookmarks(state, parsed, makeId = () => globalThis.crypto?.randomUUID?.()
+  || 'bookmark-' + Date.now() + '-' + Math.random().toString(36).slice(2)) {
+  const next = validateState(state), ids = new Set(), urls = new Set(), groups = new Map();
+  let imported = 0, folders = 0, duplicates = 0, shortened = 0;
+  for (const item of next.shortcuts) {
+    ids.add(item.id);
+    for (const site of item.type === 'folder' ? item.children : [item]) {
+      ids.add(site.id); urls.add(new URL(site.url).href);
+    }
+  }
+  function id() {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const value = identifier(makeId());
+      if (!ids.has(value)) { ids.add(value); return value; }
+    }
+    throw new Error(t("Не удалось создать идентификаторы закладок. Повторите импорт."));
+  }
+  function name(value) {
+    if (value.length <= 40) return value;
+    shortened++;
+    let result = value.slice(0, 39);
+    if (/[\uD800-\uDBFF]$/.test(result)) result = result.slice(0, -1);
+    return result + '…';
+  }
+  for (const record of parsed.records) {
+    const url = new URL(webUrl(record.url)).href;
+    if (urls.has(url)) { duplicates++; continue; }
+    urls.add(url);
+    let target = next.shortcuts;
+    if (record.path.length) {
+      const key = JSON.stringify(record.path);
+      if (!groups.has(key)) {
+        const folder = {id: id(), type: 'folder', name: name(record.path.join(' / ')), children: []};
+        groups.set(key, folder); next.shortcuts.push(folder); folders++;
+      }
+      target = groups.get(key).children;
+    }
+    target.push({id: id(), name: name(record.name), url, iconMode: 'favicon'});
+    imported++;
+    if (ids.size > 2000) throw new Error(t("После импорта получится больше 2000 ярлыков и папок. Разделите файл или освободите место."));
+  }
+  return {state: validateState(next), imported, folders, duplicates, shortened, skipped: parsed.skipped};
+}
+
 /** Saves accepted edits atomically. Editing is local to this page session. */
 export class HomepageStore {
   constructor(storage, key) {
@@ -191,6 +236,18 @@ export class HomepageStore {
     this.loadError = null;
     this.editing = false;
     return saved;
+  }
+
+  importBookmarks(parsed, makeId) {
+    let result;
+    // The explicit import confirmation authorizes this layout edit. Re-read
+    // storage here so a preview cannot overwrite edits made in another tab.
+    this.update(next => {
+      result = mergeBookmarks(next, parsed, makeId);
+      next.shortcuts = result.state.shortcuts;
+    });
+    this.editing = false;
+    return {...result, state: this.state};
   }
 }
 
