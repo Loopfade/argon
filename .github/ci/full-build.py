@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from configure_build import TARGET_ABIS
 from build_identity import application_identity
+from release_policy import RELEASE_LICENSES
 from sign_and_verify import check_release_key, signing_tools, verify_apk_abi, write_release_key
 
 IMAGE_LABEL = "io.argon.prepared-inputs"
@@ -148,7 +149,7 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
             or f"application-label:'{identity['application_label']}'" not in badging):
         raise ValueError("APK package or application label mismatch")
     verify_apk_abi(apk, abi)
-    for license_name in ("Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
+    for license_name in RELEASE_LICENSES:
         if not (directory / license_name).is_file():
             raise ValueError("Missing source license")
     (directory / "apk-signature.txt").write_text(verification)

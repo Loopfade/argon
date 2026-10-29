@@ -27,7 +27,8 @@ class ReleaseSigningTests(unittest.TestCase):
                 path.touch()
                 path.chmod(0o755)
             for relative in ["build-lock.json", "certificates/ministry-ca-lock.json",
-                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt"]:
+                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt",
+                             "licenses/Bare-BSD-3-Clause.txt"]:
                 destination = root / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(ROOT / relative, destination)

@@ -58,7 +58,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY --chown=argon:argon patch.sh ./
 COPY --chown=argon:argon scripts/apply_scoped_ca.py scripts/apply_background_playback.py \
     scripts/apply_modulemap.py scripts/apply_browsing_data_period.py \
-    scripts/apply_homepage.py scripts/apply_exit.py ./scripts/
+    scripts/apply_homepage.py scripts/apply_exit.py scripts/apply_dark_themes.py ./scripts/
+COPY --chown=argon:argon patches/ ./patches/
 COPY --chown=argon:argon chromium_overlay/ ./chromium_overlay/
 COPY --chown=argon:argon certificates/ ./certificates/
 COPY --chown=argon:argon extensions/ ./extensions/

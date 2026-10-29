@@ -44,7 +44,7 @@ class HomepageTests(unittest.TestCase):
             homepage.apply(src)
             self.assertEqual(before, snapshot(src))
             generated = (src / homepage.UI / 'argon_home_resources.inc').read_text()
-            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js'):
+            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'theme.js', 'bookmarks.mjs'):
                 self.assertIn((homepage.OVERLAY / homepage.RESOURCES / filename).read_text(), generated)
             self.assertTrue((src / homepage.UI / 'BUILD.gn').is_file())
 
@@ -97,7 +97,8 @@ class HomepageTests(unittest.TestCase):
         self.assertNotIn('DisableTrustedTypesCSP', controller)
         self.assertIn("connect-src 'none';", controller)
         self.assertIn('SetRequestFilter(', controller)
-        self.assertNotIn('AddMessageHandler', controller)
+        self.assertIn('AddMessageHandler(CreateArgonThemeHandler())', controller)
+        self.assertLess(html.index('src="theme.js"'), html.index('href="app.css"'))
         self.assertIn('std::make_unique<SanitizedImageSource>(profile)', controller)
         self.assertIn("img-src 'self' data: chrome://image;", controller)
         self.assertIn('//chrome/browser/ui/webui/sanitized_image:sanitized_image_source',
@@ -108,7 +109,7 @@ class HomepageTests(unittest.TestCase):
         # tests must not hide unsupported import URLs behind a permissive server.
         assets = homepage.OVERLAY / homepage.RESOURCES
         controller = (homepage.OVERLAY / homepage.UI / 'argon_home_ui.cc').read_text()
-        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js'):
+        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'bookmarks.mjs'):
             imports = re.findall(r"from ['\"](\./[^'\"]+)['\"]", (assets / filename).read_text())
             for path in imports:
                 self.assertTrue(path.endswith('.js'), (filename, path))

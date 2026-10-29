@@ -64,6 +64,7 @@ jobs:
           arm64_chromium_license=$(jq -er '.chromium_license' <<<"$arm64_selection")
           arm64_ruthenium_license=$(jq -er '.ruthenium_license' <<<"$arm64_selection")
           arm64_titanium_license=$(jq -er '.titanium_license' <<<"$arm64_selection")
+          arm64_bare_license=$(jq -er '.bare_license' <<<"$arm64_selection")
 
           arm_apk=$(jq -er '.apk' <<<"$arm_selection")
           arm_checksum=$(jq -er '.checksum' <<<"$arm_selection")
@@ -72,6 +73,7 @@ jobs:
           arm_chromium_license=$(jq -er '.chromium_license' <<<"$arm_selection")
           arm_ruthenium_license=$(jq -er '.ruthenium_license' <<<"$arm_selection")
           arm_titanium_license=$(jq -er '.titanium_license' <<<"$arm_selection")
+          arm_bare_license=$(jq -er '.bare_license' <<<"$arm_selection")
 
           source_sha=$(jq -er '.source_commit' "$arm64_metadata")
           arm_source_sha=$(jq -er '.source_commit' "$arm_metadata")
@@ -154,6 +156,7 @@ jobs:
           cmp "$arm64_chromium_license" "$arm_chromium_license"
           cmp "$arm64_ruthenium_license" "$arm_ruthenium_license"
           cmp "$arm64_titanium_license" "$arm_titanium_license"
+          cmp "$arm64_bare_license" "$arm_bare_license"
 
           [[ "$EVENT_NAME" == workflow_dispatch ]] || {
             echo "Публикация релиза разрешена только из ручного запуска сборки Argon." >&2
@@ -207,7 +210,7 @@ jobs:
           fi
 
           cp "$arm64_apk" "$arm64_checksum" "$arm_apk" "$arm_checksum" public-assets/
-          cp "$arm64_chromium_license" "$arm64_ruthenium_license" "$arm64_titanium_license" public-assets/
+          cp "$arm64_chromium_license" "$arm64_ruthenium_license" "$arm64_titanium_license" "$arm64_bare_license" public-assets/
 
           # The workflow-level publish-release lock covers selection and creation.
           # Fetch every page; an API failure must never look like an empty history.
@@ -258,8 +261,8 @@ jobs:
           fi
 
           mapfile -d '' assets < <(find public-assets -type f -print0 | sort -z)
-          if (( ${#assets[@]} != 7 )); then
-            echo "Ожидается ровно семь файлов публичного релиза, найдено ${#assets[@]}." >&2
+          if (( ${#assets[@]} != 8 )); then
+            echo "Ожидается ровно восемь файлов публичного релиза, найдено ${#assets[@]}." >&2
             exit 1
           fi
 

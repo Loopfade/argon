@@ -2,6 +2,7 @@
 // Use of this source code is governed by the repository's LICENSE file.
 
 #include "chrome/browser/ui/webui/argon_home/argon_home_ui.h"
+#include "chrome/browser/ui/webui/argon_home/argon_theme_handler.h"
 
 #include <memory>
 #include <string>
@@ -17,6 +18,7 @@
 #include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "content/public/browser/web_ui_message_handler.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 
 namespace {
@@ -40,6 +42,9 @@ std::string_view GetResource(std::string_view path) {
   if (path == "app.js") {
     return kArgonHomeJs;
   }
+  if (path == "theme.js") {
+    return kArgonHomeTheme;
+  }
   if (path == "state.js") {
     return kArgonHomeState;
   }
@@ -48,6 +53,9 @@ std::string_view GetResource(std::string_view path) {
   }
   if (path == "icons.js") {
     return kArgonHomeIcons;
+  }
+  if (path == "bookmarks.js") {
+    return kArgonHomeBookmarks;
   }
   return {};
 }
@@ -60,6 +68,7 @@ bool ArgonHomeUIConfig::IsWebUIEnabled(
 }
 
 ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
+  web_ui->AddMessageHandler(CreateArgonThemeHandler());
   auto* profile = Profile::FromWebUI(web_ui);
   content::URLDataSource::Add(profile,
                             std::make_unique<SanitizedImageSource>(profile));
@@ -81,6 +90,13 @@ ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
               base::ReplaceFirstSubstringAfterOffset(
                   &data, 0, "<html lang=\"ru\"",
                   "<html lang=\"" + html_language + "\"");
+              const std::string theme = GetArgonBrowserTheme();
+              base::ReplaceFirstSubstringAfterOffset(
+                  &data, 0, "data-browser-theme=\"system\"",
+                  "data-browser-theme=\"" + theme + "\"");
+              base::ReplaceFirstSubstringAfterOffset(
+                  &data, 0, "data-theme=\"light\"",
+                  "data-theme=\"" + theme + "\"");
             }
             std::move(callback).Run(base::MakeRefCounted<base::RefCountedString>(
                 std::move(data)));

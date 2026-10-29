@@ -109,7 +109,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         assets.mkdir()
         names = [f"Argon-{VERSION}-release-{abi}.apk{suffix}"
                  for abi in ("arm64-v8a", "armeabi-v7a") for suffix in ("", ".sha256")]
-        names += ["Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"]
+        names += ["Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt", "Bare-LICENSE.txt"]
         published = []
         for name in names:
             data = (f"{hashlib.sha256((assets / name[:-7]).read_bytes()).hexdigest()}  "
@@ -148,7 +148,7 @@ class WorkflowExecutionTests(unittest.TestCase):
             target.mkdir(parents=True)
             apk_name = f"Argon-{VERSION}-release-{abi}.apk"
             for name in (apk_name, apk_name + ".sha256", "Chromium-LICENSE.txt",
-                         "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
+                         "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt", "Bare-LICENSE.txt"):
                 shutil.copy(assets / name, target / name)
             # Old images carry a fixed revision; future metadata can omit it.
             # Neither form is allowed to override the automatic release number.

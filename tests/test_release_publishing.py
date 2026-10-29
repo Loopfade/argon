@@ -260,7 +260,7 @@ class ReleasePublishingTests(unittest.TestCase):
     def test_release_contains_both_arm_apks_and_checksums(self):
         workflow = (ROOT / ".github/workflows/publish-release.yml").read_text()
         self.assertIn("pattern: Argon-*", workflow)
-        self.assertIn('if (( ${#assets[@]} != 7 )); then', workflow)
+        self.assertIn('if (( ${#assets[@]} != 8 )); then', workflow)
         self.assertIn("release-arm64-v8a.apk", workflow)
         self.assertIn("release-armeabi-v7a.apk", workflow)
         self.assertNotIn("## English", workflow)
