@@ -3,6 +3,7 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
   dumpStats, shortcutList, moveShortcut, navigationTarget, mergeBookmarks} from './state.js';
 import {imageSource, faviconSources, engineIcon} from './icons.js';
 import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
+import {connectBrowserSearch} from './browser-search.js';
 
 (() => {
   'use strict';
@@ -22,14 +23,97 @@ import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
   let modalKind=null, currentFolder=null, returnFocus=null, toastTimer, drag=null, touchDrag=null, suppressClick=false, moving=null;
   const editing = () => store.editing;
   const homeTheme = globalThis.argonHomeTheme;
+  let browserSearch=null, browserSearchState=null, selectingEngine=false, searchBoundsFrame=0;
+  let connectingSearch=null, nativeSearchRetries=0;
+  const nativeSearch = () => browserSearchState?.available === true;
+  const originalSearchInput=$('search-input').cloneNode(true);
   const builtins = [
     {id:'google',name:'Google',icon:'google',url:'https://www.google.com/search?q={query}'},
     {id:'bing',name:'Bing',url:'https://www.bing.com/search?q={query}'},
     {id:'duck',name:'DuckDuckGo',icon:'duck',url:'https://duckduckgo.com/?q={query}'},
     {id:'noai',name:'DuckDuckGo NoAI',short:'DDG NoAI',icon:'duck',url:'https://noai.duckduckgo.com/?q={query}'}
   ];
-  const engines = () => [...builtins,...state.customEngines];
-  const selectedEngine = () => engines().find(e=>e.id===state.engine) || builtins[0];
+  const pageEngines = () => [...builtins,...state.customEngines];
+  function selectedEngine() {
+    if(!nativeSearch())return pageEngines().find(e=>e.id===state.engine)||builtins[0];
+    const engine={...browserSearchState.engine};
+    if(!engine.name)engine.name=t("Поиск отключён");
+    if(engine.id==='browser:current') {
+      const matching=state.customEngines.find(item=>{
+        try{return new URL(item.url.replaceAll('{query}','example')).href===new URL(engine.url).href;}catch{return false;}
+      });
+      if(matching)engine.id=matching.id;
+    }
+    return engine;
+  }
+  function engines() {
+    if(!nativeSearch())return pageEngines();
+    const current=selectedEngine();
+    return [current,...pageEngines().filter(engine=>engine.id!==current.id)];
+  }
+  function reportSearchBounds() {
+    if(browserSearch?.available)browserSearch.bounds($('search-form').getBoundingClientRect(),window.scrollY);
+  }
+  function scheduleSearchBounds() {
+    if(searchBoundsFrame)return;
+    searchBoundsFrame=requestAnimationFrame(()=>{searchBoundsFrame=0;reportSearchBounds();});
+  }
+  async function focusSearch(text = '') {
+    if(!nativeSearch()){$('search-input').focus();return;}
+    closeEngine();
+    try{
+      await browserSearch.refresh();
+      if(!nativeSearch()){$('search-input').focus();return;}
+      reportSearchBounds();
+      if(!await browserSearch.focus(text))throw Error();
+    }
+    catch{notify(t("Не удалось открыть адресную строку. Повторите нажатие."));}
+  }
+  function applyBrowserSearch(value) {
+    browserSearchState=value;
+    if(value.available)nativeSearchRetries=0;
+    if(value.available&&$('search-input').tagName==='INPUT') {
+      const draft=$('search-input').value, editingSearch=document.activeElement===$('search-input');
+      const button=document.createElement('button');
+      button.id='search-input';button.type='button';button.className='search-input native-search-box';
+      $('search-input').replaceWith(button);button.addEventListener('click',()=>void focusSearch());
+      document.documentElement.classList.add('browser-search-ready');
+      if(draft||editingSearch)requestAnimationFrame(()=>void focusSearch(draft));
+    } else if(!value.available&&$('search-input').tagName==='BUTTON') {
+      $('search-input').replaceWith(originalSearchInput.cloneNode(true));
+      document.documentElement.classList.remove('browser-search-ready');
+      $('search-form').style.opacity='';$('search-form').inert=false;
+    }
+    if(value.available) {
+      const label=browserSearchState.enabled
+        ? t("Запрос в {name} или URL",{name:selectedEngine().name}) : t("Введите адрес сайта");
+      $('search-input').textContent=label;$('search-input').setAttribute('aria-label',label);
+      scheduleSearchBounds();
+    }
+    renderEngine();
+  }
+  const connectSearch = async () => {
+    if(connectingSearch)return connectingSearch;
+    connectingSearch=(async()=>{
+      try {
+        if(browserSearch)await browserSearch.refresh();
+        else browserSearch=await connectBrowserSearch(applyBrowserSearch,(alpha,focused)=>{
+          if(!nativeSearch())return;
+          $('search-form').style.opacity=String(alpha);
+          $('search-form').inert=focused;
+        });
+        scheduleSearchBounds();
+        if(browserSearch&&!browserSearch.available&&!document.hidden&&nativeSearchRetries++<20)
+          setTimeout(()=>void connectSearch(),250);
+      }catch(error){console.warn('Argon search:',error);}
+    })();
+    try{await connectingSearch;}finally{connectingSearch=null;}
+  };
+  window.addEventListener('pageshow',()=>void connectSearch());
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void connectSearch();});
+  window.addEventListener('scroll',scheduleSearchBounds,{passive:true});
+  window.addEventListener('resize',scheduleSearchBounds);
+  new ResizeObserver(scheduleSearchBounds).observe($('search-form'));
   function notify(message, undo) {
     const toast=$('toast'); toast.replaceChildren(document.createTextNode(message));
     if (undo) { const b=document.createElement('button'); b.type='button'; b.textContent=t("Отменить"); b.addEventListener('click',undo); toast.append(b); }
@@ -99,6 +183,7 @@ import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
   function findItem(id,parent=null) { return shortcutList(state.shortcuts,parent).find(item=>item.id===id); }
   function refresh() { applyTheme();renderEngine();updateEditing();renderShortcuts(); }
   function engineMarkup(engine) {
+    if(!engine.url)return svg('globe');
     const url=engine.url.replaceAll('{query}','example');
     const source=engineIcon(url,location.protocol),fallback=faviconSources(url,location.protocol)[1]||'';
     return source?imageMarkup(source,fallback,true):svg('globe');
@@ -108,13 +193,30 @@ import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
     $('engine-trigger').title=t("Поисковая система: ")+engine.name;
     setHtml($('engine-menu'),t("<div class=\"popover-title\">Поисковая система</div>")+engines().map(e=>'<button type="button" class="engine-option'+(e.id===engine.id?' active':'')+'" data-engine="'+esc(e.id)+'" aria-pressed="'+(e.id===engine.id)+'"><span class="engine-icon">'+engineMarkup(e)+'</span><span>'+esc(e.id==='noai'?'DuckDuckGo':e.name)+'</span>'+(e.id==='noai'?t("<span class=\"noai-badge\">БЕЗ ИИ</span>"):'')+(e.id===engine.id?svg('check','check'):'')+'</button>').join('')+'<div class="popover-divider"></div><button type="button" class="engine-option engine-add" id="add-engine">'+svg('plus')+t("Добавить свою</button>"));
     fallbackImages($('selected-engine-icon'));fallbackImages($('engine-menu'));
+    $('engine-trigger').disabled=selectingEngine;
+    if(nativeSearch()&&!browserSearchState.canChange) {
+      $('engine-menu').querySelectorAll('button').forEach(button=>{button.disabled=true;});
+      const note=document.createElement('p');note.className='popover-title';
+      note.textContent=t("Поисковик задан политикой или расширением.");$('engine-menu').append(note);
+    }
   }
   function closeEngine() { $('engine-menu').hidden=true;$('engine-trigger').setAttribute('aria-expanded','false'); }
   $('engine-trigger').addEventListener('click',()=>{const open=$('engine-menu').hidden;$('engine-menu').hidden=!open;$('engine-trigger').setAttribute('aria-expanded',String(open));if(open)$('engine-menu').querySelector('button')?.focus();});
-  $('engine-menu').addEventListener('click',e=>{const b=e.target.closest('[data-engine]');if(b&&commit(s=>{s.engine=b.dataset.engine;})){renderEngine();closeEngine();$('search-input').focus();}if(e.target.closest('#add-engine'))openEngineDialog();});
+  async function selectEngine(engine) {
+    if(engine.id===selectedEngine().id){closeEngine();void focusSearch();return;}
+    if(!nativeSearch()) {
+      if(commit(s=>{s.engine=engine.id;})){renderEngine();closeEngine();void focusSearch();}
+      return;
+    }
+    selectingEngine=true;closeEngine();renderEngine();
+    try{await browserSearch.select(engine);void focusSearch();}
+    catch{notify(t("Не удалось изменить поисковик браузера."));}
+    finally{selectingEngine=false;renderEngine();}
+  }
+  $('engine-menu').addEventListener('click',e=>{const b=e.target.closest('[data-engine]');if(b&&!b.disabled){const engine=engines().find(item=>item.id===b.dataset.engine);if(engine)void selectEngine(engine);}if(e.target.closest('#add-engine'))openEngineDialog();});
   $('engine-menu').addEventListener('keydown',e=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();const list=[...$('engine-menu').querySelectorAll('button')];let index=list.indexOf(document.activeElement);index=e.key==='Home'?0:e.key==='End'?list.length-1:(index+(e.key==='ArrowDown'?1:-1)+list.length)%list.length;list[index]?.focus();});
   document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))closeEngine();});
-  $('search-form').addEventListener('submit',e=>{e.preventDefault();try{const target=navigationTarget($('search-input').value,selectedEngine().url);if(target)location.assign(target);else $('search-input').focus();}catch{notify(t("Проверьте адрес сайта или поисковой системы."));}});
+  $('search-form').addEventListener('submit',e=>{e.preventDefault();if(nativeSearch()){void focusSearch();return;}try{const target=navigationTarget($('search-input').value,selectedEngine().url);if(target)location.assign(target);else void focusSearch();}catch{notify(t("Проверьте адрес сайта или поисковой системы."));}});
 
   function openModal(content,kind,extra='') {
     closeEngine();if(!modalKind)returnFocus=document.activeElement;modalKind=kind;
@@ -232,7 +334,7 @@ import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
 
   function openEngineDialog() {
     openModal(heading(t("Свой поисковик"))+t("<form id=\"engine-form\"><label class=\"field\"><span class=\"field-label\">Название</span><input id=\"engine-title\" placeholder=\"Например, Brave Search\" maxlength=\"40\" required autofocus></label><label class=\"field\"><span class=\"field-label\">Адрес поиска</span><input id=\"engine-url\" placeholder=\"https://example.com/?q={query}\" required spellcheck=\"false\"><span class=\"field-help\">Вставьте {query} вместо поискового запроса.</span></label><p id=\"form-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" type=\"button\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">Добавить</button></div></form>"),'engine');
-    $('engine-form').addEventListener('submit',e=>{e.preventDefault();const name=$('engine-title').value.trim(),template=$('engine-url').value.trim();if(!name||!template.includes('{query}')){showError(t("Укажите название и {query} в адресе поиска."));return;}let url;try{url=normalizedUrl(template.replaceAll('{query}','ARGON_QUERY')).replaceAll('ARGON_QUERY','{query}');}catch{showError(t("Укажите корректный адрес поиска."));return;}const engine={id:uid(),name,url};if(!commit(next=>{next.customEngines.push(engine);next.engine=engine.id;},false,'form-error'))return;renderEngine();closeModal();notify(t("Поисковик добавлен"));});
+    $('engine-form').addEventListener('submit',async e=>{e.preventDefault();const name=$('engine-title').value.trim(),template=$('engine-url').value.trim();if(!name||!template.includes('{query}')){showError(t("Укажите название и {query} в адресе поиска."));return;}let url;try{url=normalizedUrl(template.replaceAll('{query}','ARGON_QUERY')).replaceAll('ARGON_QUERY','{query}');}catch{showError(t("Укажите корректный адрес поиска."));return;}const engine={id:uid(),name,url};if(!commit(next=>{next.customEngines.push(engine);next.engine=engine.id;},false,'form-error'))return;renderEngine();closeModal();if(nativeSearch()){try{await browserSearch.select(engine);}catch{notify(t("Поисковик добавлен, но сменить поисковик браузера не удалось."));return;}}notify(t("Поисковик добавлен"));});
   }
   function exportBackup() {
     try{const dump=createDump(state),url=URL.createObjectURL(new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='argon-dump-'+dump.createdAt.slice(0,16).replace('T','_').replace(':','-')+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);notify(t("Дамп подготовлен для скачивания"));}catch(error){backupError(error.message||t("Не удалось создать дамп."));}
@@ -301,9 +403,10 @@ import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){if(moving){cancelMove();return;}if(modalKind){closeModal();return;}if(!$('engine-menu').hidden){closeEngine();$('engine-trigger').focus();return;}if(editing()){setEditing(false);return;}$('search-input').blur();}
     const typing=e.target.matches('input,textarea,select,[contenteditable=true]');
-    if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!modalKind){e.preventDefault();closeEngine();$('search-input').focus();}
+    if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!modalKind){e.preventDefault();closeEngine();void focusSearch();}
     if(e.key==='Tab'&&modalKind){const controls=[...$('modal-root').querySelectorAll('a[href],button:not([disabled]),input:not([type=hidden]),select')].filter(el=>el.offsetParent!==null);const first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
   });
   refresh();
+  void connectSearch();
   if(store.loadError)notify(t("Не удалось прочитать настройки. Исходные данные сохранены; можно восстановить дамп."));
 })();

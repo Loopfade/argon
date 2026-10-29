@@ -22,6 +22,11 @@ def input_tree(root):
         homepage.TABBED_ACTIVITY: (FIXTURES / 'startup_draw_block.java.in').read_text(),
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
+        homepage.TOOLBAR_MANAGER: homepage.TOOLBAR_BEFORE + '\n' + homepage.TOOLBAR_NAV_START
+            + '\n' + homepage.TOOLBAR_NAV_FINISH + '\n    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
+            + '    public @Nullable OmniboxStub getOmniboxStub() {\n    }\n',
+        homepage.JAVA_CATALOG: '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",\n',
+        homepage.JNI_CATALOG: '  generate_jni("chrome_jni_headers") {\n    sources = [\n    ]\n  }\n',
     }
     for path, text in values.items():
         target = root / path
@@ -44,9 +49,22 @@ class HomepageTests(unittest.TestCase):
             homepage.apply(src)
             self.assertEqual(before, snapshot(src))
             generated = (src / homepage.UI / 'argon_home_resources.inc').read_text()
-            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'theme.js', 'bookmarks.mjs'):
+            for filename in ('index.html', 'app.css', 'app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'theme.js', 'bookmarks.mjs', 'browser-search.mjs'):
                 self.assertIn((homepage.OVERLAY / homepage.RESOURCES / filename).read_text(), generated)
             self.assertTrue((src / homepage.UI / 'BUILD.gn').is_file())
+            self.assertEqual((src / homepage.JAVA_BRIDGE).read_text(),
+                             (homepage.OVERLAY / homepage.JAVA_BRIDGE).read_text())
+
+    def test_changed_toolbar_or_source_catalog_rejects_the_whole_patch(self):
+        for path in (homepage.TOOLBAR_MANAGER, homepage.JAVA_CATALOG, homepage.JNI_CATALOG):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                src = Path(directory)
+                input_tree(src)
+                (src / path).write_text('changed upstream source\n')
+                before = snapshot(src)
+                with self.assertRaises(ValueError):
+                    homepage.apply(src)
+                self.assertEqual(before, snapshot(src))
 
     def test_unknown_upstream_method_changes_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -109,7 +127,7 @@ class HomepageTests(unittest.TestCase):
         # tests must not hide unsupported import URLs behind a permissive server.
         assets = homepage.OVERLAY / homepage.RESOURCES
         controller = (homepage.OVERLAY / homepage.UI / 'argon_home_ui.cc').read_text()
-        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'bookmarks.mjs'):
+        for filename in ('app.js', 'state.mjs', 'icons.mjs', 'i18n.js', 'bookmarks.mjs', 'browser-search.mjs'):
             imports = re.findall(r"from ['\"](\./[^'\"]+)['\"]", (assets / filename).read_text())
             for path in imports:
                 self.assertTrue(path.endswith('.js'), (filename, path))

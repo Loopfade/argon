@@ -1,0 +1,160 @@
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.view.MotionEvent;
+import android.view.View;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import org.chromium.base.Callback;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.chrome.browser.ntp.ArgonHomeBridge;
+import org.chromium.chrome.browser.ntp.ArgonHomeBridgeJni;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.OmniboxFocusReason;
+import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.WindowAndroid;
+import org.chromium.url.GURL;
+
+/** Production adapter flow with Android/JNI boundaries stubbed by test_homepage_native.py. */
+public class ArgonHomeBridgeFlow {
+    private static Object invoke(Object target, String name, Class<?>[] types, Object... values)
+            throws Exception {
+        Method method = ArgonHomeBridge.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method.invoke(target, values);
+    }
+
+    private static Object create(WebContents contents, long observer) throws Exception {
+        return invoke(null, "create", new Class<?>[] {WebContents.class, long.class}, contents, observer);
+    }
+
+    private static void layout(Object page, float scroll) throws Exception {
+        invoke(page, "updateBounds",
+                new Class<?>[] {float.class, float.class, float.class, float.class, float.class},
+                10f, 100f, 300f, 56f, scroll);
+    }
+
+    private static boolean focus(Object page, String text) throws Exception {
+        return (Boolean) invoke(page, "focus", new Class<?>[] {String.class}, text);
+    }
+
+    private static void destroy(Object page) throws Exception {
+        invoke(page, "destroy", new Class<?>[] {});
+    }
+
+    private static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+
+    private static class Fallback implements NewTabPageDelegate {
+        boolean visible;
+        int attaches, alphas;
+        @Override public boolean isCurrentlyVisible() { return visible; }
+        @Override public boolean isLocationBarShown() { return visible; }
+        @Override public boolean hasCompletedFirstLayout() { return visible; }
+        @Override public void setSearchBoxScrollListener(Callback<Float> callback) { attaches++; }
+        @Override public void setSearchBoxAlpha(float alpha) { alphas++; }
+    }
+
+    public static void main(String[] args) throws Exception {
+        ChromeTabbedActivity activity = new ChromeTabbedActivity();
+        WindowAndroid window = new WindowAndroid();
+        window.activity = activity;
+        WebContents contents = new WebContents();
+        contents.window = window;
+        Tab tab = new Tab();
+        tab.contents = contents;
+        tab.url = new GURL("chrome://argon/");
+        activity.tab = tab;
+        View toolbar = new View();
+        Fallback fallback = new Fallback();
+        List<Float> transitions = new ArrayList<>();
+        NewTabPageDelegate delegate = ArgonHomeBridge.wrap(
+                () -> activity.tab, toolbar, fallback, transitions::add);
+        check(!delegate.isLocationBarShown(), "Keep the normal address bar until the fakebox is ready");
+        Object page = create(contents, 7);
+        check(!delegate.isLocationBarShown(), "Registration alone cannot hide the real address bar");
+        layout(page, 0f);
+        check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
+                && delegate.hasCompletedFirstLayout(), "Measured fakebox must become the NTP delegate");
+        check(activity.toolbar.refreshes == 1, "First layout must refresh native toolbar");
+        List<Float> scrolls = new ArrayList<>();
+        delegate.setSearchBoxScrollListener(scrolls::add);
+        check(scrolls.equals(List.of(0f)), "Initial scroll must reach Chromium");
+        layout(page, .5f);
+        check(scrolls.get(scrolls.size()-1) == .5f
+                && transitions.get(transitions.size()-1) == .5f, "Scrolling must use Chromium transitions");
+        Rect bounds = new Rect();
+        Point translation = new Point();
+        delegate.getSearchBoxBounds(bounds, translation);
+        check(bounds.left==20 && bounds.top==312 && bounds.right==620 && bounds.bottom==424,
+                "CSS bounds must include density and browser-controls offset");
+        check(translation.x==0 && translation.y==0, "Offsets must be applied once");
+        tab.view.x=10; tab.view.y=20; toolbar.x=5; toolbar.y=10;
+        delegate.getSearchBoxBounds(bounds, translation);
+        check(bounds.left==25 && bounds.top==322, "Window offsets must be relative to the toolbar");
+        tab.view.x=0; tab.view.y=0; toolbar.x=0; toolbar.y=0;
+        check(delegate.dispatchTouchEvent(new MotionEvent()) && tab.view.touches==1,
+                "NTP toolbar touch proxy must dispatch to page content");
+
+        delegate.setSearchBoxAlpha(0f);
+        delegate.setSearchBoxAlpha(0f);
+        check(ArgonHomeBridgeJni.alphas.equals(List.of(0f))
+                && ArgonHomeBridgeJni.focuses.equals(List.of(false)),
+                "Transparent scrolling fakebox must remain a touch target");
+        check(focus(page, ""), "Page click must activate native omnibox");
+        AutocompleteInput first = activity.toolbar.omnibox.inputs.get(0);
+        check(first.reason==OmniboxFocusReason.FAKE_BOX_TAP && first.text==null
+                && first.state==AutocompleteInput.AutocompleteState.ENABLED,
+                "Empty fakebox tap must use native NTP focus and suggestions");
+        delegate.setSearchBoxAlpha(0f);
+        check(ArgonHomeBridgeJni.focuses.get(ArgonHomeBridgeJni.focuses.size()-1),
+                "Focus change must be delivered even when alpha remains zero");
+        check(focus(page, "пример запроса"), "Pending page draft must transfer to native input");
+        AutocompleteInput second = activity.toolbar.omnibox.inputs.get(1);
+        check("пример запроса".equals(second.text)
+                && second.reason==OmniboxFocusReason.FAKE_BOX_LONG_PRESS, "Draft must not be erased by NTP focus");
+
+        activity.finishing=true;
+        check(!focus(page, ""), "Finishing activity cannot request focus");
+        activity.finishing=false;
+        Tab other = new Tab(); other.contents=new WebContents(); other.url=new GURL("https://example.com/");
+        activity.tab=other;
+        check(!focus(page, ""), "Background homepage cannot steal focus from another tab");
+        activity.tab=tab;
+        ArgonHomeBridge.onNavigationStarted(tab, "https://example.com/");
+        check(!delegate.isLocationBarShown(), "External navigation must reveal the bar before commit");
+        ArgonHomeBridge.onNavigationFinished(tab, true);
+        check(!delegate.isLocationBarShown(), "Another pending navigation must retain the normal bar");
+        ArgonHomeBridge.onNavigationFinished(tab, false);
+        check(delegate.isLocationBarShown(), "Cancellation must restore the homepage delegate");
+        for (String url : List.of("https://argon/", "chrome://argon.evil/", "chrome://settings/")) {
+            tab.url=new GURL(url);
+            check(!delegate.isLocationBarShown(), "Ordinary URLs cannot hide the address bar: "+url);
+        }
+        tab.url=new GURL("chrome://argon/");
+        tab.incognito=true; check(!delegate.isLocationBarShown(), "Incognito keeps stock behavior");
+        tab.incognito=false; tab.error=true; check(!delegate.isLocationBarShown(), "Error page keeps normal bar");
+        tab.error=false; tab.destroyed=true; check(!delegate.isLocationBarShown(), "Destroyed tab cannot be active");
+        tab.destroyed=false; tab.url=new GURL("chrome-native://newtab/");
+        check(delegate.isLocationBarShown(), "Restored virtual NTP URL must reconnect");
+
+        Object newer = create(contents, 8);
+        layout(newer, 0f);
+        destroy(page);
+        check(delegate.isLocationBarShown(), "Old bridge destruction cannot unregister a restored document");
+        delegate.setSearchBoxScrollListener(scrolls::add);
+        destroy(newer);
+        check(!delegate.isLocationBarShown(), "Destruction must detach the NTP delegate");
+        int alphaCount=ArgonHomeBridgeJni.alphas.size();
+        delegate.setSearchBoxAlpha(0f);
+        check(ArgonHomeBridgeJni.alphas.size()==alphaCount, "Late animation cannot call a deleted native observer");
+        fallback.visible=true;
+        delegate.setSearchBoxScrollListener(scrolls::add);
+        check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
+                && fallback.attaches>0, "Native fallback delegate must still work");
+        System.out.println("PASS: native homepage focus, restoration, geometry and lifecycle");
+    }
+}

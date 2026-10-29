@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 
 from upstream_sources import chromium_url, download
+from test_homepage_native import DELEGATE_API, verify_delegate_api
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('homepage', ROOT / 'scripts/apply_homepage.py')
@@ -19,6 +20,9 @@ def main():
     parser.add_argument('--chromium-src', type=Path)
     args = parser.parse_args()
     revision = json.loads((ROOT / 'build-lock.json').read_text())['chromium_commit']
+    delegate = ((args.chromium_src / DELEGATE_API).read_text() if args.chromium_src
+                else download(chromium_url(revision, DELEGATE_API)))
+    verify_delegate_api(delegate)
     with tempfile.TemporaryDirectory() as directory:
         src = Path(directory)
         for path in homepage.INPUT_PATHS:
