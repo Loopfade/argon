@@ -5,6 +5,13 @@ export function language(value = globalThis.document?.documentElement?.lang ?? '
 }
 
 const english = {
+  'Поиск отключён': 'Search is disabled',
+  'Запрос в {name} или URL': 'Search {name} or enter URL',
+  'Введите адрес сайта': 'Enter a site address',
+  'Не удалось открыть адресную строку. Повторите нажатие.': 'Could not open the address bar. Try tapping again.',
+  'Поисковик задан политикой или расширением.': 'The search engine is controlled by a policy or extension.',
+  'Не удалось изменить поисковик браузера.': 'Could not change the browser search engine.',
+  'Поисковик добавлен, но сменить поисковик браузера не удалось.': 'The search engine was added, but the browser default could not be changed.',
   'Не удалось прочитать закладки. Выберите JSON или HTML, экспортированный браузером.': 'Could not read bookmarks. Choose a JSON or HTML file exported by a browser.',
   'Это дамп Argon. Используйте «Резервная копия → Восстановить».': 'This is an Argon backup. Use Backup → Restore.',
   'В файле слишком много записей или уровней папок.': 'The file contains too many entries or folder levels.',

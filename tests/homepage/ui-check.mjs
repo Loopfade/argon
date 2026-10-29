@@ -4,12 +4,13 @@ import {createServer} from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {resolve,dirname} from 'node:path';
+import {checkNativeSearch} from './native-ui-check.mjs';
 
 const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE).href);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs'};
+const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -85,6 +86,7 @@ async function add(name,url,type='site',deferFrame=false){
   await page.locator('#shortcut-form').waitFor({state:'hidden'});
 }
 try {
+  await checkNativeSearch(browser,base,errors,out);
   for(const locale of ['en-US','de-DE']) {
     const english=await browser.newContext({locale,acceptDownloads:true});
     const p=await english.newPage();

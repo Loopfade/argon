@@ -5,6 +5,8 @@ source_set("argon_home") {
   sources = [
     "argon_home_ui.cc",
     "argon_home_ui.h",
+    "argon_search_handler.cc",
+    "argon_search_handler.h",
     "argon_theme_handler.cc",
     "argon_theme_handler.h",
   ]
@@ -17,7 +19,9 @@ source_set("argon_home") {
     "//chrome/android:chrome_jni_headers",
     "//chrome/browser:browser_process",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/search_engines",
     "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
     "//services/network/public/mojom",
+    "//url",
   ]
 }

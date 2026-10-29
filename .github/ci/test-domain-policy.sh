@@ -27,6 +27,7 @@ for arch in arm64 arm; do
     ninja -C "$graph_out" -t query \
       obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o \
+      obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \
       chrome_java chrome_public_apk > "$graph_out/argon-targets.txt"
   )
   echo "PASS: $arch Android graph contains the production JNI, Java and APK targets"
