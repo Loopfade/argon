@@ -192,7 +192,7 @@ class FullBuildTests(unittest.TestCase):
         (self.root / "signing-certificate.pem").write_text(
             "-----BEGIN CERTIFICATE-----\n" + base64.b64encode(b"fixture DER").decode()
             + "\n-----END CERTIFICATE-----\n")
-        for name in ("Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Titanium-LICENSE.txt"):
+        for name in pipeline.RELEASE_LICENSES:
             (self.root / name).write_text("license")
         self.metadata = {"source_commit": self.sha, "target_cpu": arch, "abi": abi,
                          "signing_mode": mode, "inputs": lock, "apk_sha256": digest,

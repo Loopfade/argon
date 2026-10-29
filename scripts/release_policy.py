@@ -27,6 +27,7 @@ DEFAULT_RELEASE_ABI = "arm64-v8a"
 ARMV7_RELEASE_ABI = "armeabi-v7a"
 RELEASE_APK_GLOB = f"Argon-*-release-{DEFAULT_RELEASE_ABI}.apk"
 RELEASE_LICENSES = (
+    "Bare-LICENSE.txt",
     "Chromium-LICENSE.txt",
     "Ruthenium-LICENSE.txt",
     "Titanium-LICENSE.txt",
@@ -42,6 +43,7 @@ RELEASE_PAYLOAD_FILES = {
     "docker/chromium/Dockerfile",
     "scripts/VerifyReleaseKey.java",
     "scripts/apply_scoped_ca.py",
+    "scripts/apply_dark_themes.py",
     "scripts/apply_browsing_data_period.py",
     "scripts/configure_build.py",
     "scripts/fetch_pinned_extension.py",
@@ -52,6 +54,8 @@ RELEASE_PAYLOAD_FILES = {
     "scripts/sign_and_verify.py",
 }
 RELEASE_PAYLOAD_PREFIXES = (
+    "licenses/",
+    "patches/",
     "certificates/",
     "chromium_overlay/",
     "extensions/",
@@ -193,6 +197,7 @@ def locate_release_artifact(
         "apk": apk,
         "checksum": Path(f"{apk}.sha256"),
         "metadata": asset_dir / "build-info.json",
+        "bare_license": asset_dir / "Bare-LICENSE.txt",
         "chromium_license": asset_dir / "Chromium-LICENSE.txt",
         "ruthenium_license": asset_dir / "Ruthenium-LICENSE.txt",
         "titanium_license": asset_dir / "Titanium-LICENSE.txt",

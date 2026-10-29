@@ -316,6 +316,31 @@
         "meaning": "",
         "russian": "Для снимка страницы недоступны специальные возможности.",
         "enable_translation": true
+      },
+      "IDS_ARGON_DARK_AMOLED_MODE": {
+        "english": "Dark AMOLED",
+        "meaning": "",
+        "russian": "Тёмная AMOLED"
+      },
+      "IDS_ARGON_AMOLED_WHEN_SYSTEM_DARK_TITLE": {
+        "english": "Use black when the system is dark",
+        "meaning": "",
+        "russian": "Чёрный фон при тёмной теме системы"
+      },
+      "IDS_ARGON_AMOLED_WHEN_SYSTEM_DARK_SUMMARY": {
+        "english": "Black instead of dark grey while your device is in dark theme. Saves battery on AMOLED screens.",
+        "meaning": "",
+        "russian": "Чёрный фон вместо тёмно-серого при тёмной теме устройства. Экономит заряд на AMOLED-экранах."
+      },
+      "IDS_ARGON_AMOLED_DARK_BACKGROUNDS_TITLE": {
+        "english": "Use black backgrounds on darkened sites",
+        "meaning": "",
+        "russian": "Чёрный фон на затемнённых сайтах"
+      },
+      "IDS_ARGON_AMOLED_DARK_BACKGROUNDS_SUMMARY": {
+        "english": "Use deeper black backgrounds on sites Argon darkens",
+        "meaning": "",
+        "russian": "Более глубокий чёрный фон на сайтах, которые затемняет Argon"
       }
     }
   },

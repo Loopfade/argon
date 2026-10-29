@@ -230,7 +230,8 @@ class ApkArchitectureTests(unittest.TestCase):
             root = Path(tmp)
             self.write_tools(root)
             for relative in ["build-lock.json", "certificates/ministry-ca-lock.json",
-                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt"]:
+                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt",
+                             "licenses/Bare-BSD-3-Clause.txt"]:
                 destination = root / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(ROOT / relative, destination)
@@ -285,7 +286,7 @@ class ApkArchitectureTests(unittest.TestCase):
                 self.assertEqual((directory / (output.name + ".sha256")).read_text(),
                                  f'{info["apk_sha256"]}  {output.name}\n')
                 for name in ["apk-signature.txt", "signing-certificate.pem", "Titanium-LICENSE.txt",
-                             "Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt"]:
+                             "Chromium-LICENSE.txt", "Ruthenium-LICENSE.txt", "Bare-LICENSE.txt"]:
                     self.assertTrue((directory / name).is_file(), name)
                 for previous, data in snapshots.items():
                     self.assertEqual(previous.read_bytes(), data)

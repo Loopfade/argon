@@ -28,6 +28,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import apply_scoped_ca as patch
+import apply_dark_themes as dark_themes
 import apply_background_playback as background
 import apply_modulemap as modulemap
 import apply_browsing_data_period as deletion_period
@@ -95,6 +96,7 @@ BASE_PATHS += tuple(path for path in explicit_exit.INPUT_PATHS
 EXIT_DOWNLOAD_API = Path("components/download/public/common/simple_download_manager.h")
 BASE_PATHS += (EXIT_DOWNLOAD_API,)
 BASE_PATHS += (SETTINGS_API,)
+BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE_PATHS)
 EXTENSION_PATHS = (
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
@@ -587,6 +589,7 @@ def main():
         modulemap.apply(src)
         verify_pinned_generator(src)
         deletion_period.apply(src)
+        dark_themes.apply(src)
         patch.apply(src, product_name=False)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
@@ -633,6 +636,7 @@ def main():
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
         modulemap.apply(src)
         deletion_period.apply(src)
+        dark_themes.apply(src)
         patch.apply(src, product_name=False)
         background.apply(src)
         explicit_exit.apply(src)
@@ -644,7 +648,7 @@ def main():
         verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and background media observer API; idempotent Argon CA/JNI/About/Russian translation/background playback/deletion period/explicit exit '
+          'and background media observer API; idempotent Argon dark themes/CA/JNI/About/Russian translation/background playback/deletion period/explicit exit '
           'patches; pinned GN catalog, XTB consumer and two-language packaging checks '
           '(Android/desktop, official/development)')
 

@@ -171,6 +171,7 @@ def resource_header(resources):
     entries = [('index.html', 'kArgonHomeHtml', 'ARGON_HTML'),
                ('app.css', 'kArgonHomeCss', 'ARGON_CSS'),
                ('app.js', 'kArgonHomeJs', 'ARGON_JS'),
+               ('theme.js', 'kArgonHomeTheme', 'ARGON_THEME'),
                ('state.mjs', 'kArgonHomeState', 'ARGON_STATE'),
                ('icons.mjs', 'kArgonHomeIcons', 'ARGON_ICONS'),
                ('i18n.js', 'kArgonHomeI18n', 'ARGON_I18N')]

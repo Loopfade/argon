@@ -102,6 +102,7 @@ fi
 android_targets=(
   obj/chrome/browser/android/android/argon_certificate_domains_settings.o
   obj/chrome/browser/android/android/argon_exit.o
+  obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o
   chrome_java
   chrome_public_apk
 )

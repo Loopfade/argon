@@ -1,0 +1,1468 @@
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeBaseAppCompatActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeBaseAppCompatActivity.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeBaseAppCompatActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeBaseAppCompatActivity.java
+@@ -607,6 +607,13 @@
+             }
+         }
+ 
++        // Bare: "Dark AMOLED" is the dark theme with its flat surfaces taken to
++        // true black. Night mode is already on for this setting (see
++        // GlobalNightModeStateController), so this only restates the colours.
++        if (NightModeUtils.isAmoledActive(mNightModeStateProvider.isInNightMode())) {
++            applySingleThemeOverlay(R.style.ThemeOverlay_BrowserUI_Amoled);
++        }
++
+         // TODO(https://crbug.com/392634251): Explore setting elegantTextHeight to 'true' on older
+         // OS versions.
+         if (ChromeFeatureList.sAndroidElegantTextHeight.isEnabled()
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java b/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/compositor/CompositorViewHolder.java
+@@ -18,7 +18,6 @@
+ 
+ import android.app.Activity;
+ import android.content.Context;
+-import android.graphics.Color;
+ import android.graphics.Point;
+ import android.graphics.Rect;
+ import android.graphics.RectF;
+@@ -97,6 +96,7 @@
+ import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
+ import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
+ import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
++import org.chromium.components.browser_ui.styles.ChromeColors;
+ import org.chromium.components.browser_ui.widget.TouchEventObserver;
+ import org.chromium.components.browser_ui.widget.TouchEventProvider;
+ import org.chromium.components.content_capture.OnscreenContentProvider;
+@@ -874,8 +874,13 @@
+     public void prepareForTabReparenting() {
+         if (mHasDrawnOnce) return;
+ 
+-        // Set the background to white while we wait for the first swap of buffers.
+-        mCompositorView.setBackgroundColor(Color.WHITE);
++        // Set a placeholder background while we wait for the first swap of buffers. This gets
++        // corrected inside the view.
++        //
++        // De-Googled build: follow the theme rather than always using white, which flashed on a
++        // dark theme.
++        mCompositorView.setBackgroundColor(
++                ChromeColors.getPrimaryBackgroundColor(getContext(), false));
+         // The removal scheduled by setControlContainer() may have already timed out if the
+         // activity was stopped before its first draw, so make sure one is pending.
+         scheduleTempBackgroundRemoval();
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ntp/IncognitoNewTabPageView.java b/chrome/android/java/src/org/chromium/chrome/browser/ntp/IncognitoNewTabPageView.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ntp/IncognitoNewTabPageView.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ntp/IncognitoNewTabPageView.java
+@@ -13,6 +13,8 @@
+ import android.widget.ScrollView;
+ 
+ import androidx.annotation.ColorInt;
++
++import com.google.android.material.color.MaterialColors;
+ 
+ import org.chromium.build.annotations.Initializer;
+ import org.chromium.build.annotations.NullMarked;
+@@ -56,7 +58,11 @@
+     protected void onFinishInflate() {
+         super.onFinishInflate();
+ 
+-        @ColorInt int bgColor = getContext().getColor(R.color.ntp_bg_incognito);
++        @ColorInt int bgColor =
++                MaterialColors.getColor(
++                        getContext(),
++                        R.attr.colorIncognitoSurface,
++                        getContext().getColor(R.color.ntp_bg_incognito));
+         mScrollView = findViewById(R.id.ntp_scrollview);
+         mScrollView.setBackgroundColor(bgColor);
+         setContentDescription(
+diff --git a/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateControllerTest.java b/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateControllerTest.java
+--- a/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateControllerTest.java
++++ b/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateControllerTest.java
+@@ -15,6 +15,7 @@
+ 
+ import static org.chromium.base.ApplicationState.HAS_RUNNING_ACTIVITIES;
+ import static org.chromium.base.ApplicationState.HAS_STOPPED_ACTIVITIES;
++import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.ARGON_AMOLED_WHEN_SYSTEM_DARK;
+ import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
+ 
+ import androidx.appcompat.app.AppCompatDelegate;
+@@ -92,6 +93,7 @@
+     @After
+     public void tearDown() {
+         ChromeSharedPreferences.getInstance().removeKey(UI_THEME_SETTING);
++        ChromeSharedPreferences.getInstance().removeKey(ARGON_AMOLED_WHEN_SYSTEM_DARK);
+     }
+ 
+     @Test
+@@ -170,6 +172,27 @@
+         mGlobalNightModeStateController.removeObserver(mObserver);
+         ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.DARK);
+         assertTrue(mGlobalNightModeStateController.isInNightMode());
++        verify(mObserver, times(2)).onNightModeStateChanged();
++    }
++
++    @Test
++    public void testObserver_AmoledWhenSystemDark() {
++        ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.SYSTEM_DEFAULT);
++        setSystemNightMode(true);
++        mGlobalNightModeStateController.addObserver(mObserver);
++
++        // Night mode stays on, but the surfaces change, so observers still have to re-theme.
++        ChromeSharedPreferences.getInstance().writeBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, true);
++        assertTrue(mGlobalNightModeStateController.isInNightMode());
++        verify(mObserver, times(1)).onNightModeStateChanged();
++
++        // With the system light the setting has nothing to apply to, and night mode goes off.
++        setSystemNightMode(false);
++        assertFalse(mGlobalNightModeStateController.isInNightMode());
++        verify(mObserver, times(2)).onNightModeStateChanged();
++
++        // Flipping it while the system is light changes nothing anyone can see.
++        ChromeSharedPreferences.getInstance().writeBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, false);
+         verify(mObserver, times(2)).onNightModeStateChanged();
+     }
+ 
+diff --git a/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/NightModeUtilsTest.java b/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/NightModeUtilsTest.java
+--- a/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/NightModeUtilsTest.java
++++ b/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/NightModeUtilsTest.java
+@@ -4,20 +4,56 @@
+ 
+ package org.chromium.chrome.browser.night_mode;
+ 
++import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertTrue;
++
++import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.ARGON_AMOLED_WHEN_SYSTEM_DARK;
++import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
+ 
+ import androidx.test.core.app.ApplicationProvider;
+ 
++import org.junit.After;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ 
+ import org.chromium.base.test.BaseRobolectricTestRunner;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+ 
+ import java.util.HashSet;
+ 
+ /** Unit tests for {@link NightModeUtils}. */
+ @RunWith(BaseRobolectricTestRunner.class)
+ public class NightModeUtilsTest {
++    @After
++    public void tearDown() {
++        ChromeSharedPreferences.getInstance().removeKey(UI_THEME_SETTING);
++        ChromeSharedPreferences.getInstance().removeKey(ARGON_AMOLED_WHEN_SYSTEM_DARK);
++    }
++
++    @Test
++    public void testAmoledActive_DarkAmoledThemeAlways() {
++        ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.DARK_AMOLED);
++        assertTrue(NightModeUtils.isAmoledActive(true));
++    }
++
++    @Test
++    public void testAmoledActive_SystemDefaultNeedsSwitchAndDarkSystem() {
++        ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.SYSTEM_DEFAULT);
++        assertFalse(NightModeUtils.isAmoledActive(true));
++
++        ChromeSharedPreferences.getInstance().writeBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, true);
++        assertTrue(NightModeUtils.isAmoledActive(true));
++        assertFalse(NightModeUtils.isAmoledActive(false));
++    }
++
++    @Test
++    public void testAmoledActive_SwitchDoesNotAffectOtherThemes() {
++        ChromeSharedPreferences.getInstance().writeBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, true);
++        ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.DARK);
++        assertFalse(NightModeUtils.isAmoledActive(true));
++        ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.LIGHT);
++        assertFalse(NightModeUtils.isAmoledActive(false));
++    }
+ 
+     @Test
+     public void testThemeSettingTitles() {
+diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_android.cc
+--- a/chrome/browser/android/tab_android.cc
++++ b/chrome/browser/android/tab_android.cc
+@@ -78,6 +78,7 @@
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_entry.h"
++#include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/render_view_host.h"
+@@ -85,6 +86,7 @@
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+ #include "content/public/browser/web_contents_user_data.h"
++#include "third_party/skia/include/core/SkColor.h"
+ #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+ #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+ #include "ui/android/view_android.h"
+@@ -115,6 +117,56 @@
+   }
+   return nullptr;
+ }
++
++// Bare: keeps the canvas dark between a navigation and the page's first paint
++// on a dark theme, and only then. The page base colour is not just what shows
++// before a page paints: Blink also uses it as the canvas of every page that
++// leaves its own background transparent, for as long as the page is shown.
++// Held black, it put such a light page's dark text on black even with "Apply
++// dark theme to sites" off. So each committed navigation starts black on a dark
++// theme, and the first non-empty paint hands the canvas back to the page.
++class PrePaintBackground
++    : public content::WebContentsObserver,
++      public content::WebContentsUserData<PrePaintBackground> {
++ public:
++  PrePaintBackground(const PrePaintBackground&) = delete;
++  PrePaintBackground& operator=(const PrePaintBackground&) = delete;
++  ~PrePaintBackground() override = default;
++
++  // Black on a dark theme, the default otherwise. Re-read at every navigation,
++  // so a theme change applies from the next page on.
++  void Apply() {
++    auto* theme =
++        night_mode::WebContentsThemeClient::FromWebContents(web_contents());
++    if (theme && theme->IsNightModeEnabled()) {
++      web_contents()->SetPageBaseBackgroundColor(SK_ColorBLACK);
++    } else {
++      web_contents()->SetPageBaseBackgroundColor(std::nullopt);
++    }
++  }
++
++ private:
++  explicit PrePaintBackground(content::WebContents* web_contents)
++      : content::WebContentsObserver(web_contents),
++        content::WebContentsUserData<PrePaintBackground>(*web_contents) {}
++  friend class content::WebContentsUserData<PrePaintBackground>;
++
++  // content::WebContentsObserver:
++  void DidFinishNavigation(content::NavigationHandle* handle) override {
++    if (handle->IsInPrimaryMainFrame() && handle->HasCommitted() &&
++        !handle->IsSameDocument()) {
++      Apply();
++    }
++  }
++
++  void DidFirstVisuallyNonEmptyPaint() override {
++    web_contents()->SetPageBaseBackgroundColor(std::nullopt);
++  }
++
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++
++WEB_CONTENTS_USER_DATA_KEY_IMPL(PrePaintBackground);
+ 
+ }  // namespace
+ 
+@@ -397,6 +449,13 @@
+   DCHECK(web_contents_.get());
+ 
+   night_mode::WebContentsThemeClient::CreateForWebContents(web_contents_.get());
++
++  // De-Googled build: keep the canvas dark until a page first paints, on a dark
++  // theme. Without it every navigation flashed white before the page appeared,
++  // glaring on an OLED screen at night. PrePaintBackground hands the canvas back
++  // to the page at its first paint.
++  PrePaintBackground::CreateForWebContents(web_contents_.get());
++  PrePaintBackground::FromWebContents(web_contents_.get())->Apply();
+ 
+   renderer_preferences_util::UpdateFromSystemSettings(
+       web_contents_->GetMutableRendererPrefs(),
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -4731,6 +4731,8 @@
+ #endif
+   web_prefs->force_dark_mode_enabled =
+       prefs->GetBoolean(prefs::kWebKitForceDarkModeEnabled);
++  web_prefs->amoled_dark_backgrounds_enabled =
++      prefs->GetBoolean(prefs::kWebKitAmoledDarkBackgroundsEnabled);
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+   web_prefs->always_show_focus =
+diff --git a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
+--- a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
++++ b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
+@@ -1083,6 +1083,9 @@
+      */
+     public static final String UI_THEME_SETTING = "ui_theme_setting";
+ 
++    /** Use AMOLED surfaces while System default is dark. */
++    public static final String ARGON_AMOLED_WHEN_SYSTEM_DARK = "Chrome.Argon.AmoledWhenSystemDark";
++
+     // Diagnostic counters for short sessions; see histogram
+     // UMA.PreNative.ChromeActivityCounter2.
+     public static final String UMA_ON_POSTCREATE_COUNTER = "Chrome.UMA.OnPostCreateCounter2";
+@@ -1169,6 +1172,7 @@
+                 AI_ASSISTANT_ANALYZE_ATTACHMENT_AVAILABILITY,
+                 AI_ASSISTANT_AVAILABILITY_CHECK_TIMESTAMP_MS,
+                 AI_ASSISTANT_WEB_SUMMARIZATION_AVAILABILITY,
++                ARGON_AMOLED_WHEN_SYSTEM_DARK,
+                 AUTOFILL_ASSISTANT_FIRST_TIME_LITE_SCRIPT_USER,
+                 AUTOFILL_ASSISTANT_PROACTIVE_HELP_ENABLED,
+                 AUTOFILL_THIRD_PARTY_MODE_STATE,
+diff --git a/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml b/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml
+--- a/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml
++++ b/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml
+@@ -42,6 +42,14 @@
+           android:paddingTop="@dimen/settings_item_default_padding"
+           android:paddingBottom="@dimen/settings_item_default_padding" />
+ 
++      <org.chromium.components.browser_ui.widget.RadioButtonWithDescription
++          android:id="@+id/dark_amoled"
++          android:layout_width="match_parent"
++          android:layout_height="wrap_content"
++          android:minHeight="@dimen/min_touch_target_size"
++          android:paddingTop="@dimen/settings_item_default_padding"
++          android:paddingBottom="@dimen/settings_item_default_padding" />
++
+     </org.chromium.components.browser_ui.widget.RadioButtonWithDescriptionLayout>
+ 
+     <!-- Make the row clickable -->
+diff --git a/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences.xml b/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences.xml
+--- a/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences.xml
++++ b/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences.xml
+@@ -8,4 +8,14 @@
+ <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+     <org.chromium.chrome.browser.night_mode.settings.RadioButtonGroupThemePreference
+         android:key="ui_theme_pref" />
++    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++        android:key="argon_amoled_when_system_dark"
++        android:persistent="false"
++        android:title="@string/argon_amoled_when_system_dark_title"
++        android:summary="@string/argon_amoled_when_system_dark_summary" />
++    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++        android:key="argon_amoled_dark_backgrounds"
++        android:persistent="false"
++        android:title="@string/argon_amoled_dark_backgrounds_title"
++        android:summary="@string/argon_amoled_dark_backgrounds_summary" />
+ </PreferenceScreen>
+diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java
+@@ -4,6 +4,7 @@
+ 
+ package org.chromium.chrome.browser.night_mode;
+ 
++import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.ARGON_AMOLED_WHEN_SYSTEM_DARK;
+ import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
+ 
+ import android.content.SharedPreferences;
+@@ -30,6 +31,9 @@
+      * initialized yet.
+      */
+     private Boolean mNightModeOn;
++    // Dark and Dark AMOLED are both night mode, so the flag above does not change between them.
++    // Tracked separately so observers still get told to re-theme when the user switches.
++    private Boolean mAmoledOn;
+ 
+     private final SharedPreferences.OnSharedPreferenceChangeListener mPreferenceListener;
+ 
+@@ -43,7 +47,10 @@
+     GlobalNightModeStateController() {
+         mPreferenceListener =
+                 (prefs, key) -> {
+-                    if (TextUtils.equals(key, UI_THEME_SETTING)) updateNightMode();
++                    if (TextUtils.equals(key, UI_THEME_SETTING)
++                            || TextUtils.equals(key, ARGON_AMOLED_WHEN_SYSTEM_DARK)) {
++                        updateNightMode();
++                    }
+                 };
+ 
+         updateNightMode();
+@@ -122,12 +129,25 @@
+         final boolean newNightModeOn =
+                 (theme == ThemeType.SYSTEM_DEFAULT
+                                 && SystemNightModeMonitor.getInstance().isSystemNightModeOn())
+-                        || theme == ThemeType.DARK;
+-        if (mNightModeOn != null && newNightModeOn == mNightModeOn) return;
++                        || theme == ThemeType.DARK
++                        || theme == ThemeType.DARK_AMOLED;
++        final boolean newAmoledOn = NightModeUtils.isAmoledActive(newNightModeOn);
++        if (mNightModeOn != null
++                && newNightModeOn == mNightModeOn
++                && mAmoledOn != null
++                && newAmoledOn == mAmoledOn) {
++            return;
++        }
+ 
++        final boolean nightModeChanged = mNightModeOn == null || newNightModeOn != mNightModeOn;
+         mNightModeOn = newNightModeOn;
+-        AppCompatDelegate.setDefaultNightMode(
+-                mNightModeOn ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
++        mAmoledOn = newAmoledOn;
++        if (nightModeChanged) {
++            AppCompatDelegate.setDefaultNightMode(
++                    mNightModeOn
++                            ? AppCompatDelegate.MODE_NIGHT_YES
++                            : AppCompatDelegate.MODE_NIGHT_NO);
++        }
+         for (Observer observer : mObservers) observer.onNightModeStateChanged();
+ 
+         NightModeMetrics.recordNightModeState(mNightModeOn);
+diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java
+@@ -4,6 +4,7 @@
+ 
+ package org.chromium.chrome.browser.night_mode;
+ 
++import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.ARGON_AMOLED_WHEN_SYSTEM_DARK;
+ import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
+ 
+ import android.app.Activity;
+@@ -96,7 +97,27 @@
+                 nightMode ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
+         config.uiMode = nightModeFlag | (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK);
+         wrapper.applyOverrideConfiguration(config);
++        // After applyOverrideConfiguration: touching getTheme() earlier creates the
++        // resources, and applyOverrideConfiguration throws once they exist.
++        if (isAmoledActive(nightMode)) {
++            wrapper.getTheme().applyStyle(R.style.ThemeOverlay_BrowserUI_Amoled, true);
++        }
+         return wrapper;
++    }
++
++    /**
++     * Whether the flat dark surfaces should be true black. That is the Dark AMOLED theme, or the
++     * System default theme while the system is dark and the user has asked for black there.
++     *
++     * @param nightMode Whether the app is in night mode.
++     */
++    public static boolean isAmoledActive(boolean nightMode) {
++        int theme = getThemeSetting();
++        if (theme == ThemeType.DARK_AMOLED) return true;
++        return theme == ThemeType.SYSTEM_DEFAULT
++                && nightMode
++                && ChromeSharedPreferences.getInstance()
++                        .readBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, false);
+     }
+ 
+     /**
+@@ -124,6 +145,8 @@
+         switch (theme) {
+             case ThemeType.DARK:
+                 return context.getString(R.string.dark_mode);
++            case ThemeType.DARK_AMOLED:
++                return context.getString(R.string.argon_dark_amoled_mode);
+             case ThemeType.LIGHT:
+                 return context.getString(R.string.light_mode);
+             case ThemeType.SYSTEM_DEFAULT:
+diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java
+@@ -15,7 +15,7 @@
+  * Theme setting variations. This is also used for histograms and should therefore be treated
+  * as append-only. See DarkThemePreferences in tools/metrics/histograms/enums.xml.
+  */
+-@IntDef({ThemeType.SYSTEM_DEFAULT, ThemeType.LIGHT, ThemeType.DARK})
++@IntDef({ThemeType.SYSTEM_DEFAULT, ThemeType.LIGHT, ThemeType.DARK, ThemeType.DARK_AMOLED})
+ @Retention(RetentionPolicy.SOURCE)
+ @NullMarked
+ public @interface ThemeType {
+@@ -23,6 +23,7 @@
+     int SYSTEM_DEFAULT = 0;
+     int LIGHT = 1;
+     int DARK = 2;
++    int DARK_AMOLED = 3;
+ 
+-    int NUM_ENTRIES = 3;
++    int NUM_ENTRIES = 4;
+ }
+diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/WebContentsThemeClient.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/WebContentsThemeClient.java
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/WebContentsThemeClient.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/WebContentsThemeClient.java
+@@ -3,8 +3,6 @@
+ // found in the LICENSE file.
+ 
+ package org.chromium.chrome.browser.night_mode;
+-
+-import android.content.Context;
+ 
+ import org.jni_zero.CalledByNative;
+ import org.jni_zero.JNINamespace;
+@@ -14,8 +12,6 @@
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+ import org.chromium.chrome.browser.profiles.Profile;
+ import org.chromium.content_public.browser.WebContents;
+-import org.chromium.ui.base.WindowAndroid;
+-import org.chromium.ui.util.ColorUtils;
+ 
+ /** A client to provide dark mode information for a given WebContents. */
+ @NullMarked
+@@ -24,12 +20,19 @@
+     @CalledByNative
+     public static boolean isNightModeEnabled(
+             @JniType("content::WebContents*") WebContents webContents) {
++        // De-Googled build: answer from the browser's own night mode rather than from a
++        // Context's configuration.
++        //
++        // This decides the colour the renderer fills with before a page paints its own
++        // background. Reading it from a Context means reading whichever configuration that
++        // Context carries, and the one reachable from a WebContents is not always the activity's,
++        // so a browser set to dark while the system is light was told light and filled white. The
++        // result was a white rectangle where the page was about to be, on every navigation.
++        //
++        // The global state has no such ambiguity: it is what the user chose, and it needs no
++        // Context to read.
+         if (webContents == null) return false;
+-        WindowAndroid window = webContents.getTopLevelNativeWindow();
+-        if (window == null) return false;
+-        Context context = window.getContext().get();
+-        if (context == null) return false;
+-        return ColorUtils.inNightMode(context);
++        return GlobalNightModeStateProviderHolder.getInstance().isInNightMode();
+     }
+ 
+     @CalledByNative
+diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/RadioButtonGroupThemePreference.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/RadioButtonGroupThemePreference.java
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/RadioButtonGroupThemePreference.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/RadioButtonGroupThemePreference.java
+@@ -91,12 +91,15 @@
+ 
+         mCheckBox.setChecked(mDarkenWebsitesEnabled);
+ 
+-        assert ThemeType.NUM_ENTRIES == 3;
++        assert ThemeType.NUM_ENTRIES == 4;
+         mButtons.set(
+                 ThemeType.SYSTEM_DEFAULT,
+                 (RadioButtonWithDescription) holder.findViewById(R.id.system_default));
+         mButtons.set(ThemeType.LIGHT, (RadioButtonWithDescription) holder.findViewById(R.id.light));
+         mButtons.set(ThemeType.DARK, (RadioButtonWithDescription) holder.findViewById(R.id.dark));
++        mButtons.set(
++                ThemeType.DARK_AMOLED,
++                (RadioButtonWithDescription) holder.findViewById(R.id.dark_amoled));
+ 
+         final Context context = getContext();
+         for (int theme = 0; theme < mButtons.size(); theme++) {
+@@ -113,7 +116,9 @@
+         assertBound();
+         if (ChromeFeatureList.isEnabled(
+                 ChromeFeatureList.DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING)) {
+-            if (mSetting == ThemeType.SYSTEM_DEFAULT || mSetting == ThemeType.DARK) {
++            if (mSetting == ThemeType.SYSTEM_DEFAULT
++                    || mSetting == ThemeType.DARK
++                    || mSetting == ThemeType.DARK_AMOLED) {
+                 mGroup.attachAccessoryView(mCheckboxContainer, mSettingRadioButton);
+                 mCheckboxContainer.setVisibility(View.VISIBLE);
+             } else {
+diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
+--- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
++++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
+@@ -4,6 +4,7 @@
+ 
+ package org.chromium.chrome.browser.night_mode.settings;
+ 
++import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.ARGON_AMOLED_WHEN_SYSTEM_DARK;
+ import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
+ 
+ import android.content.Context;
+@@ -24,17 +25,23 @@
+ import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+ import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
+ import org.chromium.chrome.browser.settings.search.ChromeBaseSearchIndexProvider;
++import org.chromium.chrome.browser.preferences.Pref;
++import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
+ import org.chromium.components.browser_ui.settings.CustomDividerFragment;
+ import org.chromium.components.browser_ui.settings.SettingsUtils;
+ import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
++import org.chromium.components.user_prefs.UserPrefs;
+ 
+ /** Fragment to manage the theme user settings. */
+ @NullMarked
+ public class ThemeSettingsFragment extends ChromeBaseSettingsFragment
+         implements CustomDividerFragment {
+     static final String PREF_UI_THEME_PREF = "ui_theme_pref";
++    static final String PREF_AMOLED_DARK_BACKGROUNDS = "argon_amoled_dark_backgrounds";
++    static final String PREF_AMOLED_WHEN_SYSTEM_DARK = "argon_amoled_when_system_dark";
+     private static final String PREF_UI_THEME_PREF_LIGHT = "ui_theme_pref_light";
+     private static final String PREF_UI_THEME_PREF_DARK = "ui_theme_pref_dark";
++    private static final String PREF_UI_THEME_PREF_DARK_AMOLED = "ui_theme_pref_dark_amoled";
+ 
+     private boolean mWebContentsDarkModeEnabled;
+ 
+@@ -53,6 +60,39 @@
+                 WebContentsDarkModeController.isGlobalUserSettingsEnabled(getProfile());
+         radioButtonGroupThemePreference.initialize(
+                 NightModeUtils.getThemeSetting(), mWebContentsDarkModeEnabled);
++
++        // Argon (from Bare): the deeper background treatment for sites the browser darkens
++        // itself. It only means anything while the darken setting above is on, so it follows
++        // that checkbox rather than standing on its own.
++        ChromeSwitchPreference amoledBackgrounds = findPreference(PREF_AMOLED_DARK_BACKGROUNDS);
++        assert amoledBackgrounds != null;
++        amoledBackgrounds.setChecked(
++                UserPrefs.get(getProfile())
++                        .getBoolean(Pref.WEB_KIT_AMOLED_DARK_BACKGROUNDS_ENABLED));
++        amoledBackgrounds.setEnabled(mWebContentsDarkModeEnabled);
++        amoledBackgrounds.setOnPreferenceChangeListener(
++                (preference, newValue) -> {
++                    UserPrefs.get(getProfile())
++                            .setBoolean(
++                                    Pref.WEB_KIT_AMOLED_DARK_BACKGROUNDS_ENABLED,
++                                    (boolean) newValue);
++                    return true;
++                });
++
++        // Argon (from Bare): black instead of dark grey while System default is following a dark
++        // system. The other dark themes make their own choice, so the switch only shows
++        // for System default.
++        ChromeSwitchPreference amoledWhenSystemDark = findPreference(PREF_AMOLED_WHEN_SYSTEM_DARK);
++        assert amoledWhenSystemDark != null;
++        amoledWhenSystemDark.setChecked(
++                sharedPreferencesManager.readBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, false));
++        amoledWhenSystemDark.setVisible(NightModeUtils.getThemeSetting() == ThemeType.SYSTEM_DEFAULT);
++        amoledWhenSystemDark.setOnPreferenceChangeListener(
++                (preference, newValue) -> {
++                    sharedPreferencesManager.writeBoolean(
++                            ARGON_AMOLED_WHEN_SYSTEM_DARK, (boolean) newValue);
++                    return true;
++                });
+ 
+         radioButtonGroupThemePreference.setOnPreferenceChangeListener(
+                 (preference, newValue) -> {
+@@ -64,9 +104,11 @@
+                                     radioButtonGroupThemePreference.isDarkenWebsitesEnabled();
+                             WebContentsDarkModeController.setGlobalUserSettings(
+                                     getProfile(), mWebContentsDarkModeEnabled);
++                            amoledBackgrounds.setEnabled(mWebContentsDarkModeEnabled);
+                         }
+                     }
+                     int theme = (int) newValue;
++                    amoledWhenSystemDark.setVisible(theme == ThemeType.SYSTEM_DEFAULT);
+                     sharedPreferencesManager.writeInt(UI_THEME_SETTING, theme);
+                     return true;
+                 });
+@@ -133,6 +175,16 @@
+                             PREF_UI_THEME_PREF,
+                             2,
+                             darkTitle,
++                            null);
++                    String darkAmoledTitle =
++                            NightModeUtils.getThemeSettingTitle(context, ThemeType.DARK_AMOLED);
++                    addEntryForKey(
++                            indexData,
++                            prefFragment,
++                            PREF_UI_THEME_PREF_DARK_AMOLED,
++                            PREF_UI_THEME_PREF,
++                            3,
++                            darkAmoledTitle,
+                             null);
+                 }
+ 
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -1015,6 +1015,18 @@
+       <message name="IDS_DARKEN_WEBSITES" desc="Title for the option to apply auto-darken to websites. If a website has opt-out from auto-darken, the content will stay the same.">
+         Apply dark theme to sites, when possible
+       </message>
++      <message name="IDS_ARGON_AMOLED_WHEN_SYSTEM_DARK_TITLE" desc="Title for the option that uses true black surfaces when the System default theme is following a dark system theme. [CHAR_LIMIT=48]">
++        Use black when the system is dark
++      </message>
++      <message name="IDS_ARGON_AMOLED_WHEN_SYSTEM_DARK_SUMMARY" desc="Summary for the option that uses true black surfaces when the System default theme is following a dark system theme.">
++        Black instead of dark grey while your device is in dark theme. Saves battery on AMOLED screens.
++      </message>
++      <message name="IDS_ARGON_AMOLED_DARK_BACKGROUNDS_TITLE" desc="Title for the option that makes the browser-generated dark background black rather than dark grey. Only applies to sites the browser darkens itself. [CHAR_LIMIT=48]">
++        Use black backgrounds on darkened sites
++      </message>
++      <message name="IDS_ARGON_AMOLED_DARK_BACKGROUNDS_SUMMARY" desc="Summary for the option that makes the browser-generated dark background black.">
++        Use deeper black backgrounds on sites Argon darkens
++      </message>
+ 
+       <!-- Privacy and security preferences -->
+       <message name="IDS_PREFS_PRIVACY_SECURITY" desc="Title for the Privacy and Security preferences. [CHAR_LIMIT=32]">
+@@ -3035,6 +3047,9 @@
+       </message>
+       <message name="IDS_LIGHT_MODE" desc="Title of button that will change theme of distilled pages to light mode.">
+         Light
++      </message>
++      <message name="IDS_ARGON_DARK_AMOLED_MODE" desc="Title of the theme option that uses true black backgrounds so AMOLED screens can switch those pixels off.">
++        Dark AMOLED
+       </message>
+       <message name="IDS_SEPIA_MODE" desc="Title of button that will change theme of distilled pages to sepia mode.">
+         Sepia
+diff --git a/chrome/browser/ui/android/theme/java/src/org/chromium/chrome/browser/theme/ThemeUtils.java b/chrome/browser/ui/android/theme/java/src/org/chromium/chrome/browser/theme/ThemeUtils.java
+--- a/chrome/browser/ui/android/theme/java/src/org/chromium/chrome/browser/theme/ThemeUtils.java
++++ b/chrome/browser/ui/android/theme/java/src/org/chromium/chrome/browser/theme/ThemeUtils.java
+@@ -12,6 +12,8 @@
+ import androidx.annotation.ColorRes;
+ import androidx.annotation.VisibleForTesting;
+ import androidx.core.content.ContextCompat;
++
++import com.google.android.material.color.MaterialColors;
+ 
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
+@@ -88,7 +90,10 @@
+             Context context, @ColorInt int color, boolean isIncognito, boolean isCustomTab) {
+         // Text box color on default toolbar background in incognito mode is a pre-defined color.
+         if (isIncognito) {
+-            return context.getColor(R.color.toolbar_text_box_background_incognito);
++            return MaterialColors.getColor(
++                    context,
++                    R.attr.colorIncognitoSurfaceRaised,
++                    context.getColor(R.color.toolbar_text_box_background_incognito));
+         }
+ 
+         // Text box color on default toolbar background in standard mode is a pre-defined
+diff --git a/chrome/browser/ui/prefs/pref_watcher.cc b/chrome/browser/ui/prefs/pref_watcher.cc
+--- a/chrome/browser/ui/prefs/pref_watcher.cc
++++ b/chrome/browser/ui/prefs/pref_watcher.cc
+@@ -76,6 +76,7 @@
+     prefs::kWebKitPasswordEchoEnabledPhysical,
+     prefs::kWebKitPasswordEchoEnabledTouch,
+ #endif
++    prefs::kWebKitAmoledDarkBackgroundsEnabled,
+     prefs::kWebKitForceDarkModeEnabled,
+     prefs::kWebKitJavascriptEnabled,
+     prefs::kWebKitLoadsImagesAutomatically,
+diff --git a/chrome/browser/ui/prefs/prefs_tab_helper.cc b/chrome/browser/ui/prefs/prefs_tab_helper.cc
+--- a/chrome/browser/ui/prefs/prefs_tab_helper.cc
++++ b/chrome/browser/ui/prefs/prefs_tab_helper.cc
+@@ -411,6 +411,8 @@
+           : pref_defaults.force_dark_mode_enabled;
+   registry->RegisterBooleanPref(prefs::kWebKitForceDarkModeEnabled,
+                                 force_dark_mode_enabled);
++  registry->RegisterBooleanPref(prefs::kWebKitAmoledDarkBackgroundsEnabled,
++                                false);
+   registry->RegisterStringPref(prefs::kDefaultCharset,
+                                l10n_util::GetStringUTF8(IDS_DEFAULT_ENCODING),
+                                user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+diff --git a/chrome/common/pref_names.h b/chrome/common/pref_names.h
+--- a/chrome/common/pref_names.h
++++ b/chrome/common/pref_names.h
+@@ -333,6 +333,14 @@
+ #endif
+ inline constexpr char kWebKitForceDarkModeEnabled[] =
+     "webkit.webprefs.force_dark_mode_enabled";
++
++// Argon (from Bare): when force dark mode darkens a page, take the backgrounds it
++// generates to black rather than the dark grey Blink settles on. Only affects
++// pages Blink is darkening itself; a site with its own dark color-scheme is
++// never touched. Off by default and meaningless while
++// kWebKitForceDarkModeEnabled is off.
++inline constexpr char kWebKitAmoledDarkBackgroundsEnabled[] =
++    "webkit.webprefs.amoled_dark_backgrounds_enabled";
+ 
+ inline constexpr char kWebKitCommonScript[] = "Zyyy";
+ inline constexpr char kWebKitStandardFontFamily[] =
+diff --git a/components/browser_ui/styles/android/java/res/values/attrs.xml b/components/browser_ui/styles/android/java/res/values/attrs.xml
+--- a/components/browser_ui/styles/android/java/res/values/attrs.xml
++++ b/components/browser_ui/styles/android/java/res/values/attrs.xml
+@@ -10,6 +10,11 @@
+         <attr name="isDialogFullscreen" format="boolean" />
+     </declare-styleable>
+ 
++    <!-- Incognito chrome surfaces. Unset in every theme except the AMOLED
++         overlay; callers fall back to the non-adaptive incognito colours. -->
++    <attr name="colorIncognitoSurface" format="color" />
++    <attr name="colorIncognitoSurfaceRaised" format="color" />
++
+     <attr name="iconRowButtonSizeOverlay" format="reference" />
+     <attr name="colorButtonSizeOverlay" format="reference" />
+ </resources>
+diff --git a/components/browser_ui/styles/android/java/res/values/styles.xml b/components/browser_ui/styles/android/java/res/values/styles.xml
+--- a/components/browser_ui/styles/android/java/res/values/styles.xml
++++ b/components/browser_ui/styles/android/java/res/values/styles.xml
+@@ -375,4 +375,29 @@
+     <style name="TextAppearance.TextAccentMediumThick.ColorOnPrimaryContainer">
+         <item name="android:textColor">?attr/colorOnPrimaryContainer</item>
+     </style>
++    <!-- Bare: true-black surfaces for AMOLED panels, layered on top of the dark
++         theme when the user picks "Dark AMOLED". Only the flat, full-bleed
++         surfaces go to #000 so those pixels switch off entirely; the container
++         ramp keeps a small lift so menus, dialogs and sheets remain separable
++         from the content behind them. Foreground and accent colours are left to
++         the dark theme so contrast is unchanged. -->
++    <style name="ThemeOverlay.BrowserUI.Amoled" parent="">
++        <!-- Flat, full-bleed surfaces go fully black so the pixels switch off.
++             colorSurfaceContainerHigh is included because Chromium settings use
++             it for the page background, not for a raised surface. -->
++        <item name="android:colorBackground">#FF000000</item>
++        <item name="colorSurface">#FF000000</item>
++        <item name="colorSurfaceDim">#FF000000</item>
++        <item name="colorSurfaceContainerLow">#FF000000</item>
++        <item name="colorSurfaceContainer">#FF000000</item>
++        <item name="colorSurfaceContainerHigh">#FF000000</item>
++        <!-- Genuinely raised surfaces (cards, menus, sheets) keep a small lift so
++             they stay separable from the black behind them. -->
++        <item name="colorSurfaceContainerHighest">#FF141414</item>
++        <item name="colorSurfaceBright">#FF141414</item>
++        <!-- Incognito reaches these through attrs rather than the theme's own
++             surface tokens, so it needs its own pair. -->
++        <item name="colorIncognitoSurface">#FF000000</item>
++        <item name="colorIncognitoSurfaceRaised">#FF141414</item>
++    </style>
+ </resources>
+diff --git a/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/ChromeColors.java b/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/ChromeColors.java
+--- a/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/ChromeColors.java
++++ b/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/ChromeColors.java
+@@ -29,7 +29,10 @@
+      */
+     public static @ColorInt int getDefaultThemeColor(Context context, boolean isIncognito) {
+         return isIncognito
+-                ? context.getColor(R.color.toolbar_background_incognito)
++                ? MaterialColors.getColor(
++                        context,
++                        R.attr.colorIncognitoSurface,
++                        context.getColor(R.color.toolbar_background_incognito))
+                 : MaterialColors.getColor(context, R.attr.colorSurface, TAG);
+     }
+ 
+diff --git a/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/IncognitoColors.java b/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/IncognitoColors.java
+--- a/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/IncognitoColors.java
++++ b/components/browser_ui/styles/android/java/src/org/chromium/components/browser_ui/styles/IncognitoColors.java
+@@ -9,6 +9,8 @@
+ 
+ import androidx.annotation.ColorInt;
+ import androidx.annotation.StyleRes;
++
++import com.google.android.material.color.MaterialColors;
+ 
+ import org.chromium.build.annotations.NullMarked;
+ 
+@@ -23,21 +25,30 @@
+     /** {@link SemanticColorUtils#getColorSurface} */
+     public static @ColorInt int getColorSurface(Context context, boolean isIncognito) {
+         return isIncognito
+-                ? context.getColor(R.color.gm3_baseline_surface_dark)
++                ? MaterialColors.getColor(
++                        context,
++                        R.attr.colorIncognitoSurface,
++                        context.getColor(R.color.gm3_baseline_surface_dark))
+                 : SemanticColorUtils.getColorSurface(context);
+     }
+ 
+     /** {@link SemanticColorUtils#getColorSurfaceBright} */
+     public static @ColorInt int getColorSurfaceBright(Context context, boolean isIncognito) {
+         return isIncognito
+-                ? context.getColor(R.color.gm3_baseline_surface_bright_dark)
++                ? MaterialColors.getColor(
++                        context,
++                        R.attr.colorIncognitoSurfaceRaised,
++                        context.getColor(R.color.gm3_baseline_surface_bright_dark))
+                 : SemanticColorUtils.getColorSurfaceBright(context);
+     }
+ 
+     /** {@link SemanticColorUtils#getColorSurfaceContainerHigh} */
+     public static @ColorInt int getColorSurfaceContainerHigh(Context context, boolean isIncognito) {
+         return isIncognito
+-                ? context.getColor(R.color.gm3_baseline_surface_container_high_dark)
++                ? MaterialColors.getColor(
++                        context,
++                        R.attr.colorIncognitoSurface,
++                        context.getColor(R.color.gm3_baseline_surface_container_high_dark))
+                 : SemanticColorUtils.getColorSurfaceContainerHigh(context);
+     }
+ 
+@@ -45,14 +56,20 @@
+     public static @ColorInt int getColorSurfaceContainerHighest(
+             Context context, boolean isIncognito) {
+         return isIncognito
+-                ? context.getColor(R.color.gm3_baseline_surface_container_highest_dark)
++                ? MaterialColors.getColor(
++                        context,
++                        R.attr.colorIncognitoSurfaceRaised,
++                        context.getColor(R.color.gm3_baseline_surface_container_highest_dark))
+                 : SemanticColorUtils.getColorSurfaceContainerHighest(context);
+     }
+ 
+     /** {@link SemanticColorUtils#getColorSurfaceContainerLow} */
+     public static @ColorInt int getColorSurfaceContainerLow(Context context, boolean isIncognito) {
+         return isIncognito
+-                ? context.getColor(R.color.gm3_baseline_surface_container_low_dark)
++                ? MaterialColors.getColor(
++                        context,
++                        R.attr.colorIncognitoSurface,
++                        context.getColor(R.color.gm3_baseline_surface_container_low_dark))
+                 : SemanticColorUtils.getColorSurfaceContainerLow(context);
+     }
+ 
+diff --git a/components/browser_ui/theme/android/java/res/values/colors.xml b/components/browser_ui/theme/android/java/res/values/colors.xml
+--- a/components/browser_ui/theme/android/java/res/values/colors.xml
++++ b/components/browser_ui/theme/android/java/res/values/colors.xml
+@@ -8,5 +8,17 @@
+ <resources>
+     <!-- This points to a system color resource in API 31+. However, it's unclear what its value is
+          on devices that don't support dynamic colors. -->
+-    <color name="splash_screen_bg">@color/system_neutral1_10</color>
++    <!--
++      De-Googled build: the splash is dark whatever the system is set to.
++
++      Android draws this before any of the app runs, resolving the theme against the system's
++      night mode rather than the browser's own. Someone running the system in light mode with
++      Bare set to Dark or Dark AMOLED therefore got a near-white splash on every cold start,
++      held for as long as startup takes, and then a black browser. No code can correct it later
++      because nothing of ours has started yet.
++
++      So it is fixed rather than adaptive. The cost is a dark splash ahead of the light theme,
++      which is a far smaller jolt than a white one at night, and the blue mark reads on both.
++    -->
++    <color name="splash_screen_bg">#FF000000</color>
+ </resources>
+diff --git a/components/browser_ui/theme/android/java/res/values-night/colors.xml b/components/browser_ui/theme/android/java/res/values-night/colors.xml
+--- a/components/browser_ui/theme/android/java/res/values-night/colors.xml
++++ b/components/browser_ui/theme/android/java/res/values-night/colors.xml
+@@ -8,5 +8,6 @@
+ <resources>
+     <!-- This points to a system color resource in API 31+. However, it's unclear what its value is
+          on devices that don't support dynamic colors. -->
+-    <color name="splash_screen_bg">@color/system_neutral1_900</color>
++    <!-- Matches the light variant: see the note there. -->
++    <color name="splash_screen_bg">#FF000000</color>
+ </resources>
+diff --git a/components/content_settings/core/common/features.cc b/components/content_settings/core/common/features.cc
+--- a/components/content_settings/core/common/features.cc
++++ b/components/content_settings/core/common/features.cc
+@@ -11,10 +11,21 @@
+ 
+ // Enables auto dark feature in theme settings.
+ #if BUILDFLAG(IS_ANDROID)
++// De-Googled build: enabled so that Settings > Theme offers the "Apply dark
++// theme to sites" checkbox. Upstream disables this, which hides the setting
++// entirely and leaves Blink's force-dark unreachable from the UI.
++//
++// This is the switch for Bare's auto-dark option and nothing more. It does not
++// close the white flash seen on navigation: that happens before the page
++// paints, and force-dark only changes how the page paints once it does.
++//
++// "opt_out" is false so the content setting still defaults to BLOCK: the
++// feature only makes the checkbox reachable, and darkening stays off until the
++// user ticks it. Upstream's true would have turned auto-dark on for everyone.
+ BASE_FEATURE(kDarkenWebsitesCheckboxInThemesSetting,
+-             base::FEATURE_DISABLED_BY_DEFAULT);
++             base::FEATURE_ENABLED_BY_DEFAULT);
+ constexpr base::FeatureParam<bool> kDarkenWebsitesCheckboxOptOut{
+-    &kDarkenWebsitesCheckboxInThemesSetting, "opt_out", true};
++    &kDarkenWebsitesCheckboxInThemesSetting, "opt_out", false};
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
+ namespace features {
+diff --git a/third_party/blink/common/web_preferences/web_preferences_mojom_traits.cc b/third_party/blink/common/web_preferences/web_preferences_mojom_traits.cc
+--- a/third_party/blink/common/web_preferences/web_preferences_mojom_traits.cc
++++ b/third_party/blink/common/web_preferences/web_preferences_mojom_traits.cc
+@@ -211,6 +211,7 @@
+ #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
+ 
+   out->force_dark_mode_enabled = data.force_dark_mode_enabled();
++  out->amoled_dark_backgrounds_enabled = data.amoled_dark_backgrounds_enabled();
+   out->default_minimum_page_scale_factor =
+       data.default_minimum_page_scale_factor();
+   out->default_maximum_page_scale_factor =
+diff --git a/third_party/blink/public/common/web_preferences/web_preferences.h b/third_party/blink/public/common/web_preferences/web_preferences.h
+--- a/third_party/blink/public/common/web_preferences/web_preferences.h
++++ b/third_party/blink/public/common/web_preferences/web_preferences.h
+@@ -325,6 +325,10 @@
+   // color scheme.
+   bool force_dark_mode_enabled = false;
+ 
++  // Take generated dark backgrounds to black instead of dark grey. Only has an
++  // effect while force_dark_mode_enabled is true.
++  bool amoled_dark_backgrounds_enabled = false;
++
+   // Default (used if the page or UA doesn't override these) values for page
+   // scale limits. These are set directly on the WebView so there's no analogue
+   // in WebSettings.
+diff --git a/third_party/blink/public/common/web_preferences/web_preferences_mojom_traits.h b/third_party/blink/public/common/web_preferences/web_preferences_mojom_traits.h
+--- a/third_party/blink/public/common/web_preferences/web_preferences_mojom_traits.h
++++ b/third_party/blink/public/common/web_preferences/web_preferences_mojom_traits.h
+@@ -699,6 +699,11 @@
+     return r.force_dark_mode_enabled;
+   }
+ 
++  static bool amoled_dark_backgrounds_enabled(
++      const blink::web_pref::WebPreferences& r) {
++    return r.amoled_dark_backgrounds_enabled;
++  }
++
+   static float default_minimum_page_scale_factor(
+       const blink::web_pref::WebPreferences& r) {
+     return r.default_minimum_page_scale_factor;
+diff --git a/third_party/blink/public/mojom/webpreferences/web_preferences.mojom b/third_party/blink/public/mojom/webpreferences/web_preferences.mojom
+--- a/third_party/blink/public/mojom/webpreferences/web_preferences.mojom
++++ b/third_party/blink/public/mojom/webpreferences/web_preferences.mojom
+@@ -392,6 +392,7 @@
+   // Enable forcibly modifying content rendering to result in a light on dark
+   // color scheme.
+   bool force_dark_mode_enabled;
++  bool amoled_dark_backgrounds_enabled;
+ 
+   // Default (used if the page or UA doesn't override these) values for page
+   // scale limits. These are set directly on the WebView so there's no analogue
+diff --git a/third_party/blink/public/web/web_settings.h b/third_party/blink/public/web/web_settings.h
+--- a/third_party/blink/public/web/web_settings.h
++++ b/third_party/blink/public/web/web_settings.h
+@@ -277,6 +277,7 @@
+   virtual void SetLazyLoadingImageMarginPx3G(int) = 0;
+   virtual void SetLazyLoadingImageMarginPx4G(int) = 0;
+   virtual void SetForceDarkModeEnabled(bool) = 0;
++  virtual void SetAmoledDarkBackgroundsEnabled(bool) = 0;
+   virtual void SetInForcedColors(bool) = 0;
+   virtual void SetIsForcedColorsDisabled(bool) = 0;
+   virtual void SetPreferredRootScrollbarColorScheme(
+diff --git a/third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc b/third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc
+--- a/third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc
++++ b/third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc
+@@ -2618,6 +2618,8 @@
+   state.StyleBuilder().SetUsedColorScheme(
+       flags, document.GetStyleEngine().GetPreferredColorScheme(),
+       document.GetStyleEngine().GetForceDarkModeEnabled());
++  state.StyleBuilder().SetAmoledDarkBackgrounds(
++      document.GetStyleEngine().GetAmoledDarkBackgroundsEnabled());
+ 
+   if (flags & static_cast<ColorSchemeFlags>(ColorSchemeFlag::kDark)) {
+     // Record kColorSchemeDarkSupportedOnRoot if dark is present (though dark
+diff --git a/third_party/blink/renderer/core/css/resolver/style_resolver.cc b/third_party/blink/renderer/core/css/resolver/style_resolver.cc
+--- a/third_party/blink/renderer/core/css/resolver/style_resolver.cc
++++ b/third_party/blink/renderer/core/css/resolver/style_resolver.cc
+@@ -2411,6 +2411,7 @@
+   builder.SetUsedColorScheme(engine.GetPageColorSchemes(),
+                              engine.GetPreferredColorScheme(),
+                              engine.GetForceDarkModeEnabled());
++  builder.SetAmoledDarkBackgrounds(engine.GetAmoledDarkBackgroundsEnabled());
+ 
+   FontDescription document_font_description = builder.GetFontDescription();
+   document_font_description.SetLocale(
+diff --git a/third_party/blink/renderer/core/css/style_engine.cc b/third_party/blink/renderer/core/css/style_engine.cc
+--- a/third_party/blink/renderer/core/css/style_engine.cc
++++ b/third_party/blink/renderer/core/css/style_engine.cc
+@@ -4479,6 +4479,8 @@
+   preferred_contrast_ = settings->GetPreferredContrast();
+   bool old_force_dark_mode_enabled = force_dark_mode_enabled_;
+   force_dark_mode_enabled_ = settings->GetForceDarkModeEnabled();
++  bool old_amoled_dark_backgrounds_enabled = amoled_dark_backgrounds_enabled_;
++  amoled_dark_backgrounds_enabled_ = settings->GetAmoledDarkBackgroundsEnabled();
+   bool media_feature_override_color_scheme = false;
+   bool media_feature_override_contrast = false;
+ 
+@@ -4533,7 +4535,8 @@
+   if (forced_colors_ != old_forced_colors ||
+       preferred_color_scheme_ != old_preferred_color_scheme ||
+       preferred_contrast_ != old_preferred_contrast ||
+-      force_dark_mode_enabled_ != old_force_dark_mode_enabled) {
++      force_dark_mode_enabled_ != old_force_dark_mode_enabled ||
++      amoled_dark_backgrounds_enabled_ != old_amoled_dark_backgrounds_enabled) {
+     PlatformColorsChanged();
+   }
+ 
+diff --git a/third_party/blink/renderer/core/css/style_engine.h b/third_party/blink/renderer/core/css/style_engine.h
+--- a/third_party/blink/renderer/core/css/style_engine.h
++++ b/third_party/blink/renderer/core/css/style_engine.h
+@@ -781,6 +781,9 @@
+     return preferred_contrast_;
+   }
+   bool GetForceDarkModeEnabled() const { return force_dark_mode_enabled_; }
++  bool GetAmoledDarkBackgroundsEnabled() const {
++    return amoled_dark_backgrounds_enabled_;
++  }
+   ForcedColors GetForcedColors() const { return forced_colors_; }
+   void UpdateColorSchemeBackground(bool color_scheme_changed = false);
+   Color ForcedBackgroundColor() const { return forced_background_color_; }
+@@ -1238,6 +1241,7 @@
+   Color forced_background_color_;
+ 
+   bool force_dark_mode_enabled_{false};
++  bool amoled_dark_backgrounds_enabled_{false};
+ 
+   friend class NodeTest;
+   friend class StyleCascadeTest;
+diff --git a/third_party/blink/renderer/core/exported/web_settings_impl.cc b/third_party/blink/renderer/core/exported/web_settings_impl.cc
+--- a/third_party/blink/renderer/core/exported/web_settings_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_settings_impl.cc
+@@ -778,6 +778,10 @@
+   settings_->SetLazyLoadingImageMarginPx4G(distance_px);
+ }
+ 
++void WebSettingsImpl::SetAmoledDarkBackgroundsEnabled(bool enabled) {
++  settings_->SetAmoledDarkBackgroundsEnabled(enabled);
++}
++
+ void WebSettingsImpl::SetForceDarkModeEnabled(bool enabled) {
+   dev_tools_emulator_->SetForceDarkModeEnabled(enabled);
+ }
+diff --git a/third_party/blink/renderer/core/exported/web_settings_impl.h b/third_party/blink/renderer/core/exported/web_settings_impl.h
+--- a/third_party/blink/renderer/core/exported/web_settings_impl.h
++++ b/third_party/blink/renderer/core/exported/web_settings_impl.h
+@@ -228,6 +228,7 @@
+   void SetLazyLoadingImageMarginPx4G(int) override;
+ 
+   void SetForceDarkModeEnabled(bool) override;
++  void SetAmoledDarkBackgroundsEnabled(bool) override;
+   void SetInForcedColors(bool) override;
+   void SetIsForcedColorsDisabled(bool) override;
+   void SetPreferredRootScrollbarColorScheme(
+diff --git a/third_party/blink/renderer/core/exported/web_view_impl.cc b/third_party/blink/renderer/core/exported/web_view_impl.cc
+--- a/third_party/blink/renderer/core/exported/web_view_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_view_impl.cc
+@@ -1883,6 +1883,8 @@
+ #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
+ 
+   settings->SetForceDarkModeEnabled(prefs.force_dark_mode_enabled);
++  settings->SetAmoledDarkBackgroundsEnabled(
++      prefs.amoled_dark_backgrounds_enabled);
+ 
+   settings->SetAccessibilityAlwaysShowFocus(prefs.always_show_focus);
+   settings->SetAutoplayPolicy(prefs.autoplay_policy);
+diff --git a/third_party/blink/renderer/core/frame/settings.json5 b/third_party/blink/renderer/core/frame/settings.json5
+--- a/third_party/blink/renderer/core/frame/settings.json5
++++ b/third_party/blink/renderer/core/frame/settings.json5
+@@ -1057,6 +1057,16 @@
+       invalidate: ["ColorScheme", "Style", "Paint"],
+     },
+ 
++    // Argon (from Bare): take the backgrounds force dark generates to black rather
++    // than the dark grey the LAB inversion settles on. Invalidates the same
++    // things as forceDarkModeEnabled, so toggling it restyles and repaints
++    // pages that are already open.
++    {
++      name: "amoledDarkBackgroundsEnabled",
++      initial: false,
++      invalidate: ["ColorScheme", "Style", "Paint"],
++    },
++
+     {
+       name: "navigatorPlatformOverride",
+       type: "String",
+diff --git a/third_party/blink/renderer/core/paint/paint_auto_dark_mode.h b/third_party/blink/renderer/core/paint/paint_auto_dark_mode.h
+--- a/third_party/blink/renderer/core/paint/paint_auto_dark_mode.h
++++ b/third_party/blink/renderer/core/paint/paint_auto_dark_mode.h
+@@ -19,7 +19,8 @@
+                                       DarkModeFilter::ElementRole role) {
+   return AutoDarkMode(
+       role, style.ForceDark(),
+-      style.VisitedDependentColorFast(GetCSSPropertyBackgroundColor()).Rgb());
++      style.VisitedDependentColorFast(GetCSSPropertyBackgroundColor()).Rgb(),
++      style.AmoledDarkBackgrounds());
+ }
+ 
+ inline AutoDarkMode PaintAutoDarkMode(DarkModeFilter::ElementRole role,
+diff --git a/third_party/blink/renderer/core/style/computed_style_extra_fields.json5 b/third_party/blink/renderer/core/style/computed_style_extra_fields.json5
+--- a/third_party/blink/renderer/core/style/computed_style_extra_fields.json5
++++ b/third_party/blink/renderer/core/style/computed_style_extra_fields.json5
+@@ -1041,6 +1041,18 @@
+       invalidate: ["paint"],
+     },
+     {
++      // Argon (from Bare): carries the amoled background setting to the paint code,
++      // which reaches ComputedStyle but not Settings. Only meaningful together
++      // with ColorSchemeForced, i.e. on a page Blink is darkening itself.
++      name: "AmoledDarkBackgrounds",
++      field_template: "primitive",
++      type_name: "bool",
++      default_value: "false",
++      custom_compare: true,
++      inherited: true,
++      invalidate: ["paint"],
++    },
++    {
+       name: "IsInBlockifyingDisplay",
+       field_template: "monotonic_flag",
+       default_value: "false",
+diff --git a/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.cc b/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.cc
+--- a/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.cc
++++ b/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.cc
+@@ -35,6 +35,22 @@
+     SkV3 rgb = {color.fR, color.fG, color.fB};
+     SkV3 lab = transformer_.SRGBToLAB(rgb);
+     lab.x = std::min(110.0f - lab.x, 100.0f);
++    rgb = transformer_.LABToSRGB(lab);
++
++    SkColor4f inverted_color{rgb.x, rgb.y, rgb.z, color.fA};
++    return AdjustGray(inverted_color);
++  }
++
++  // The ordinary inversion maps lightness to 110 - L, which leaves a white
++  // background at L=10, a dark grey, rather than at black. Subtracting from 100
++  // instead sends white to 0 and keeps the mapping monotonic, so a near-white
++  // card at L=96 lands just above black rather than on it and surfaces that
++  // differ before still differ after. AdjustGray leaves the result alone: it
++  // only lifts greys already between 18/255 and 32/255.
++  SkColor4f InvertBackgroundColorAmoled(const SkColor4f& color) const override {
++    SkV3 rgb = {color.fR, color.fG, color.fB};
++    SkV3 lab = transformer_.SRGBToLAB(rgb);
++    lab.x = std::min(100.0f - lab.x, 100.0f);
+     rgb = transformer_.LABToSRGB(lab);
+ 
+     SkColor4f inverted_color{rgb.x, rgb.y, rgb.z, color.fA};
+diff --git a/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.h b/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.h
+--- a/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.h
++++ b/third_party/blink/renderer/platform/graphics/dark_mode_color_filter.h
+@@ -24,6 +24,13 @@
+ 
+   virtual ~DarkModeColorFilter();
+   virtual SkColor4f InvertColor(const SkColor4f& color) const = 0;
++
++  // Same inversion, but reaching black instead of the dark grey InvertColor
++  // settles on. Only used for backgrounds, and only when the amoled setting is
++  // on. Defaults to the ordinary inversion so other filters need not care.
++  virtual SkColor4f InvertBackgroundColorAmoled(const SkColor4f& color) const {
++    return InvertColor(color);
++  }
+   virtual sk_sp<cc::ColorFilter> ToColorFilter() const = 0;
+   virtual SkColor4f AdjustColorForHigherConstrast(
+       const SkColor4f& adjusted_color,
+diff --git a/third_party/blink/renderer/platform/graphics/dark_mode_filter.cc b/third_party/blink/renderer/platform/graphics/dark_mode_filter.cc
+--- a/third_party/blink/renderer/platform/graphics/dark_mode_filter.cc
++++ b/third_party/blink/renderer/platform/graphics/dark_mode_filter.cc
+@@ -93,23 +93,37 @@
+   DarkModeInvertedColorCache() : cache_(kMaxCacheSize) {}
+   ~DarkModeInvertedColorCache() = default;
+ 
+-  SkColor4f GetInvertedColor(DarkModeColorFilter* filter, SkColor4f color) {
++  // Two colours that are equal invert differently depending on whether the
++  // amoled background treatment applies, so they cannot share one entry. The
++  // caches are kept separate rather than widening the key, which keeps the
++  // ordinary lookup exactly as it was.
++  SkColor4f GetInvertedColor(DarkModeColorFilter* filter,
++                             SkColor4f color,
++                             bool amoled_background) {
+     SkColor key = color.toSkColor();
+-    auto it = cache_.Get(key);
+-    if (it != cache_.end())
++    auto& cache = amoled_background ? amoled_background_cache_ : cache_;
++    auto it = cache.Get(key);
++    if (it != cache.end())
+       return it->second;
+ 
+-    SkColor4f inverted_color = filter->InvertColor(color);
+-    cache_.Put(key, inverted_color);
++    SkColor4f inverted_color = amoled_background
++                                   ? filter->InvertBackgroundColorAmoled(color)
++                                   : filter->InvertColor(color);
++    cache.Put(key, inverted_color);
+     return inverted_color;
+   }
+ 
+-  void Clear() { cache_.Clear(); }
+-
+-  size_t size() { return cache_.size(); }
++  void Clear() {
++    cache_.Clear();
++    amoled_background_cache_.Clear();
++  }
++
++  size_t size() { return cache_.size() + amoled_background_cache_.size(); }
+ 
+  private:
+   base::HashingLRUCache<SkColor, SkColor4f> cache_;
++  base::HashingLRUCache<SkColor, SkColor4f> amoled_background_cache_{
++      kMaxCacheSize};
+ };
+ 
+ DarkModeFilter::DarkModeFilter(const DarkModeSettings& settings)
+@@ -175,20 +189,24 @@
+ SkColor4f DarkModeFilter::InvertColorIfNeeded(
+     const SkColor4f& color,
+     ElementRole role,
+-    const SkColor4f& contrast_background) {
++    const SkColor4f& contrast_background,
++    bool amoled_background) {
+   return AdjustDarkenColor(
+-      InvertColorIfNeeded(color, role), role,
+-      InvertColorIfNeeded(contrast_background, ElementRole::kBackground));
++      InvertColorIfNeeded(color, role, amoled_background), role,
++      InvertColorIfNeeded(contrast_background, ElementRole::kBackground,
++                          amoled_background));
+ }
+ 
+ SkColor4f DarkModeFilter::InvertColorIfNeeded(const SkColor4f& color,
+-                                              ElementRole role) {
++                                              ElementRole role,
++                                              bool amoled_background) {
+   if (!immutable_.color_filter)
+     return color;
+ 
+   if (ShouldApplyToColor(color, role)) {
+     return inverted_color_cache_->GetInvertedColor(
+-        immutable_.color_filter.get(), color);
++        immutable_.color_filter.get(), color,
++        amoled_background && role == ElementRole::kBackground);
+   }
+ 
+   return color;
+@@ -252,7 +270,8 @@
+ std::optional<cc::PaintFlags> DarkModeFilter::ApplyToFlagsIfNeeded(
+     const cc::PaintFlags& flags,
+     ElementRole role,
+-    SkColor4f contrast_background) {
++    SkColor4f contrast_background,
++    bool amoled_background) {
+   if (!immutable_.color_filter || flags.HasShader())
+     return std::nullopt;
+ 
+@@ -260,7 +279,8 @@
+   SkColor4f flags_color = flags.getColor4f();
+   if (ShouldApplyToColor(flags_color, role)) {
+     flags_color = inverted_color_cache_->GetInvertedColor(
+-        immutable_.color_filter.get(), flags_color);
++        immutable_.color_filter.get(), flags_color,
++        amoled_background && role == ElementRole::kBackground);
+   }
+   dark_mode_flags.setColor(AdjustDarkenColor(
+       flags_color, role,
+diff --git a/third_party/blink/renderer/platform/graphics/dark_mode_filter.h b/third_party/blink/renderer/platform/graphics/dark_mode_filter.h
+--- a/third_party/blink/renderer/platform/graphics/dark_mode_filter.h
++++ b/third_party/blink/renderer/platform/graphics/dark_mode_filter.h
+@@ -44,16 +44,22 @@
+   };
+   enum class ImageType { kNone, kIcon, kSeparator, kPhoto };
+ 
++  // |amoled_background| asks for the deeper inversion, and is honoured only
++  // for ElementRole::kBackground. Everything else stays on the ordinary path,
++  // so text, borders, SVG, selection and images are unaffected by it.
+   SkColor4f InvertColorIfNeeded(const SkColor4f& color,
+-                                ElementRole element_role);
++                                ElementRole element_role,
++                                bool amoled_background = false);
+   SkColor4f InvertColorIfNeeded(const SkColor4f& color,
+                                 ElementRole role,
+-                                const SkColor4f& contrast_background);
++                                const SkColor4f& contrast_background,
++                                bool amoled_background = false);
+ 
+   std::optional<cc::PaintFlags> ApplyToFlagsIfNeeded(
+       const cc::PaintFlags& flags,
+       ElementRole role,
+-      SkColor4f contrast_background);
++      SkColor4f contrast_background,
++      bool amoled_background = false);
+ 
+   size_t GetInvertedColorCacheSizeForTesting();
+ 
+diff --git a/third_party/blink/renderer/platform/graphics/dark_mode_filter_test.cc b/third_party/blink/renderer/platform/graphics/dark_mode_filter_test.cc
+--- a/third_party/blink/renderer/platform/graphics/dark_mode_filter_test.cc
++++ b/third_party/blink/renderer/platform/graphics/dark_mode_filter_test.cc
+@@ -13,6 +13,67 @@
+ 
+ namespace blink {
+ namespace {
++
++TEST(DarkModeFilterTest, AmoledBackgroundKeepsAlphaAndSurfaceContrast) {
++  DarkModeSettings settings;
++  DarkModeFilter filter(settings);
++  const SkColor4f white{1.0f, 1.0f, 1.0f, 0.5f};
++  const SkColor4f result = filter.InvertColorIfNeeded(
++      white, DarkModeFilter::ElementRole::kBackground, true);
++  EXPECT_NEAR(0.0f, result.fR, 0.0001f);
++  EXPECT_NEAR(0.0f, result.fG, 0.0001f);
++  EXPECT_NEAR(0.0f, result.fB, 0.0001f);
++  EXPECT_FLOAT_EQ(white.fA, result.fA);
++  const SkColor4f card = filter.InvertColorIfNeeded(
++      SkColor4f::FromColor(0xFFF5F5F5),
++      DarkModeFilter::ElementRole::kBackground, true);
++  EXPECT_GT(card.fR, result.fR);
++  EXPECT_GT(card.fG, result.fG);
++  EXPECT_GT(card.fB, result.fB);
++}
++
++TEST(DarkModeFilterTest, AmoledBackgroundCacheIsSeparateInBothOrders) {
++  DarkModeSettings settings;
++  for (bool amoled_first : {false, true}) {
++    DarkModeFilter filter(settings);
++    const auto role = DarkModeFilter::ElementRole::kBackground;
++    const SkColor4f first = filter.InvertColorIfNeeded(
++        SkColors::kWhite, role, amoled_first);
++    const SkColor4f second = filter.InvertColorIfNeeded(
++        SkColors::kWhite, role, !amoled_first);
++    EXPECT_EQ(first, filter.InvertColorIfNeeded(
++                         SkColors::kWhite, role, amoled_first));
++    EXPECT_EQ(second, filter.InvertColorIfNeeded(
++                          SkColors::kWhite, role, !amoled_first));
++    EXPECT_NE(first.toSkColor(), second.toSkColor());
++    EXPECT_EQ(2u, filter.GetInvertedColorCacheSizeForTesting());
++    EXPECT_EQ(SK_ColorBLACK, (amoled_first ? first : second).toSkColor());
++    EXPECT_EQ(SkColorSetRGB(0x12, 0x12, 0x12),
++              (amoled_first ? second : first).toSkColor());
++  }
++}
++
++TEST(DarkModeFilterTest, AmoledDoesNotChangeForegroundSvgOrBorders) {
++  DarkModeSettings settings;
++  DarkModeFilter filter(settings);
++  for (auto role : {DarkModeFilter::ElementRole::kForeground,
++                    DarkModeFilter::ElementRole::kSVG,
++                    DarkModeFilter::ElementRole::kBorder,
++                    DarkModeFilter::ElementRole::kSelection}) {
++    for (SkColor4f color : {SkColors::kBlack, SkColors::kWhite,
++                            SkColors::kRed}) {
++      EXPECT_EQ(filter.InvertColorIfNeeded(color, role, false),
++                filter.InvertColorIfNeeded(color, role, true));
++    }
++  }
++  cc::PaintFlags flags;
++  flags.setColor(SkColors::kWhite);
++  auto result = filter.ApplyToFlagsIfNeeded(
++      flags, DarkModeFilter::ElementRole::kBackground,
++      SkColors::kTransparent, true);
++  ASSERT_TRUE(result.has_value());
++  EXPECT_EQ(SK_ColorBLACK, result->getColor4f().toSkColor());
++}
+ 
+ TEST(DarkModeFilterTest, ApplyDarkModeToColorsAndFlagsWithInvertLightnessLAB) {
+   constexpr float kPrecision = 0.00001f;
+diff --git a/third_party/blink/renderer/platform/graphics/graphics_context.cc b/third_party/blink/renderer/platform/graphics/graphics_context.cc
+--- a/third_party/blink/renderer/platform/graphics/graphics_context.cc
++++ b/third_party/blink/renderer/platform/graphics/graphics_context.cc
+@@ -81,7 +81,8 @@
+   if (auto_dark_mode.enabled && !context.IsAutoDarkModePaused()) {
+     return context.GetDarkModeFilter()->InvertColorIfNeeded(
+         color, auto_dark_mode.role,
+-        SkColor4f::FromColor(auto_dark_mode.contrast_color));
++        SkColor4f::FromColor(auto_dark_mode.contrast_color),
++        auto_dark_mode.amoled_backgrounds);
+   }
+   return color;
+ }
+@@ -193,7 +194,8 @@
+     if (auto_dark_mode.enabled && !context->IsAutoDarkModePaused()) {
+       dark_mode_flags_ = context->GetDarkModeFilter()->ApplyToFlagsIfNeeded(
+           flags, auto_dark_mode.role,
+-          SkColor4f::FromColor(auto_dark_mode.contrast_color));
++          SkColor4f::FromColor(auto_dark_mode.contrast_color),
++          auto_dark_mode.amoled_backgrounds);
+       if (dark_mode_flags_) {
+         flags_ = &dark_mode_flags_.value();
+         return;
+diff --git a/third_party/blink/renderer/platform/graphics/graphics_context.h b/third_party/blink/renderer/platform/graphics/graphics_context.h
+--- a/third_party/blink/renderer/platform/graphics/graphics_context.h
++++ b/third_party/blink/renderer/platform/graphics/graphics_context.h
+@@ -123,13 +123,19 @@
+   STACK_ALLOCATED();
+ 
+  public:
+-  AutoDarkMode(DarkModeFilter::ElementRole role, bool enabled)
+-      : role(role), enabled(enabled) {}
+-
+   AutoDarkMode(DarkModeFilter::ElementRole role,
+                bool enabled,
+-               SkColor contrast_color)
+-      : role(role), enabled(enabled), contrast_color(contrast_color) {}
++               bool amoled_backgrounds = false)
++      : role(role), enabled(enabled), amoled_backgrounds(amoled_backgrounds) {}
++
++  AutoDarkMode(DarkModeFilter::ElementRole role,
++               bool enabled,
++               SkColor contrast_color,
++               bool amoled_backgrounds = false)
++      : role(role),
++        enabled(enabled),
++        contrast_color(contrast_color),
++        amoled_backgrounds(amoled_backgrounds) {}
+ 
+   explicit AutoDarkMode(const ImageDrawOptions& draw_options)
+       : role(DarkModeFilter::ElementRole::kBackground),
+@@ -143,6 +149,9 @@
+   DarkModeFilter::ElementRole role;
+   bool enabled;
+   SkColor contrast_color = 0;
++  // Only read for kBackground. Carried here because the paint code reaches
++  // ComputedStyle but the filter, built from process-wide settings, does not.
++  bool amoled_backgrounds = false;
+ };
+ 
+ struct ImageAutoDarkMode : AutoDarkMode {

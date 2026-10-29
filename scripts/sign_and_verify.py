@@ -183,6 +183,7 @@ def main():
     shutil.copy(ROOT / "LICENSE", artifacts / "Titanium-LICENSE.txt")
     shutil.copy(ROOT / "chromium/src/LICENSE", artifacts / "Chromium-LICENSE.txt")
     shutil.copy(ROOT / "licenses/Ruthenium-BSD-3-Clause.txt", artifacts / "Ruthenium-LICENSE.txt")
+    shutil.copy(ROOT / "licenses/Bare-BSD-3-Clause.txt", artifacts / "Bare-LICENSE.txt")
     print(f"Verified {name}: {digest}")
 
 

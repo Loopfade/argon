@@ -127,7 +127,8 @@ class AppIdentityTests(unittest.TestCase):
                 root = Path(tmp)
                 test_build_targets.ApkArchitectureTests.write_tools(root)
                 for name in ("build-lock.json", "certificates/ministry-ca-lock.json",
-                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt"):
+                             "LICENSE", "licenses/Ruthenium-BSD-3-Clause.txt",
+                             "licenses/Bare-BSD-3-Clause.txt"):
                     target = root / name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy(ROOT / name, target)

@@ -38,7 +38,7 @@ function customIcon(value) {
 
 export function validateState(raw) {
   if (!object(raw) || raw.schemaVersion !== SCHEMA_VERSION) throw new Error(t("Версия настроек в дампе не поддерживается."));
-  if (!['system', 'light', 'dark'].includes(raw.theme) || typeof raw.showLabels !== 'boolean' || typeof raw.newTab !== 'boolean') throw new Error(t("Некорректные настройки оформления в дампе."));
+  if (!['system', 'light', 'dark', 'amoled'].includes(raw.theme) || typeof raw.showLabels !== 'boolean' || typeof raw.newTab !== 'boolean') throw new Error(t("Некорректные настройки оформления в дампе."));
   const density = raw.density ?? 'comfortable';
   if (!['comfortable', 'compact', 'large'].includes(density)) throw new Error(t("Некорректный размер ярлыков."));
   if (!Array.isArray(raw.customEngines) || raw.customEngines.length > 100 || !Array.isArray(raw.shortcuts)) throw new Error(t("Некорректный список ярлыков или поисковиков в дампе."));

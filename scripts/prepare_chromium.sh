@@ -84,6 +84,7 @@ case "${1:-}" in
     cd chromium/src
     source "$SCRIPT_DIR/patch.sh"
 
+    python3 "$SCRIPT_DIR/scripts/apply_dark_themes.py" --chromium-src "$PWD"
     python3 "$SCRIPT_DIR/scripts/apply_scoped_ca.py" --chromium-src "$PWD"
     python3 "$SCRIPT_DIR/scripts/apply_background_playback.py" --chromium-src "$PWD"
     python3 "$SCRIPT_DIR/scripts/apply_exit.py" --chromium-src "$PWD"

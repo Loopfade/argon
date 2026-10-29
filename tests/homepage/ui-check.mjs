@@ -9,7 +9,7 @@ const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE)
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js'};
+const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -200,6 +200,14 @@ try {
   assert.equal(await page.getByRole('dialog').count(),0);
   await page.locator('[data-theme-choice=dark]').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+  await page.locator('[data-theme-choice=amoled]').click();
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'amoled');
+  await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(0, 0, 0)');
+  assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(0, 0, 0)');
+  assert.equal((await saved()).theme,'amoled');
+  await page.reload();
+  assert.equal(await page.locator('[data-theme-choice=amoled]').getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'amoled');
   assert.equal(await page.locator('[data-engine=yandex]').count(),0);
   const googleIcon=await page.locator('[data-engine=google] img').getAttribute('src');
   assert.equal(await page.locator('#selected-engine-icon img').getAttribute('src'),googleIcon);
