@@ -28,9 +28,18 @@ def sections(data):
             raise ValueError('Invalid or duplicate dark-theme source path')
         hunks = []
         for hunk in re.split(r'^@@ .*? @@[^\n]*\n', section, flags=re.M)[1:]:
-            lines = hunk.splitlines(keepends=True)
-            if not lines or any(line[:1] not in (' ', '+', '-') for line in lines):
-                raise ValueError(f'Invalid dark-theme hunk: {path}')
+            lines = []
+            for line in hunk.splitlines(keepends=True):
+                if line == '\\ No newline at end of file\n':
+                    if not lines or not lines[-1].endswith('\n'):
+                        raise ValueError(f'Invalid end-of-file marker: {path}')
+                    lines[-1] = lines[-1][:-1]
+                elif line[:1] in (' ', '+', '-'):
+                    lines.append(line)
+                else:
+                    raise ValueError(f'Invalid dark-theme hunk: {path}')
+            if not lines:
+                raise ValueError(f'Empty dark-theme hunk: {path}')
             before = ''.join(line[1:] for line in lines if line[0] in ' -')
             after = ''.join(line[1:] for line in lines if line[0] in ' +')
             if not before or not after or before == after:

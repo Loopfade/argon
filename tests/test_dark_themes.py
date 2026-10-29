@@ -33,6 +33,15 @@ def fixture(root):
 
 
 class DarkThemePatchTests(unittest.TestCase):
+    def test_final_line_without_newline_is_matched_exactly(self):
+        data = ('diff --git a/file b/file\n--- a/file\n+++ b/file\n'
+                '@@ -1 +1 @@\n-old\n\\ No newline at end of file\n'
+                '+new\n\\ No newline at end of file\n')
+        before, after = dark.sections(data)[Path('file')][0]
+        self.assertEqual((before, after), ('old', 'new'))
+        self.assertEqual(dark.replace_once('old', before, after), 'new')
+        self.assertEqual(dark.replace_once('new', before, after), 'new')
+
     def test_repeated_preparation_with_other_jni_overlays(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

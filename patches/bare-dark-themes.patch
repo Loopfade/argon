@@ -305,6 +305,19 @@ diff --git a/chrome/browser/preferences/android/java/src/org/chromium/chrome/bro
                  AUTOFILL_ASSISTANT_FIRST_TIME_LITE_SCRIPT_USER,
                  AUTOFILL_ASSISTANT_PROACTIVE_HELP_ENABLED,
                  AUTOFILL_THIRD_PARTY_MODE_STATE,
+diff --git a/chrome/browser/ui/android/night_mode/BUILD.gn b/chrome/browser/ui/android/night_mode/BUILD.gn
+--- a/chrome/browser/ui/android/night_mode/BUILD.gn
++++ b/chrome/browser/ui/android/night_mode/BUILD.gn
+@@ -42,7 +42,9 @@
+     "//components/content_settings/android:content_settings_enums_java",
+     "//components/feature_engagement/public:public_java",
+     "//components/messages/android:java",
++    "//components/prefs/android:java",
+     "//components/ukm/android:java",
++    "//components/user_prefs/android:java",
+     "//content/public/android:content_full_java",
+     "//third_party/androidx:androidx_annotation_annotation_java",
+     "//third_party/androidx:androidx_appcompat_appcompat_java",
 diff --git a/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml b/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml
 --- a/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml
 +++ b/chrome/browser/ui/android/night_mode/java/res/layout/radio_button_group_theme_preference.xml
@@ -341,6 +354,7 @@ diff --git a/chrome/browser/ui/android/night_mode/java/res/xml/theme_preferences
 +        android:title="@string/argon_amoled_dark_backgrounds_title"
 +        android:summary="@string/argon_amoled_dark_backgrounds_summary" />
  </PreferenceScreen>
+\ No newline at end of file
 diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java
 --- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java
 +++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/GlobalNightModeStateController.java
