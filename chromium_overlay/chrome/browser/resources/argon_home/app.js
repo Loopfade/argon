@@ -99,7 +99,7 @@ import {connectBrowserSearch} from './browser-search.js';
         if(browserSearch)await browserSearch.refresh();
         else browserSearch=await connectBrowserSearch(applyBrowserSearch,(alpha,focused)=>{
           if(!nativeSearch())return;
-          $('search-form').style.opacity=String(alpha);
+          $('search-form').style.opacity=String(focused?0:alpha);
           $('search-form').inert=focused;
         });
         scheduleSearchBounds();

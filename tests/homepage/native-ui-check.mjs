@@ -85,6 +85,9 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await page.locator('#search-input').click();
     await focusCount(2);
     assert(await page.locator('#search-form').evaluate(node=>node.inert));
+    await native(()=>window.argonNativeFixture.emit('argon-search-box-state',{alpha:1,focused:true}));
+    assert.equal(await page.locator('#search-form').evaluate(node=>getComputedStyle(node).opacity),'0',
+      'Animation completion cannot reveal a second search box while native input is focused');
     const calls=await native(()=>window.argonNativeFixture.calls);
     const lastFocus=calls.findLastIndex(call=>call[0]==='focusArgonOmnibox');
     assert.equal(calls[lastFocus-1][0],'setArgonSearchBoxBounds','Native focus needs fresh measured bounds');
