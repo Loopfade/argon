@@ -135,9 +135,10 @@ try {
   assert.deepEqual(await bookmarkState(),originalBookmarks,'preview cannot change storage');
   assert(await bookmarkPage.getByText('Вложенные папки будут показаны отдельно с путём в названии.').isVisible());
   assert(await bookmarkPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert(await bookmarkPage.locator('.dialog').evaluate(element=>element.scrollWidth<=element.clientWidth),'bookmark preview must fit a narrow dialog');
   assert.equal(await bookmarkPage.evaluate(()=>window.importScriptRan),undefined);
   assert(!bookmarkRequests.some(url=>url.includes('import-should-not-load.example')));
-  if(out)await bookmarkPage.screenshot({path:resolve(out,'home-bookmarks-preview-320.png'),fullPage:true});
+  if(out)await bookmarkPage.screenshot({path:resolve(out,'home-bookmarks-preview-320.png'),fullPage:true,animations:'disabled'});
   await bookmarkPage.locator('#cancel-bookmarks').click();
   assert.deepEqual(await bookmarkState(),originalBookmarks);
   await bookmarkPage.locator('#bookmarks-file').setInputFiles(fileBookmarks);
@@ -171,7 +172,7 @@ try {
   await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'firefox.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({root:'placesRoot',children:[{title:'Firefox',uri:'https://firefox-bookmark.example/',type:'text/x-moz-place'}]}))});
   await bookmarkPage.locator('#confirm-bookmarks').click();
   assert.equal((await bookmarkState()).shortcuts.length,5);
-  if(out)await bookmarkPage.screenshot({path:resolve(out,'home-bookmarks-imported-320.png'),fullPage:true});
+  if(out)await bookmarkPage.screenshot({path:resolve(out,'home-bookmarks-imported-320.png'),fullPage:true,animations:'disabled'});
   await bookmarkContext.close();
 
   // Real image responses, service fallback, total failure, and switching back
