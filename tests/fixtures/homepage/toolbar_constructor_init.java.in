@@ -1,0 +1,5 @@
+        mToolbarLayout = mActivity.findViewById(R.id.toolbar);
+        NewTabPageDelegate ntpDelegate = createNewTabPageDelegate();
+
+        mActivityTabProvider = tabProvider;
+        mActivityResultTracker = activityResultTracker;

@@ -22,7 +22,8 @@ def input_tree(root):
         homepage.TABBED_ACTIVITY: (FIXTURES / 'startup_draw_block.java.in').read_text(),
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
-        homepage.TOOLBAR_MANAGER: homepage.TOOLBAR_BEFORE + '\n' + homepage.TOOLBAR_NAV_START
+        homepage.TOOLBAR_MANAGER: (FIXTURES / 'toolbar_constructor_init.java.in').read_text()
+            + '\n' + homepage.TOOLBAR_BEFORE + '\n' + homepage.TOOLBAR_NAV_START
             + '\n' + homepage.TOOLBAR_NAV_FINISH + '\n    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
             + '    public @Nullable OmniboxStub getOmniboxStub() {\n    }\n',
         homepage.JAVA_CATALOG: '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",\n',
@@ -76,6 +77,21 @@ class HomepageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
                 homepage.apply(src)
             self.assertEqual(before, snapshot(src))
+
+    def test_changed_toolbar_constructor_rejects_the_whole_patch(self):
+        for original, changed in (
+            ('mActivityTabProvider = tabProvider;', 'mActivityTabProvider = anotherProvider;'),
+            ('ntpDelegate = createNewTabPageDelegate();', 'ntpDelegate = anotherDelegate();'),
+        ):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as directory:
+                src = Path(directory)
+                input_tree(src)
+                path = src / homepage.TOOLBAR_MANAGER
+                path.write_text(path.read_text().replace(original, changed, 1))
+                before = snapshot(src)
+                with self.assertRaises(ValueError):
+                    homepage.apply(src)
+                self.assertEqual(before, snapshot(src))
 
     def test_unknown_resolver_change_is_rejected_before_any_write(self):
         with tempfile.TemporaryDirectory() as directory:

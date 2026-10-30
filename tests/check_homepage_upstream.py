@@ -7,7 +7,9 @@ from pathlib import Path
 import tempfile
 
 from upstream_sources import chromium_url, download
-from test_homepage_native import DELEGATE_API, verify_delegate_api
+from test_homepage_native import (
+    DELEGATE_API, verify_delegate_api, verify_toolbar_startup_source,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('homepage', ROOT / 'scripts/apply_homepage.py')
@@ -28,6 +30,8 @@ def main():
         for path in homepage.INPUT_PATHS:
             value = ((args.chromium_src / path).read_text() if args.chromium_src
                      else download(chromium_url(revision, path)))
+            if path == homepage.TOOLBAR_MANAGER:
+                verify_toolbar_startup_source(value)
             target = src / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(value)

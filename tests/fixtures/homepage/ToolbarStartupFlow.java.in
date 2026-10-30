@@ -1,0 +1,16 @@
+import org.chromium.chrome.browser.ActivityTabProvider;
+import org.chromium.chrome.browser.toolbar.ToolbarManager;
+
+public class ToolbarStartupFlow {
+    public static void main(String[] args) {
+        var provider = new ActivityTabProvider();
+        var toolbar = new ToolbarManager(provider);
+        if (provider.reads != 0) {
+            throw new AssertionError("Constructing the delegate must not read the active tab");
+        }
+        if (toolbar.delegate.isCurrentlyVisible() || provider.reads != 1) {
+            throw new AssertionError("The constructed delegate must use the supplied tab provider");
+        }
+        System.out.println("PASS: toolbar startup binds an initialized tab provider");
+    }
+}
