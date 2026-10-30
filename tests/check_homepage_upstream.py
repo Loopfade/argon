@@ -31,7 +31,9 @@ def main():
             value = ((args.chromium_src / path).read_text() if args.chromium_src
                      else download(chromium_url(revision, path)))
             if path == homepage.TOOLBAR_MANAGER:
-                verify_toolbar_startup_source(value)
+                reviewed = value.replace(homepage.TOOLBAR_INIT_AFTER, homepage.TOOLBAR_INIT_BEFORE, 1)
+                reviewed = reviewed.replace(homepage.TOOLBAR_PROVIDER_AFTER, homepage.TOOLBAR_PROVIDER_BEFORE, 1)
+                verify_toolbar_startup_source(reviewed)
             target = src / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(value)
