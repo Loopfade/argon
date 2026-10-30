@@ -81,7 +81,11 @@ public class ArgonHomeBridgeFlow {
                 && delegate.hasCompletedFirstLayout(), "Measured fakebox must become the NTP delegate");
         check(activity.toolbar.refreshes == 1, "First layout must refresh native toolbar");
         List<Float> scrolls = new ArrayList<>();
-        delegate.setSearchBoxScrollListener(scrolls::add);
+        ToolbarPhoneScrollFlow nativeToolbar = new ToolbarPhoneScrollFlow(delegate);
+        delegate.setSearchBoxScrollListener(fraction -> {
+            scrolls.add(fraction);
+            nativeToolbar.onScroll(fraction);
+        });
         check(scrolls.equals(List.of(0f)), "Initial scroll must reach Chromium");
         layout(page, .5f);
         check(scrolls.get(scrolls.size()-1) == .5f
@@ -98,6 +102,7 @@ public class ArgonHomeBridgeFlow {
         tab.view.x=0; tab.view.y=0; toolbar.x=0; toolbar.y=0;
         check(delegate.dispatchTouchEvent(new MotionEvent()) && tab.view.touches==1,
                 "NTP toolbar touch proxy must dispatch to page content");
+        layout(page, 0f);
 
         delegate.setSearchBoxAlpha(0f);
         delegate.setSearchBoxAlpha(0f);
@@ -112,10 +117,36 @@ public class ArgonHomeBridgeFlow {
         delegate.setSearchBoxAlpha(0f);
         check(ArgonHomeBridgeJni.focuses.get(ArgonHomeBridgeJni.focuses.size()-1),
                 "Focus change must be delivered even when alpha remains zero");
+        ToolbarPhoneScrollFlow legacyToolbar = new ToolbarPhoneScrollFlow(delegate, false);
+        legacyToolbar.focus(.5f);
+        check(legacyToolbar.inputTranslationY()==156f,
+                "Legacy focus must move the native input halfway from the fakebox to the toolbar");
+        legacyToolbar.focus(1f);
+        check(legacyToolbar.inputTranslationY()==0f,
+                "Full legacy focus must put the native input inside the toolbar bounds");
+        nativeToolbar.focus(1f);
+        int scrollsBeforeKeyboard = scrolls.size();
+        invoke(page, "updateBounds",
+                new Class<?>[] {float.class, float.class, float.class, float.class, float.class},
+                10f, 75f, 300f, 56f, 0f);
+        check(nativeToolbar.inputTranslationY()==0f && nativeToolbar.inputAlpha()==1f,
+                "Keyboard resize must keep the native input visible at the top of the toolbar");
+        invoke(page, "updateBounds",
+                new Class<?>[] {float.class, float.class, float.class, float.class, float.class},
+                10f, 60f, 300f, 56f, .25f);
+        check(nativeToolbar.inputTranslationY()==0f && scrolls.size()==scrollsBeforeKeyboard,
+                "IME viewport scrolling must not start a fakebox transition while editing");
         check(focus(page, "пример запроса"), "Pending page draft must transfer to native input");
         AutocompleteInput second = activity.toolbar.omnibox.inputs.get(1);
         check("пример запроса".equals(second.text)
                 && second.reason==OmniboxFocusReason.FAKE_BOX_LONG_PRESS, "Draft must not be erased by NTP focus");
+        activity.toolbar.focused=false;
+        nativeToolbar.clearFocus();
+        delegate.getSearchBoxBounds(bounds, translation);
+        check(bounds.top==232, "Geometry changes during focus must be retained for the return animation");
+        layout(page, .75f);
+        check(scrolls.size()==scrollsBeforeKeyboard+1 && scrolls.get(scrolls.size()-1)==.75f,
+                "Real page scrolling must resume after native focus is cancelled");
 
         activity.finishing=true;
         check(!focus(page, ""), "Finishing activity cannot request focus");

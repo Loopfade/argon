@@ -42,6 +42,7 @@ public final class ArgonHomeBridge {
     private float mWidth;
     private float mHeight;
     private float mScrollFraction;
+    private float mUrlFocusFraction;
     private float mAlpha = Float.NaN;
     private boolean mFocused;
     private @Nullable Callback<Float> mScrollCallback;
@@ -102,14 +103,20 @@ public final class ArgonHomeBridge {
     @CalledByNative
     private void updateBounds(float left, float top, float width, float height, float scroll) {
         boolean firstLayout = !mHasBounds;
+        float scrollFraction = Math.max(0f, Math.min(1f, scroll));
+        boolean scrolled = mScrollFraction != scrollFraction;
         mLeft = left;
         mTop = top;
         mWidth = width;
         mHeight = height;
-        mScrollFraction = Math.max(0f, Math.min(1f, scroll));
+        mScrollFraction = scrollFraction;
         mHasBounds = width > 0f && height > 0f;
         if (firstLayout && mHasBounds) refreshToolbar();
-        else if (mScrollCallback != null) mScrollCallback.onResult(mScrollFraction);
+        // IME resize changes the fakebox geometry while the real omnibox is focused.
+        // ToolbarPhone treats a scroll callback as a transition back to that fakebox.
+        else if (scrolled && mScrollCallback != null && !isOmniboxFocused()) {
+            mScrollCallback.onResult(mScrollFraction);
+        }
     }
 
     private void refreshToolbar() {
@@ -137,15 +144,23 @@ public final class ArgonHomeBridge {
                     x + Math.round(coordinates.fromLocalCssToPix(mLeft + mWidth)),
                     y + Math.round(coordinates.fromLocalCssToPix(mTop + mHeight)));
         }
-        bounds.set(mLastBounds);
+        // Legacy ToolbarPhone reads the fakebox's animated position instead of
+        // applying the URL focus fraction to its own vertical translation.
+        int top = Math.round(mLastBounds.top * (1f - mUrlFocusFraction));
+        bounds.set(mLastBounds.left, top, mLastBounds.right,
+                top + mLastBounds.bottom - mLastBounds.top);
         translation.set(0, 0);
+    }
+
+    private boolean isOmniboxFocused() {
+        var activity = activity();
+        var toolbar = activity == null || !isActive(activity) ? null : activity.getToolbarManager();
+        return toolbar != null && toolbar.isUrlBarFocused();
     }
 
     private void setAlpha(float alpha) {
         alpha = Math.max(0f, Math.min(1f, alpha));
-        var activity = activity();
-        var toolbar = activity == null || !isActive(activity) ? null : activity.getToolbarManager();
-        boolean focused = toolbar != null && toolbar.isUrlBarFocused();
+        boolean focused = isOmniboxFocused();
         if (mNativeObserver == 0 || (mAlpha == alpha && mFocused == focused)) return;
         mAlpha = alpha;
         mFocused = focused;
@@ -275,7 +290,10 @@ public final class ArgonHomeBridge {
 
             @Override
             public void setUrlFocusChangeAnimationPercent(float fraction) {
-                if (current() == null && mVisiblePage == null) fallback.setUrlFocusChangeAnimationPercent(fraction);
+                var page = current();
+                if (page == null) page = mVisiblePage;
+                if (page != null) page.mUrlFocusFraction = Math.max(0f, Math.min(1f, fraction));
+                else fallback.setUrlFocusChangeAnimationPercent(fraction);
             }
 
             @Override

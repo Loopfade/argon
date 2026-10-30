@@ -1,0 +1,78 @@
+import android.graphics.Point;
+import android.graphics.Rect;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+
+/** Pinned ToolbarPhone scroll methods; Android views and animation scheduling are boundaries. */
+public class ToolbarPhoneScrollFlow {
+    private static final float UNINITIALIZED_FRACTION = -1f;
+    private final NewTabPageDelegate delegate;
+    private final LocationBar mLocationBar = new LocationBar();
+    private final Position mActiveLocationBarBackgroundView = new Position();
+    private final Rect mNtpSearchBoxBounds = new Rect();
+    private final Point mNtpSearchBoxTranslation = new Point();
+    private float mNtpSearchBoxScrollFraction;
+    private float mRefactoredNtpStartingOffset;
+    private int mTopPaddingForEdgeToEdgeNtp;
+    private int mVisualState;
+    private boolean mUseAdjustedTintColorForNtp;
+    private boolean mIsToolbarExpandedOnNtp;
+    private boolean mFocused;
+
+    private static class Position {
+        float y, alpha;
+        void setTranslationY(float value) { y = value; }
+        void setAlpha(float value) { alpha = value; }
+        int getTop() { return 0; }
+    }
+    private static class LocationBar {
+        final Position view = new Position();
+        Position getPhoneCoordinator() { return view; }
+    }
+    private final FeatureFlags ChromeFeatureList = new FeatureFlags();
+    private static class FeatureFlags {
+        final Feature sToolbarPhoneAnimationRefactor = new Feature();
+        private static class Feature {
+            boolean enabled;
+            boolean isEnabled() { return enabled; }
+        }
+    }
+    private class DataProvider {
+        NewTabPageDelegate getNewTabPageDelegate() { return delegate; }
+    }
+
+    public ToolbarPhoneScrollFlow(NewTabPageDelegate delegate) { this(delegate, true); }
+    public ToolbarPhoneScrollFlow(NewTabPageDelegate delegate, boolean refactored) {
+        this.delegate = delegate;
+        ChromeFeatureList.sToolbarPhoneAnimationRefactor.enabled = refactored;
+    }
+    public void onScroll(float fraction) { onNtpScrollChanged(fraction); }
+    public void focus(float fraction) {
+        mFocused = true;
+        delegate.setUrlFocusChangeAnimationPercent(fraction);
+        // The legacy transition gets its vertical offset from the NTP delegate;
+        // the refactored focus transition snaps the focused omnibox to zero.
+        mLocationBar.view.setTranslationY(ChromeFeatureList.sToolbarPhoneAnimationRefactor.isEnabled()
+                ? 0f : getLocationBarTranslationY());
+        mLocationBar.view.setAlpha(1f);
+    }
+    public void clearFocus() {
+        mFocused = false;
+        delegate.setUrlFocusChangeAnimationPercent(0f);
+    }
+    public float inputTranslationY() { return mLocationBar.view.y; }
+    public float inputAlpha() { return mLocationBar.view.alpha; }
+    private DataProvider getToolbarDataProvider() { return new DataProvider(); }
+    private boolean isLocationBarShownInNtp() { return delegate.isLocationBarShown(); }
+    private boolean urlHasFocus() { return mFocused; }
+    private void updateButtonsTranslationY() {}
+    private void endFocusTransition() {}
+    private void createAndRunNtpFocusAnimatorRefactored() {}
+    private void updateLocationBarForNtp(int state, boolean focus) {}
+    private void notifyToolbarExpandingOnNtp(boolean expanded) {}
+    private void updateUrlExpansionFraction() {}
+    private void invokeTransition() {
+        mLocationBar.view.setTranslationY(getLocationBarTranslationY());
+    }
+
+ARGON_SCROLL_METHODS
+}
