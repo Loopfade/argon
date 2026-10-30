@@ -76,10 +76,16 @@ public class ArgonHomeBridgeFlow {
         check(!delegate.isLocationBarShown(), "Keep the normal address bar until the fakebox is ready");
         Object page = create(contents, 7);
         check(!delegate.isLocationBarShown(), "Registration alone cannot hide the real address bar");
+        ToolbarCaptureFlow capture = new ToolbarCaptureFlow(tab, delegate, () -> activity.toolbar.focused);
+        capture.pageLoad(true);
+        check(capture.render("DuckDuckGo:visible"), "Page load must capture the initial toolbar");
+        capture.pageLoad(false);
         layout(page, 0f);
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
                 && delegate.hasCompletedFirstLayout(), "Measured fakebox must become the NTP delegate");
         check(activity.toolbar.refreshes == 1, "First layout must refresh native toolbar");
+        check(capture.render("DuckDuckGo:hidden") && "DuckDuckGo:hidden".equals(capture.bitmap()),
+                "Measured WebUI fakebox must replace the stale visible omnibox bitmap while controls stay locked");
         List<Float> scrolls = new ArrayList<>();
         ToolbarPhoneScrollFlow nativeToolbar = new ToolbarPhoneScrollFlow(delegate);
         delegate.setSearchBoxScrollListener(fraction -> {
@@ -110,6 +116,8 @@ public class ArgonHomeBridgeFlow {
                 && ArgonHomeBridgeJni.focuses.equals(List.of(false)),
                 "Transparent scrolling fakebox must remain a touch target");
         check(focus(page, ""), "Page click must activate native omnibox");
+        check(!capture.render("DuckDuckGo:focused") && "DuckDuckGo:hidden".equals(capture.bitmap()),
+                "Focused native input must not be captured into the resting toolbar bitmap");
         AutocompleteInput first = activity.toolbar.omnibox.inputs.get(0);
         check(first.reason==OmniboxFocusReason.FAKE_BOX_TAP && first.text==null
                 && first.state==AutocompleteInput.AutocompleteState.ENABLED,
@@ -137,16 +145,37 @@ public class ArgonHomeBridgeFlow {
         check(nativeToolbar.inputTranslationY()==0f && scrolls.size()==scrollsBeforeKeyboard,
                 "IME viewport scrolling must not start a fakebox transition while editing");
         check(focus(page, "пример запроса"), "Pending page draft must transfer to native input");
+        check(!capture.render("Google:focused"),
+                "Provider hint invalidation during input must wait for focus to end");
         AutocompleteInput second = activity.toolbar.omnibox.inputs.get(1);
         check("пример запроса".equals(second.text)
                 && second.reason==OmniboxFocusReason.FAKE_BOX_LONG_PRESS, "Draft must not be erased by NTP focus");
         activity.toolbar.focused=false;
         nativeToolbar.clearFocus();
+        check(capture.render("Google:hidden") && "Google:hidden".equals(capture.bitmap()),
+                "Cancelling input after a provider change must capture the updated resting toolbar");
+        capture.fullscreen(true);
+        check(!capture.render("fullscreen"), "Homepage must retain fullscreen capture suppression");
+        capture.fullscreen(false);
+        capture.moving(true);
+        check(!capture.render("moving"), "Homepage must retain compositor motion suppression");
+        capture.moving(false);
+        capture.capturingDisabled(true);
+        check(!capture.render("disabled"), "Homepage must retain disabled-capture suppression");
+        capture.capturingDisabled(false);
+        capture.snapshotSame(true);
+        check(!capture.render("unchanged"), "Identical snapshots must retain normal capture suppression");
+        capture.snapshotSame(false);
         delegate.getSearchBoxBounds(bounds, translation);
         check(bounds.top==232, "Geometry changes during focus must be retained for the return animation");
         layout(page, .75f);
         check(scrolls.size()==scrollsBeforeKeyboard+1 && scrolls.get(scrolls.size()-1)==.75f,
                 "Real page scrolling must resume after native focus is cancelled");
+        check(capture.render("Google:visible") && "Google:visible".equals(capture.bitmap()),
+                "Scrolling to the toolbar must capture the current search provider");
+        layout(page, 0f);
+        check(capture.render("Google:hidden") && "Google:hidden".equals(capture.bitmap()),
+                "Returning to the page fakebox must remove the scrolled omnibox bitmap");
 
         activity.finishing=true;
         check(!focus(page, ""), "Finishing activity cannot request focus");
@@ -157,16 +186,27 @@ public class ArgonHomeBridgeFlow {
         activity.tab=tab;
         ArgonHomeBridge.onNavigationStarted(tab, "https://example.com/");
         check(!delegate.isLocationBarShown(), "External navigation must reveal the bar before commit");
+        check(!capture.render("external") && capture.unlockRequests()>0,
+                "Pending external navigation must retain the normal locked-controls capture policy");
         ArgonHomeBridge.onNavigationFinished(tab, true);
         check(!delegate.isLocationBarShown(), "Another pending navigation must retain the normal bar");
         ArgonHomeBridge.onNavigationFinished(tab, false);
         check(delegate.isLocationBarShown(), "Cancellation must restore the homepage delegate");
+        check(capture.render("Google:hidden"), "Cancelled navigation must resume homepage captures");
         for (String url : List.of("https://argon/", "chrome://argon.evil/", "chrome://settings/")) {
             tab.url=new GURL(url);
             check(!delegate.isLocationBarShown(), "Ordinary URLs cannot hide the address bar: "+url);
+            check(!capture.render("ordinary"), "Ordinary pages must retain locked-controls suppression");
         }
+        capture.locked(false);
+        check(capture.render("ordinary"), "Unlocked ordinary pages must still refresh their toolbar");
+        capture.locked(true);
         tab.url=new GURL("chrome://argon/");
         tab.incognito=true; check(!delegate.isLocationBarShown(), "Incognito keeps stock behavior");
+        check(!capture.render("incognito"), "Non-native incognito pages must retain the stock capture policy");
+        tab.nativePage=true;
+        check(capture.render("native incognito"), "Native pages must keep their existing capture exemption");
+        tab.nativePage=false;
         tab.incognito=false; tab.error=true; check(!delegate.isLocationBarShown(), "Error page keeps normal bar");
         tab.error=false; tab.destroyed=true; check(!delegate.isLocationBarShown(), "Destroyed tab cannot be active");
         tab.destroyed=false; tab.url=new GURL("chrome-native://newtab/");

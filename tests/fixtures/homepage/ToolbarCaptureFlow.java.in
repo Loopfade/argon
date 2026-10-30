@@ -1,0 +1,93 @@
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+
+/** Pinned capture gate; Android pixels, constraints and frame scheduling are boundaries. */
+public class ToolbarCaptureFlow extends CaptureResource {
+    private @interface LayoutType { int TOOLBAR_SWIPE = 1; }
+    private static class TopToolbarBlockCaptureReason {
+        static final int VIEW_NOT_DIRTY = 1, FULLSCREEN = 2, BROWSER_CONTROLS_LOCKED = 3,
+                COMPOSITOR_IN_MOTION = 4, SNAPSHOT_SAME = 5, URL_BAR_HAS_FOCUS = 6;
+    }
+    private static class CaptureReadinessResult {
+        final boolean isReady;
+        final int blockReason;
+        CaptureReadinessResult(boolean ready, int reason) { isReady = ready; blockReason = reason; }
+        static CaptureReadinessResult notReady(int reason) {
+            return new CaptureReadinessResult(false, reason);
+        }
+        static void logCaptureReasonFromResult(CaptureReadinessResult result) {}
+    }
+    private static class Constraints {
+        boolean locked = true;
+        int unlockRequests;
+        boolean areControlsLocked() { return locked; }
+        void scheduleRequestResourceOnUnlock() { unlockRequests++; }
+    }
+    private static class Fullscreen {
+        boolean enabled;
+        boolean getPersistentFullscreenMode() { return enabled; }
+    }
+    private static class Motion {
+        boolean moving;
+        boolean get() { return moving; }
+    }
+    private static class DataProvider {
+        final NewTabPageDelegate delegate;
+        DataProvider(NewTabPageDelegate delegate) { this.delegate = delegate; }
+        NewTabPageDelegate getNewTabPageDelegate() { return delegate; }
+    }
+    private class Toolbar {
+        boolean snapshotSame;
+        CaptureReadinessResult isReadyForTextureCapture() {
+            if (focused.getAsBoolean()) return CaptureReadinessResult.notReady(
+                    TopToolbarBlockCaptureReason.URL_BAR_HAS_FOCUS);
+            if (snapshotSame) return CaptureReadinessResult.notReady(
+                    TopToolbarBlockCaptureReason.SNAPSHOT_SAME);
+            return new CaptureReadinessResult(true, 0);
+        }
+    }
+
+    private final BooleanSupplier focused;
+    private final Constraints mConstraintsObserver = new Constraints();
+    private final Fullscreen mFullscreenManager = new Fullscreen();
+    private final Motion mCompositorInMotionSupplier = new Motion();
+    private final Supplier<Tab> mTabSupplier;
+    private final DataProvider mToolbarDataProvider;
+    private final Toolbar mToolbar = new Toolbar();
+    private boolean mNeedCaptureAfterPageLoad;
+    private boolean capturingDisabled;
+    private String bitmap;
+
+    public ToolbarCaptureFlow(Tab tab, NewTabPageDelegate delegate, BooleanSupplier focused) {
+        mTabSupplier = () -> tab;
+        mToolbarDataProvider = new DataProvider(delegate);
+        this.focused = focused;
+    }
+    public void pageLoad(boolean pending) { mNeedCaptureAfterPageLoad = pending; }
+    public void locked(boolean locked) { mConstraintsObserver.locked = locked; }
+    public void fullscreen(boolean enabled) { mFullscreenManager.enabled = enabled; }
+    public void moving(boolean moving) { mCompositorInMotionSupplier.moving = moving; }
+    public void capturingDisabled(boolean disabled) { capturingDisabled = disabled; }
+    public void snapshotSame(boolean same) { mToolbar.snapshotSame = same; }
+    public int unlockRequests() { return mConstraintsObserver.unlockRequests; }
+    public String bitmap() { return bitmap; }
+    public boolean render(String livePixels) {
+        dirty = true; // Native view invalidation, e.g. alpha or search-provider hint change.
+        if (!isDirty()) return false;
+        bitmap = livePixels;
+        dirty = false;
+        return true;
+    }
+    private boolean isCapturingDisabled() { return capturingDisabled; }
+    private int getCurrentLayoutType() { return 0; }
+
+ARGON_CAPTURE_METHODS
+}
+
+class CaptureResource {
+    protected boolean dirty = true;
+    public boolean isDirty() { return dirty; }
+    protected void setDirtyRectEmpty() { dirty = false; }
+}

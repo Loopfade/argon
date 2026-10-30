@@ -10,6 +10,7 @@ from upstream_sources import chromium_url, download
 from test_homepage_native import (
     DELEGATE_API, TOOLBAR_PHONE, verify_delegate_api, verify_toolbar_scroll_source,
     verify_toolbar_startup_source,
+    verify_toolbar_capture_source,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +39,8 @@ def main():
                 reviewed = value.replace(homepage.TOOLBAR_INIT_AFTER, homepage.TOOLBAR_INIT_BEFORE, 1)
                 reviewed = reviewed.replace(homepage.TOOLBAR_PROVIDER_AFTER, homepage.TOOLBAR_PROVIDER_BEFORE, 1)
                 verify_toolbar_startup_source(reviewed)
+            if path == homepage.TOOLBAR_CONTAINER:
+                verify_toolbar_capture_source(value)
             target = src / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(value)
