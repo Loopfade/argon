@@ -3,6 +3,7 @@
 #include "chrome/browser/ui/webui/argon_home/argon_search_handler.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <memory>
@@ -241,8 +242,8 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
 
   void SetBounds(const base::ListValue& args) {
     if (args.size() != 5 || !IsJavascriptAllowed() || bridge_.is_null()) return;
-    float values[5];
-    for (size_t i = 0; i < 5; ++i) {
+    std::array<float, 5> values{};
+    for (size_t i = 0; i < values.size(); ++i) {
       if (!args[i].is_int() && !args[i].is_double()) return;
       const double value = args[i].is_int() ? args[i].GetInt() : args[i].GetDouble();
       if (!std::isfinite(value) || std::abs(value) > 1000000) return;
