@@ -190,7 +190,21 @@ TOOLBAR_AFTER = TOOLBAR_BEFORE.replace(
 TOOLBAR_NAV_START = "                    public void onDidStartNavigationInPrimaryMainFrame(\n                            Tab tab, NavigationHandle navigationHandle) {"
 TOOLBAR_NAV_FINISH = "                    public void onDidFinishNavigationEnd() {"
 
+TOOLBAR_INIT_BEFORE = '''        mToolbarLayout = mActivity.findViewById(R.id.toolbar);
+        NewTabPageDelegate ntpDelegate = createNewTabPageDelegate();'''
+TOOLBAR_INIT_AFTER = '''        // ARGON: the phone delegate binds this provider during construction.
+        mActivityTabProvider = tabProvider;
+        mToolbarLayout = mActivity.findViewById(R.id.toolbar);
+        NewTabPageDelegate ntpDelegate = createNewTabPageDelegate();'''
+TOOLBAR_PROVIDER_BEFORE = '''        mActivityTabProvider = tabProvider;
+        mActivityResultTracker = activityResultTracker;'''
+TOOLBAR_PROVIDER_AFTER = '''        // ARGON: the tab provider is already initialized above.
+        mActivityResultTracker = activityResultTracker;'''
+
+
 def patch_toolbar(text):
+    text = replace_once(text, TOOLBAR_INIT_BEFORE, TOOLBAR_INIT_AFTER)
+    text = replace_once(text, TOOLBAR_PROVIDER_BEFORE, TOOLBAR_PROVIDER_AFTER)
     text = replace_once(text, TOOLBAR_BEFORE, TOOLBAR_AFTER)
     text = replace_once(text, TOOLBAR_NAV_START, TOOLBAR_NAV_START + '''
                         org.chromium.chrome.browser.ntp.ArgonHomeBridge.onNavigationStarted(

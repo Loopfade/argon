@@ -1,5 +1,6 @@
 """Compile and exercise the production phone adapter against the pinned NTP API."""
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -14,6 +15,15 @@ BRIDGE = ROOT / 'chromium_overlay/chrome/android/java/src/org/chromium/chrome/br
 def verify_delegate_api(source):
     if source != (FIXTURES / 'NewTabPageDelegate.java.in').read_text():
         raise ValueError('Chromium NewTabPageDelegate changed; review the homepage adapter and fixture')
+
+
+def verify_toolbar_startup_source(source):
+    # These two excerpts retain their actual order in the pinned constructor.
+    blocks = (FIXTURES / 'toolbar_constructor_init.java.in').read_text().strip('\n').split('\n\n')
+    if any(source.count(block) != 1 for block in blocks):
+        raise ValueError('Chromium toolbar initialization changed; review the startup fixture')
+    if source.index(blocks[0]) >= source.index(blocks[1]):
+        raise ValueError('Chromium toolbar initialization order changed; review the startup fixture')
 
 
 # Android and browser boundaries only. The adapter itself and its interface are unmodified.
@@ -184,6 +194,86 @@ public class ArgonHomeBridgeJni {
 
 @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK required')
 class HomepageNativeTests(unittest.TestCase):
+    def test_toolbar_startup_binds_the_tab_provider_after_initialization(self):
+        from test_homepage import homepage, input_tree
+
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            original = (src / homepage.TOOLBAR_MANAGER).read_text()
+            patched = homepage.patch_toolbar(original)
+        # Compile the production phone wrapper expression, stubbing only the
+        # stock NTP delegate. Preserve the bound method reference that crashed.
+        start = patched.index('return org.chromium.chrome.browser.ntp.ArgonHomeBridge.wrap(')
+        end_marker = 'mNtpSearchBoxTransitionPercentageSupplier::set);'
+        end = patched.index(end_marker, start) + len(end_marker)
+        phone_call = patched[start:end]
+        fallback = homepage.method_source(phone_call, 'new ToolbarNtpDelegate() {')
+        phone_call = phone_call.replace(fallback, 'NewTabPageDelegate.EMPTY', 1)
+
+        for fixed, source in ((False, original), (True, patched)):
+            with self.subTest(fixed=fixed), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                statements = re.findall(
+                    r'(?m)^[ \t]*(?:mActivityTabProvider = tabProvider;|'
+                    r'NewTabPageDelegate ntpDelegate = createNewTabPageDelegate\(\);)[ \t]*$',
+                    source)
+                self.assertEqual(len(statements), 2)
+                initialization = '\n'.join(statements)
+                toolbar = STUBS['org/chromium/chrome/browser/toolbar/ToolbarManager.java']
+                toolbar = toolbar.replace('public class ToolbarManager {', '''
+import android.view.View;
+import org.chromium.chrome.browser.ActivityTabProvider;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+
+public class ToolbarManager {
+    private final ActivityTabProvider mActivityTabProvider;
+    private final View mToolbarLayout = new View();
+    private final Transition mNtpSearchBoxTransitionPercentageSupplier = new Transition();
+    public final NewTabPageDelegate delegate;
+    private static class Transition { void set(Float fraction) {} }
+    public ToolbarManager() { this(new ActivityTabProvider()); }
+    public ToolbarManager(ActivityTabProvider tabProvider) {
+ARGON_TOOLBAR_INITIALIZATION
+        delegate = ntpDelegate;
+    }
+    private NewTabPageDelegate createNewTabPageDelegate() {
+ARGON_PHONE_CALL
+    }
+'''.replace('ARGON_TOOLBAR_INITIALIZATION', initialization)
+   .replace('ARGON_PHONE_CALL', phone_call), 1)
+                sources = dict(STUBS)
+                sources['org/chromium/chrome/browser/toolbar/ToolbarManager.java'] = toolbar
+                sources['org/chromium/chrome/browser/ActivityTabProvider.java'] = '''
+package org.chromium.chrome.browser;
+import org.chromium.chrome.browser.tab.Tab;
+public class ActivityTabProvider {
+    public int reads;
+    public Tab get() { reads++; return null; }
+}
+'''
+                sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                    FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+                sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+                sources['ToolbarStartupFlow.java'] = (FIXTURES / 'ToolbarStartupFlow.java.in').read_text()
+                for name, text in sources.items():
+                    target = root / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(text)
+                compiled = subprocess.run(
+                    ['javac', '--release', '17', '-d', str(root),
+                     *map(str, root.rglob('*.java'))], capture_output=True, text=True)
+                self.assertEqual(compiled.returncode, 0, compiled.stderr)
+                result = subprocess.run(['java', '-cp', str(root), 'ToolbarStartupFlow'],
+                                        capture_output=True, text=True)
+                if fixed:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('PASS: toolbar startup', result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('java.lang.NullPointerException', result.stderr)
+                    self.assertIn('java.util.Objects.requireNonNull', result.stderr)
+
     def test_native_homepage_flow(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
