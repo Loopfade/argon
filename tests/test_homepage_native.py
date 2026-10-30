@@ -9,12 +9,27 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'tests/fixtures/homepage'
 DELEGATE_API = Path('chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java')
+TOOLBAR_PHONE = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarPhone.java')
+TOOLBAR_SCROLL_SIGNATURES = (
+    '    private void onNtpScrollChanged(float scrollFraction) {',
+    '    private void updateLocationBarTranslationOnScroll() {',
+    '    private float getLocationBarTranslationY() {',
+)
 BRIDGE = ROOT / 'chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'
 
 
 def verify_delegate_api(source):
     if source != (FIXTURES / 'NewTabPageDelegate.java.in').read_text():
         raise ValueError('Chromium NewTabPageDelegate changed; review the homepage adapter and fixture')
+
+
+def verify_toolbar_scroll_source(source):
+    from test_homepage import homepage
+
+    fixture = (FIXTURES / 'toolbar_phone_scroll.java.in').read_text()
+    for signature in TOOLBAR_SCROLL_SIGNATURES:
+        if homepage.method_source(source, signature) != homepage.method_source(fixture, signature):
+            raise ValueError('Chromium toolbar scrolling changed; review the keyboard regression')
 
 
 def verify_toolbar_startup_source(source):
@@ -282,6 +297,9 @@ public class ActivityTabProvider {
                 FIXTURES / 'NewTabPageDelegate.java.in').read_text()
             sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
             sources['ArgonHomeBridgeFlow.java'] = (FIXTURES / 'ArgonHomeBridgeFlow.java.in').read_text()
+            sources['ToolbarPhoneScrollFlow.java'] = (
+                FIXTURES / 'ToolbarPhoneScrollFlow.java.in').read_text().replace(
+                    'ARGON_SCROLL_METHODS', (FIXTURES / 'toolbar_phone_scroll.java.in').read_text())
             for name, text in sources.items():
                 target = root / name
                 target.parent.mkdir(parents=True, exist_ok=True)

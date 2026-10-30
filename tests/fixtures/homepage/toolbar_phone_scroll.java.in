@@ -1,0 +1,89 @@
+    private void onNtpScrollChanged(float scrollFraction) {
+        if (ChromeFeatureList.sToolbarPhoneAnimationRefactor.isEnabled()) {
+            NewTabPageDelegate ntpDelegate = getToolbarDataProvider().getNewTabPageDelegate();
+            if (!ntpDelegate.hasCompletedFirstLayout()) {
+                // If the NTP has not completed its first layout, but we're getting a scroll update,
+                // we're likely navigating to a NTP. Immediately hide the location bar in this case,
+                // as the fakebox will soon show.
+                if (isLocationBarShownInNtp()) {
+                    mLocationBar.getPhoneCoordinator().setAlpha(0.f);
+                    mActiveLocationBarBackgroundView.setAlpha(0.f);
+                }
+                // Also skip the updates below, since we won't be able to derive the correct
+                // properties (translationY, etc.) yet.
+                return;
+            }
+
+            updateButtonsTranslationY();
+            updateLocationBarTranslationOnScroll();
+            float oldScrollFraction = mNtpSearchBoxScrollFraction;
+            if (scrollFraction > 0.f && mNtpSearchBoxScrollFraction != 1.f) {
+                // Snap to the toolbar region.
+                endFocusTransition();
+                mNtpSearchBoxScrollFraction = 1.f;
+                createAndRunNtpFocusAnimatorRefactored();
+            } else if (scrollFraction <= 0.f && mNtpSearchBoxScrollFraction != 0.f) {
+                // Un-snap from the toolbar region.
+                endFocusTransition();
+                mNtpSearchBoxScrollFraction = 0.f;
+                // Track the starting offset for scroll state. Set after #endFocusTransition, since
+                // that method clears this value.
+                mRefactoredNtpStartingOffset = getLocationBarTranslationY();
+                createAndRunNtpFocusAnimatorRefactored();
+            }
+            // If the scroll fraction was previously uninitialized, we likely just navigated to a
+            // NTP. We want to update the location bar's state, but suppress the associated
+            // animations, so allow the transition to start, then immediately end it here.
+            if (oldScrollFraction == UNINITIALIZED_FRACTION) {
+                endFocusTransition();
+            }
+            return;
+        }
+
+        mNtpSearchBoxScrollFraction = scrollFraction;
+        if (mNtpSearchBoxScrollFraction > 0) {
+            updateLocationBarForNtp(mVisualState, urlHasFocus());
+        }
+
+        if (mUseAdjustedTintColorForNtp) {
+            if (!mIsToolbarExpandedOnNtp && mNtpSearchBoxScrollFraction > 0) {
+                mIsToolbarExpandedOnNtp = true;
+                notifyToolbarExpandingOnNtp(true);
+            } else if (mIsToolbarExpandedOnNtp && mNtpSearchBoxScrollFraction == 0) {
+                mIsToolbarExpandedOnNtp = false;
+                notifyToolbarExpandingOnNtp(false);
+            }
+        }
+        updateUrlExpansionFraction();
+        invokeTransition();
+    }
+
+    private void updateLocationBarTranslationOnScroll() {
+        // When the scroll fraction is set to 1.f, the location bar is "snapped" to the top of the
+        // screen, so we don't update the y-translation here.
+        if (mNtpSearchBoxScrollFraction != 1.f) {
+            // We intentionally do not call #onLocationBarBackgroundViewBoundsChanged here, since
+            // the size of the background will instead be handled by the refactored transition.
+            float translationY = getLocationBarTranslationY() - mRefactoredNtpStartingOffset;
+            mLocationBar.getPhoneCoordinator().setTranslationY(translationY);
+            mActiveLocationBarBackgroundView.setTranslationY(translationY);
+        }
+    }
+
+    private float getLocationBarTranslationY() {
+        NewTabPageDelegate ntpDelegate = getToolbarDataProvider().getNewTabPageDelegate();
+        ntpDelegate.getSearchBoxBounds(mNtpSearchBoxBounds, mNtpSearchBoxTranslation);
+        float translationY = mNtpSearchBoxBounds.top - mLocationBar.getPhoneCoordinator().getTop();
+
+        // When edge-to-edge on top is enabled on NTP, the NTP search box bounds calculation
+        // includes mSearchBoxBoundsVerticalInset which accounts for the difference between the
+        // search box height and the toolbar height. However, this inset causes a mismatch when the
+        // search box snaps to the toolbar position. We need to subtract the full inset to align
+        // properly.
+        int searchBoxInset = ntpDelegate.getSearchBoxBoundsVerticalInset();
+        if (mTopPaddingForEdgeToEdgeNtp > 0 && searchBoxInset > 0) {
+            translationY -= searchBoxInset;
+        }
+
+        return Math.max(0, translationY);
+    }
