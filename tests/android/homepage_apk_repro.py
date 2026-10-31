@@ -182,8 +182,17 @@ def capture(name):
     compact=[{k:v for k,v in e.items() if k!='views'}|{'location_views':[v for v in e.get('views',[]) if 'LocationBar' in v.get('class','')]} for e in events]
     print('PROBE '+name+' '+json.dumps(compact),flush=True)
     print('SCREENSHOT_BASE64 '+name+' '+base64.b64encode(png).decode(),flush=True)
-    adb('shell','uiautomator','dump','/sdcard/argon-window.xml',check=False)
-    xml=adb('shell','cat','/sdcard/argon-window.xml',check=False)
+    for attempt in range(12):
+        adb('shell','rm','-f','/sdcard/argon-window.xml',check=False)
+        adb('shell','uiautomator','dump','/sdcard/argon-window.xml',check=False)
+        xml=adb('shell','cat','/sdcard/argon-window.xml',check=False)
+        try:
+            ET.fromstring(xml)
+            break
+        except ET.ParseError:
+            time.sleep(2)
+    else:
+        raise RuntimeError('Android accessibility hierarchy did not become ready')
     (OUT/(name+'.xml')).write_text(xml)
     return xml
 
@@ -222,7 +231,7 @@ try:
     adb('shell','restorecon',DATA+'/code_cache/probe.so',check=False)
     result=adb('shell','am','start','--attach-agent',DATA+'/code_cache/probe.so='+LOG,'-n',PACKAGE+'/com.google.android.apps.chrome.Main')
     print('ATTACH',result,flush=True)
-    time.sleep(12)
+    time.sleep(30)
     startup=capture('00-startup')
     tap_matching(startup,lambda a: (a.get('text','') or a.get('content-desc','')).lower() in ('no thanks','not now','нет, спасибо','не сейчас'))
     # Navigate using the real omnibox if startup has not reached the custom page.
