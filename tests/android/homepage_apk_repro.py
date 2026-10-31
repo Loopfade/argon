@@ -58,6 +58,18 @@ def debuggable_manifest(data):
         size,pos=length16(pos)
         return bytes(pool[pos:pos+2*size]).decode('utf-16le',errors='replace')
     names=[string(i) for i in range(count)]
+    # App-zygote preloading cannot map this ARM library into the x86 renderer.
+    # Keep isolated renderer services, using their ordinary per-process loader.
+    for kind,raw in chunks:
+        if kind!=0x0102:continue
+        node_header=struct.unpack_from('<H',raw,2)[0]
+        attr_start,attr_size,attrs=struct.unpack_from('<HHH',raw,node_header+8)
+        for i in range(attrs):
+            attr=node_header+attr_start+i*attr_size
+            name=struct.unpack_from('<I',raw,attr+4)[0]
+            if names[name]=='useAppZygote':
+                struct.pack_into('<I',raw,attr+8,0xffffffff)
+                raw[attr+15]=0x12;struct.pack_into('<I',raw,attr+16,0)
     ns=names.index('http://schemas.android.com/apk/res/android')
     application=names.index('application')
     encoded=b'\x0a\x0adebuggable\0' if flags&256 else b'\x0a\0'+b'd\0e\0b\0u\0g\0g\0a\0b\0l\0e\0\0\0'
@@ -135,7 +147,10 @@ def prepare():
         with zipfile.ZipFile(chosen) as archive:
             for name,digest in evidence['code_sha256'].items():assert hashlib.sha256(archive.read(name)).hexdigest()==digest
     evidence['test_sha256']=hashlib.sha256(chosen.read_bytes()).hexdigest()
-    assert str(APK(str(chosen)).get_attribute_value('application','debuggable')).lower()=='true'
+    modified=APK(str(chosen))
+    assert str(modified.get_attribute_value('application','debuggable')).lower()=='true'
+    assert all(node.get('{http://schemas.android.com/apk/res/android}useAppZygote','false')!='true' for node in modified.get_android_manifest_xml().iter('service'))
+    evidence['app_zygote_disabled_for_emulator']=True
     with zipfile.ZipFile(chosen) as archive:
         art_arch='x86_64' if any(name.startswith('lib/arm64-v8a/') for name in archive.namelist()) else 'i686'
     (TEMP/'probe-arch').write_text(art_arch)
