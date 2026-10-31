@@ -154,6 +154,23 @@ def prepare():
     evidence['app_zygote_disabled_for_emulator']=os.environ.get('PROBE_APP_ZYGOTE')!='1'
     with zipfile.ZipFile(chosen) as archive:
         art_arch='x86_64' if any(name.startswith('lib/arm64-v8a/') for name in archive.namelist()) else 'i686'
+    from androguard.core.dex import DEX
+    sync_methods=[]
+    with zipfile.ZipFile(chosen) as archive:
+        for name in archive.namelist():
+            if not re.fullmatch(r'classes\d*\.dex',name):continue
+            dex=DEX(archive.read(name))
+            for cls in dex.get_classes():
+                if cls.get_name()!='Lorg/chromium/chrome/browser/toolbar/top/ToolbarControlContainer;':continue
+                for method in cls.get_methods():
+                    code=method.get_code()
+                    if method.get_descriptor().replace(' ','')!='(Z)V' or code is None:continue
+                    instructions='\n'.join(instruction.get_output() for instruction in code.get_bc().get_instructions())
+                    if '->measure(' in instructions and '->layout(' in instructions:
+                        sync_methods.append(method.get_name())
+    if len(sync_methods)!=1:raise RuntimeError('Expected one synchronous toolbar layout method: '+repr(sync_methods))
+    (TEMP/'probe-sync-method').write_text(sync_methods[0])
+    print('SYNC_LAYOUT_METHOD '+sync_methods[0],flush=True)
     (TEMP/'probe-arch').write_text(art_arch)
     (OUT/'apk-evidence.json').write_text(json.dumps(evidence,indent=2))
     (TEMP/'probe-apk-path').write_text(str(chosen))
@@ -233,6 +250,7 @@ try:
     adb('push',str(TEMP/('probe-'+architecture+'.so')),DATA+'/code_cache/probe.so')
     adb('shell','chmod','555',DATA+'/code_cache/probe.so')
     adb('shell','restorecon',DATA+'/code_cache/probe.so',check=False)
+    adb('push',str(TEMP/'probe-sync-method'),LOG+'-sync-method')
     result=adb('shell','am','start','--attach-agent',DATA+'/code_cache/probe.so='+LOG,'-n',PACKAGE+'/com.google.android.apps.chrome.Main')
     print('ATTACH',result,flush=True)
     time.sleep(30)
