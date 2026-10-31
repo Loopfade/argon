@@ -8,9 +8,10 @@ import tempfile
 
 from upstream_sources import chromium_url, download
 from test_homepage_native import (
-    DELEGATE_API, TOOLBAR_PHONE, verify_delegate_api, verify_toolbar_scroll_source,
+    DELEGATE_API, TOOLBAR_PHONE, PHONE_TOKEN, verify_delegate_api, verify_toolbar_scroll_source,
     verify_toolbar_startup_source,
     verify_toolbar_capture_source,
+    verify_phone_capture_source,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +31,9 @@ def main():
     toolbar_phone = ((args.chromium_src / TOOLBAR_PHONE).read_text() if args.chromium_src
                      else download(chromium_url(revision, TOOLBAR_PHONE)))
     verify_toolbar_scroll_source(toolbar_phone)
+    token = ((args.chromium_src / PHONE_TOKEN).read_text() if args.chromium_src
+             else download(chromium_url(revision, PHONE_TOKEN)))
+    verify_phone_capture_source(toolbar_phone, token)
     with tempfile.TemporaryDirectory() as directory:
         src = Path(directory)
         for path in homepage.INPUT_PATHS:

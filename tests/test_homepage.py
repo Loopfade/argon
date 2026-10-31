@@ -27,6 +27,8 @@ def input_tree(root):
             + '\n' + homepage.TOOLBAR_NAV_FINISH + '\n    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
             + '    public @Nullable OmniboxStub getOmniboxStub() {\n    }\n',
         homepage.TOOLBAR_CONTAINER: (FIXTURES / 'toolbar_capture.java.in').read_text(),
+        homepage.TOOLBAR_PHONE: homepage.PHONE_CAPTURE_FIELD_BEFORE + '\n'
+            + (FIXTURES / 'toolbar_phone_capture.java.in').read_text(),
         homepage.JAVA_CATALOG: '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",\n',
         homepage.JNI_CATALOG: '  generate_jni("chrome_jni_headers") {\n    sources = [\n    ]\n  }\n',
     }
@@ -105,6 +107,23 @@ class HomepageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
                 homepage.apply(src)
             self.assertEqual(before, snapshot(src))
+
+    def test_changed_phone_capture_rejects_the_whole_patch(self):
+        for before, after in (
+            ('VisualState.NORMAL);', 'VisualState.INCOGNITO);'),
+            ('if (isLayoutRequested()', 'if (!isLayoutRequested()'),
+            ('assert mTextureCaptureMode != textureMode;', 'assert true;'),
+            ('mUrlExpansionFraction > 0;', 'mUrlExpansionFraction >= 0;'),
+        ):
+            with self.subTest(before=before), tempfile.TemporaryDirectory() as directory:
+                src = Path(directory)
+                input_tree(src)
+                path = src / homepage.TOOLBAR_PHONE
+                path.write_text(path.read_text().replace(before, after, 1))
+                original = snapshot(src)
+                with self.assertRaises(ValueError):
+                    homepage.apply(src)
+                self.assertEqual(original, snapshot(src))
 
     def test_unknown_resolver_change_is_rejected_before_any_write(self):
         with tempfile.TemporaryDirectory() as directory:
