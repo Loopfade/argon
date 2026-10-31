@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {arch: arm64, api: 35, artifact: 13048211687}
-          - {arch: arm, api: 30, artifact: 13047498994}
+          - {arch: arm64, api: 35, artifact: 13048211687, preload: 0}
+          - {arch: arm64, api: 36, artifact: 13048211687, preload: 1}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -27,6 +27,7 @@ jobs:
       - name: Получить проверенный ARM APK
         env:
           GH_TOKEN: ${{ github.token }}
+          PROBE_APP_ZYGOTE: ${{ matrix.preload }}
         run: |
           set -euo pipefail
           mkdir -p .apk-input android-repro
@@ -64,7 +65,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: android-homepage-repro-${{ matrix.arch }}
+          name: android-homepage-repro-${{ matrix.arch }}-${{ matrix.api }}
           path: android-repro/
           if-no-files-found: error
           retention-days: 7

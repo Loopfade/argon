@@ -67,7 +67,7 @@ def debuggable_manifest(data):
         for i in range(attrs):
             attr=node_header+attr_start+i*attr_size
             name=struct.unpack_from('<I',raw,attr+4)[0]
-            if names[name]=='useAppZygote':
+            if names[name]=='useAppZygote' and os.environ.get('PROBE_APP_ZYGOTE')!='1':
                 struct.pack_into('<I',raw,attr+8,0xffffffff)
                 raw[attr+15]=0x12;struct.pack_into('<I',raw,attr+16,0)
     ns=names.index('http://schemas.android.com/apk/res/android')
@@ -149,8 +149,9 @@ def prepare():
     evidence['test_sha256']=hashlib.sha256(chosen.read_bytes()).hexdigest()
     modified=APK(str(chosen))
     assert str(modified.get_attribute_value('application','debuggable')).lower()=='true'
-    assert all(node.get('{http://schemas.android.com/apk/res/android}useAppZygote','false')!='true' for node in modified.get_android_manifest_xml().iter('service'))
-    evidence['app_zygote_disabled_for_emulator']=True
+    if os.environ.get('PROBE_APP_ZYGOTE')!='1':
+        assert all(node.get('{http://schemas.android.com/apk/res/android}useAppZygote','false')!='true' for node in modified.get_android_manifest_xml().iter('service'))
+    evidence['app_zygote_disabled_for_emulator']=os.environ.get('PROBE_APP_ZYGOTE')!='1'
     with zipfile.ZipFile(chosen) as archive:
         art_arch='x86_64' if any(name.startswith('lib/arm64-v8a/') for name in archive.namelist()) else 'i686'
     (TEMP/'probe-arch').write_text(art_arch)
@@ -221,6 +222,15 @@ try:
     adb('shell','restorecon',DATA+'/code_cache/probe.so',check=False)
     result=adb('shell','am','start','--attach-agent',DATA+'/code_cache/probe.so='+LOG,'-n',PACKAGE+'/com.google.android.apps.chrome.Main')
     print('ATTACH',result,flush=True)
+    time.sleep(12)
+    startup=capture('00-startup')
+    tap_matching(startup,lambda a: (a.get('text','') or a.get('content-desc','')).lower() in ('no thanks','not now','нет, спасибо','не сейчас'))
+    # Navigate using the real omnibox if startup has not reached the custom page.
+    nodes=list(ET.fromstring(startup).iter('node'))
+    if not any(a.attrib.get('class')=='android.widget.Button' and 'URL' in (a.attrib.get('text','')+a.attrib.get('content-desc','')) for a in nodes):
+        adb('shell','input','tap','400','160')
+        adb('shell','input','text','chrome://argon/')
+        adb('shell','input','keyevent','KEYCODE_ENTER')
     for attempt in range(30):
         if '"hidden":true' in adb('shell','cat',LOG,check=False):break
         time.sleep(2)
@@ -238,5 +248,6 @@ finally:
     logcat=adb('logcat','-d','-v','threadtime',check=False)
     (OUT/'logcat.txt').write_text(logcat)
     print('CRASH_SUMMARY '+json.dumps([line for line in logcat.splitlines() if (' F DEBUG' in line or 'Fatal signal' in line or 'Undefined instruction' in line or ' F chromium' in line)][:120]),flush=True)
+    print('APP_LOG_SUMMARY '+json.dumps([line for line in logcat.splitlines() if 'cr_' in line or ' E chromium' in line or ' E ndk_translation' in line][-100:]),flush=True)
     (OUT/'activities.txt').write_text(adb('shell','dumpsys','activity','activities',check=False))
     (OUT/'final-probe.jsonl').write_text(adb('shell','cat',LOG,check=False))
