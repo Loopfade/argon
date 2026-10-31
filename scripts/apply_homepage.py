@@ -19,20 +19,37 @@ NATIVE_HANDLER = Path('chrome/browser/android/ntp/new_tab_page_url_handler.cc')
 URL_RESOLVER_FACTORY = Path('chrome/browser/url_constants/android/java/src/org/chromium/chrome/browser/url_constants/UrlConstantResolverFactory.java')
 TABBED_ACTIVITY = Path('chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java')
 TOOLBAR_MANAGER = Path('chrome/android/java/src/org/chromium/chrome/browser/toolbar/ToolbarManager.java')
+TOOLBAR_CONTAINER = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java')
 JAVA_CATALOG = Path('chrome/android/chrome_java_sources.gni')
 JNI_CATALOG = Path('chrome/android/BUILD.gn')
 JAVA_BRIDGE = Path('chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java')
 INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
-               TOOLBAR_MANAGER, JAVA_CATALOG, JNI_CATALOG)
+               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, JAVA_CATALOG, JNI_CATALOG)
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
 RESOLVER_SIGNATURE = '    private static UrlConstantResolver buildOriginalResolver() {'
 STARTUP_SIGNATURE = '            if (!mPendingInitialTabCreation) {'
+CAPTURE_SIGNATURE = '        public boolean isDirty() {'
 FACTORY_DIGEST = '905c86c4d9066d43abfa512b02ae1649961991706ec493fe026a16f386b7d315'
 HANDLER_DIGEST = '6420fc2dfc3a1bea11edf3ea5c2fa928f93d79b12f00b16f83d31b040b0a6c7d'
 RESOLVER_DIGEST = 'c8676f48d70c326f26086693906f9fd97473ced55a21ff3c80053613f06748d3'
 STARTUP_DIGEST = '51130d436dad54a975a79a9ab5977a26cdf02768b3c18af6e75641fab357f6ac'
+CAPTURE_DIGEST = 'edcc5010cebdfdd9165831bb13dc8d3c12b27c21ea405e03ed548972ea8b8656'
+
+CAPTURE_BEFORE = '''                    boolean isNativePage = tab == null || tab.isNativePage();
+                    if (!isNativePage && mConstraintsObserver.areControlsLocked()) {'''
+CAPTURE_AFTER = '''                    // ARGON: WebUI NTPs also change their fakebox/omnibox state after
+                    // the page-load capture. chrome:// keeps controls locked, so waiting
+                    // for an unlock would leave the old omnibox bitmap visible indefinitely.
+                    boolean isNativePageOrNtp =
+                            tab == null
+                                    || tab.isNativePage()
+                                    || (mToolbarDataProvider != null
+                                            && mToolbarDataProvider
+                                                    .getNewTabPageDelegate()
+                                                    .isLocationBarShown());
+                    if (!isNativePageOrNtp && mConstraintsObserver.areControlsLocked()) {'''
 
 STARTUP_BEFORE = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
                 if (isTabNtp && !currentTab.isNativePage() && !isTabWebUiNtp) {'''
@@ -151,6 +168,11 @@ def patch_startup_draw(text):
                            STARTUP_BEFORE, STARTUP_AFTER)
 
 
+def patch_toolbar_capture(text):
+    return reviewed_method(text, CAPTURE_SIGNATURE, CAPTURE_DIGEST,
+                           CAPTURE_BEFORE, CAPTURE_AFTER)
+
+
 def patch_configs(text):
     text = replace_once(text,
         '#include "build/build_config.h"',
@@ -266,6 +288,7 @@ def apply(src):
                   (URL_RESOLVER_FACTORY, patch_resolver_factory),
                   (TABBED_ACTIVITY, patch_startup_draw),
                   (TOOLBAR_MANAGER, patch_toolbar), (JAVA_CATALOG, patch_java_catalog),
+                  (TOOLBAR_CONTAINER, patch_toolbar_capture),
                   (JNI_CATALOG, patch_jni_catalog)]
     writes = {src / path: transform((src / path).read_text()) for path, transform in transforms}
     for source in (OVERLAY / UI).iterdir():

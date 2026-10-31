@@ -41,6 +41,17 @@ def verify_toolbar_startup_source(source):
         raise ValueError('Chromium toolbar initialization order changed; review the startup fixture')
 
 
+def verify_toolbar_capture_source(source):
+    from test_homepage import homepage
+
+    fixture = (FIXTURES / 'toolbar_capture.java.in').read_text()
+    reviewed = source.replace(homepage.CAPTURE_AFTER, homepage.CAPTURE_BEFORE, 1)
+    for signature in (homepage.CAPTURE_SIGNATURE,
+                      '        private boolean checkCaptureReadinessResult() {'):
+        if homepage.method_source(reviewed, signature) != homepage.method_source(fixture, signature):
+            raise ValueError('Chromium toolbar capture changed; review the compositor regression')
+
+
 # Android and browser boundaries only. The adapter itself and its interface are unmodified.
 STUBS = {
     'android/app/Activity.java': """
@@ -132,13 +143,14 @@ import android.view.View;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
 public class Tab {
-    public boolean incognito, error, destroyed;
+    public boolean incognito, error, destroyed, nativePage;
     public GURL url;
     public WebContents contents;
     public View view = new View();
     public boolean isIncognito() { return incognito; }
     public boolean isShowingErrorPage() { return error; }
     public boolean isDestroyed() { return destroyed; }
+    public boolean isNativePage() { return nativePage; }
     public GURL getUrl() { return url; }
     public WebContents getWebContents() { return contents; }
     public View getContentView() { return view; }
@@ -290,28 +302,42 @@ public class ActivityTabProvider {
                     self.assertIn('java.util.Objects.requireNonNull', result.stderr)
 
     def test_native_homepage_flow(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            sources = dict(STUBS)
-            sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
-                FIXTURES / 'NewTabPageDelegate.java.in').read_text()
-            sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
-            sources['ArgonHomeBridgeFlow.java'] = (FIXTURES / 'ArgonHomeBridgeFlow.java.in').read_text()
-            sources['ToolbarPhoneScrollFlow.java'] = (
-                FIXTURES / 'ToolbarPhoneScrollFlow.java.in').read_text().replace(
-                    'ARGON_SCROLL_METHODS', (FIXTURES / 'toolbar_phone_scroll.java.in').read_text())
-            for name, text in sources.items():
-                target = root / name
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(text)
-            compile_result = subprocess.run(
-                ['javac', '--release', '17', '-d', str(root),
-                 *map(str, root.rglob('*.java'))], capture_output=True, text=True)
-            self.assertEqual(compile_result.returncode, 0, compile_result.stderr)
-            result = subprocess.run(
-                ['java', '-cp', str(root), 'ArgonHomeBridgeFlow'], capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn('PASS: native homepage', result.stdout)
+        from test_homepage import homepage
+
+        for fixed in (False, True):
+            with self.subTest(fixed=fixed), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                sources = dict(STUBS)
+                sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                    FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+                sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+                sources['ArgonHomeBridgeFlow.java'] = (FIXTURES / 'ArgonHomeBridgeFlow.java.in').read_text()
+                sources['ToolbarPhoneScrollFlow.java'] = (
+                    FIXTURES / 'ToolbarPhoneScrollFlow.java.in').read_text().replace(
+                        'ARGON_SCROLL_METHODS', (FIXTURES / 'toolbar_phone_scroll.java.in').read_text())
+                capture = (FIXTURES / 'toolbar_capture.java.in').read_text()
+                if fixed:
+                    capture = homepage.patch_toolbar_capture(capture)
+                sources['ToolbarCaptureFlow.java'] = (
+                    FIXTURES / 'ToolbarCaptureFlow.java.in').read_text().replace(
+                        'ARGON_CAPTURE_METHODS', capture)
+                for name, text in sources.items():
+                    target = root / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(text)
+                compile_result = subprocess.run(
+                    ['javac', '--release', '17', '-d', str(root),
+                     *map(str, root.rglob('*.java'))], capture_output=True, text=True)
+                self.assertEqual(compile_result.returncode, 0, compile_result.stderr)
+                result = subprocess.run(
+                    ['java', '-cp', str(root), 'ArgonHomeBridgeFlow'], capture_output=True, text=True)
+                if fixed:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('PASS: native homepage', result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('Measured WebUI fakebox must replace the stale visible omnibox bitmap',
+                                  result.stderr)
 
 
 if __name__ == '__main__':

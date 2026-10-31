@@ -26,6 +26,7 @@ def input_tree(root):
             + '\n' + homepage.TOOLBAR_BEFORE + '\n' + homepage.TOOLBAR_NAV_START
             + '\n' + homepage.TOOLBAR_NAV_FINISH + '\n    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
             + '    public @Nullable OmniboxStub getOmniboxStub() {\n    }\n',
+        homepage.TOOLBAR_CONTAINER: (FIXTURES / 'toolbar_capture.java.in').read_text(),
         homepage.JAVA_CATALOG: '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",\n',
         homepage.JNI_CATALOG: '  generate_jni("chrome_jni_headers") {\n    sources = [\n    ]\n  }\n',
     }
@@ -92,6 +93,18 @@ class HomepageTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     homepage.apply(src)
                 self.assertEqual(before, snapshot(src))
+
+    def test_changed_capture_gate_rejects_the_whole_patch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            path = src / homepage.TOOLBAR_CONTAINER
+            path.write_text(path.read_text().replace(
+                'if (!mNeedCaptureAfterPageLoad', 'if (mNeedCaptureAfterPageLoad', 1))
+            before = snapshot(src)
+            with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+                homepage.apply(src)
+            self.assertEqual(before, snapshot(src))
 
     def test_unknown_resolver_change_is_rejected_before_any_write(self):
         with tempfile.TemporaryDirectory() as directory:
