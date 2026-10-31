@@ -114,13 +114,13 @@ static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method,
       char *name = nullptr, *desc = nullptr; jint modifiers = 0;
       ti->GetFieldName(result_class, fields[i], &name, &desc, nullptr);
       ti->GetFieldModifiers(result_class, fields[i], &modifiers);
-      if (name && desc && !(modifiers & 8) && (*desc == 'Z' || *desc == 'I')) {
+      if (name && desc && !(modifiers & 8) && (*desc == 'Z' || *desc == 'I' || *desc == 'B' || *desc == 'S')) {
         if (printed++) fputc(',', output);
         if (*desc == 'Z') {
           ready = env->GetBooleanField(value.l, fields[i]); ready_field = fields[i];
           fprintf(output, "\"%s\":%s", name, ready ? "true" : "false");
         } else {
-          int v = env->GetIntField(value.l, fields[i]); status_animation |= v == 7;
+          int v = *desc == 'B' ? env->GetByteField(value.l, fields[i]) : (*desc == 'S' ? env->GetShortField(value.l, fields[i]) : env->GetIntField(value.l, fields[i])); status_animation |= v == 7;
           fprintf(output, "\"%s\":%d", name, v);
         }
       }

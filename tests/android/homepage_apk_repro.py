@@ -193,7 +193,7 @@ adb('root',check=False);adb('wait-for-device')
 adb('shell','wm','size','1080x2400');adb('shell','wm','density','420')
 adb('shell','input','keyevent','KEYCODE_WAKEUP');adb('shell','wm','dismiss-keyguard',check=False)
 adb('install','-r','-t',(TEMP/'probe-apk-path').read_text())
-adb('shell',"echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
+adb('shell',"echo '_ --no-first-run --no-default-browser-check --disable-fre --js-flags=--jitless' > /data/local/tmp/chrome-command-line")
 adb('shell','am','set-debug-app','--persistent',PACKAGE)
 adb('logcat','-c')
 try:
@@ -206,10 +206,13 @@ try:
     adb('shell','restorecon',DATA+'/code_cache/probe.so',check=False)
     result=adb('shell','am','start','--attach-agent',DATA+'/code_cache/probe.so='+LOG,'-n',PACKAGE+'/com.google.android.apps.chrome.Main')
     print('ATTACH',result,flush=True)
-    time.sleep(20)
+    for attempt in range(30):
+        if '"hidden":true' in adb('shell','cat',LOG,check=False):break
+        time.sleep(2)
+    time.sleep(2)
     xml=capture('01-initial-home')
     if not tap_matching(xml,lambda a: a.get('class')=='android.widget.Button' and 'URL' in (a.get('text','')+a.get('content-desc',''))):
-        adb('shell','input','tap','540','520')
+        raise RuntimeError('Argon WebUI fakebox did not load; the browser menu alone is not a homepage test')
     time.sleep(3);capture('02-focused')
     adb('shell','input','keyevent','KEYCODE_BACK');time.sleep(3);capture('03-cancelled')
     new_home('04-original-new-home')
