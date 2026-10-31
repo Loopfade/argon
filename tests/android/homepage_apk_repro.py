@@ -288,9 +288,13 @@ try:
         raise RuntimeError('Tapping the WebUI fakebox did not focus the native edit field')
     adb('shell','input','keyevent','KEYCODE_BACK')
     time.sleep(3)
-    cancelled=capture('08-native-cancelled')
+    cancelled=capture('08-native-keyboard-hidden')
     if any(node.get('class')=='android.widget.EditText' and node.get('focused')=='true' for node in ET.fromstring(cancelled).iter('node')):
-        raise RuntimeError('Cancelling native input kept the edit field focused')
+        adb('shell','input','keyevent','KEYCODE_BACK')
+        time.sleep(3)
+        cancelled=capture('09-native-cancelled')
+    if any(node.get('class')=='android.widget.EditText' and node.get('focused')=='true' for node in ET.fromstring(cancelled).iter('node')):
+        raise RuntimeError('Exiting native input kept the edit field focused')
     print('PASS_NATIVE_INPUT_FOCUS_AND_CANCEL',flush=True)
 finally:
     logcat=adb('logcat','-d','-v','threadtime',check=False)
