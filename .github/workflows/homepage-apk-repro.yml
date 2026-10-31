@@ -37,6 +37,7 @@ jobs:
           xz -d "$RUNNER_TEMP/frida-server.xz"
           chmod +x "$RUNNER_TEMP/frida-server"
           npm install --prefix .frida-agent --no-save --ignore-scripts frida-java-bridge@7.0.13
+          "$RUNNER_TEMP/argon-ui-venv/bin/python" tests/android/homepage_apk_repro.py --compile-only
       - name: Разрешить KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

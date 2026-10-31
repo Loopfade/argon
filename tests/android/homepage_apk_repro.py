@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Observe the shipped ARM APK on Android; this script does not change app methods."""
 import json
-import copy
 import hashlib
+import sys
 import os
 from pathlib import Path
 import re
@@ -83,70 +83,8 @@ def dex_map(apk):
     return result
 
 
-def emulator_apk(original):
-    """Keep DEX/native code unchanged; add locale aliases to avoid native-bridge exceptions."""
-    build_tools = sorted(Path(os.environ['ANDROID_HOME']).glob('build-tools/*/apksigner'))[-1].parent
-    temp = Path(os.environ['RUNNER_TEMP'])
-    unaligned, aligned, signed = [temp / name for name in ('argon-aliases.apk','argon-aligned.apk','argon-emulator.apk')]
-    evidence = {'original_apk_sha256': hashlib.sha256(original.read_bytes()).hexdigest(), 'aliases': [], 'code_sha256': {}}
-    with zipfile.ZipFile(original) as source, zipfile.ZipFile(unaligned, 'w', allowZip64=True) as target:
-        for info in source.infolist():
-            if info.filename.startswith('META-INF/') and info.filename.rsplit('.',1)[-1] in ('RSA','SF','DSA','EC','MF'):
-                continue
-            data = source.read(info.filename)
-            target.writestr(info, data)
-            if info.filename.endswith(('.dex','.so')):
-                evidence['code_sha256'][info.filename] = hashlib.sha256(data).hexdigest()
-            if info.filename.startswith('assets/locales/') and info.filename.endswith('.pak'):
-                name = info.filename.rsplit('/',1)[-1]
-                language = name.split('_',1)[0].split('.',1)[0].split('-',1)[0]
-                for prefix in ('assets/stored-locales/','assets/fallback-locales/','assets/locales#lang_'+language+'/'):
-                    alias = copy.copy(info)
-                    alias.filename = alias.orig_filename = prefix + name
-                    target.writestr(alias, data)
-                    evidence['aliases'].append(alias.filename)
-    subprocess.run([str(build_tools/'zipalign'),'-f','-P','16','4',str(unaligned),str(aligned)],check=True)
-    key = temp / 'argon-emulator-key.jks'
-    subprocess.run(['keytool','-genkeypair','-keystore',str(key),'-storepass','android','-keypass','android','-alias','argon-emulator','-dname','CN=Argon Emulator Test','-keyalg','RSA','-keysize','2048','-validity','2'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    subprocess.run([str(build_tools/'apksigner'),'sign','--ks',str(key),'--ks-pass','pass:android','--key-pass','pass:android','--out',str(signed),str(aligned)],check=True)
-    with zipfile.ZipFile(signed) as result:
-        for name, digest in evidence['code_sha256'].items():
-            assert hashlib.sha256(result.read(name)).hexdigest() == digest, name
-    evidence['emulator_apk_sha256'] = hashlib.sha256(signed.read_bytes()).hexdigest()
-    (OUT/'emulator-apk.json').write_text(json.dumps(evidence,indent=2))
-    return signed
-
-
-APK = next(Path('.apk-input').rglob('*.apk'))
-(OUT/'original-apk-sha256.txt').write_text(hashlib.sha256(APK.read_bytes()).hexdigest())
-mapping = dex_map(APK)
-with zipfile.ZipFile(APK) as archive:
-    mapping['localeAssets'] = [name for name in archive.namelist() if name.startswith('assets/') and name.endswith('.pak')]
-print('Locale assets:', mapping['localeAssets'], flush=True)
-print('DEX map:', mapping, flush=True)
-(OUT / 'device.txt').write_text(adb('shell', 'getprop'))
-print('Device ABIs:', adb('shell', 'getprop', 'ro.product.cpu.abilist').strip(), flush=True)
-adb('root', check=False)
-adb('wait-for-device')
-adb('shell', 'wm', 'size', '1080x2400')
-adb('shell', 'wm', 'density', '420')
-adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP')
-adb('shell', 'wm', 'dismiss-keyguard', check=False)
-adb('install', '-r', '-t', str(APK))
-adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
-adb('shell','am','set-debug-app','--persistent',PACKAGE)
-adb('logcat', '-c')
-agent = None
-pid = None
-try:
-    if os.environ.get('ARGON_WITH_FRIDA') != '1':
-        raise RuntimeError('Baseline run without a diagnostic agent')
+def compile_agent(mapping):
     import frida
-    adb('push', str(Path(os.environ['RUNNER_TEMP']) / 'frida-server'), '/data/local/tmp/argon-frida-server')
-    adb('shell', 'chmod', '755', '/data/local/tmp/argon-frida-server')
-    adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
-    adb('forward', 'tcp:27042', 'tcp:27042')
-    device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
     source = r'''
 import Java from 'frida-java-bridge';
 const config = CONFIG;
@@ -204,9 +142,10 @@ function views(view, out) {
     const id=view.getId();
     let name='';
     if(id!==-1) try{name=view.getResources().getResourceEntryName(id).toString();}catch(_){}
-    if(['location_bar','url_bar','toolbar','control_container'].includes(name)) {
+    {
+      const className=view.getClass().getName().toString();
       const position=Java.array('int',[0,0]); view.getLocationOnScreen(position);
-      out.push({id:name,alpha:view.getAlpha(),visibility:view.getVisibility(),shown:view.isShown(),
+      out.push({id:name,className:className,alpha:view.getAlpha(),visibility:view.getVisibility(),shown:view.isShown(),
         translationY:view.getTranslationY(),x:position[0],y:position[1],width:view.getWidth(),height:view.getHeight()});
     }
     if(Java.use('android.view.ViewGroup').class.isInstance(view)) {
@@ -247,8 +186,49 @@ rpc.exports.capture = function(label) {
 };
 '''.replace('CONFIG', json.dumps(mapping))
     project=Path('.frida-agent').resolve()
-    (project/'agent.ts').write_text(source)
-    bundle=frida.Compiler().build('agent.ts',project_root=str(project))
+    (project/'agent.ts').write_text('// @ts-nocheck\n'+source)
+    compiler=frida.Compiler()
+    compiler.on('diagnostics',lambda diag: (OUT/'compiler-diagnostics.json').write_text(json.dumps(diag,indent=2)))
+    bundle=compiler.build('agent.ts',project_root=str(project))
+    (project/'agent.bundle.js').write_text(bundle)
+    return bundle
+
+
+APK = next(Path('.apk-input').rglob('*.apk'))
+(OUT/'original-apk-sha256.txt').write_text(hashlib.sha256(APK.read_bytes()).hexdigest())
+mapping = dex_map(APK)
+with zipfile.ZipFile(APK) as archive:
+    mapping['localeAssets'] = [name for name in archive.namelist() if name.startswith('assets/') and name.endswith('.pak')]
+print('Locale assets:', mapping['localeAssets'], flush=True)
+print('DEX map:', mapping, flush=True)
+if '--compile-only' in sys.argv:
+    compile_agent(mapping)
+    print('Compiled diagnostic agent',flush=True)
+    sys.exit(0)
+(OUT / 'device.txt').write_text(adb('shell', 'getprop'))
+print('Device ABIs:', adb('shell', 'getprop', 'ro.product.cpu.abilist').strip(), flush=True)
+adb('root', check=False)
+adb('wait-for-device')
+adb('shell', 'wm', 'size', '1080x2400')
+adb('shell', 'wm', 'density', '420')
+adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP')
+adb('shell', 'wm', 'dismiss-keyguard', check=False)
+adb('install', '-r', '-t', str(APK))
+adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
+adb('shell','am','set-debug-app','--persistent',PACKAGE)
+adb('logcat', '-c')
+agent = None
+pid = None
+try:
+    if os.environ.get('ARGON_WITH_FRIDA') != '1':
+        raise RuntimeError('Baseline run without a diagnostic agent')
+    import frida
+    adb('push', str(Path(os.environ['RUNNER_TEMP']) / 'frida-server'), '/data/local/tmp/argon-frida-server')
+    adb('shell', 'chmod', '755', '/data/local/tmp/argon-frida-server')
+    adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
+    adb('forward', 'tcp:27042', 'tcp:27042')
+    device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
+    bundle=Path('.frida-agent/agent.bundle.js').read_text()
     pid = device.spawn([PACKAGE])
     session = device.attach(pid)
     agent = session.create_script(bundle)
