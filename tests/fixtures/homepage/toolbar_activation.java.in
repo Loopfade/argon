@@ -1,0 +1,4 @@
+    private void onTabOrModelChanged() {
+        mToolbar.onTabOrModelChanged();
+        checkIfNtpLoaded();
+    }

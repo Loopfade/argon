@@ -11,6 +11,8 @@ FIXTURES = ROOT / 'tests/fixtures/homepage'
 DELEGATE_API = Path('chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java')
 TOOLBAR_PHONE = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarPhone.java')
 PHONE_TOKEN = TOOLBAR_PHONE.with_name('PhoneCaptureStateToken.java')
+RESOURCE_COORDINATOR = Path('components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/ViewResourceCoordinatorLayout.java')
+VIEW_RESOURCE_ADAPTER = Path('ui/android/java/src/org/chromium/ui/resources/dynamics/ViewResourceAdapter.java')
 TOOLBAR_SCROLL_SIGNATURES = (
     '    private void onNtpScrollChanged(float scrollFraction) {',
     '    private void updateLocationBarTranslationOnScroll() {',
@@ -74,6 +76,25 @@ def verify_phone_capture_source(source, token):
         raise ValueError('Chromium snapshot token changed; review the compositor visibility regression')
 
 
+def verify_activation_sources(manager, container, coordinator, adapter):
+    from test_homepage import homepage
+
+    manager = manager.replace(homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE, 1)
+    if homepage.method_source(manager, homepage.TOOLBAR_ACTIVATION_SIGNATURE) != (
+            FIXTURES / 'toolbar_activation.java.in').read_text().rstrip('\n'):
+        raise ValueError('Chromium toolbar activation changed; review the first-frame regression')
+    fixture = (FIXTURES / 'toolbar_activation_capture.java.in').read_text()
+    for source, signature in (
+        (container, '        protected boolean isReadyForCapture() {'),
+        (coordinator, '    public void onDescendantInvalidated(View child, View target) {'),
+        (adapter, '    protected boolean isDirty() {'),
+        (adapter, '    public void onResourceRequested() {'),
+        (adapter, '    public void invalidate(@Nullable Rect dirtyRect) {'),
+    ):
+        if homepage.method_source(source, signature) != homepage.method_source(fixture, signature):
+            raise ValueError('Chromium resource invalidation changed; review the first-frame regression')
+
+
 # Android and browser boundaries only. The adapter itself and its interface are unmodified.
 STUBS = {
     'android/app/Activity.java': """
@@ -99,6 +120,13 @@ public class Rect {
     public void set(Rect r) { set(r.left, r.top, r.right, r.bottom); }
     public void setEmpty() { set(0, 0, 0, 0); }
     public int width() { return right - left; }
+    public boolean isEmpty() { return left>=right || top>=bottom; }
+    public void union(Rect r) {
+        if(r.isEmpty()) return;
+        if(isEmpty()) { set(r); return; }
+        left=Math.min(left,r.left); top=Math.min(top,r.top);
+        right=Math.max(right,r.right); bottom=Math.max(bottom,r.bottom);
+    }
     public void offset(int x, int y) { left+=x; right+=x; top+=y; bottom+=y; }
 }
 """,
@@ -107,6 +135,17 @@ public class Rect {
 package android.view;
 public class View {
     public int x, y, touches;
+    public final java.util.List<Runnable> preDraw = new java.util.ArrayList<>();
+    public float getX() { return x; }
+    public float getY() { return y; }
+    public int getWidth() { return 600; }
+    public int getHeight() { return 56; }
+    public View getRootView() { return this; }
+    public void postInvalidateOnAnimation() {}
+    public void dispatchPreDraw() {
+        var tasks = new java.util.ArrayList<>(preDraw); preDraw.clear();
+        for(var task : tasks) task.run();
+    }
     public void getLocationInWindow(int[] position) { position[0]=x; position[1]=y; }
     public boolean dispatchTouchEvent(MotionEvent event) { touches++; return true; }
 }
@@ -160,6 +199,7 @@ public class GURL {
     public GURL(String value) { uri=java.net.URI.create(value); }
     public String getScheme() { return uri.getScheme(); }
     public String getHost() { return uri.getHost(); }
+    public boolean isEmpty() { return uri.toString().isEmpty(); }
 }
 """,
     'org/chromium/chrome/browser/tab/Tab.java': """
@@ -290,6 +330,64 @@ public class VisibleUrlText {
 
 @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK required')
 class HomepageNativeTests(unittest.TestCase):
+    def test_activation_recovers_invalidations_dropped_before_the_first_frame(self):
+        from test_homepage import homepage
+
+        fixture = (FIXTURES / 'toolbar_activation_capture.java.in').read_text()
+        ready = homepage.method_source(fixture, '        protected boolean isReadyForCapture() {')
+        descendant = homepage.method_source(fixture,
+            '    public void onDescendantInvalidated(View child, View target) {')
+        resource = '\n\n'.join(homepage.method_source(fixture, signature) for signature in (
+            '    protected boolean isDirty() {', '    public void onResourceRequested() {',
+            '    public void invalidate(@Nullable Rect dirtyRect) {'))
+        variants = {
+            'original': (homepage.TOOLBAR_REFRESH_BEFORE, homepage.TOOLBAR_ACTIVATION_BEFORE, homepage.TOOLBAR_NATIVE_READY_BEFORE),
+            'redraw_only': (homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE, homepage.TOOLBAR_NATIVE_READY_BEFORE),
+            'activation_only': (homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE),
+            'fixed': (homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_NATIVE_READY_AFTER),
+        }
+        for variant, (refresh, activation, native_ready) in variants.items():
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                sources = dict(STUBS)
+                sources['androidx/core/view/OneShotPreDrawListener.java'] = '''
+package androidx.core.view;
+public class OneShotPreDrawListener {
+    public static OneShotPreDrawListener add(android.view.View view, Runnable action) {
+        view.preDraw.add(action); return new OneShotPreDrawListener();
+    }
+}
+'''
+                sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                    FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+                sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+                manager = (FIXTURES / 'ToolbarActivationManager.java.in').read_text()
+                for marker, source in (('ARGON_READY_METHOD', ready),
+                        ('ARGON_INVALIDATION_METHOD', descendant), ('ARGON_RESOURCE_METHODS', resource),
+                        ('ARGON_NATIVE_READY_BLOCK', native_ready),
+                        ('ARGON_ACTIVATION_METHOD', activation), ('ARGON_REFRESH_METHOD', refresh)):
+                    manager = manager.replace(marker, source)
+                sources['org/chromium/chrome/browser/toolbar/ToolbarManager.java'] = manager
+                sources['ToolbarActivationFlow.java'] = (FIXTURES / 'ToolbarActivationFlow.java.in').read_text()
+                for path, source in sources.items():
+                    target = root / path
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(source)
+                compiled = subprocess.run(['javac', '--release', '17', '-d', str(root),
+                    *map(str, root.rglob('*.java'))], capture_output=True, text=True)
+                self.assertEqual(compiled.returncode, 0, compiled.stderr)
+                result = subprocess.run(['java', '-ea', '-cp', str(root), 'ToolbarActivationFlow'],
+                                        capture_output=True, text=True)
+                if variant == 'fixed':
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('PASS: first layout', result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    expected = {'original': 'First layout must refresh',
+                                'redraw_only': 'Selecting a measured background homepage must refresh',
+                                'activation_only': 'Native initialization must allow a fresh activation request'}
+                    self.assertIn(expected[variant], result.stderr)
+
     def test_compositor_background_and_visibility_only_snapshot_changes(self):
         from test_homepage import homepage
 

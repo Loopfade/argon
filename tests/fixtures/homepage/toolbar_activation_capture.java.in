@@ -1,0 +1,44 @@
+        protected boolean isReadyForCapture() {
+            ToolbarViewResourceAdapter adapter =
+                    ((ToolbarViewResourceAdapter) getResourceAdapter());
+            if (adapter != null && adapter.isCapturingDisabled()) {
+                return false;
+            }
+            // This method is checked when invalidateChildInParent happens. Returning false will
+            // prevent the dirty bit from being set in ViewResourceAdapter. This is what we want
+            // when the visibility of this view is being toggled. Many of our children report
+            // material changes that propagate back up. But we don't care about any of this for
+            // capturing as the captures occur below this frame layout.
+            return mReadyForBitmapCapture
+                    && getVisibility() == VISIBLE
+                    && !mIsMidVisibilityToggle.getAsBoolean();
+        }
+
+    public void onDescendantInvalidated(View child, View target) {
+        super.onDescendantInvalidated(child, target);
+        if (isReadyForCapture()) {
+            if (mTempRect == null) mTempRect = new Rect();
+            int x = (int) Math.floor(child.getX());
+            int y = (int) Math.floor(child.getY());
+            mTempRect.set(x, y, x + child.getWidth(), y + child.getHeight());
+            mResourceAdapter.invalidate(mTempRect);
+        }
+    }
+
+    protected boolean isDirty() {
+        return !mDirtyRect.isEmpty();
+    }
+
+    public void onResourceRequested() {
+        if (!mOnResourceReadyObservers.isEmpty() && isDirty()) {
+            triggerBitmapCapture();
+        }
+    }
+
+    public void invalidate(@Nullable Rect dirtyRect) {
+        if (dirtyRect == null) {
+            mDirtyRect.set(0, 0, mView.getWidth(), mView.getHeight());
+        } else {
+            mDirtyRect.union(dirtyRect);
+        }
+    }

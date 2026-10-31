@@ -23,6 +23,8 @@ def input_tree(root):
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
         homepage.TOOLBAR_MANAGER: (FIXTURES / 'toolbar_constructor_init.java.in').read_text()
+            + '\n' + (FIXTURES / 'toolbar_activation.java.in').read_text()
+            + '\n' + homepage.TOOLBAR_NATIVE_READY_BEFORE
             + '\n' + homepage.TOOLBAR_BEFORE + '\n' + homepage.TOOLBAR_NAV_START
             + '\n' + homepage.TOOLBAR_NAV_FINISH + '\n    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
             + '    public @Nullable OmniboxStub getOmniboxStub() {\n    }\n',
@@ -107,6 +109,30 @@ class HomepageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
                 homepage.apply(src)
             self.assertEqual(before, snapshot(src))
+
+    def test_changed_activation_rejects_the_whole_patch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            path = src / homepage.TOOLBAR_MANAGER
+            path.write_text(path.read_text().replace(
+                '        checkIfNtpLoaded();', '        checkIfNtpLoadedDifferently();', 1))
+            before = snapshot(src)
+            with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+                homepage.apply(src)
+            self.assertEqual(before, snapshot(src))
+
+    def test_previous_toolbar_refresh_upgrades_without_duplicates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            original = (src / homepage.TOOLBAR_MANAGER).read_text()
+            current = homepage.patch_toolbar(original)
+            previous = current.replace(homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_REFRESH_BEFORE)
+            previous = previous.replace(homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE)
+            previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE)
+            self.assertEqual(homepage.patch_toolbar(previous), current)
+            self.assertEqual(homepage.patch_toolbar(current), current)
 
     def test_changed_phone_capture_rejects_the_whole_patch(self):
         for before, after in (
