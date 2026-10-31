@@ -1,0 +1,217 @@
+package org.chromium.chrome.browser.toolbar.top;
+
+import android.content.res.ColorStateList;
+import android.graphics.Point;
+import android.graphics.Rect;
+import java.lang.reflect.Method;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.ntp.ArgonHomeBridge;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.toolbar.top.ToolbarPhone.VisualState;
+import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.WindowAndroid;
+import org.chromium.url.GURL;
+
+/** Real ToolbarPhone capture methods and snapshot token; Android painting is a boundary. */
+public class ToolbarPhoneCaptureFlow {
+    private static final int VISIBLE = 0;
+    private final ChromeTabbedActivity activity;
+    private final NewTabPageDelegate delegate;
+    private final LocationBar mLocationBar = new LocationBar();
+    private final Point mNtpSearchBoxTranslation = new Point();
+    private final Rect mLocationBarBackgroundBounds = new Rect();
+    private final View hairline = new View();
+    private final FeatureFlags ChromeFeatureList = new FeatureFlags();
+    private boolean layoutRequested, inLayout, tabSwitcher, nativeReady = true;
+    private boolean mUrlFocusChangeInProgress, mOptionalButtonAnimationRunning, mTextureCaptureMode;
+    private long mOptionalButtonAnimationStartTimeMs;
+    private float mUrlExpansionFraction, mPreTextureCaptureAlpha = 1f, alpha = 1f;
+    private int mPreTextureCaptureVisibility, visibility, mVisualState;
+    private String hint = "DuckDuckGo", bitmap;
+    private final Rect capturedBounds = new Rect();
+
+ARGON_PHONE_CAPTURE_FIELD
+
+    private static class View {
+        static final int VISIBLE = 0;
+        float alpha = 1f;
+        int visibility;
+        float getAlpha() { return alpha; }
+        void setVisibility(int value) { visibility = value; }
+    }
+    private static class Status {
+        boolean animating;
+        boolean isStatusIconAnimating() { return animating; }
+        long getAnimationStartTimeMs() { return 0; }
+    }
+    private static class LocationBar {
+        final View view = new View();
+        final Status status = new Status();
+        View getPhoneCoordinator() { return view; }
+        Status getStatusCoordinator() { return status; }
+    }
+    private static class FeatureFlags {
+        final Feature sToolbarPhoneAnimationRefactor = new Feature();
+        private static class Feature {
+            boolean enabled;
+            boolean isEnabled() { return enabled; }
+        }
+    }
+    private static class TimeUtils { static long elapsedRealtimeMillis() { return 10_000; } }
+    private static class RecordHistogram {
+        static void recordMediumTimesHistogram(String name, long value) {}
+    }
+    private static class TopToolbarBlockCaptureReason {
+        static final int LAYOUT_REQUESTED = 1, URL_BAR_HAS_FOCUS = 2, URL_BAR_FOCUS_IN_PROGRESS = 3,
+                OPTIONAL_BUTTON_ANIMATION_IN_PROGRESS = 4, STATUS_ICON_ANIMATION_IN_PROGRESS = 5,
+                TAB_SWITCHER_MODE = 6, NTP_Y_TRANSLATION = 7, SNAPSHOT_SAME = 8;
+    }
+    private static class CaptureReadinessResult {
+        static final long STUCK_ON_ANIMATION_BLOCK_REASON_THRESHOLD_MS = 1000;
+        final boolean ready;
+        final int reason;
+        CaptureReadinessResult(boolean ready, int reason) { this.ready = ready; this.reason = reason; }
+        static CaptureReadinessResult notReady(int reason) { return new CaptureReadinessResult(false, reason); }
+        static CaptureReadinessResult readyWithSnapshotDifference(int reason) {
+            return new CaptureReadinessResult(true, reason);
+        }
+    }
+
+    private ToolbarPhoneCaptureFlow(ChromeTabbedActivity activity, NewTabPageDelegate delegate,
+            boolean refactored) {
+        this.activity = activity;
+        this.delegate = delegate;
+        ChromeFeatureList.sToolbarPhoneAnimationRefactor.enabled = refactored;
+    }
+    private boolean isLocationBarShownInNtp() { return delegate.isLocationBarShown(); }
+    private boolean isNativeLibraryReady() { return nativeReady; }
+    private boolean isLayoutRequested() { return layoutRequested; }
+    private boolean isInLayout() { return inLayout; }
+    private boolean isInTabSwitcherMode() { return tabSwitcher; }
+    private boolean urlHasFocus() { return activity.toolbar.focused; }
+    private float getAlpha() { return alpha; }
+    private void setAlpha(float value) { alpha = value; }
+    private int getVisibility() { return visibility; }
+    private void setVisibility(int value) { visibility = value; }
+    private View getToolbarHairline() { return hairline; }
+    private boolean hideHairlineForIncognitoNtp() { return false; }
+    private boolean hideHairlineForInterstitial() { return false; }
+    private boolean hideHairlineForRegularNtpTextureCapture() { return isLocationBarShownInNtp(); }
+    private boolean isToolbarHairlineSuppressed() { return false; }
+    private void updateHairlineVisibility() {}
+    private void updateLocationBarBackgroundBounds(Rect bounds, int state) { bounds.set(20, 5, 600, 61); }
+    private int visualState() { return isLocationBarShownInNtp() ? VisualState.NEW_TAB_NORMAL : VisualState.NORMAL; }
+    private PhoneCaptureStateToken generateToolbarSnapshotState() {
+        // Hold URL, dimensions, colors and other token properties fixed while visibility changes.
+        return new PhoneCaptureStateToken(1, 2, 1, null, visualState(),
+                new VisibleUrlText("", hint), 3, new ColorStateList(1), true,
+                false, false, 0f, 400, 0, 400);
+    }
+    private void state(float expansion, float alpha) {
+        mUrlExpansionFraction = expansion;
+        mLocationBar.view.alpha = alpha;
+    }
+    private boolean capture(String livePixels) {
+        mVisualState = visualState();
+        if (!getReadinessStateWithSuppression().ready) return false;
+        setTextureCaptureMode(true);
+        getLocationBarContentRect(capturedBounds);
+        capturedBounds.offset(7, 11); // ToolbarControlContainer converts to container coordinates.
+        bitmap = livePixels;
+        setTextureCaptureMode(false);
+        return true;
+    }
+    private void checkHidden(String context) {
+        check(capturedBounds.width() == 0, "Compositor background must be absent: " + context);
+        check("".equals(bitmap), "Compositor bitmap must not retain omnibox text: " + context);
+    }
+    private static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+    private static Object invoke(Object target, String name, Class<?>[] types, Object... values)
+            throws Exception {
+        Method method = ArgonHomeBridge.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method.invoke(target, values);
+    }
+    private static Object home(WebContents contents, long observer) throws Exception {
+        Object page = invoke(null, "create", new Class<?>[] {WebContents.class, long.class}, contents, observer);
+        invoke(page, "updateBounds", new Class<?>[] {float.class, float.class, float.class, float.class, float.class},
+                10f, 100f, 300f, 56f, 0f);
+        return page;
+    }
+    public static void main(String[] args) throws Exception {
+        for (boolean refactored : new boolean[] {false, true}) {
+            ChromeTabbedActivity activity = new ChromeTabbedActivity();
+            WindowAndroid window = new WindowAndroid(); window.activity = activity;
+            WebContents contents = new WebContents(); contents.window = window;
+            Tab tab = new Tab(); tab.contents = contents; tab.url = new GURL("chrome://argon/");
+            activity.tab = tab;
+            home(contents, 7);
+            NewTabPageDelegate delegate = ArgonHomeBridge.wrap(() -> activity.tab,
+                    new android.view.View(), NewTabPageDelegate.EMPTY, value -> {});
+            check(delegate.isLocationBarShown(), "Real WebUI delegate must be active");
+
+            ToolbarPhoneCaptureFlow empty = new ToolbarPhoneCaptureFlow(activity, delegate, refactored);
+            empty.state(0f, 0f);
+            check(empty.capture(""), "First resting frame must be capturable");
+            empty.checkHidden("first homepage layout");
+
+            ToolbarPhoneCaptureFlow flow = new ToolbarPhoneCaptureFlow(activity, delegate, refactored);
+            for (int reopen = 0; reopen < 5; reopen++) {
+                flow.state(1f, 1f);
+                check(flow.capture("DuckDuckGo"), "Showing the scrolled omnibox must refresh the snapshot");
+                check(flow.capturedBounds.width() > 0, "Visible omnibox needs a compositor background");
+                flow.state(0f, 0f);
+                check(flow.capture(""), "Visibility-only change must refresh the cached omnibox bitmap");
+                flow.checkHidden("homepage reopen " + reopen);
+                check(!flow.capture("unused"), "Identical resting frame must retain snapshot suppression");
+            }
+
+            flow.state(1f, 1f); flow.hint = "Google";
+            check(flow.capture("Google"), "Provider update must reach a visible toolbar snapshot");
+            activity.toolbar.focused = true;
+            check(!flow.capture("focused"), "Focused input must retain capture suppression");
+            activity.toolbar.focused = false;
+            flow.state(0f, 0f);
+            check(flow.capture(""), "Cancelling input must refresh the resting snapshot");
+            flow.checkHidden("cancel after provider change");
+            flow.layoutRequested = true;
+            check(!flow.capture("layout"), "Pending layout must retain capture suppression");
+            flow.layoutRequested = false; flow.mUrlFocusChangeInProgress = true;
+            check(!flow.capture("animation"), "Focus animation must retain capture suppression");
+            flow.mUrlFocusChangeInProgress = false; flow.mNtpSearchBoxTranslation.y = 10;
+            check(!flow.capture("translation"), "NTP motion must retain capture suppression");
+            flow.mNtpSearchBoxTranslation.y = 0;
+
+            flow.state(1f, 1f); flow.nativeReady = false;
+            flow.capture("");
+            flow.checkHidden("before native initialization");
+            flow.nativeReady = true;
+            check(flow.capture("Google") && flow.capturedBounds.width() > 0,
+                    "Native initialization must invalidate an otherwise identical snapshot");
+
+            for (int visit = 0; visit < 3; visit++) {
+                ArgonHomeBridge.onNavigationStarted(tab, "https://example.com/");
+                tab.url = new GURL("https://example.com/"); flow.state(0f, 1f);
+                check(flow.capture("example.com") && flow.capturedBounds.width() > 0,
+                        "Ordinary websites must keep their visible address bar");
+                tab.url = new GURL("chrome://argon/");
+                ArgonHomeBridge.onNavigationFinished(tab, false); flow.state(0f, 0f);
+                check(flow.capture(""), "Returning home from a website must refresh the snapshot");
+                flow.checkHidden("return from website " + visit);
+            }
+            home(contents, 8); // Reconnect a restored document with identical bounds and URL.
+            flow.capture("");
+            flow.checkHidden("restored homepage");
+            tab.incognito = true; flow.state(0f, 1f);
+            check(flow.capture("incognito") && flow.capturedBounds.width() > 0,
+                    "Incognito without an Argon fakebox must keep its stock address bar");
+        }
+        System.out.println("PASS: compositor background bounds and visibility-aware snapshot suppression");
+    }
+
+ARGON_PHONE_CAPTURE_METHODS
+}

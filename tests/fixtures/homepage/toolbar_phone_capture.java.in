@@ -1,0 +1,88 @@
+    public void getLocationBarContentRect(Rect outRect) {
+        updateLocationBarBackgroundBounds(outRect, VisualState.NORMAL);
+    }
+
+    private CaptureReadinessResult getReadinessStateWithSuppression() {
+        if (isLayoutRequested() || isInLayout()) {
+            return CaptureReadinessResult.notReady(TopToolbarBlockCaptureReason.LAYOUT_REQUESTED);
+        } else if (urlHasFocus()) {
+            return CaptureReadinessResult.notReady(TopToolbarBlockCaptureReason.URL_BAR_HAS_FOCUS);
+        } else if (mUrlFocusChangeInProgress) {
+            return CaptureReadinessResult.notReady(
+                    TopToolbarBlockCaptureReason.URL_BAR_FOCUS_IN_PROGRESS);
+        } else if (mOptionalButtonAnimationRunning) {
+            long timeSinceAnimationStartMs =
+                    TimeUtils.elapsedRealtimeMillis() - mOptionalButtonAnimationStartTimeMs;
+            if (timeSinceAnimationStartMs
+                    > CaptureReadinessResult.STUCK_ON_ANIMATION_BLOCK_REASON_THRESHOLD_MS) {
+                RecordHistogram.recordMediumTimesHistogram(
+                        "Android.TopToolbar.CaptureBlocked.OptionalButtonAnimationDuration",
+                        timeSinceAnimationStartMs);
+            }
+            return CaptureReadinessResult.notReady(
+                    TopToolbarBlockCaptureReason.OPTIONAL_BUTTON_ANIMATION_IN_PROGRESS);
+        } else if (mLocationBar.getStatusCoordinator() != null
+                && mLocationBar.getStatusCoordinator().isStatusIconAnimating()) {
+            long timeSinceAnimationStartMs =
+                    TimeUtils.elapsedRealtimeMillis()
+                            - mLocationBar.getStatusCoordinator().getAnimationStartTimeMs();
+            if (timeSinceAnimationStartMs
+                    > CaptureReadinessResult.STUCK_ON_ANIMATION_BLOCK_REASON_THRESHOLD_MS) {
+                RecordHistogram.recordMediumTimesHistogram(
+                        "Android.TopToolbar.CaptureBlocked.StatusIconAnimationDuration",
+                        timeSinceAnimationStartMs);
+            }
+            // TODO(crbug.com/40860241): It may be possible to remove the above null check.
+            return CaptureReadinessResult.notReady(
+                    TopToolbarBlockCaptureReason.STATUS_ICON_ANIMATION_IN_PROGRESS);
+        } else if (isInTabSwitcherMode()) {
+            return CaptureReadinessResult.notReady(TopToolbarBlockCaptureReason.TAB_SWITCHER_MODE);
+        } else if (mNtpSearchBoxTranslation.y != 0) {
+            return CaptureReadinessResult.notReady(TopToolbarBlockCaptureReason.NTP_Y_TRANSLATION);
+        } else {
+            PhoneCaptureStateToken newSnapshotState = generateToolbarSnapshotState();
+            @ToolbarSnapshotDifference
+            int snapshotDifference =
+                    PhoneCaptureStateToken.getAnyDifference(
+                            mPhoneCaptureStateToken, newSnapshotState);
+            if (snapshotDifference == ToolbarSnapshotDifference.NONE) {
+                return CaptureReadinessResult.notReady(TopToolbarBlockCaptureReason.SNAPSHOT_SAME);
+            } else {
+                return CaptureReadinessResult.readyWithSnapshotDifference(snapshotDifference);
+            }
+        }
+    }
+
+    public void setTextureCaptureMode(boolean textureMode) {
+        assert mTextureCaptureMode != textureMode;
+        mTextureCaptureMode = textureMode;
+        if (mTextureCaptureMode) {
+            if (ChromeFeatureList.sToolbarPhoneAnimationRefactor.isEnabled()) {
+                updateLocationBarBackgroundBounds(mLocationBarBackgroundBounds, mVisualState);
+            }
+            if (!hideHairlineForIncognitoNtp()
+                    && !hideHairlineForInterstitial()
+                    && !hideHairlineForRegularNtpTextureCapture()
+                    && !isToolbarHairlineSuppressed()) {
+                getToolbarHairline().setVisibility(VISIBLE);
+            }
+            mPreTextureCaptureAlpha = getAlpha();
+            mPreTextureCaptureVisibility = getVisibility();
+            setAlpha(1);
+            setVisibility(View.VISIBLE);
+        } else {
+            setAlpha(mPreTextureCaptureAlpha);
+            setVisibility(mPreTextureCaptureVisibility);
+            updateHairlineVisibility();
+            mPreTextureCaptureAlpha = 1f;
+
+            // When texture mode is turned off, we know a capture has just been completed. Update
+            // our snapshot so that we can suppress correctly on the next
+            // #isReadyForTextureCapture() call.
+            mPhoneCaptureStateToken = generateToolbarSnapshotState();
+        }
+    }
+
+    private boolean isLocationBarCurrentlyShown() {
+        return !isLocationBarShownInNtp() || mUrlExpansionFraction > 0;
+    }

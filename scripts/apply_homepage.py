@@ -20,11 +20,12 @@ URL_RESOLVER_FACTORY = Path('chrome/browser/url_constants/android/java/src/org/c
 TABBED_ACTIVITY = Path('chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java')
 TOOLBAR_MANAGER = Path('chrome/android/java/src/org/chromium/chrome/browser/toolbar/ToolbarManager.java')
 TOOLBAR_CONTAINER = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java')
+TOOLBAR_PHONE = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarPhone.java')
 JAVA_CATALOG = Path('chrome/android/chrome_java_sources.gni')
 JNI_CATALOG = Path('chrome/android/BUILD.gn')
 JAVA_BRIDGE = Path('chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java')
 INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
-               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, JAVA_CATALOG, JNI_CATALOG)
+               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, JAVA_CATALOG, JNI_CATALOG)
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
@@ -50,6 +51,45 @@ CAPTURE_AFTER = '''                    // ARGON: WebUI NTPs also change their fa
                                                     .getNewTabPageDelegate()
                                                     .isLocationBarShown());
                     if (!isNativePageOrNtp && mConstraintsObserver.areControlsLocked()) {'''
+
+PHONE_RECT_SIGNATURE = '    public void getLocationBarContentRect(Rect outRect) {'
+PHONE_READY_SIGNATURE = '    private CaptureReadinessResult getReadinessStateWithSuppression() {'
+PHONE_TEXTURE_SIGNATURE = '    public void setTextureCaptureMode(boolean textureMode) {'
+PHONE_RECT_DIGEST = '54471bfcbc436e9471359e579be7f4ab05ffd65eb9cff305bc5161575addb43e'
+PHONE_READY_DIGEST = 'cbe57c21626c67efb223444dc6c65c93731f11ab8bf67a07f2676c8a404290e1'
+PHONE_TEXTURE_DIGEST = 'ee79c888cfb44a6a9d2028684608477d0d0014ba9003c15a8f0030f0a358f0ca'
+PHONE_RECT_BEFORE = '''        updateLocationBarBackgroundBounds(outRect, VisualState.NORMAL);'''
+PHONE_RECT_AFTER = '''        // ARGON: the compositor draws this background separately from the bitmap.
+        // A transparent Android omnibox must not leave a second, untouchable pill.
+        if (!isLocationBarVisibleForCapture()) {
+            outRect.setEmpty();
+            return;
+        }
+''' + PHONE_RECT_BEFORE
+PHONE_READY_BEFORE = '''            PhoneCaptureStateToken newSnapshotState = generateToolbarSnapshotState();'''
+PHONE_READY_AFTER = '''            // ARGON: visibility can change while all snapshot-token properties stay equal.
+            // Capture the new bitmap and background bounds instead of reusing the old omnibox.
+            if (mLocationBarVisibleInLastCapture != isLocationBarVisibleForCapture()) {
+                return CaptureReadinessResult.readyWithSnapshotDifference(
+                        ToolbarSnapshotDifference.VISUAL_STATE);
+            }
+''' + PHONE_READY_BEFORE
+PHONE_TEXTURE_BEFORE = '''            mPhoneCaptureStateToken = generateToolbarSnapshotState();'''
+PHONE_TEXTURE_AFTER = PHONE_TEXTURE_BEFORE + '''
+            mLocationBarVisibleInLastCapture = isLocationBarVisibleForCapture();'''
+PHONE_CAPTURE_FIELD_BEFORE = '    private @Nullable PhoneCaptureStateToken mPhoneCaptureStateToken;'
+PHONE_CAPTURE_FIELD_AFTER = PHONE_CAPTURE_FIELD_BEFORE + '''
+    private boolean mLocationBarVisibleInLastCapture;'''
+PHONE_VISIBILITY_BEFORE = '''    private boolean isLocationBarCurrentlyShown() {
+        return !isLocationBarShownInNtp() || mUrlExpansionFraction > 0;
+    }'''
+PHONE_VISIBILITY_AFTER = PHONE_VISIBILITY_BEFORE + '''
+
+    private boolean isLocationBarVisibleForCapture() {
+        return isNativeLibraryReady()
+                && isLocationBarCurrentlyShown()
+                && mLocationBar.getPhoneCoordinator().getAlpha() > 0f;
+    }'''
 
 STARTUP_BEFORE = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
                 if (isTabNtp && !currentTab.isNativePage() && !isTabWebUiNtp) {'''
@@ -173,6 +213,17 @@ def patch_toolbar_capture(text):
                            CAPTURE_BEFORE, CAPTURE_AFTER)
 
 
+def patch_phone_capture(text):
+    for signature, digest, before, after in (
+        (PHONE_RECT_SIGNATURE, PHONE_RECT_DIGEST, PHONE_RECT_BEFORE, PHONE_RECT_AFTER),
+        (PHONE_READY_SIGNATURE, PHONE_READY_DIGEST, PHONE_READY_BEFORE, PHONE_READY_AFTER),
+        (PHONE_TEXTURE_SIGNATURE, PHONE_TEXTURE_DIGEST, PHONE_TEXTURE_BEFORE, PHONE_TEXTURE_AFTER),
+    ):
+        text = reviewed_method(text, signature, digest, before, after)
+    text = replace_once(text, PHONE_CAPTURE_FIELD_BEFORE, PHONE_CAPTURE_FIELD_AFTER)
+    return replace_once(text, PHONE_VISIBILITY_BEFORE, PHONE_VISIBILITY_AFTER)
+
+
 def patch_configs(text):
     text = replace_once(text,
         '#include "build/build_config.h"',
@@ -289,6 +340,7 @@ def apply(src):
                   (TABBED_ACTIVITY, patch_startup_draw),
                   (TOOLBAR_MANAGER, patch_toolbar), (JAVA_CATALOG, patch_java_catalog),
                   (TOOLBAR_CONTAINER, patch_toolbar_capture),
+                  (TOOLBAR_PHONE, patch_phone_capture),
                   (JNI_CATALOG, patch_jni_catalog)]
     writes = {src / path: transform((src / path).read_text()) for path, transform in transforms}
     for source in (OVERLAY / UI).iterdir():

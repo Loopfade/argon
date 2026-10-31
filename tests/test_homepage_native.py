@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'tests/fixtures/homepage'
 DELEGATE_API = Path('chrome/browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java')
 TOOLBAR_PHONE = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarPhone.java')
+PHONE_TOKEN = TOOLBAR_PHONE.with_name('PhoneCaptureStateToken.java')
 TOOLBAR_SCROLL_SIGNATURES = (
     '    private void onNtpScrollChanged(float scrollFraction) {',
     '    private void updateLocationBarTranslationOnScroll() {',
@@ -52,6 +53,27 @@ def verify_toolbar_capture_source(source):
             raise ValueError('Chromium toolbar capture changed; review the compositor regression')
 
 
+def verify_phone_capture_source(source, token):
+    from test_homepage import homepage
+
+    reviewed = source
+    for before, after in (
+        (homepage.PHONE_RECT_BEFORE, homepage.PHONE_RECT_AFTER),
+        (homepage.PHONE_READY_BEFORE, homepage.PHONE_READY_AFTER),
+        (homepage.PHONE_TEXTURE_BEFORE, homepage.PHONE_TEXTURE_AFTER),
+        (homepage.PHONE_VISIBILITY_BEFORE, homepage.PHONE_VISIBILITY_AFTER),
+    ):
+        reviewed = reviewed.replace(after, before, 1)
+    fixture = (FIXTURES / 'toolbar_phone_capture.java.in').read_text()
+    for signature in (homepage.PHONE_RECT_SIGNATURE, homepage.PHONE_READY_SIGNATURE,
+                      homepage.PHONE_TEXTURE_SIGNATURE,
+                      '    private boolean isLocationBarCurrentlyShown() {'):
+        if homepage.method_source(reviewed, signature) != homepage.method_source(fixture, signature):
+            raise ValueError('Chromium phone capture changed; review the compositor visibility regression')
+    if token != (FIXTURES / 'PhoneCaptureStateToken.java.in').read_text():
+        raise ValueError('Chromium snapshot token changed; review the compositor visibility regression')
+
+
 # Android and browser boundaries only. The adapter itself and its interface are unmodified.
 STUBS = {
     'android/app/Activity.java': """
@@ -75,6 +97,9 @@ public class Rect {
     public int left, top, right, bottom;
     public void set(int a, int b, int c, int d) { left=a; top=b; right=c; bottom=d; }
     public void set(Rect r) { set(r.left, r.top, r.right, r.bottom); }
+    public void setEmpty() { set(0, 0, 0, 0); }
+    public int width() { return right - left; }
+    public void offset(int x, int y) { left+=x; right+=x; top+=y; bottom+=y; }
 }
 """,
     'android/view/MotionEvent.java': 'package android.view; public class MotionEvent {}',
@@ -219,8 +244,99 @@ public class ArgonHomeBridgeJni {
 }
 
 
+CAPTURE_STUBS = {
+    'android/content/res/ColorStateList.java': '''
+package android.content.res;
+public class ColorStateList {
+    private final int color;
+    public ColorStateList(int color) { this.color = color; }
+    public int getDefaultColor() { return color; }
+}
+''',
+    'androidx/annotation/ColorInt.java': 'package androidx.annotation; public @interface ColorInt {}',
+    'androidx/annotation/DrawableRes.java': 'package androidx.annotation; public @interface DrawableRes {}',
+    'org/chromium/chrome/browser/browser_controls/BrowserControlsStateProvider.java': '''
+package org.chromium.chrome.browser.browser_controls;
+public class BrowserControlsStateProvider { public @interface ControlsPosition {} }
+''',
+    'org/chromium/chrome/browser/toolbar/optional_button/ButtonData.java': '''
+package org.chromium.chrome.browser.toolbar.optional_button;
+public interface ButtonData {}
+''',
+    'org/chromium/chrome/browser/toolbar/top/ToolbarPhone.java': '''
+package org.chromium.chrome.browser.toolbar.top;
+public class ToolbarPhone { public @interface VisualState { int NORMAL=0, NEW_TAB_NORMAL=1; } }
+''',
+    'org/chromium/chrome/browser/toolbar/top/ToolbarSnapshotDifference.java': '''
+package org.chromium.chrome.browser.toolbar.top;
+public @interface ToolbarSnapshotDifference {
+    int NONE=0, NULL=1, TINT=2, THEME_COLOR=3, TAB_COUNT=4, OPTIONAL_BUTTON=5, VISUAL_STATE=6,
+        SECURITY_ICON=7, SHOWING_UPDATE_BADGE=8, PAINT_PREVIEW=9, LOCATION_BAR_WIDTH=10,
+        URL_TEXT=11, HOME_BUTTON=12, CONTROLS_POSITION=13, UNKNOWN=14;
+}
+''',
+    'org/chromium/chrome/browser/toolbar/top/VisibleUrlText.java': '''
+package org.chromium.chrome.browser.toolbar.top;
+public class VisibleUrlText {
+    private final String text, hint;
+    public VisibleUrlText(String text, String hint) { this.text=text; this.hint=hint; }
+    public static boolean isVisuallyEquivalent(VisibleUrlText a, VisibleUrlText b) {
+        return a.text.equals(b.text) && a.hint.equals(b.hint);
+    }
+}
+''',
+}
+
+
 @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK required')
 class HomepageNativeTests(unittest.TestCase):
+    def test_compositor_background_and_visibility_only_snapshot_changes(self):
+        from test_homepage import homepage
+
+        fixture = homepage.PHONE_CAPTURE_FIELD_BEFORE + '\n' + (
+            FIXTURES / 'toolbar_phone_capture.java.in').read_text()
+        variants = {
+            'original': fixture,
+            'background_only': homepage.replace_once(homepage.reviewed_method(
+                fixture, homepage.PHONE_RECT_SIGNATURE, homepage.PHONE_RECT_DIGEST,
+                homepage.PHONE_RECT_BEFORE, homepage.PHONE_RECT_AFTER),
+                homepage.PHONE_VISIBILITY_BEFORE, homepage.PHONE_VISIBILITY_AFTER),
+            'fixed': homepage.patch_phone_capture(fixture),
+        }
+        for variant, capture in variants.items():
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                sources = {**STUBS, **CAPTURE_STUBS}
+                sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                    FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+                sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+                sources['org/chromium/chrome/browser/toolbar/top/PhoneCaptureStateToken.java'] = (
+                    FIXTURES / 'PhoneCaptureStateToken.java.in').read_text()
+                start = capture.index(homepage.PHONE_RECT_SIGNATURE)
+                field, methods = capture[:start], capture[start:]
+                sources['org/chromium/chrome/browser/toolbar/top/ToolbarPhoneCaptureFlow.java'] = (
+                    FIXTURES / 'ToolbarPhoneCaptureFlow.java.in').read_text().replace(
+                        'ARGON_PHONE_CAPTURE_FIELD', field).replace('ARGON_PHONE_CAPTURE_METHODS', methods)
+                for path, text in sources.items():
+                    target = root / path
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(text)
+                compiled = subprocess.run(
+                    ['javac', '--release', '17', '-d', str(root), *map(str, root.rglob('*.java'))],
+                    capture_output=True, text=True)
+                self.assertEqual(compiled.returncode, 0, compiled.stderr)
+                result = subprocess.run(
+                    ['java', '-ea', '-cp', str(root),
+                     'org.chromium.chrome.browser.toolbar.top.ToolbarPhoneCaptureFlow'],
+                    capture_output=True, text=True)
+                if variant == 'fixed':
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('PASS: compositor background bounds', result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('Compositor background must be absent' if variant == 'original'
+                                  else 'Visibility-only change must refresh', result.stderr)
+
     def test_toolbar_startup_binds_the_tab_provider_after_initialization(self):
         from test_homepage import homepage, input_tree
 
