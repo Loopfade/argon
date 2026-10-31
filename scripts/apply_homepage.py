@@ -295,7 +295,7 @@ TOOLBAR_REFRESH_BEFORE = '''    /** Refresh after the WebUI search box completes
     }
 
 '''
-TOOLBAR_REFRESH_AFTER = '''    /** Refresh the live WebUI toolbar now and its compositor resource after layout. */
+TOOLBAR_REFRESH_LAYOUT_BEFORE = '''    /** Refresh the live WebUI toolbar now and its compositor resource after layout. */
     public void onArgonHomeSearchBoxChanged() {
         if (mIsDestroyed) return;
         mLocationBarModel.notifyContentChanged();
@@ -315,6 +315,17 @@ TOOLBAR_REFRESH_AFTER = '''    /** Refresh the live WebUI toolbar now and its co
     }
 
 '''
+TOOLBAR_REFRESH_AFTER = TOOLBAR_REFRESH_LAYOUT_BEFORE.replace(
+    '''        // Child invalidations are ignored while controls are not ready or changing visibility.
+        // The next pre-draw runs after layout, when the normal capture checks can accept a frame.''',
+    '''        // ARGON: the pre-draw may still have a child layout request pending. A normal
+        // resource request can be suppressed and leave the previous visible omnibox cached.
+        // Complete the toolbar layout and publish its bitmap through Chromium's forced path.'''
+).replace(
+    '''            var resource = mControlContainer.getToolbarResourceAdapter();
+            resource.invalidate(null);
+            resource.onResourceRequested();''',
+    '''            mControlContainer.doSynchronousLayout(/* forceCaptureAfterLayout= */ true);''')
 TOOLBAR_NATIVE_READY_BEFORE = '''        // Allow bitmap capturing once everything has been initialized.
         Tab currentTab = tabModelSelector.getCurrentTab();
         if (currentTab != null
@@ -350,6 +361,8 @@ def patch_toolbar(text):
               '    public @Nullable OmniboxStub getOmniboxStub() {')
     if TOOLBAR_REFRESH_BEFORE in text:
         text = replace_once(text, TOOLBAR_REFRESH_BEFORE, TOOLBAR_REFRESH_AFTER)
+    if TOOLBAR_REFRESH_LAYOUT_BEFORE in text:
+        text = replace_once(text, TOOLBAR_REFRESH_LAYOUT_BEFORE, TOOLBAR_REFRESH_AFTER)
     return replace_once(text, anchor, TOOLBAR_REFRESH_AFTER + anchor)
 
 

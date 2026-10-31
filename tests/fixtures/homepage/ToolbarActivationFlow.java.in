@@ -91,6 +91,22 @@ public class ToolbarActivationFlow {
         check(manager.captures()>before && "".equals(manager.bitmap()),
                 "Native initialization must allow a fresh activation request");
 
+        manager.seed("old address");
+        manager.layoutPending = true;
+        manager.selected();
+        before = manager.layoutPasses;
+        manager.draw();
+        check("".equals(manager.bitmap()) && !manager.layoutPending && manager.layoutPasses>before,
+                "Layout pending at pre-draw must not lose the homepage compositor refresh");
+
+        manager.seed("old address");
+        manager.statusIconAnimating = true;
+        manager.selected();
+        manager.draw();
+        check("".equals(manager.bitmap()),
+                "A hidden status icon animation must not lose the homepage compositor refresh");
+        manager.statusIconAnimating = false;
+
         manager.onArgonHomeSearchBoxChanged();
         before = manager.captures();
         manager.mIsDestroyed = true;
