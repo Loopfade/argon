@@ -73,6 +73,9 @@ def dex_map(apk):
 
 APK = next(Path('.apk-input').rglob('*.apk'))
 mapping = dex_map(APK)
+with zipfile.ZipFile(APK) as archive:
+    mapping['localeAssets'] = [name for name in archive.namelist() if name.startswith('assets/') and name.endswith('.pak')]
+print('Locale assets:', mapping['localeAssets'], flush=True)
 print('DEX map:', mapping, flush=True)
 (OUT / 'device.txt').write_text(adb('shell', 'getprop'))
 print('Device ABIs:', adb('shell', 'getprop', 'ro.product.cpu.abilist').strip(), flush=True)
@@ -85,25 +88,39 @@ adb('shell', 'wm', 'dismiss-keyguard', check=False)
 adb('install', '-r', '-t', str(APK))
 adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
 adb('logcat', '-c')
-adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
-time.sleep(20)
-
-(OUT / '00-before-probe.png').write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
 agent = None
+pid = None
 try:
     if os.environ.get('ARGON_WITH_FRIDA') != '1':
         raise RuntimeError('Baseline run without a diagnostic agent')
     import frida
-    pid = int(adb('shell', 'pidof', PACKAGE).strip().split()[0])
     adb('push', str(Path(os.environ['RUNNER_TEMP']) / 'frida-server'), '/data/local/tmp/argon-frida-server')
     adb('shell', 'chmod', '755', '/data/local/tmp/argon-frida-server')
     adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
     adb('forward', 'tcp:27042', 'tcp:27042')
     device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
+    pid = device.spawn([PACKAGE])
     session = device.attach(pid)
     source = r'''
 const config = CONFIG;
 const history = [];
+// The x86 native bridge cannot invoke Chromium's ARM JNI exception callback when the
+// normal locale fallback probes a missing file. Select the same existing asset from
+// the standalone APK without throwing through libandroid_runtime. Toolbar methods
+// retain their original behavior; the capture hook below only records return values.
+Java.perform(() => {
+  const resource=Java.use('org.chromium.ui.base.ResourceBundle');
+  resource.getLocalePakResourcePath.overload('java.lang.String','int','boolean','boolean').implementation=
+    function(locale, gender, inBundle, logError) {
+      const suffix=['','_MASCULINE','_FEMININE','_NEUTER'][gender] || '';
+      const end='/'+locale+suffix+'.pak';
+      const choices=config.localeAssets.filter(path => path.endsWith(end));
+      const fallback=choices.find(path => path.startsWith('assets/locales/'));
+      const result=fallback || choices[0] || null;
+      send({localeBootstrap:locale.toString(),gender:gender,asset:result});
+      return result;
+    };
+});
 function fields(obj) {
   const result = {};
   for (let cls = obj.getClass(); cls !== null; cls = cls.getSuperclass()) {
@@ -171,9 +188,16 @@ rpc.exports.capture = function(label) {
     agent = session.create_script(source)
     agent.on('message', lambda message, data: print('FRIDA', message, flush=True))
     agent.load()
+    device.resume(pid)
 except Exception as error:
     (OUT / 'frida-error.txt').write_text(str(error))
     print('Frida probe unavailable:', error, flush=True)
+    if pid is None:
+        adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
+    else:
+        device.resume(pid)
+
+time.sleep(20)
 
 try:
     xml = capture('01-initial-home')
