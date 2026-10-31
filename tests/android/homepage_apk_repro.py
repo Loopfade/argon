@@ -103,6 +103,7 @@ try:
     session = device.attach(pid)
     source = r'''
 const config = CONFIG;
+const history = [];
 function fields(obj) {
   const result = {};
   for (let cls = obj.getClass(); cls !== null; cls = cls.getSuperclass()) {
@@ -136,9 +137,26 @@ function views(view, out) {
     }
   }catch(_){}
 }
+Java.perform(() => {
+  const method=Java.use(config.phone)[config.readiness].overload();
+  method.implementation=function() {
+    const result=method.call(this);
+    try {
+      const readiness=fields(result), stamp=JSON.stringify(readiness);
+      if(history.length===0 || history[history.length-1].stamp!==stamp) {
+        const item={at:Date.now(),stamp:stamp,readiness:readiness,views:[]};
+        views(Java.cast(this,Java.use('android.view.View')),item.views);
+        item.fields=fields(this);
+        history.push(item);
+        if(history.length>200)history.shift();
+      }
+    }catch(_){}
+    return result;
+  };
+});
 rpc.exports.capture = function(label) {
   return new Promise(resolve => Java.perform(()=>Java.scheduleOnMainThread(()=>{
-    const out={label:label,instances:[]};
+    const out={label:label,instances:[],history:history.slice()};
     Java.choose(config.phone || 'org.chromium.chrome.browser.toolbar.top.ToolbarPhone',{
       onMatch(instance) {
         const item={fields:fields(instance),views:[]};
