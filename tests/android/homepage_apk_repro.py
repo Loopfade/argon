@@ -276,7 +276,22 @@ try:
     new_home('04-original-new-home')
     adb('shell','touch',LOG+'-patch')
     new_home('05-experimental-new-home')
-    new_home('06-experimental-repeated-home')
+    xml=new_home('06-experimental-repeated-home')
+    if not tap_matching(xml,lambda a: a.get('class')=='android.widget.Button' and a.get('resource-id')=='search-input' and 'URL' in (a.get('text','')+a.get('content-desc',''))):
+        time.sleep(3)
+        xml=capture('06-experimental-accessible')
+        if not tap_matching(xml,lambda a: a.get('class')=='android.widget.Button' and a.get('resource-id')=='search-input' and 'URL' in (a.get('text','')+a.get('content-desc',''))):
+            raise RuntimeError('Native WebUI search button is not accessible for the focus regression')
+    time.sleep(3)
+    focused=capture('07-native-focused')
+    if not any(node.get('class')=='android.widget.EditText' and node.get('focused')=='true' for node in ET.fromstring(focused).iter('node')):
+        raise RuntimeError('Tapping the WebUI fakebox did not focus the native edit field')
+    adb('shell','input','keyevent','KEYCODE_BACK')
+    time.sleep(3)
+    cancelled=capture('08-native-cancelled')
+    if any(node.get('class')=='android.widget.EditText' and node.get('focused')=='true' for node in ET.fromstring(cancelled).iter('node')):
+        raise RuntimeError('Cancelling native input kept the edit field focused')
+    print('PASS_NATIVE_INPUT_FOCUS_AND_CANCEL',flush=True)
 finally:
     logcat=adb('logcat','-d','-v','threadtime',check=False)
     (OUT/'logcat.txt').write_text(logcat)
