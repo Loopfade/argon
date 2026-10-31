@@ -64,6 +64,16 @@ def dex_map(apk):
                     texts = [ins.get_output() for ins in method.get_instructions()
                              if ins.get_name().startswith('const-string')]
                     owner = cls.get_name()[1:-1].replace('/', '.')
+                    if any('Successfully loaded native library' in text for text in texts):
+                        calls=[ins.get_output() for ins in method.get_instructions() if ins.get_name().startswith('invoke-')]
+                        native=[]
+                        for call in calls:
+                            match=re.search(r'LJ/N;->([^\s(]+)',call)
+                            if match and match.group(1) not in native:
+                                native.append(match.group(1))
+                        result['loader']=owner
+                        result['loaderInit']=method.get_name()
+                        result['loaderNative']=native
                     if any('ToolbarManager.ToolbarManager' in text for text in texts):
                         result['manager'] = owner
                     if any('Android.TopToolbar.CaptureBlocked.StatusIconAnimationDuration' in text for text in texts):
@@ -107,7 +117,8 @@ def emulator_apk(original):
     return signed
 
 
-APK = emulator_apk(next(Path('.apk-input').rglob('*.apk')))
+APK = next(Path('.apk-input').rglob('*.apk'))
+(OUT/'original-apk-sha256.txt').write_text(hashlib.sha256(APK.read_bytes()).hexdigest())
 mapping = dex_map(APK)
 with zipfile.ZipFile(APK) as archive:
     mapping['localeAssets'] = [name for name in archive.namelist() if name.startswith('assets/') and name.endswith('.pak')]
@@ -125,9 +136,6 @@ adb('install', '-r', '-t', str(APK))
 adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
 adb('shell','am','set-debug-app','--persistent',PACKAGE)
 adb('logcat', '-c')
-adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
-time.sleep(20)
-(OUT / '00-before-probe.png').write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
 agent = None
 pid = None
 try:
@@ -139,12 +147,41 @@ try:
     adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
     adb('forward', 'tcp:27042', 'tcp:27042')
     device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
-    pid = int(adb('shell','pidof',PACKAGE).strip().split()[0])
-    session = device.attach(pid)
     source = r'''
 import Java from 'frida-java-bridge';
 const config = CONFIG;
 const history = [];
+// Chromium 156 installs an ARM FindClass callback in the main thread's JNI table.
+// x86 framework libraries cannot call that ARM pointer through the native bridge.
+// Restore the original table immediately after libraryLoaded returns. This only
+// affects the emulator's split-classloader compatibility, not toolbar behavior.
+Java.perform(() => {
+  const loader=Java.use(config.loader);
+  const init=loader[config.loaderInit].overload();
+  init.implementation=function() {
+    const entries=[], natives=Java.use('J.N');
+    for(const name of config.loaderNative) {
+      for(const overload of natives[name].overloads) {
+        entries.push(overload);
+        overload.implementation=function(...args) {
+          const env=Java.vm.getEnv().handle;
+          const original=env.readPointer();
+          const value=overload.call(this,...args);
+          const replaced=env.readPointer();
+          if(!replaced.equals(original)) {
+            env.writePointer(original);
+            send({emulatorJniRestored:true,entry:name,original:original.toString(),replaced:replaced.toString()});
+            setImmediate(()=>entries.forEach(entry=>entry.implementation=null));
+          }
+          return value;
+        };
+      }
+    }
+    return init.call(this);
+  };
+  send({emulatorJniBootstrap:true,loader:config.loader,init:config.loaderInit,entries:config.loaderNative});
+});
+
 function fields(obj) {
   const result = {};
   for (let cls = obj.getClass(); cls !== null; cls = cls.getSuperclass()) {
@@ -178,7 +215,7 @@ function views(view, out) {
     }
   }catch(_){}
 }
-Java.perform(() => {
+setTimeout(()=>Java.perform(() => {
   const method=Java.use(config.phone)[config.readiness].overload();
   method.implementation=function() {
     const result=method.call(this);
@@ -194,7 +231,7 @@ Java.perform(() => {
     }catch(_){}
     return result;
   };
-});
+}),10000);
 rpc.exports.capture = function(label) {
   return new Promise(resolve => Java.perform(()=>Java.scheduleOnMainThread(()=>{
     const out={label:label,instances:[],history:history.slice()};
@@ -212,12 +249,21 @@ rpc.exports.capture = function(label) {
     project=Path('.frida-agent').resolve()
     (project/'agent.ts').write_text(source)
     bundle=frida.Compiler().build('agent.ts',project_root=str(project))
+    pid = device.spawn([PACKAGE])
+    session = device.attach(pid)
     agent = session.create_script(bundle)
     agent.on('message', lambda message, data: print('FRIDA', message, flush=True))
     agent.load()
+    device.resume(pid)
 except Exception as error:
     (OUT / 'frida-error.txt').write_text(str(error))
     print('Frida probe unavailable:', error, flush=True)
+    if pid is None:
+        adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
+    else:
+        device.resume(pid)
+
+time.sleep(20)
 
 
 try:
