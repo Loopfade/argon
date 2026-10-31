@@ -10,6 +10,7 @@
 
 static jvmtiEnv* ti;
 static jniNativeInterface* original_jni;
+static const jniNativeInterface* previous_jni;
 static FILE* output;
 static char patch_path[1024];
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -64,11 +65,14 @@ static void views(JNIEnv* env, jobject view, int* count, bool* hidden) {
     }
   }
 }
+static void JNICALL entered(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method) {
+  if (method == library_loaded) previous_jni = env->functions;
+}
 static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread thread, jmethodID method,
                            jboolean exceptional, jvalue value) {
-  if (method == library_loaded && original_jni && env->functions->FindClass != original_jni->FindClass) {
+  if (method == library_loaded && previous_jni && env->functions != previous_jni) {
     // Undo Chromium's ARM FindClass callback in the host x86 JNI table for this emulator.
-    env->functions = original_jni;
+    env->functions = previous_jni;
     pthread_mutex_lock(&lock);
     fputs("{\"event\":\"emulator-jni-restored\"}\n", output); fflush(output);
     pthread_mutex_unlock(&lock);
@@ -130,6 +134,7 @@ extern "C" JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM* vm, char* options, void
   jvmtiCapabilities potential = {}, caps = {};
   ti->GetPotentialCapabilities(&potential);
   caps.can_generate_method_exit_events = potential.can_generate_method_exit_events;
+  caps.can_generate_method_entry_events = potential.can_generate_method_entry_events;
   caps.can_access_local_variables = potential.can_access_local_variables;
   jvmtiError capabilities = ti->AddCapabilities(&caps);
   jvmtiError table = ti->GetJNIFunctionTable(&original_jni);
@@ -137,7 +142,7 @@ extern "C" JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM* vm, char* options, void
           capabilities, caps.can_generate_method_exit_events, caps.can_access_local_variables, table);
   fflush(output);
   jvmtiEventCallbacks callbacks = {};
-  callbacks.ClassPrepare = prepared; callbacks.MethodExit = exited;
+  callbacks.ClassPrepare = prepared; callbacks.MethodEntry = entered; callbacks.MethodExit = exited;
   ti->SetEventCallbacks(&callbacks, offsetof(jvmtiEventCallbacks, MethodExit) + sizeof(callbacks.MethodExit));
   ti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr);
   jint count = 0; jclass* classes = nullptr;
@@ -151,7 +156,10 @@ extern "C" JNIEXPORT jint JNICALL Agent_OnAttach(JavaVM* vm, char* options, void
     for (int i = 0; i < count; ++i) {
       jvmtiThreadInfo info = {};
       if (ti->GetThreadInfo(threads[i], &info) == JVMTI_ERROR_NONE) {
-        if (info.name && !strcmp(info.name, "main")) ti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_METHOD_EXIT, threads[i]);
+        if (info.name && !strcmp(info.name, "main")) {
+          ti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_METHOD_ENTRY, threads[i]);
+          ti->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_METHOD_EXIT, threads[i]);
+        }
         release(info.name);
         if (info.thread_group) env->DeleteLocalRef(info.thread_group);
         if (info.context_class_loader) env->DeleteLocalRef(info.context_class_loader);

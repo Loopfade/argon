@@ -217,6 +217,8 @@ try:
     new_home('05-experimental-new-home')
     new_home('06-experimental-repeated-home')
 finally:
-    (OUT/'logcat.txt').write_text(adb('logcat','-d','-v','threadtime',check=False))
+    logcat=adb('logcat','-d','-v','threadtime',check=False)
+    (OUT/'logcat.txt').write_text(logcat)
+    print('CRASH_SUMMARY '+json.dumps([line for line in logcat.splitlines() if (' F DEBUG' in line or 'Fatal signal' in line or 'Undefined instruction' in line or ' F chromium' in line)][:120]),flush=True)
     (OUT/'activities.txt').write_text(adb('shell','dumpsys','activity','activities',check=False))
     (OUT/'final-probe.jsonl').write_text(adb('shell','cat',LOG,check=False))
