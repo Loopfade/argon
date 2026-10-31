@@ -11,19 +11,25 @@ permissions:
   actions: read
 jobs:
   reproduce:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: arm64, api: 35, artifact: 13048211687}
+          - {arch: arm, api: 30, artifact: 13047498994}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
-      - name: Получить проверенный ARM64 APK
+      - name: Получить проверенный ARM APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p .apk-input android-repro
-          gh api repos/Loopfade/argon/actions/artifacts/13048211687/zip > "$RUNNER_TEMP/argon-apk.zip"
+          gh api repos/Loopfade/argon/actions/artifacts/${{ matrix.artifact }}/zip > "$RUNNER_TEMP/argon-apk.zip"
           unzip -q "$RUNNER_TEMP/argon-apk.zip" -d .apk-input
           python3 -m venv "$RUNNER_TEMP/argon-ui-venv"
           "$RUNNER_TEMP/argon-ui-venv/bin/pip" install --disable-pip-version-check 'androguard==4.1.3' 'frida==17.24.3'
@@ -44,8 +50,8 @@ jobs:
           set -euo pipefail
           export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
           mkdir -p "$ANDROID_AVD_HOME"
-          sdkmanager --install 'emulator' 'system-images;android-30;google_apis;x86_64' > android-repro/sdk-install.txt
-          echo no | avdmanager create avd --force --name argon-repro --package 'system-images;android-30;google_apis;x86_64' --device pixel_7
+          sdkmanager --install 'emulator' 'system-images;android-${{ matrix.api }};google_apis;x86_64' > android-repro/sdk-install.txt
+          echo no | avdmanager create avd --force --name argon-repro --package 'system-images;android-${{ matrix.api }};google_apis;x86_64' --device pixel_7
           emulator -avd argon-repro -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -memory 4096 > android-repro/emulator.txt 2>&1 &
           emulator_pid=$!
           trap 'adb emu kill >/dev/null 2>&1 || true; kill "$emulator_pid" 2>/dev/null || true' EXIT
@@ -61,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: android-homepage-repro
+          name: android-homepage-repro-${{ matrix.arch }}
           path: android-repro/
           if-no-files-found: error
           retention-days: 7
