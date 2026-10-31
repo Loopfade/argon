@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/homepage-apk-repro.yml'
       - 'tests/android/homepage_apk_repro.py'
+      - 'tests/android/homepage_probe.cc'
   workflow_dispatch:
 permissions:
   contents: read
