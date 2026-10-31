@@ -85,15 +85,18 @@ adb('shell', 'wm', 'dismiss-keyguard', check=False)
 adb('install', '-r', '-t', str(APK))
 adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
 adb('logcat', '-c')
-adb('push', str(Path(os.environ['RUNNER_TEMP']) / 'frida-server'), '/data/local/tmp/argon-frida-server')
-adb('shell', 'chmod', '755', '/data/local/tmp/argon-frida-server')
-adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
-adb('forward', 'tcp:27042', 'tcp:27042')
+if os.environ.get('ARGON_WITH_FRIDA') == '1':
+    adb('push', str(Path(os.environ['RUNNER_TEMP']) / 'frida-server'), '/data/local/tmp/argon-frida-server')
+    adb('shell', 'chmod', '755', '/data/local/tmp/argon-frida-server')
+    adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
+    adb('forward', 'tcp:27042', 'tcp:27042')
 adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
 time.sleep(20)
 
 agent = None
 try:
+    if os.environ.get('ARGON_WITH_FRIDA') != '1':
+        raise RuntimeError('Baseline run without a diagnostic agent')
     import frida
     pid = int(adb('shell', 'pidof', PACKAGE).strip().split()[0])
     device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
