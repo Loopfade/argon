@@ -62,6 +62,7 @@ def verify_phone_capture_source(source, token):
     for before, after in (
         (homepage.PHONE_RECT_BEFORE, homepage.PHONE_RECT_AFTER),
         (homepage.PHONE_READY_BEFORE, homepage.PHONE_READY_AFTER),
+        (homepage.PHONE_STATUS_BEFORE, homepage.PHONE_STATUS_AFTER),
         (homepage.PHONE_TEXTURE_BEFORE, homepage.PHONE_TEXTURE_AFTER),
         (homepage.PHONE_VISIBILITY_BEFORE, homepage.PHONE_VISIBILITY_AFTER),
     ):
@@ -400,6 +401,8 @@ public class OneShotPreDrawListener {
                 homepage.PHONE_RECT_BEFORE, homepage.PHONE_RECT_AFTER),
                 homepage.PHONE_VISIBILITY_BEFORE, homepage.PHONE_VISIBILITY_AFTER),
             'fixed': homepage.patch_phone_capture(fixture),
+            'before_hidden_icon_fix': homepage.patch_phone_capture(fixture).replace(
+                homepage.PHONE_STATUS_AFTER, homepage.PHONE_STATUS_BEFORE, 1),
         }
         for variant, capture in variants.items():
             with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
@@ -432,8 +435,12 @@ public class OneShotPreDrawListener {
                     self.assertIn('PASS: compositor background bounds', result.stdout)
                 else:
                     self.assertNotEqual(result.returncode, 0)
-                    self.assertIn('Compositor background must be absent' if variant == 'original'
-                                  else 'Visibility-only change must refresh', result.stderr)
+                    expected = {
+                        'original': 'Compositor background must be absent',
+                        'background_only': 'Visibility-only change must refresh',
+                        'before_hidden_icon_fix': 'Hidden status icon animation must not block',
+                    }
+                    self.assertIn(expected[variant], result.stderr)
 
     def test_toolbar_startup_binds_the_tab_provider_after_initialization(self):
         from test_homepage import homepage, input_tree

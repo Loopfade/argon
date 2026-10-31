@@ -170,6 +170,17 @@ ARGON_PHONE_CAPTURE_FIELD
                 check(!flow.capture("unused"), "Identical resting frame must retain snapshot suppression");
             }
 
+            flow.state(1f, 1f);
+            check(flow.capture("DuckDuckGo"), "Cache the visible omnibox before opening home");
+            flow.mLocationBar.status.animating = true;
+            flow.state(0f, 0f);
+            check(flow.capture(""),
+                    "Hidden status icon animation must not block replacing the old omnibox bitmap");
+            flow.checkHidden("homepage activation during search icon animation");
+            flow.state(1f, 1f);
+            check(!flow.capture("animating"), "Visible status icon animation must retain suppression");
+            flow.mLocationBar.status.animating = false;
+
             flow.state(1f, 1f); flow.hint = "Google";
             check(flow.capture("Google"), "Provider update must reach a visible toolbar snapshot");
             activity.toolbar.focused = true;

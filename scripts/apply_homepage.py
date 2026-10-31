@@ -74,6 +74,13 @@ PHONE_READY_AFTER = '''            // ARGON: visibility can change while all sna
                         ToolbarSnapshotDifference.VISUAL_STATE);
             }
 ''' + PHONE_READY_BEFORE
+PHONE_STATUS_BEFORE = '''        } else if (mLocationBar.getStatusCoordinator() != null
+                && mLocationBar.getStatusCoordinator().isStatusIconAnimating()) {'''
+PHONE_STATUS_AFTER = '''        } else if (isLocationBarVisibleForCapture()
+                && mLocationBar.getStatusCoordinator() != null
+                && mLocationBar.getStatusCoordinator().isStatusIconAnimating()) {
+            // ARGON: a hidden icon cannot affect the bitmap, and must not block
+            // the activation capture that clears the old, visible omnibox.'''
 PHONE_TEXTURE_BEFORE = '''            mPhoneCaptureStateToken = generateToolbarSnapshotState();'''
 PHONE_TEXTURE_AFTER = PHONE_TEXTURE_BEFORE + '''
             mLocationBarVisibleInLastCapture = isLocationBarVisibleForCapture();'''
@@ -214,12 +221,15 @@ def patch_toolbar_capture(text):
 
 
 def patch_phone_capture(text):
+    # Normalize this hunk before checking the canonical upstream method digest.
+    text = text.replace(PHONE_STATUS_AFTER, PHONE_STATUS_BEFORE, 1)
     for signature, digest, before, after in (
         (PHONE_RECT_SIGNATURE, PHONE_RECT_DIGEST, PHONE_RECT_BEFORE, PHONE_RECT_AFTER),
         (PHONE_READY_SIGNATURE, PHONE_READY_DIGEST, PHONE_READY_BEFORE, PHONE_READY_AFTER),
         (PHONE_TEXTURE_SIGNATURE, PHONE_TEXTURE_DIGEST, PHONE_TEXTURE_BEFORE, PHONE_TEXTURE_AFTER),
     ):
         text = reviewed_method(text, signature, digest, before, after)
+    text = replace_once(text, PHONE_STATUS_BEFORE, PHONE_STATUS_AFTER)
     text = replace_once(text, PHONE_CAPTURE_FIELD_BEFORE, PHONE_CAPTURE_FIELD_AFTER)
     return replace_once(text, PHONE_VISIBILITY_BEFORE, PHONE_VISIBILITY_AFTER)
 
