@@ -3,6 +3,9 @@
 import json
 import hashlib
 import sys
+import socket
+import struct
+import threading
 import os
 from pathlib import Path
 import re
@@ -93,7 +96,9 @@ const history = [];
 // x86 framework libraries cannot call that ARM pointer through the native bridge.
 // Restore the original table immediately after libraryLoaded returns. This only
 // affects the emulator's split-classloader compatibility, not toolbar behavior.
-Java.perform(() => {
+Java.performNow(() => {
+  const activityThread=Java.use('android.app.ActivityThread').currentActivityThread();
+  Java.classFactory.loader=activityThread.mBoundApplication.value.info.value.getClassLoader();
   const loader=Java.use(config.loader);
   const init=loader[config.loaderInit].overload();
   init.implementation=function() {
@@ -215,8 +220,10 @@ adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP')
 adb('shell', 'wm', 'dismiss-keyguard', check=False)
 adb('install', '-r', '-t', str(APK))
 adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
-adb('shell','am','set-debug-app','--persistent',PACKAGE)
+adb('shell','am','set-debug-app','-w','--persistent',PACKAGE)
 adb('logcat', '-c')
+adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
+time.sleep(3)
 agent = None
 pid = None
 try:
@@ -229,20 +236,32 @@ try:
     adb('forward', 'tcp:27042', 'tcp:27042')
     device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
     bundle=Path('.frida-agent/agent.bundle.js').read_text()
-    pid = device.spawn([PACKAGE])
+    pid = int(adb('shell','pidof',PACKAGE).strip().split()[0])
     session = device.attach(pid)
     agent = session.create_script(bundle)
-    agent.on('message', lambda message, data: print('FRIDA', message, flush=True))
+    bootstrap_ready=threading.Event()
+    def on_message(message,data):
+        print('FRIDA',message,flush=True)
+        if message.get('payload',{}).get('emulatorJniBootstrap'):
+            bootstrap_ready.set()
+    agent.on('message',on_message)
     agent.load()
-    device.resume(pid)
+    if not bootstrap_ready.wait(15):
+        raise RuntimeError('Emulator JNI bootstrap did not initialize')
 except Exception as error:
     (OUT / 'frida-error.txt').write_text(str(error))
     print('Frida probe unavailable:', error, flush=True)
-    if pid is None:
-        adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
-    else:
-        device.resume(pid)
 
+# JDWP releases Android's explicit wait after hooks are ready; no zygote injection.
+try:
+    debug_pid=int(adb('shell','pidof',PACKAGE).strip().split()[0])
+    adb('forward','tcp:8700','jdwp:'+str(debug_pid))
+    debugger=socket.create_connection(('127.0.0.1',8700),timeout=10)
+    debugger.sendall(b'JDWP-Handshake')
+    assert debugger.recv(14)==b'JDWP-Handshake'
+    debugger.sendall(struct.pack('>IIBBB',11,1,0,1,9))
+except Exception as error:
+    (OUT/'jdwp-error.txt').write_text(str(error))
 time.sleep(20)
 
 
@@ -266,4 +285,5 @@ try:
     capture('05-new-home')
 finally:
     (OUT / 'logcat.txt').write_text(adb('logcat', '-d', '-v', 'threadtime', check=False))
+    (OUT / 'frida-server.txt').write_text(adb('shell','cat','/data/local/tmp/argon-frida.log',check=False))
     (OUT / 'activities.txt').write_text(adb('shell', 'dumpsys', 'activity', 'activities', check=False))
