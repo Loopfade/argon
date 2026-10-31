@@ -26,10 +26,11 @@ jobs:
           gh api repos/Loopfade/argon/actions/artifacts/13048211687/zip > "$RUNNER_TEMP/argon-apk.zip"
           unzip -q "$RUNNER_TEMP/argon-apk.zip" -d .apk-input
           python3 -m venv "$RUNNER_TEMP/argon-ui-venv"
-          "$RUNNER_TEMP/argon-ui-venv/bin/pip" install --disable-pip-version-check 'androguard==4.1.3' 'frida==16.7.19'
-          curl --fail --location --retry 3 https://github.com/frida/frida/releases/download/16.7.19/frida-server-16.7.19-android-x86_64.xz -o "$RUNNER_TEMP/frida-server.xz"
+          "$RUNNER_TEMP/argon-ui-venv/bin/pip" install --disable-pip-version-check 'androguard==4.1.3' 'frida==17.24.3'
+          curl --fail --location --retry 3 https://github.com/frida/frida/releases/download/17.24.3/frida-server-17.24.3-android-x86_64.xz -o "$RUNNER_TEMP/frida-server.xz"
           xz -d "$RUNNER_TEMP/frida-server.xz"
           chmod +x "$RUNNER_TEMP/frida-server"
+          npm install --prefix .frida-agent --no-save --ignore-scripts frida-java-bridge@7.0.13
       - name: Разрешить KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

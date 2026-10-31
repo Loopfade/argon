@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Observe the shipped ARM APK on Android; this script does not change app methods."""
 import json
+import copy
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -71,7 +73,41 @@ def dex_map(apk):
     return result
 
 
-APK = next(Path('.apk-input').rglob('*.apk'))
+def emulator_apk(original):
+    """Keep DEX/native code unchanged; add locale aliases to avoid native-bridge exceptions."""
+    build_tools = sorted(Path(os.environ['ANDROID_HOME']).glob('build-tools/*/apksigner'))[-1].parent
+    temp = Path(os.environ['RUNNER_TEMP'])
+    unaligned, aligned, signed = [temp / name for name in ('argon-aliases.apk','argon-aligned.apk','argon-emulator.apk')]
+    evidence = {'original_apk_sha256': hashlib.sha256(original.read_bytes()).hexdigest(), 'aliases': [], 'code_sha256': {}}
+    with zipfile.ZipFile(original) as source, zipfile.ZipFile(unaligned, 'w', allowZip64=True) as target:
+        for info in source.infolist():
+            if info.filename.startswith('META-INF/') and info.filename.rsplit('.',1)[-1] in ('RSA','SF','DSA','EC','MF'):
+                continue
+            data = source.read(info.filename)
+            target.writestr(info, data)
+            if info.filename.endswith(('.dex','.so')):
+                evidence['code_sha256'][info.filename] = hashlib.sha256(data).hexdigest()
+            if info.filename.startswith('assets/locales/') and info.filename.endswith('.pak'):
+                name = info.filename.rsplit('/',1)[-1]
+                language = name.split('_',1)[0].split('.',1)[0].split('-',1)[0]
+                for prefix in ('assets/stored-locales/','assets/fallback-locales/','assets/locales#lang_'+language+'/'):
+                    alias = copy.copy(info)
+                    alias.filename = alias.orig_filename = prefix + name
+                    target.writestr(alias, data)
+                    evidence['aliases'].append(alias.filename)
+    subprocess.run([str(build_tools/'zipalign'),'-f','-P','16','4',str(unaligned),str(aligned)],check=True)
+    key = temp / 'argon-emulator-key.jks'
+    subprocess.run(['keytool','-genkeypair','-keystore',str(key),'-storepass','android','-keypass','android','-alias','argon-emulator','-dname','CN=Argon Emulator Test','-keyalg','RSA','-keysize','2048','-validity','2'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    subprocess.run([str(build_tools/'apksigner'),'sign','--ks',str(key),'--ks-pass','pass:android','--key-pass','pass:android','--out',str(signed),str(aligned)],check=True)
+    with zipfile.ZipFile(signed) as result:
+        for name, digest in evidence['code_sha256'].items():
+            assert hashlib.sha256(result.read(name)).hexdigest() == digest, name
+    evidence['emulator_apk_sha256'] = hashlib.sha256(signed.read_bytes()).hexdigest()
+    (OUT/'emulator-apk.json').write_text(json.dumps(evidence,indent=2))
+    return signed
+
+
+APK = emulator_apk(next(Path('.apk-input').rglob('*.apk')))
 mapping = dex_map(APK)
 with zipfile.ZipFile(APK) as archive:
     mapping['localeAssets'] = [name for name in archive.namelist() if name.startswith('assets/') and name.endswith('.pak')]
@@ -87,7 +123,11 @@ adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP')
 adb('shell', 'wm', 'dismiss-keyguard', check=False)
 adb('install', '-r', '-t', str(APK))
 adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
+adb('shell','am','set-debug-app','--persistent',PACKAGE)
 adb('logcat', '-c')
+adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
+time.sleep(20)
+(OUT / '00-before-probe.png').write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
 agent = None
 pid = None
 try:
@@ -99,28 +139,12 @@ try:
     adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
     adb('forward', 'tcp:27042', 'tcp:27042')
     device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
-    pid = device.spawn([PACKAGE])
+    pid = int(adb('shell','pidof',PACKAGE).strip().split()[0])
     session = device.attach(pid)
     source = r'''
+import Java from 'frida-java-bridge';
 const config = CONFIG;
 const history = [];
-// The x86 native bridge cannot invoke Chromium's ARM JNI exception callback when the
-// normal locale fallback probes a missing file. Select the same existing asset from
-// the standalone APK without throwing through libandroid_runtime. Toolbar methods
-// retain their original behavior; the capture hook below only records return values.
-Java.perform(() => {
-  const resource=Java.use('org.chromium.ui.base.ResourceBundle');
-  resource.getLocalePakResourcePath.overload('java.lang.String','int','boolean','boolean').implementation=
-    function(locale, gender, inBundle, logError) {
-      const suffix=['','_MASCULINE','_FEMININE','_NEUTER'][gender] || '';
-      const end='/'+locale+suffix+'.pak';
-      const choices=config.localeAssets.filter(path => path.endsWith(end));
-      const fallback=choices.find(path => path.startsWith('assets/locales/'));
-      const result=fallback || choices[0] || null;
-      send({localeBootstrap:locale.toString(),gender:gender,asset:result});
-      return result;
-    };
-});
 function fields(obj) {
   const result = {};
   for (let cls = obj.getClass(); cls !== null; cls = cls.getSuperclass()) {
@@ -185,19 +209,16 @@ rpc.exports.capture = function(label) {
   })));
 };
 '''.replace('CONFIG', json.dumps(mapping))
-    agent = session.create_script(source)
+    project=Path('.frida-agent').resolve()
+    (project/'agent.ts').write_text(source)
+    bundle=frida.Compiler().build('agent.ts',project_root=str(project))
+    agent = session.create_script(bundle)
     agent.on('message', lambda message, data: print('FRIDA', message, flush=True))
     agent.load()
-    device.resume(pid)
 except Exception as error:
     (OUT / 'frida-error.txt').write_text(str(error))
     print('Frida probe unavailable:', error, flush=True)
-    if pid is None:
-        adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
-    else:
-        device.resume(pid)
 
-time.sleep(20)
 
 try:
     xml = capture('01-initial-home')
