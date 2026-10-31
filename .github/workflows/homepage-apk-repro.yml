@@ -37,13 +37,14 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Запустить настоящий APK в Android
         env:
+          ARGON_WITH_FRIDA: '1'
           ANDROID_AVD_HOME: ${{ runner.temp }}/argon-avd
         run: |
           set -euo pipefail
           export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
           mkdir -p "$ANDROID_AVD_HOME"
-          sdkmanager --install 'emulator' 'system-images;android-35;google_apis;x86_64' > android-repro/sdk-install.txt
-          echo no | avdmanager create avd --force --name argon-repro --package 'system-images;android-35;google_apis;x86_64' --device pixel_7
+          sdkmanager --install 'emulator' 'system-images;android-30;google_apis;x86_64' > android-repro/sdk-install.txt
+          echo no | avdmanager create avd --force --name argon-repro --package 'system-images;android-30;google_apis;x86_64' --device pixel_7
           emulator -avd argon-repro -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -memory 4096 > android-repro/emulator.txt 2>&1 &
           emulator_pid=$!
           trap 'adb emu kill >/dev/null 2>&1 || true; kill "$emulator_pid" 2>/dev/null || true' EXIT
