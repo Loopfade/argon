@@ -238,17 +238,21 @@ try:
     time.sleep(30)
     startup=capture('00-startup')
     tap_matching(startup,lambda a: (a.get('text','') or a.get('content-desc','')).lower() in ('no thanks','not now','нет, спасибо','не сейчас'))
-    # Navigate using the real omnibox if startup has not reached the custom page.
-    nodes=list(ET.fromstring(startup).iter('node'))
-    if not any(a.attrib.get('class')=='android.widget.Button' and 'URL' in (a.attrib.get('text','')+a.attrib.get('content-desc','')) for a in nodes):
-        adb('shell','am','start','-a','android.intent.action.VIEW','-d','chrome://newtab/','-n',PACKAGE+'/com.google.android.apps.chrome.Main')
+    # Let the WebUI's asynchronous search connection and accessibility tree settle.
+    time.sleep(15)
     for attempt in range(30):
         if '"hidden":true' in adb('shell','cat',LOG,check=False):break
         time.sleep(2)
-    time.sleep(2)
     xml=capture('01-initial-home')
+    if '"hidden":true' not in adb('shell','cat',LOG,check=False):
+        raise RuntimeError('The native homepage delegate never became active')
     if not tap_matching(xml,lambda a: a.get('class')=='android.widget.Button' and 'URL' in (a.get('text','')+a.get('content-desc',''))):
-        raise RuntimeError('Argon WebUI fakebox did not load; the browser menu alone is not a homepage test')
+        # The first accessibility snapshot may precede Blink's AX tree.
+        time.sleep(3)
+        xml=capture('01-initial-home-accessible')
+        if not tap_matching(xml,lambda a: a.get('class') in ('android.widget.Button','android.widget.EditText') and ('search-input' in a.get('resource-id','') or 'enter address' in (a.get('text','')+a.get('content-desc','')).lower() or 'URL' in (a.get('text','')+a.get('content-desc','')))):
+            print('WEBUI_AX_NOT_READY: tapping the fakebox from the captured 1080x2400 frame',flush=True)
+            adb('shell','input','tap','540','765')
     time.sleep(3);capture('02-focused')
     adb('shell','input','keyevent','KEYCODE_BACK');time.sleep(3);capture('03-cancelled')
     new_home('04-original-new-home')

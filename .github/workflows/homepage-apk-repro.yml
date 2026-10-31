@@ -17,7 +17,6 @@ jobs:
       matrix:
         include:
           - {arch: arm64, api: 35, artifact: 13048211687, preload: 0, single: 1}
-          - {arch: arm64, api: 36, artifact: 13048211687, preload: 1, single: 0}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

@@ -107,7 +107,7 @@ static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method,
   fprintf(output, "{\"event\":\"readiness\",\"time\":%.6f,\"fields\":{", stamp.tv_sec + stamp.tv_nsec / 1e9);
   jclass result_class = env->GetObjectClass(value.l);
   jint count = 0; jfieldID* fields = nullptr; jfieldID ready_field = nullptr;
-  bool ready = false, status_animation = false;
+  bool ready = false, blocked_capture = false;
   int printed = 0;
   if (ti->GetClassFields(result_class, &count, &fields) == JVMTI_ERROR_NONE) {
     for (int i = 0; i < count; ++i) {
@@ -120,7 +120,7 @@ static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method,
           ready = env->GetBooleanField(value.l, fields[i]); ready_field = fields[i];
           fprintf(output, "\"%s\":%s", name, ready ? "true" : "false");
         } else {
-          int v = *desc == 'B' ? env->GetByteField(value.l, fields[i]) : (*desc == 'S' ? env->GetShortField(value.l, fields[i]) : env->GetIntField(value.l, fields[i])); status_animation |= v == 7;
+          int v = *desc == 'B' ? env->GetByteField(value.l, fields[i]) : (*desc == 'S' ? env->GetShortField(value.l, fields[i]) : env->GetIntField(value.l, fields[i])); if (!strcmp(name, "b")) blocked_capture = v == 7 || v == 15;
           fprintf(output, "\"%s\":%d", name, v);
         }
       }
@@ -134,7 +134,7 @@ static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method,
   bool hidden = false; int view_count = 0;
   fprintf(output, "},\"local_error\":%d,\"views\":[", local_error);
   if (self) { views(env, self, &view_count, &hidden); env->DeleteLocalRef(self); }
-  bool patch = !ready && status_animation && hidden && ready_field && access(patch_path, F_OK) == 0;
+  bool patch = !ready && blocked_capture && hidden && ready_field && access(patch_path, F_OK) == 0;
   if (patch) env->SetBooleanField(value.l, ready_field, JNI_TRUE);
   fprintf(output, "],\"hidden\":%s,\"experimental_patch\":%s}\n", hidden ? "true" : "false", patch ? "true" : "false");
   fflush(output); pthread_mutex_unlock(&lock);
