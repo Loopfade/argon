@@ -34,25 +34,78 @@ def adb(*args,binary=False,check=True):
     return p.stdout if binary else p.stdout.decode(errors='replace')
 
 def debuggable_manifest(data):
-    data=bytearray(data);offset=8;ids=[]
+    chunks=[];offset=8
     while offset<len(data):
         kind,header,size=struct.unpack_from('<HHI',data,offset)
         if size<header or size==0:raise RuntimeError('Invalid XML chunk')
-        if kind==0x0180:
-            ids=list(struct.unpack_from('<'+'I'*((size-header)//4),data,offset+header))
-        if kind==0x0102:
-            ext=offset+header
-            start,entry_size,count=struct.unpack_from('<HHH',data,ext+8)
-            for i in range(count):
-                attr=ext+start+i*entry_size
-                name=struct.unpack_from('<I',data,attr+4)[0]
-                if name<len(ids) and ids[name]==0x0101000f:
-                    struct.pack_into('<I',data,attr+8,0xffffffff)
-                    data[attr+15]=0x12
-                    struct.pack_into('<I',data,attr+16,0xffffffff)
-                    return bytes(data)
-        offset+=size
-    raise RuntimeError('Existing debuggable attribute not found')
+        chunks.append([kind,bytearray(data[offset:offset+size])]);offset+=size
+    pool=next(chunk for kind,chunk in chunks if kind==1)
+    header=struct.unpack_from('<H',pool,2)[0]
+    count,styles,flags,start,style_start=struct.unpack_from('<IIIII',pool,8)
+    if styles:raise RuntimeError('Unexpected styled manifest string pool')
+    offsets=list(struct.unpack_from('<'+'I'*count,pool,header))
+    def length8(pos):
+        v=pool[pos]
+        return (((v&127)<<8)|pool[pos+1],pos+2) if v&128 else (v,pos+1)
+    def length16(pos):
+        v=struct.unpack_from('<H',pool,pos)[0]
+        return (((v&32767)<<16)|struct.unpack_from('<H',pool,pos+2)[0],pos+4) if v&32768 else (v,pos+2)
+    def string(i):
+        pos=start+offsets[i]
+        if flags&256:
+            _,pos=length8(pos);size,pos=length8(pos)
+            return bytes(pool[pos:pos+size]).decode('utf-8',errors='replace')
+        size,pos=length16(pos)
+        return bytes(pool[pos:pos+2*size]).decode('utf-16le',errors='replace')
+    names=[string(i) for i in range(count)]
+    ns=names.index('http://schemas.android.com/apk/res/android')
+    application=names.index('application')
+    encoded=b'\x0a\x0adebuggable\0' if flags&256 else b'\x0a\0'+b'd\0e\0b\0u\0g\0g\0a\0b\0l\0e\0\0\0'
+    string_data=pool[start:]
+    new_pool=pool[:header]+pool[header:header+4*count]+struct.pack('<I',len(string_data))+string_data+encoded
+    new_pool+=b'\0'*((-len(new_pool))%4)
+    struct.pack_into('<I',new_pool,4,len(new_pool))
+    struct.pack_into('<I',new_pool,8,count+1)
+    struct.pack_into('<I',new_pool,16,flags&~1)
+    struct.pack_into('<I',new_pool,20,start+4)
+    resources=next(chunk for kind,chunk in chunks if kind==0x0180)
+    resource_header=struct.unpack_from('<H',resources,2)[0]
+    ids=list(struct.unpack_from('<'+'I'*((len(resources)-resource_header)//4),resources,resource_header))
+    ids.extend([0]*(count+1-len(ids)));ids[count]=0x0101000f
+    new_resources=resources[:resource_header]+struct.pack('<'+'I'*len(ids),*ids)
+    struct.pack_into('<I',new_resources,4,len(new_resources))
+    inserted=False
+    for chunk in chunks:
+        kind,raw=chunk
+        if kind==1:chunk[1]=new_pool
+        elif kind==0x0180:chunk[1]=new_resources
+        elif kind==0x0102:
+            header=struct.unpack_from('<H',raw,2)[0]
+            name=struct.unpack_from('<I',raw,header+4)[0]
+            if name!=application:continue
+            attr_start,attr_size,attrs=struct.unpack_from('<HHH',raw,header+8)
+            if attr_size!=20:raise RuntimeError('Unexpected attribute size')
+            index=attrs
+            for i in range(attrs):
+                attr=header+attr_start+i*20
+                attribute_name=struct.unpack_from('<I',raw,attr+4)[0]
+                resource=ids[attribute_name] if attribute_name<len(ids) else 0
+                if resource==0x0101000f:
+                    raw[attr+15]=0x12;struct.pack_into('<I',raw,attr+16,0xffffffff);inserted=True;break
+                if resource>0x0101000f and index==attrs:index=i
+            if not inserted:
+                at=header+attr_start+index*20
+                attribute=struct.pack('<IIIHBBI',ns,count,0xffffffff,8,0,0x12,0xffffffff)
+                raw[at:at]=attribute
+                struct.pack_into('<I',raw,4,len(raw));struct.pack_into('<H',raw,header+12,attrs+1)
+                for position in (14,16,18):
+                    value=struct.unpack_from('<H',raw,header+position)[0]
+                    if value and value>=index+1:struct.pack_into('<H',raw,header+position,value+1)
+                inserted=True
+    if not inserted:raise RuntimeError('Application node not found')
+    result=bytearray(data[:8])+b''.join(chunk for _,chunk in chunks)
+    struct.pack_into('<I',result,4,len(result))
+    return bytes(result)
 
 def prepare():
     from androguard.core.apk import APK
@@ -82,6 +135,10 @@ def prepare():
         with zipfile.ZipFile(chosen) as archive:
             for name,digest in evidence['code_sha256'].items():assert hashlib.sha256(archive.read(name)).hexdigest()==digest
     evidence['test_sha256']=hashlib.sha256(chosen.read_bytes()).hexdigest()
+    assert str(APK(str(chosen)).get_attribute_value('application','debuggable')).lower()=='true'
+    with zipfile.ZipFile(chosen) as archive:
+        art_arch='x86_64' if any(name.startswith('lib/arm64-v8a/') for name in archive.namelist()) else 'i686'
+    (TEMP/'probe-arch').write_text(art_arch)
     (OUT/'apk-evidence.json').write_text(json.dumps(evidence,indent=2))
     (TEMP/'probe-apk-path').write_text(str(chosen))
     for architecture in ('x86_64','i686'):
@@ -137,28 +194,18 @@ adb('shell','wm','size','1080x2400');adb('shell','wm','density','420')
 adb('shell','input','keyevent','KEYCODE_WAKEUP');adb('shell','wm','dismiss-keyguard',check=False)
 adb('install','-r','-t',(TEMP/'probe-apk-path').read_text())
 adb('shell',"echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
-adb('shell','am','set-debug-app','-w','--persistent',PACKAGE)
+adb('shell','am','set-debug-app','--persistent',PACKAGE)
 adb('logcat','-c')
 try:
-    adb('shell','monkey','-p',PACKAGE,'-c','android.intent.category.LAUNCHER','1');time.sleep(3)
-    pid=int(adb('shell','pidof',PACKAGE).strip().split()[0])
-    executable=adb('shell','readlink','/proc/'+str(pid)+'/exe')
-    architecture='i686' if '32' in executable else 'x86_64'
+    architecture=(TEMP/'probe-arch').read_text()
     uid=adb('shell','stat','-c','%u',DATA).strip()
     adb('shell','mkdir','-p',DATA+'/files',DATA+'/code_cache')
     adb('shell','chown',uid+':'+uid,DATA+'/files',DATA+'/code_cache')
     adb('push',str(TEMP/('probe-'+architecture+'.so')),DATA+'/code_cache/probe.so')
     adb('shell','chmod','555',DATA+'/code_cache/probe.so')
     adb('shell','restorecon',DATA+'/code_cache/probe.so',check=False)
-    result=adb('shell','am','attach-agent',PACKAGE,DATA+'/code_cache/probe.so='+LOG)
+    result=adb('shell','am','start','--attach-agent',DATA+'/code_cache/probe.so='+LOG,'-n',PACKAGE+'/com.google.android.apps.chrome.Main')
     print('ATTACH',result,flush=True)
-    adb('forward','tcp:8700','jdwp:'+str(pid))
-    debugger=socket.create_connection(('127.0.0.1',8700),timeout=10)
-    debugger.sendall(b'JDWP-Handshake')
-    handshake=b''
-    while len(handshake)<14:handshake+=debugger.recv(14-len(handshake))
-    assert handshake==b'JDWP-Handshake'
-    debugger.sendall(struct.pack('>IIBBB',11,1,0,1,9))
     time.sleep(20)
     xml=capture('01-initial-home')
     if not tap_matching(xml,lambda a: a.get('class')=='android.widget.Button' and 'URL' in (a.get('text','')+a.get('content-desc',''))):
