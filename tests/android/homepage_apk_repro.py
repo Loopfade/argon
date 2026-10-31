@@ -1,289 +1,175 @@
 #!/usr/bin/env python3
-"""Observe the shipped ARM APK on Android; this script does not change app methods."""
-import json
+"""Observe the existing APK with Android's supported ART tooling interface."""
+import base64
 import hashlib
-import sys
-import socket
-import struct
-import threading
+import io
+import json
 import os
 from pathlib import Path
 import re
+import socket
+import struct
 import subprocess
+import sys
 import time
 import xml.etree.ElementTree as ET
 import zipfile
 
-OUT = Path('android-repro')
-OUT.mkdir(exist_ok=True)
-PACKAGE = 'app.titaniumru.browser.test'
+OUT=Path('android-repro');OUT.mkdir(exist_ok=True)
+TEMP=Path(os.environ['RUNNER_TEMP'])
+PACKAGE='app.titaniumru.browser.test'
+DATA='/data/data/'+PACKAGE
+LOG=DATA+'/files/argon-probe.jsonl'
 
+def run(args, **kwargs):
+    p=subprocess.run(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120,**kwargs)
+    if p.returncode:
+        raise RuntimeError(str(args)+': '+p.stderr.decode(errors='replace')+' '+p.stdout.decode(errors='replace'))
+    return p.stdout
 
-def adb(*args, binary=False, check=True):
-    return subprocess.run(['adb', *args], check=check, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, text=not binary, timeout=90).stdout
+def adb(*args,binary=False,check=True):
+    p=subprocess.run(['adb',*args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=90)
+    if check and p.returncode:
+        raise RuntimeError(str(args)+': '+p.stderr.decode(errors='replace')+' '+p.stdout.decode(errors='replace'))
+    return p.stdout if binary else p.stdout.decode(errors='replace')
 
+def debuggable_manifest(data):
+    data=bytearray(data);offset=8;ids=[]
+    while offset<len(data):
+        kind,header,size=struct.unpack_from('<HHI',data,offset)
+        if size<header or size==0:raise RuntimeError('Invalid XML chunk')
+        if kind==0x0180:
+            ids=list(struct.unpack_from('<'+'I'*((size-header)//4),data,offset+header))
+        if kind==0x0102:
+            ext=offset+header
+            start,entry_size,count=struct.unpack_from('<HHH',data,ext+8)
+            for i in range(count):
+                attr=ext+start+i*entry_size
+                name=struct.unpack_from('<I',data,attr+4)[0]
+                if name<len(ids) and ids[name]==0x0101000f:
+                    struct.pack_into('<I',data,attr+8,0xffffffff)
+                    data[attr+15]=0x12
+                    struct.pack_into('<I',data,attr+16,0xffffffff)
+                    return bytes(data)
+        offset+=size
+    raise RuntimeError('Existing debuggable attribute not found')
+
+def prepare():
+    from androguard.core.apk import APK
+    from loguru import logger
+    logger.remove()
+    source=next(Path('.apk-input').rglob('*.apk'))
+    manifest=APK(str(source))
+    debug=str(manifest.get_attribute_value('application','debuggable')).lower()=='true'
+    evidence={'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'source_debuggable':debug}
+    chosen=source.resolve()
+    if not debug:
+        tools=sorted(Path(os.environ['ANDROID_HOME']).glob('build-tools/*/apksigner'))[-1].parent
+        raw=TEMP/'probe-unaligned.apk';aligned=TEMP/'probe-aligned.apk';chosen=TEMP/'probe-debuggable.apk'
+        evidence['code_sha256']={}
+        with zipfile.ZipFile(source) as zin,zipfile.ZipFile(raw,'w') as zout:
+            for info in zin.infolist():
+                if info.filename.startswith('META-INF/') and info.filename.endswith(('.RSA','.SF','.DSA','.EC','.MF')):continue
+                contents=zin.read(info.filename)
+                if info.filename.endswith(('.dex','.so')):
+                    evidence['code_sha256'][info.filename]=hashlib.sha256(contents).hexdigest()
+                if info.filename=='AndroidManifest.xml':contents=debuggable_manifest(contents)
+                zout.writestr(info,contents)
+        run([str(tools/'zipalign'),'-f','-P','16','4',str(raw),str(aligned)])
+        key=TEMP/'probe-key.jks'
+        run(['keytool','-genkeypair','-keystore',str(key),'-storepass','android','-keypass','android','-alias','probe','-dname','CN=Argon Emulator Probe','-keyalg','RSA','-validity','2'])
+        run([str(tools/'apksigner'),'sign','--ks',str(key),'--ks-pass','pass:android','--key-pass','pass:android','--out',str(chosen),str(aligned)])
+        with zipfile.ZipFile(chosen) as archive:
+            for name,digest in evidence['code_sha256'].items():assert hashlib.sha256(archive.read(name)).hexdigest()==digest
+    evidence['test_sha256']=hashlib.sha256(chosen.read_bytes()).hexdigest()
+    (OUT/'apk-evidence.json').write_text(json.dumps(evidence,indent=2))
+    (TEMP/'probe-apk-path').write_text(str(chosen))
+    for architecture in ('x86_64','i686'):
+        matches=sorted(Path(os.environ['ANDROID_HOME']).glob('ndk/*/toolchains/llvm/prebuilt/linux-x86_64/bin/'+architecture+'-linux-android29-clang++'))
+        if not matches:raise RuntimeError('Installed NDK not found')
+        compiler=matches[-1]
+        java=Path(os.environ['JAVA_HOME'])
+        run([str(compiler),'-shared','-fPIC','-std=c++17','-fno-exceptions','-fno-rtti','-nostdlib++',
+             '-I'+str(java/'include'),'-I'+str(java/'include/linux'),
+             'tests/android/homepage_probe.cc','-o',str(TEMP/('probe-'+architecture+'.so')),'-Wall','-Wextra','-Werror'])
+    print('PREPARED',json.dumps(evidence),flush=True)
+
+if '--prepare' in sys.argv:
+    prepare();sys.exit(0)
 
 def capture(name):
-    (OUT / (name + '.png')).write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
-    try:
-        (OUT / (name + '.json')).write_text(json.dumps(agent.exports_sync.capture(name), indent=2))
-    except Exception as error:
-        (OUT / (name + '-probe-error.txt')).write_text(str(error))
-    adb('shell', 'uiautomator', 'dump', '/sdcard/argon-window.xml', check=False)
-    xml = adb('shell', 'cat', '/sdcard/argon-window.xml', check=False)
-    (OUT / (name + '.xml')).write_text(xml)
-    print('Captured', name, flush=True)
+    png=adb('exec-out','screencap','-p',binary=True)
+    (OUT/(name+'.png')).write_bytes(png)
+    raw=adb('shell','cat',LOG,check=False)
+    (OUT/(name+'.jsonl')).write_text(raw)
+    events=[]
+    for line in raw.splitlines():
+        try:events.append(json.loads(line))
+        except ValueError:pass
+    compact=[{k:v for k,v in e.items() if k!='views'}|{'location_views':[v for v in e.get('views',[]) if 'LocationBar' in v.get('class','')]} for e in events]
+    print('PROBE '+name+' '+json.dumps(compact),flush=True)
+    print('SCREENSHOT_BASE64 '+name+' '+base64.b64encode(png).decode(),flush=True)
+    adb('shell','uiautomator','dump','/sdcard/argon-window.xml',check=False)
+    xml=adb('shell','cat','/sdcard/argon-window.xml',check=False)
+    (OUT/(name+'.xml')).write_text(xml)
     return xml
 
-
-def tap_matching(xml, predicate):
+def tap_matching(xml,predicate):
     try:
         for node in ET.fromstring(xml).iter('node'):
             if predicate(node.attrib):
-                coords = list(map(int, re.findall(r'\d+', node.attrib.get('bounds', ''))))
-                if len(coords) == 4:
-                    adb('shell', 'input', 'tap', str((coords[0]+coords[2])//2), str((coords[1]+coords[3])//2))
-                    return True
-    except ET.ParseError:
-        pass
+                coords=list(map(int,re.findall(r'\d+',node.attrib.get('bounds',''))))
+                if len(coords)==4:
+                    adb('shell','input','tap',str((coords[0]+coords[2])//2),str((coords[1]+coords[3])//2));return True
+    except ET.ParseError:pass
     return False
 
+def new_home(label):
+    adb('shell','input','keyevent','KEYCODE_MENU');time.sleep(2)
+    xml=capture(label+'-menu')
+    if not tap_matching(xml,lambda a: (a.get('text','') or a.get('content-desc','')).lower() in ('new tab','новая вкладка')):
+        raise RuntimeError('New tab not found')
+    time.sleep(5)
+    return capture(label)
 
-def dex_map(apk):
-    from androguard.core.dex import DEX
-    from loguru import logger
-    logger.remove()
-    result = {}
-    with zipfile.ZipFile(apk) as archive:
-        for name in archive.namelist():
-            if not re.fullmatch(r'classes\d*\.dex', name):
-                continue
-            dex = DEX(archive.read(name))
-            for cls in dex.get_classes():
-                for method in cls.get_methods():
-                    if method.get_code() is None:
-                        continue
-                    texts = [ins.get_output() for ins in method.get_instructions()
-                             if ins.get_name().startswith('const-string')]
-                    owner = cls.get_name()[1:-1].replace('/', '.')
-                    if any('Successfully loaded native library' in text for text in texts):
-                        calls=[ins.get_output() for ins in method.get_instructions() if ins.get_name().startswith('invoke-')]
-                        native=[]
-                        for call in calls:
-                            match=re.search(r'LJ/N;->([^\s(]+)',call)
-                            if match and match.group(1) not in native:
-                                native.append(match.group(1))
-                        result['loader']=owner
-                        result['loaderInit']=method.get_name()
-                        result['loaderNative']=native
-                    if any('ToolbarManager.ToolbarManager' in text for text in texts):
-                        result['manager'] = owner
-                    if any('Android.TopToolbar.CaptureBlocked.StatusIconAnimationDuration' in text for text in texts):
-                        result['phone'] = owner
-                        result['readiness'] = method.get_name()
-    (OUT / 'dex-map.json').write_text(json.dumps(result, indent=2))
-    return result
-
-
-def compile_agent(mapping):
-    import frida
-    source = r'''
-import Java from 'frida-java-bridge';
-const config = CONFIG;
-const history = [];
-// Chromium 156 installs an ARM FindClass callback in the main thread's JNI table.
-// x86 framework libraries cannot call that ARM pointer through the native bridge.
-// Restore the original table immediately after libraryLoaded returns. This only
-// affects the emulator's split-classloader compatibility, not toolbar behavior.
-Java.performNow(() => {
-  const activityThread=Java.use('android.app.ActivityThread').currentActivityThread();
-  Java.classFactory.loader=activityThread.mBoundApplication.value.info.value.getClassLoader();
-  const loader=Java.use(config.loader);
-  const init=loader[config.loaderInit].overload();
-  init.implementation=function() {
-    const entries=[], natives=Java.use('J.N');
-    for(const name of config.loaderNative) {
-      for(const overload of natives[name].overloads) {
-        entries.push(overload);
-        overload.implementation=function(...args) {
-          const env=Java.vm.getEnv().handle;
-          const original=env.readPointer();
-          const value=overload.call(this,...args);
-          const replaced=env.readPointer();
-          if(!replaced.equals(original)) {
-            env.writePointer(original);
-            send({emulatorJniRestored:true,entry:name,original:original.toString(),replaced:replaced.toString()});
-            setImmediate(()=>entries.forEach(entry=>entry.implementation=null));
-          }
-          return value;
-        };
-      }
-    }
-    return init.call(this);
-  };
-  send({emulatorJniBootstrap:true,loader:config.loader,init:config.loaderInit,entries:config.loaderNative});
-});
-
-function fields(obj) {
-  const result = {};
-  for (let cls = obj.getClass(); cls !== null; cls = cls.getSuperclass()) {
-    const fs = cls.getDeclaredFields();
-    for (let i=0; i<fs.length; i++) {
-      try {
-        const f=fs[i], type=f.getType().getName().toString();
-        if (Java.use('java.lang.reflect.Modifier').isStatic(f.getModifiers())) continue;
-        if (!['boolean','float','int','long'].includes(type)) continue;
-        f.setAccessible(true);
-        const value=f.get(obj);
-        result[cls.getName()+'.'+f.getName()]={type:type,value:value===null?null:value.toString()};
-      } catch (_) {}
-    }
-  }
-  return result;
-}
-function views(view, out) {
-  try {
-    const id=view.getId();
-    let name='';
-    if(id!==-1) try{name=view.getResources().getResourceEntryName(id).toString();}catch(_){}
-    {
-      const className=view.getClass().getName().toString();
-      const position=Java.array('int',[0,0]); view.getLocationOnScreen(position);
-      out.push({id:name,className:className,alpha:view.getAlpha(),visibility:view.getVisibility(),shown:view.isShown(),
-        translationY:view.getTranslationY(),x:position[0],y:position[1],width:view.getWidth(),height:view.getHeight()});
-    }
-    if(Java.use('android.view.ViewGroup').class.isInstance(view)) {
-      const group=Java.cast(view,Java.use('android.view.ViewGroup'));
-      for(let i=0;i<group.getChildCount();i++) views(group.getChildAt(i),out);
-    }
-  }catch(_){}
-}
-setTimeout(()=>Java.perform(() => {
-  const method=Java.use(config.phone)[config.readiness].overload();
-  method.implementation=function() {
-    const result=method.call(this);
-    try {
-      const readiness=fields(result), stamp=JSON.stringify(readiness);
-      if(history.length===0 || history[history.length-1].stamp!==stamp) {
-        const item={at:Date.now(),stamp:stamp,readiness:readiness,views:[]};
-        views(Java.cast(this,Java.use('android.view.View')),item.views);
-        item.fields=fields(this);
-        history.push(item);
-        if(history.length>200)history.shift();
-      }
-    }catch(_){}
-    return result;
-  };
-}),10000);
-rpc.exports.capture = function(label) {
-  return new Promise(resolve => Java.perform(()=>Java.scheduleOnMainThread(()=>{
-    const out={label:label,instances:[],history:history.slice()};
-    Java.choose(config.phone || 'org.chromium.chrome.browser.toolbar.top.ToolbarPhone',{
-      onMatch(instance) {
-        const item={fields:fields(instance),views:[]};
-        try{views(Java.cast(instance,Java.use('android.view.View')),item.views);}catch(e){item.viewError=String(e);}
-        if(config.readiness) try{item.readiness=fields(instance[config.readiness]());}catch(e){item.readyError=String(e);}
-        out.instances.push(item);
-      },onComplete(){resolve(out);}
-    });
-  })));
-};
-'''.replace('CONFIG', json.dumps(mapping))
-    project=Path('.frida-agent').resolve()
-    (project/'agent.ts').write_text('// @ts-nocheck\n'+source)
-    compiler=frida.Compiler()
-    compiler.on('diagnostics',lambda diag: (OUT/'compiler-diagnostics.json').write_text(json.dumps(diag,indent=2)))
-    bundle=compiler.build('agent.ts',project_root=str(project))
-    (project/'agent.bundle.js').write_text(bundle)
-    return bundle
-
-
-APK = next(Path('.apk-input').rglob('*.apk'))
-(OUT/'original-apk-sha256.txt').write_text(hashlib.sha256(APK.read_bytes()).hexdigest())
-mapping = dex_map(APK)
-with zipfile.ZipFile(APK) as archive:
-    mapping['localeAssets'] = [name for name in archive.namelist() if name.startswith('assets/') and name.endswith('.pak')]
-print('Locale assets:', mapping['localeAssets'], flush=True)
-print('DEX map:', mapping, flush=True)
-if '--compile-only' in sys.argv:
-    compile_agent(mapping)
-    print('Compiled diagnostic agent',flush=True)
-    sys.exit(0)
-(OUT / 'device.txt').write_text(adb('shell', 'getprop'))
-print('Device ABIs:', adb('shell', 'getprop', 'ro.product.cpu.abilist').strip(), flush=True)
-adb('root', check=False)
-adb('wait-for-device')
-adb('shell', 'wm', 'size', '1080x2400')
-adb('shell', 'wm', 'density', '420')
-adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP')
-adb('shell', 'wm', 'dismiss-keyguard', check=False)
-adb('install', '-r', '-t', str(APK))
-adb('shell', "echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
+adb('root',check=False);adb('wait-for-device')
+adb('shell','wm','size','1080x2400');adb('shell','wm','density','420')
+adb('shell','input','keyevent','KEYCODE_WAKEUP');adb('shell','wm','dismiss-keyguard',check=False)
+adb('install','-r','-t',(TEMP/'probe-apk-path').read_text())
+adb('shell',"echo '_ --no-first-run --no-default-browser-check --disable-fre' > /data/local/tmp/chrome-command-line")
 adb('shell','am','set-debug-app','-w','--persistent',PACKAGE)
-adb('logcat', '-c')
-adb('shell', 'monkey', '-p', PACKAGE, '-c', 'android.intent.category.LAUNCHER', '1')
-time.sleep(3)
-agent = None
-pid = None
+adb('logcat','-c')
 try:
-    if os.environ.get('ARGON_WITH_FRIDA') != '1':
-        raise RuntimeError('Baseline run without a diagnostic agent')
-    import frida
-    adb('push', str(Path(os.environ['RUNNER_TEMP']) / 'frida-server'), '/data/local/tmp/argon-frida-server')
-    adb('shell', 'chmod', '755', '/data/local/tmp/argon-frida-server')
-    adb('shell', 'nohup /data/local/tmp/argon-frida-server >/data/local/tmp/argon-frida.log 2>&1 </dev/null &')
-    adb('forward', 'tcp:27042', 'tcp:27042')
-    device = frida.get_device_manager().add_remote_device('127.0.0.1:27042')
-    bundle=Path('.frida-agent/agent.bundle.js').read_text()
-    pid = int(adb('shell','pidof',PACKAGE).strip().split()[0])
-    session = device.attach(pid)
-    agent = session.create_script(bundle)
-    bootstrap_ready=threading.Event()
-    def on_message(message,data):
-        print('FRIDA',message,flush=True)
-        if message.get('payload',{}).get('emulatorJniBootstrap'):
-            bootstrap_ready.set()
-    agent.on('message',on_message)
-    agent.load()
-    if not bootstrap_ready.wait(15):
-        raise RuntimeError('Emulator JNI bootstrap did not initialize')
-except Exception as error:
-    (OUT / 'frida-error.txt').write_text(str(error))
-    print('Frida probe unavailable:', error, flush=True)
-
-# JDWP releases Android's explicit wait after hooks are ready; no zygote injection.
-try:
-    debug_pid=int(adb('shell','pidof',PACKAGE).strip().split()[0])
-    adb('forward','tcp:8700','jdwp:'+str(debug_pid))
+    adb('shell','monkey','-p',PACKAGE,'-c','android.intent.category.LAUNCHER','1');time.sleep(3)
+    pid=int(adb('shell','pidof',PACKAGE).strip().split()[0])
+    executable=adb('shell','readlink','/proc/'+str(pid)+'/exe')
+    architecture='i686' if '32' in executable else 'x86_64'
+    uid=adb('shell','stat','-c','%u',DATA).strip()
+    adb('shell','mkdir','-p',DATA+'/files',DATA+'/code_cache')
+    adb('shell','chown',uid+':'+uid,DATA+'/files',DATA+'/code_cache')
+    adb('push',str(TEMP/('probe-'+architecture+'.so')),DATA+'/code_cache/probe.so')
+    adb('shell','chmod','555',DATA+'/code_cache/probe.so')
+    adb('shell','restorecon',DATA+'/code_cache/probe.so',check=False)
+    result=adb('shell','am','attach-agent',PACKAGE,DATA+'/code_cache/probe.so='+LOG)
+    print('ATTACH',result,flush=True)
+    adb('forward','tcp:8700','jdwp:'+str(pid))
     debugger=socket.create_connection(('127.0.0.1',8700),timeout=10)
     debugger.sendall(b'JDWP-Handshake')
-    assert debugger.recv(14)==b'JDWP-Handshake'
+    handshake=b''
+    while len(handshake)<14:handshake+=debugger.recv(14-len(handshake))
+    assert handshake==b'JDWP-Handshake'
     debugger.sendall(struct.pack('>IIBBB',11,1,0,1,9))
-except Exception as error:
-    (OUT/'jdwp-error.txt').write_text(str(error))
-time.sleep(20)
-
-
-try:
-    xml = capture('01-initial-home')
-    found = tap_matching(xml, lambda a: a.get('class') == 'android.widget.Button'
-                         and ('URL' in (a.get('text','') + a.get('content-desc',''))))
-    if not found:
-        adb('shell', 'input', 'tap', '540', '520')
-    time.sleep(3)
-    capture('02-focused')
-    adb('shell', 'input', 'keyevent', 'KEYCODE_BACK')
-    time.sleep(3)
-    capture('03-after-focus-cancel')
-    adb('shell', 'input', 'keyevent', 'KEYCODE_MENU')
-    time.sleep(2)
-    xml = capture('04-menu')
-    if not tap_matching(xml, lambda a: (a.get('text','') or a.get('content-desc','')).lower() in ('new tab','новая вкладка')):
-        raise RuntimeError('Could not locate the New tab command; inspect the saved screen/XML')
-    time.sleep(6)
-    capture('05-new-home')
+    time.sleep(20)
+    xml=capture('01-initial-home')
+    if not tap_matching(xml,lambda a: a.get('class')=='android.widget.Button' and 'URL' in (a.get('text','')+a.get('content-desc',''))):
+        adb('shell','input','tap','540','520')
+    time.sleep(3);capture('02-focused')
+    adb('shell','input','keyevent','KEYCODE_BACK');time.sleep(3);capture('03-cancelled')
+    new_home('04-original-new-home')
+    adb('shell','touch',LOG+'-patch')
+    new_home('05-experimental-new-home')
+    new_home('06-experimental-repeated-home')
 finally:
-    (OUT / 'logcat.txt').write_text(adb('logcat', '-d', '-v', 'threadtime', check=False))
-    (OUT / 'frida-server.txt').write_text(adb('shell','cat','/data/local/tmp/argon-frida.log',check=False))
-    (OUT / 'activities.txt').write_text(adb('shell', 'dumpsys', 'activity', 'activities', check=False))
+    (OUT/'logcat.txt').write_text(adb('logcat','-d','-v','threadtime',check=False))
+    (OUT/'activities.txt').write_text(adb('shell','dumpsys','activity','activities',check=False))
+    (OUT/'final-probe.jsonl').write_text(adb('shell','cat',LOG,check=False))
