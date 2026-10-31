@@ -23,6 +23,8 @@ public class ToolbarManager {
     public final Omnibox omnibox = new Omnibox();
     public NewTabPageDelegate delegate = NewTabPageDelegate.EMPTY;
     private String nativePixels = "address";
+    public boolean layoutPending, statusIconAnimating;
+    public int layoutPasses;
 
     private static class Model { void notifyContentChanged() {} }
     private class Toolbar {
@@ -58,6 +60,18 @@ ARGON_NATIVE_READY_BLOCK
         public final Frame frame = new Frame();
         public ViewResourceAdapter getToolbarResourceAdapter() { return frame.adapter; }
         public void setReadyForBitmapCapture(boolean ready) { frame.mReadyForBitmapCapture = ready; }
+        private int getWidth() { return mToolbarLayout.getWidth(); }
+        private int getLeft() { return 0; }
+        private int getTop() { return 0; }
+        private int getMeasuredWidth() { return mToolbarLayout.getWidth(); }
+        private int getMeasuredHeight() { return mToolbarLayout.getHeight(); }
+        private void measure(int widthSpec, int heightSpec) {}
+        private void layout(int left, int top, int right, int bottom) {
+            layoutPending = false;
+            layoutPasses++;
+        }
+
+ARGON_SYNCHRONOUS_LAYOUT_METHOD
     }
     private static class BaseFrame {
         public void onDescendantInvalidated(View child, View target) {}
@@ -77,6 +91,9 @@ ARGON_INVALIDATION_METHOD
     }
     public class ToolbarViewResourceAdapter extends ViewResourceAdapter {
         private boolean isCapturingDisabled() { return false; }
+        @Override protected boolean isDirty() {
+            return !layoutPending && !statusIconAnimating && super.isDirty();
+        }
     }
     public class ViewResourceAdapter {
         protected final Rect mDirtyRect = new Rect();

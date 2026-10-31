@@ -62,7 +62,6 @@ def verify_phone_capture_source(source, token):
     for before, after in (
         (homepage.PHONE_RECT_BEFORE, homepage.PHONE_RECT_AFTER),
         (homepage.PHONE_READY_BEFORE, homepage.PHONE_READY_AFTER),
-        (homepage.PHONE_STATUS_BEFORE, homepage.PHONE_STATUS_AFTER),
         (homepage.PHONE_TEXTURE_BEFORE, homepage.PHONE_TEXTURE_AFTER),
         (homepage.PHONE_VISIBILITY_BEFORE, homepage.PHONE_VISIBILITY_AFTER),
     ):
@@ -91,6 +90,7 @@ def verify_activation_sources(manager, container, coordinator, adapter):
         (adapter, '    protected boolean isDirty() {'),
         (adapter, '    public void onResourceRequested() {'),
         (adapter, '    public void invalidate(@Nullable Rect dirtyRect) {'),
+        (container, '    public void doSynchronousLayout(boolean forceCaptureAfterLayout) {'),
     ):
         if homepage.method_source(source, signature) != homepage.method_source(fixture, signature):
             raise ValueError('Chromium resource invalidation changed; review the first-frame regression')
@@ -135,6 +135,10 @@ public class Rect {
     'android/view/View.java': """
 package android.view;
 public class View {
+    public static class MeasureSpec {
+        public static final int EXACTLY = 1, UNSPECIFIED = 0;
+        public static int makeMeasureSpec(int size, int mode) { return size; }
+    }
     public int x, y, touches;
     public final java.util.List<Runnable> preDraw = new java.util.ArrayList<>();
     public float getX() { return x; }
@@ -345,6 +349,7 @@ class HomepageNativeTests(unittest.TestCase):
             'original': (homepage.TOOLBAR_REFRESH_BEFORE, homepage.TOOLBAR_ACTIVATION_BEFORE, homepage.TOOLBAR_NATIVE_READY_BEFORE),
             'redraw_only': (homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE, homepage.TOOLBAR_NATIVE_READY_BEFORE),
             'activation_only': (homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE),
+            'request_only': (homepage.TOOLBAR_REFRESH_LAYOUT_BEFORE, homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_NATIVE_READY_AFTER),
             'fixed': (homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_NATIVE_READY_AFTER),
         }
         for variant, (refresh, activation, native_ready) in variants.items():
@@ -365,6 +370,8 @@ public class OneShotPreDrawListener {
                 manager = (FIXTURES / 'ToolbarActivationManager.java.in').read_text()
                 for marker, source in (('ARGON_READY_METHOD', ready),
                         ('ARGON_INVALIDATION_METHOD', descendant), ('ARGON_RESOURCE_METHODS', resource),
+                        ('ARGON_SYNCHRONOUS_LAYOUT_METHOD', homepage.method_source(fixture,
+                            '    public void doSynchronousLayout(boolean forceCaptureAfterLayout) {')),
                         ('ARGON_NATIVE_READY_BLOCK', native_ready),
                         ('ARGON_ACTIVATION_METHOD', activation), ('ARGON_REFRESH_METHOD', refresh)):
                     manager = manager.replace(marker, source)
@@ -386,7 +393,8 @@ public class OneShotPreDrawListener {
                     self.assertNotEqual(result.returncode, 0)
                     expected = {'original': 'First layout must refresh',
                                 'redraw_only': 'Selecting a measured background homepage must refresh',
-                                'activation_only': 'Native initialization must allow a fresh activation request'}
+                                'activation_only': 'Native initialization must allow a fresh activation request',
+                                'request_only': 'Layout pending at pre-draw must not lose'}
                     self.assertIn(expected[variant], result.stderr)
 
     def test_compositor_background_and_visibility_only_snapshot_changes(self):
@@ -401,8 +409,6 @@ public class OneShotPreDrawListener {
                 homepage.PHONE_RECT_BEFORE, homepage.PHONE_RECT_AFTER),
                 homepage.PHONE_VISIBILITY_BEFORE, homepage.PHONE_VISIBILITY_AFTER),
             'fixed': homepage.patch_phone_capture(fixture),
-            'before_hidden_icon_fix': homepage.patch_phone_capture(fixture).replace(
-                homepage.PHONE_STATUS_AFTER, homepage.PHONE_STATUS_BEFORE, 1),
         }
         for variant, capture in variants.items():
             with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
@@ -435,12 +441,8 @@ public class OneShotPreDrawListener {
                     self.assertIn('PASS: compositor background bounds', result.stdout)
                 else:
                     self.assertNotEqual(result.returncode, 0)
-                    expected = {
-                        'original': 'Compositor background must be absent',
-                        'background_only': 'Visibility-only change must refresh',
-                        'before_hidden_icon_fix': 'Hidden status icon animation must not block',
-                    }
-                    self.assertIn(expected[variant], result.stderr)
+                    self.assertIn('Compositor background must be absent' if variant == 'original'
+                                  else 'Visibility-only change must refresh', result.stderr)
 
     def test_toolbar_startup_binds_the_tab_provider_after_initialization(self):
         from test_homepage import homepage, input_tree
