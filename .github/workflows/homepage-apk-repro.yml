@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {arch: arm64, api: 35, artifact: 13048211687, preload: 0}
-          - {arch: arm64, api: 36, artifact: 13048211687, preload: 1}
+          - {arch: arm64, api: 35, artifact: 13048211687, preload: 0, single: 1}
+          - {arch: arm64, api: 36, artifact: 13048211687, preload: 1, single: 0}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -44,6 +44,7 @@ jobs:
       - name: Запустить настоящий APK в Android
         env:
           ANDROID_AVD_HOME: ${{ runner.temp }}/argon-avd
+          PROBE_SINGLE_PROCESS: ${{ matrix.single }}
         run: |
           set -euo pipefail
           export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"

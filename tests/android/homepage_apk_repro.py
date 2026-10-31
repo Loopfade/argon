@@ -194,6 +194,7 @@ def capture(name):
     else:
         raise RuntimeError('Android accessibility hierarchy did not become ready')
     (OUT/(name+'.xml')).write_text(xml)
+    print('UI_XML '+name+' '+xml,flush=True)
     return xml
 
 def tap_matching(xml,predicate):
@@ -218,7 +219,10 @@ adb('root',check=False);adb('wait-for-device')
 adb('shell','wm','size','1080x2400');adb('shell','wm','density','420')
 adb('shell','input','keyevent','KEYCODE_WAKEUP');adb('shell','wm','dismiss-keyguard',check=False)
 adb('install','-r','-t',(TEMP/'probe-apk-path').read_text())
-adb('shell',"echo '_ --no-first-run --no-default-browser-check --disable-fre --js-flags=--jitless' > /data/local/tmp/chrome-command-line")
+probe_flags='_ --no-first-run --no-default-browser-check --disable-fre --js-flags=--jitless'
+if os.environ.get('PROBE_SINGLE_PROCESS')=='1':
+    probe_flags+=' --single-process --no-sandbox'
+adb('shell',"echo '"+probe_flags+"' > /data/local/tmp/chrome-command-line")
 adb('shell','am','set-debug-app','--persistent',PACKAGE)
 adb('logcat','-c')
 try:
@@ -237,9 +241,7 @@ try:
     # Navigate using the real omnibox if startup has not reached the custom page.
     nodes=list(ET.fromstring(startup).iter('node'))
     if not any(a.attrib.get('class')=='android.widget.Button' and 'URL' in (a.attrib.get('text','')+a.attrib.get('content-desc','')) for a in nodes):
-        adb('shell','input','tap','400','160')
-        adb('shell','input','text','chrome://argon/')
-        adb('shell','input','keyevent','KEYCODE_ENTER')
+        adb('shell','am','start','-a','android.intent.action.VIEW','-d','chrome://newtab/','-n',PACKAGE+'/com.google.android.apps.chrome.Main')
     for attempt in range(30):
         if '"hidden":true' in adb('shell','cat',LOG,check=False):break
         time.sleep(2)
