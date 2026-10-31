@@ -67,7 +67,7 @@ static void views(JNIEnv* env, jobject view, int* count, bool* hidden) {
     }
   }
 }
-static void JNICALL entered(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method) {
+static void JNICALL entered(jvmtiEnv*, JNIEnv* env, jthread thread, jmethodID method) {
   if (method == library_loaded) previous_jni = env->functions;
   if (method == readiness) {
     jobject instance = nullptr;
@@ -81,7 +81,7 @@ static void JNICALL entered(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method) {
     env->DeleteLocalRef(view);
   }
 }
-static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread thread, jmethodID method,
+static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method,
                            jboolean exceptional, jvalue value) {
   if (method == library_loaded && previous_jni && env->functions != previous_jni) {
     // Undo Chromium's ARM FindClass callback in the host x86 JNI table for this emulator.
