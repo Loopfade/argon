@@ -274,11 +274,69 @@ TOOLBAR_PROVIDER_BEFORE = '''        mActivityTabProvider = tabProvider;
 TOOLBAR_PROVIDER_AFTER = '''        // ARGON: the tab provider is already initialized above.
         mActivityResultTracker = activityResultTracker;'''
 
+TOOLBAR_ACTIVATION_SIGNATURE = '    private void onTabOrModelChanged() {'
+TOOLBAR_ACTIVATION_DIGEST = '3bdd8a46ea125d798ab64c177d9ff3efccaf33cef3082b4586332f2e3427fdab'
+TOOLBAR_ACTIVATION_BEFORE = '''    private void onTabOrModelChanged() {
+        mToolbar.onTabOrModelChanged();
+        checkIfNtpLoaded();
+    }'''
+TOOLBAR_ACTIVATION_AFTER = TOOLBAR_ACTIVATION_BEFORE.replace(
+    '        checkIfNtpLoaded();', '''        checkIfNtpLoaded();
+        // ARGON: a background WebUI may have reported its bounds before selection.
+        Tab argonTab = mActivityTabProvider.get();
+        if (org.chromium.chrome.browser.ntp.ArgonHomeBridge.isRegistered(argonTab)) {
+            onArgonHomeSearchBoxChanged();
+        }''')
+TOOLBAR_REFRESH_BEFORE = '''    /** Refresh after the WebUI search box completes its first layout or is detached. */
+    public void onArgonHomeSearchBoxChanged() {
+        if (mIsDestroyed) return;
+        mLocationBarModel.notifyContentChanged();
+        mToolbar.onTabContentViewChanged();
+    }
+
+'''
+TOOLBAR_REFRESH_AFTER = '''    /** Refresh the live WebUI toolbar now and its compositor resource after layout. */
+    public void onArgonHomeSearchBoxChanged() {
+        if (mIsDestroyed) return;
+        mLocationBarModel.notifyContentChanged();
+        mToolbar.onTabContentViewChanged();
+        Tab argonTab = mActivityTabProvider.get();
+        // Child invalidations are ignored while controls are not ready or changing visibility.
+        // The next pre-draw runs after layout, when the normal capture checks can accept a frame.
+        androidx.core.view.OneShotPreDrawListener.add(mToolbarLayout, () -> {
+            if (mIsDestroyed || !mInitializedWithNative || argonTab != mActivityTabProvider.get()) {
+                return;
+            }
+            var resource = mControlContainer.getToolbarResourceAdapter();
+            resource.invalidate(null);
+            resource.onResourceRequested();
+        });
+        mToolbarLayout.getRootView().postInvalidateOnAnimation();
+    }
+
+'''
+TOOLBAR_NATIVE_READY_BEFORE = '''        // Allow bitmap capturing once everything has been initialized.
+        Tab currentTab = tabModelSelector.getCurrentTab();
+        if (currentTab != null
+                && currentTab.getWebContents() != null
+                && !currentTab.getUrl().isEmpty()) {
+            mControlContainer.setReadyForBitmapCapture(true);
+        }'''
+TOOLBAR_NATIVE_READY_AFTER = TOOLBAR_NATIVE_READY_BEFORE.replace(
+    '            mControlContainer.setReadyForBitmapCapture(true);',
+    '''            mControlContainer.setReadyForBitmapCapture(true);
+            if (org.chromium.chrome.browser.ntp.ArgonHomeBridge.isRegistered(currentTab)) {
+                onArgonHomeSearchBoxChanged();
+            }''')
+
 
 def patch_toolbar(text):
     text = replace_once(text, TOOLBAR_INIT_BEFORE, TOOLBAR_INIT_AFTER)
     text = replace_once(text, TOOLBAR_PROVIDER_BEFORE, TOOLBAR_PROVIDER_AFTER)
     text = replace_once(text, TOOLBAR_BEFORE, TOOLBAR_AFTER)
+    text = reviewed_method(text, TOOLBAR_ACTIVATION_SIGNATURE, TOOLBAR_ACTIVATION_DIGEST,
+                           TOOLBAR_ACTIVATION_BEFORE, TOOLBAR_ACTIVATION_AFTER)
+    text = replace_once(text, TOOLBAR_NATIVE_READY_BEFORE, TOOLBAR_NATIVE_READY_AFTER)
     text = replace_once(text, TOOLBAR_NAV_START, TOOLBAR_NAV_START + '''
                         org.chromium.chrome.browser.ntp.ArgonHomeBridge.onNavigationStarted(
                                 tab, navigationHandle.getUrl().getSpec());''')
@@ -290,14 +348,9 @@ def patch_toolbar(text):
                         }''')
     anchor = ('    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
               '    public @Nullable OmniboxStub getOmniboxStub() {')
-    return replace_once(text, anchor, '''    /** Refresh after the WebUI search box completes its first layout or is detached. */
-    public void onArgonHomeSearchBoxChanged() {
-        if (mIsDestroyed) return;
-        mLocationBarModel.notifyContentChanged();
-        mToolbar.onTabContentViewChanged();
-    }
-
-''' + anchor)
+    if TOOLBAR_REFRESH_BEFORE in text:
+        text = replace_once(text, TOOLBAR_REFRESH_BEFORE, TOOLBAR_REFRESH_AFTER)
+    return replace_once(text, anchor, TOOLBAR_REFRESH_AFTER + anchor)
 
 
 def patch_java_catalog(text):

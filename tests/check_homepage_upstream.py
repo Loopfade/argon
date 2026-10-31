@@ -12,6 +12,7 @@ from test_homepage_native import (
     verify_toolbar_startup_source,
     verify_toolbar_capture_source,
     verify_phone_capture_source,
+    RESOURCE_COORDINATOR, VIEW_RESOURCE_ADAPTER, verify_activation_sources,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,20 +26,28 @@ def main():
     parser.add_argument('--chromium-src', type=Path)
     args = parser.parse_args()
     revision = json.loads((ROOT / 'build-lock.json').read_text())['chromium_commit']
-    delegate = ((args.chromium_src / DELEGATE_API).read_text() if args.chromium_src
-                else download(chromium_url(revision, DELEGATE_API)))
+
+    def read(path):
+        if args.chromium_src:
+            return (args.chromium_src / path).read_text()
+        return download(chromium_url(revision, path))
+
+    delegate = read(DELEGATE_API)
     verify_delegate_api(delegate)
-    toolbar_phone = ((args.chromium_src / TOOLBAR_PHONE).read_text() if args.chromium_src
-                     else download(chromium_url(revision, TOOLBAR_PHONE)))
+    toolbar_phone = read(TOOLBAR_PHONE)
     verify_toolbar_scroll_source(toolbar_phone)
-    token = ((args.chromium_src / PHONE_TOKEN).read_text() if args.chromium_src
-             else download(chromium_url(revision, PHONE_TOKEN)))
+    token = read(PHONE_TOKEN)
     verify_phone_capture_source(toolbar_phone, token)
+    extra = {}
+    for path in (homepage.TOOLBAR_MANAGER, homepage.TOOLBAR_CONTAINER,
+                 RESOURCE_COORDINATOR, VIEW_RESOURCE_ADAPTER):
+        extra[path] = read(path)
+    verify_activation_sources(extra[homepage.TOOLBAR_MANAGER], extra[homepage.TOOLBAR_CONTAINER],
+                              extra[RESOURCE_COORDINATOR], extra[VIEW_RESOURCE_ADAPTER])
     with tempfile.TemporaryDirectory() as directory:
         src = Path(directory)
         for path in homepage.INPUT_PATHS:
-            value = ((args.chromium_src / path).read_text() if args.chromium_src
-                     else download(chromium_url(revision, path)))
+            value = extra[path] if path in extra else read(path)
             if path == homepage.TOOLBAR_MANAGER:
                 reviewed = value.replace(homepage.TOOLBAR_INIT_AFTER, homepage.TOOLBAR_INIT_BEFORE, 1)
                 reviewed = reviewed.replace(homepage.TOOLBAR_PROVIDER_AFTER, homepage.TOOLBAR_PROVIDER_BEFORE, 1)

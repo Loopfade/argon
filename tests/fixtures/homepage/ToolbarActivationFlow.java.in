@@ -1,0 +1,101 @@
+import java.lang.reflect.Method;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.chrome.browser.ntp.ArgonHomeBridge;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.toolbar.ToolbarManager;
+import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.WindowAndroid;
+import org.chromium.url.GURL;
+
+public class ToolbarActivationFlow {
+    // JNI owns a strong reference for each live document in production.
+    private static final java.util.List<Object> pages = new java.util.ArrayList<>();
+    private static Object invoke(Object target, String name, Class<?>[] types, Object... values)
+            throws Exception {
+        Method method = ArgonHomeBridge.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method.invoke(target, values);
+    }
+    private static Tab home(ChromeTabbedActivity activity, boolean activate) throws Exception {
+        Tab tab = new Tab(); tab.url = new GURL("chrome://argon/");
+        tab.contents = new WebContents(); tab.contents.window = new WindowAndroid();
+        tab.contents.window.activity = activity;
+        if (activate) activity.tab = tab;
+        Object page = invoke(null, "create", new Class<?>[] {WebContents.class, long.class}, tab.contents, 7L);
+        pages.add(page);
+        invoke(page, "updateBounds", new Class<?>[] {float.class,float.class,float.class,float.class,float.class},
+                10f, 100f, 300f, 56f, 0f);
+        return tab;
+    }
+    private static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+    public static void main(String[] args) throws Exception {
+        ChromeTabbedActivity activity = new ChromeTabbedActivity();
+        ToolbarManager manager = activity.toolbar;
+        manager.mActivityTabProvider = () -> activity.tab;
+        manager.delegate = ArgonHomeBridge.wrap(() -> activity.tab, manager.mToolbarLayout,
+                NewTabPageDelegate.EMPTY, value -> {});
+
+        manager.seed("old address");
+        manager.mControlContainer.frame.mReadyForBitmapCapture = false;
+        home(activity, true);
+        check(manager.captures()==0, "First layout must not synchronously paint before Android layout");
+        manager.mControlContainer.frame.mReadyForBitmapCapture = true;
+        manager.draw();
+        check("".equals(manager.bitmap()), "First layout must refresh the compositor without focusing input");
+
+        Tab background = home(activity, false);
+        manager.seed("old address");
+        manager.mControlContainer.frame.midVisibility = true;
+        activity.tab = background;
+        manager.selected();
+        manager.mControlContainer.frame.midVisibility = false;
+        manager.draw();
+        check("".equals(manager.bitmap()), "Selecting a measured background homepage must refresh its compositor");
+
+        for (int repeat=0; repeat<5; repeat++) {
+            manager.seed("old address");
+            manager.mControlContainer.frame.midVisibility = true;
+            home(activity, true);
+            manager.selected();
+            manager.mControlContainer.frame.midVisibility = false;
+            manager.draw();
+            check("".equals(manager.bitmap()), "Every newly selected homepage must have a fresh resting toolbar");
+        }
+        manager.seed("old address");
+        manager.mControlContainer.frame.visible = false;
+        manager.selected();
+        manager.mControlContainer.frame.visible = true;
+        manager.draw();
+        check("".equals(manager.bitmap()), "A toolbar visibility toggle cannot lose the homepage repaint");
+        check(manager.omnibox.inputs.isEmpty() && !manager.focused,
+                "Activation refresh must not require or steal native input focus");
+
+        manager.onArgonHomeSearchBoxChanged();
+        int before = manager.captures();
+        Tab website = new Tab(); website.url = new GURL("https://example.com/");
+        activity.tab = website;
+        manager.draw();
+        check(manager.captures()==before, "Queued refresh for another tab must be discarded");
+
+        activity.tab = background;
+        manager.seed("old address");
+        manager.mInitializedWithNative = false;
+        manager.onArgonHomeSearchBoxChanged();
+        manager.draw();
+        check(manager.captures()==before, "Uninitialized native toolbar must not request a capture");
+        manager.nativeInitialized();
+        manager.draw();
+        check(manager.captures()>before && "".equals(manager.bitmap()),
+                "Native initialization must allow a fresh activation request");
+
+        manager.onArgonHomeSearchBoxChanged();
+        before = manager.captures();
+        manager.mIsDestroyed = true;
+        manager.draw();
+        check(manager.captures()==before, "Destroyed toolbar cannot process queued repaint work");
+        System.out.println("PASS: first layout, background selection and deferred compositor refresh");
+    }
+}

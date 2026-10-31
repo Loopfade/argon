@@ -1,0 +1,100 @@
+package org.chromium.chrome.browser.toolbar;
+
+import android.graphics.Rect;
+import android.view.View;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.components.omnibox.AutocompleteInput;
+
+/** Production manager hooks and invalidation methods; Android layout/painting are boundaries. */
+public class ToolbarManager {
+    private static final int VISIBLE = 0;
+    public boolean mIsDestroyed, mInitializedWithNative = true, focused;
+    public Supplier<Tab> mActivityTabProvider = () -> null;
+    public final View mToolbarLayout = new View();
+    public final ControlContainer mControlContainer = new ControlContainer();
+    private final Model mLocationBarModel = new Model();
+    private final Toolbar mToolbar = new Toolbar();
+    public final Omnibox omnibox = new Omnibox();
+    public NewTabPageDelegate delegate = NewTabPageDelegate.EMPTY;
+    private String nativePixels = "address";
+
+    private static class Model { void notifyContentChanged() {} }
+    private class Toolbar {
+        void onTabContentViewChanged() { update(); }
+        void onTabOrModelChanged() { update(); }
+        private void update() {
+            nativePixels = delegate.isLocationBarShown() ? "" : "address";
+            mControlContainer.frame.onDescendantInvalidated(mToolbarLayout, mToolbarLayout);
+        }
+    }
+    public class Omnibox {
+        public final List<AutocompleteInput> inputs = new ArrayList<>();
+        public void beginInput(AutocompleteInput input) { inputs.add(input); focused = true; }
+    }
+    public Omnibox getOmniboxStub() { return omnibox; }
+    public boolean isUrlBarFocused() { return focused; }
+    private void checkIfNtpLoaded() {}
+    public void selected() { onTabOrModelChanged(); }
+    public void nativeInitialized() {
+        mInitializedWithNative = true;
+        var tabModelSelector = new Object() { Tab getCurrentTab() { return mActivityTabProvider.get(); } };
+ARGON_NATIVE_READY_BLOCK
+    }
+    public void draw() { mToolbarLayout.dispatchPreDraw(); }
+    public void seed(String pixels) {
+        mControlContainer.frame.adapter.bitmap = pixels;
+        mControlContainer.frame.adapter.mDirtyRect.setEmpty();
+    }
+    public String bitmap() { return mControlContainer.frame.adapter.bitmap; }
+    public int captures() { return mControlContainer.frame.adapter.captures; }
+
+    public class ControlContainer {
+        public final Frame frame = new Frame();
+        public ViewResourceAdapter getToolbarResourceAdapter() { return frame.adapter; }
+        public void setReadyForBitmapCapture(boolean ready) { frame.mReadyForBitmapCapture = ready; }
+    }
+    private static class BaseFrame {
+        public void onDescendantInvalidated(View child, View target) {}
+    }
+    public class Frame extends BaseFrame {
+        public boolean mReadyForBitmapCapture = true, midVisibility, visible = true;
+        public final ToolbarViewResourceAdapter adapter = new ToolbarViewResourceAdapter();
+        private final BooleanSupplier mIsMidVisibilityToggle = () -> midVisibility;
+        private final ViewResourceAdapter mResourceAdapter = adapter;
+        private @Nullable Rect mTempRect;
+        private ViewResourceAdapter getResourceAdapter() { return adapter; }
+        private int getVisibility() { return visible ? VISIBLE : 4; }
+
+ARGON_READY_METHOD
+
+ARGON_INVALIDATION_METHOD
+    }
+    public class ToolbarViewResourceAdapter extends ViewResourceAdapter {
+        private boolean isCapturingDisabled() { return false; }
+    }
+    public class ViewResourceAdapter {
+        protected final Rect mDirtyRect = new Rect();
+        private final View mView = mToolbarLayout;
+        private final List<Object> mOnResourceReadyObservers = List.of(new Object());
+        public String bitmap = "address";
+        public int captures;
+        // A successful paint clears dirty state. Production capture readiness is tested separately.
+        public void triggerBitmapCapture() {
+            bitmap = nativePixels;
+            captures++;
+            mDirtyRect.setEmpty();
+        }
+
+ARGON_RESOURCE_METHODS
+    }
+
+ARGON_ACTIVATION_METHOD
+
+ARGON_REFRESH_METHOD
+}
