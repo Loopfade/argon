@@ -15,6 +15,8 @@ static FILE* output;
 static char patch_path[1024];
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static jmethodID readiness, library_loaded;
+static jobject current_toolbar;
+static jvmtiError toolbar_error = JVMTI_ERROR_ABSENT_INFORMATION;
 static jclass view_group;
 static jmethodID alpha_method, visibility_method, child_count, child_at;
 
@@ -67,6 +69,17 @@ static void views(JNIEnv* env, jobject view, int* count, bool* hidden) {
 }
 static void JNICALL entered(jvmtiEnv*, JNIEnv* env, jthread, jmethodID method) {
   if (method == library_loaded) previous_jni = env->functions;
+  if (method == readiness) {
+    jobject instance = nullptr;
+    toolbar_error = ti->GetLocalInstance(thread, 0, &instance);
+    jclass view = env->FindClass("android/view/View");
+    if (instance && env->IsInstanceOf(instance, view)) {
+      if (current_toolbar) env->DeleteGlobalRef(current_toolbar);
+      current_toolbar = env->NewGlobalRef(instance);
+    }
+    if (instance) env->DeleteLocalRef(instance);
+    env->DeleteLocalRef(view);
+  }
 }
 static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread thread, jmethodID method,
                            jboolean exceptional, jvalue value) {
@@ -116,8 +129,8 @@ static void JNICALL exited(jvmtiEnv*, JNIEnv* env, jthread thread, jmethodID met
     release(fields);
   }
   env->DeleteLocalRef(result_class);
-  jobject self = nullptr;
-  jvmtiError local_error = ti->GetLocalInstance(thread, 0, &self);
+  jobject self = current_toolbar ? env->NewLocalRef(current_toolbar) : nullptr;
+  jvmtiError local_error = toolbar_error;
   bool hidden = false; int view_count = 0;
   fprintf(output, "},\"local_error\":%d,\"views\":[", local_error);
   if (self) { views(env, self, &view_count, &hidden); env->DeleteLocalRef(self); }
