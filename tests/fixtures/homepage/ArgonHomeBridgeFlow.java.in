@@ -11,6 +11,7 @@ import org.chromium.chrome.browser.ntp.ArgonHomeBridge;
 import org.chromium.chrome.browser.ntp.ArgonHomeBridgeJni;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.url_constants.UrlOverrideUtils;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.content_public.browser.WebContents;
@@ -73,17 +74,62 @@ public class ArgonHomeBridgeFlow {
         List<Float> transitions = new ArrayList<>();
         NewTabPageDelegate delegate = ArgonHomeBridge.wrap(
                 () -> activity.tab, toolbar, fallback, transitions::add);
-        check(!delegate.isLocationBarShown(), "Keep the normal address bar until the fakebox is ready");
+        check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
+                && !delegate.hasCompletedFirstLayout(),
+                "Home must hide the native omnibox before JNI registration and first layout");
+        for (String url : List.of("chrome://newtab/", "chrome-native://newtab/", "chrome://argon/")) {
+            tab.url = new GURL(url);
+            check(delegate.isLocationBarShown(), "Unmeasured home alias must hide the omnibox: " + url);
+        }
+        UrlOverrideUtils.ntpOverrideEnabled = true;
+        tab.url = new GURL("chrome://newtab/");
+        check(!delegate.isLocationBarShown(), "Extension or policy NTP override keeps its own toolbar");
+        tab.url = new GURL("chrome://argon/");
+        check(delegate.isLocationBarShown(), "An explicit Argon home remains available with an NTP override");
+        UrlOverrideUtils.ntpOverrideEnabled = false;
+        tab.url = new GURL("chrome-native://argon/");
+        check(!delegate.isLocationBarShown(), "An unsupported unregistered URL must keep the address bar");
+        tab.url = new GURL("chrome://argon/");
+        contents.destroyed = true;
+        check(!delegate.isLocationBarShown(), "Destroyed renderer contents cannot activate a pending home");
+        contents.destroyed = false;
+        tab.incognito = true;
+        check(!delegate.isLocationBarShown(), "Unregistered incognito must keep its native delegate");
+        tab.incognito = false;
+        tab.error = true;
+        check(!delegate.isLocationBarShown(), "An early error page must keep the address bar");
+        tab.error = false;
+        for (boolean refactored : List.of(false, true)) {
+            ToolbarPhoneScrollFlow earlyToolbar = new ToolbarPhoneScrollFlow(delegate, refactored);
+            check(earlyToolbar.inputAlpha() == 1f, "Seed the ordinary visible native toolbar");
+            delegate.setSearchBoxScrollListener(earlyToolbar::onScroll);
+            check(earlyToolbar.inputAlpha() == 0f,
+                    "Pinned Chromium transition must hide the first frame before fakebox layout");
+            activity.toolbar.focused = true;
+            earlyToolbar.focus(1f);
+            delegate.setSearchBoxScrollListener(earlyToolbar::onScroll);
+            check(earlyToolbar.inputAlpha() == 1f,
+                    "An early activation callback must not hide focused native input");
+            activity.toolbar.focused = false;
+        }
+        ArgonHomeBridge.onNavigationStarted(tab, "https://example.com/");
+        check(!delegate.isLocationBarShown(), "External navigation before registration must show its URL");
+        ArgonHomeBridge.onNavigationFinished(tab, true);
+        check(!delegate.isLocationBarShown(), "Another early pending navigation must keep the URL visible");
+        ArgonHomeBridge.onNavigationFinished(tab, false);
+        check(delegate.isLocationBarShown(), "Cancelling an early navigation must restore home state");
         Object page = create(contents, 7);
-        check(!delegate.isLocationBarShown(), "Registration alone cannot hide the real address bar");
+        check(delegate.isLocationBarShown() && !delegate.hasCompletedFirstLayout(),
+                "Registration must keep the omnibox hidden without inventing fakebox geometry");
         ToolbarCaptureFlow capture = new ToolbarCaptureFlow(tab, delegate, () -> activity.toolbar.focused);
         capture.pageLoad(true);
         check(capture.render("DuckDuckGo:visible"), "Page load must capture the initial toolbar");
         capture.pageLoad(false);
+        int refreshesBeforeLayout = activity.toolbar.refreshes;
         layout(page, 0f);
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
                 && delegate.hasCompletedFirstLayout(), "Measured fakebox must become the NTP delegate");
-        check(activity.toolbar.refreshes == 1, "First layout must refresh native toolbar");
+        check(activity.toolbar.refreshes == refreshesBeforeLayout + 1, "First layout must refresh native toolbar");
         check(capture.render("DuckDuckGo:hidden") && "DuckDuckGo:hidden".equals(capture.bitmap()),
                 "Measured WebUI fakebox must replace the stale visible omnibox bitmap while controls stay locked");
         List<Float> scrolls = new ArrayList<>();
@@ -222,6 +268,10 @@ public class ArgonHomeBridgeFlow {
         int alphaCount=ArgonHomeBridgeJni.alphas.size();
         delegate.setSearchBoxAlpha(0f);
         check(ArgonHomeBridgeJni.alphas.size()==alphaCount, "Late animation cannot call a deleted native observer");
+        ArgonHomeBridge.onNavigationStarted(tab, "chrome-native://newtab/");
+        check(delegate.isLocationBarShown() && !delegate.hasCompletedFirstLayout(),
+                "A new home navigation must replace a detached document's pending state");
+        tab.url = new GURL("https://example.com/");
         fallback.visible=true;
         delegate.setSearchBoxScrollListener(scrolls::add);
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()

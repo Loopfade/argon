@@ -134,6 +134,11 @@ class HomepageTests(unittest.TestCase):
                 previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE)
                 self.assertEqual(homepage.patch_toolbar(previous), current)
             self.assertEqual(homepage.patch_toolbar(current), current)
+            previous = current.replace(homepage.TOOLBAR_ACTIVATION_AFTER,
+                                       homepage.TOOLBAR_ACTIVATION_REGISTERED_BEFORE)
+            previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER,
+                                        homepage.TOOLBAR_NATIVE_READY_REGISTERED_BEFORE)
+            self.assertEqual(homepage.patch_toolbar(previous), current)
 
     def test_changed_phone_capture_rejects_the_whole_patch(self):
         for before, after in (

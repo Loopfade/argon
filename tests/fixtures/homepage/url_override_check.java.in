@@ -1,0 +1,4 @@
+    public static boolean isNtpOverrideEnabled() {
+        return ExtensionsUrlOverrideRegistry.getNtpOverrideEnabled()
+                || PolicyUrlOverrideRegistry.getNewTabPageLocationOverrideEnabled();
+    }

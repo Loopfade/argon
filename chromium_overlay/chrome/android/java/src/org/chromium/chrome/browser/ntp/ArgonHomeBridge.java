@@ -17,6 +17,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.url_constants.UrlOverrideUtils;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.content_public.browser.RenderCoordinates;
@@ -32,6 +33,7 @@ import java.util.function.Supplier;
 public final class ArgonHomeBridge {
     private static final WeakHashMap<WebContents, WeakReference<ArgonHomeBridge>> PAGES =
             new WeakHashMap<>();
+    private static final WeakHashMap<Tab, Boolean> EARLY_NAVIGATIONS = new WeakHashMap<>();
     private final WebContents mContents;
     private final Rect mLastBounds = new Rect();
     private long mNativeObserver;
@@ -53,8 +55,12 @@ public final class ArgonHomeBridge {
     }
 
     private @Nullable ChromeTabbedActivity activity() {
-        if (mContents.isDestroyed()) return null;
-        var window = mContents.getTopLevelNativeWindow();
+        return activity(mContents);
+    }
+
+    private static @Nullable ChromeTabbedActivity activity(@Nullable WebContents contents) {
+        if (contents == null || contents.isDestroyed()) return null;
+        var window = contents.getTopLevelNativeWindow();
         Activity activity = window == null ? null : window.getActivity().get();
         return activity instanceof ChromeTabbedActivity ? (ChromeTabbedActivity) activity : null;
     }
@@ -79,7 +85,11 @@ public final class ArgonHomeBridge {
     @CalledByNative
     private void destroy() {
         var reference = PAGES.get(mContents);
-        if (reference != null && reference.get() == this) PAGES.remove(mContents);
+        if (reference != null && reference.get() == this) {
+            // Do not mistake a detached document for a home that has not registered yet.
+            // A new document or navigation replaces this weak tombstone.
+            reference.clear();
+        }
         mNativeObserver = 0;
         mScrollCallback = null;
         refreshToolbar();
@@ -158,6 +168,14 @@ public final class ArgonHomeBridge {
         return toolbar != null && toolbar.isUrlBarFocused();
     }
 
+    private static boolean isOmniboxFocused(@Nullable Tab tab) {
+        if (tab == null) return false;
+        var activity = activity(tab.getWebContents());
+        var toolbar = activity == null || activity.getActivityTab() != tab
+                ? null : activity.getToolbarManager();
+        return toolbar != null && toolbar.isUrlBarFocused();
+    }
+
     private void setAlpha(float alpha) {
         alpha = Math.max(0f, Math.min(1f, alpha));
         boolean focused = isOmniboxFocused();
@@ -181,26 +199,59 @@ public final class ArgonHomeBridge {
 
     public static boolean isRegistered(@Nullable Tab tab) { return registered(tab) != null; }
 
+    /** Recognize our home before the renderer and the measured fakebox are ready. */
+    public static boolean isHomeToolbarActive(@Nullable Tab tab) {
+        if (tab == null || tab.isDestroyed() || tab.isIncognito() || tab.isShowingErrorPage()
+                || EARLY_NAVIGATIONS.containsKey(tab) || !isHomeUrl(tab.getUrl())) return false;
+        var contents = tab.getWebContents();
+        if (contents != null && contents.isDestroyed()) return false;
+        var reference = PAGES.get(contents);
+        if (reference != null) {
+            var page = reference.get();
+            return page != null && page.mNativeObserver != 0 && !page.mNavigatingAway
+                    && page.isSupported();
+        }
+        // Direct chrome://argon belongs to us even with an NTP override. Aliases must
+        // preserve an extension's or enterprise policy's replacement new-tab page.
+        return (tab.getUrl().getScheme().equals("chrome") && tab.getUrl().getHost().equals("argon"))
+                || (tab.getUrl().getHost().equals("newtab") && !UrlOverrideUtils.isNtpOverrideEnabled());
+    }
+
     private static @Nullable ArgonHomeBridge page(@Nullable Tab tab) {
         var page = registered(tab);
-        return page != null && tab != null && !tab.isShowingErrorPage() && isHomeUrl(tab.getUrl())
-                && !page.mNavigatingAway && page.mHasBounds && page.isSupported() ? page : null;
+        return page != null && isHomeToolbarActive(tab) && page.mHasBounds ? page : null;
+    }
+
+    private static void refreshToolbar(Tab tab) {
+        var activity = activity(tab.getWebContents());
+        if (activity == null || activity.getActivityTab() != tab) return;
+        var toolbar = activity.getToolbarManager();
+        if (toolbar != null) toolbar.onArgonHomeSearchBoxChanged();
     }
 
     /** Show the normal address bar before an external navigation commits. */
     public static void onNavigationStarted(Tab tab, String url) {
         var page = registered(tab);
-        if (page == null) return;
-        page.mNavigatingAway = !isHomeUrl(new GURL(url));
-        page.refreshToolbar();
+        boolean wasHome = isHomeToolbarActive(tab);
+        boolean leaving = !isHomeUrl(new GURL(url));
+        if (!leaving) {
+            EARLY_NAVIGATIONS.remove(tab);
+            var reference = PAGES.get(tab.getWebContents());
+            if (reference != null && reference.get() == null) PAGES.remove(tab.getWebContents());
+        } else if (page != null || wasHome) {
+            EARLY_NAVIGATIONS.put(tab, true);
+        }
+        if (page != null) page.mNavigatingAway = leaving;
+        if (page != null || wasHome || isHomeToolbarActive(tab)) refreshToolbar(tab);
     }
 
     /** A cancelled navigation must restore the homepage, but never hide another pending URL. */
     public static void onNavigationFinished(Tab tab, boolean hasPendingNavigation) {
         var page = registered(tab);
-        if (page == null) return;
-        page.mNavigatingAway = hasPendingNavigation;
-        page.refreshToolbar();
+        boolean early = EARLY_NAVIGATIONS.containsKey(tab);
+        if (!hasPendingNavigation) EARLY_NAVIGATIONS.remove(tab);
+        if (page != null) page.mNavigatingAway = hasPendingNavigation;
+        if (page != null || early) refreshToolbar(tab);
     }
 
     /** Only the phone delegate is wrapped; the native tablet and incognito policies remain intact. */
@@ -209,17 +260,18 @@ public final class ArgonHomeBridge {
             Callback<Float> transition) {
         return new NewTabPageDelegate() {
             private @Nullable ArgonHomeBridge mVisiblePage;
+            private boolean mWasShowingHome;
 
             private @Nullable ArgonHomeBridge current() { return page(currentTab.get()); }
 
             @Override
             public boolean wasShowingNtp() {
-                return mVisiblePage != null || fallback.wasShowingNtp();
+                return mWasShowingHome || fallback.wasShowingNtp();
             }
 
             @Override
             public boolean isCurrentlyVisible() {
-                return current() != null || fallback.isCurrentlyVisible();
+                return isHomeToolbarActive(currentTab.get()) || fallback.isCurrentlyVisible();
             }
 
             @Override
@@ -229,18 +281,19 @@ public final class ArgonHomeBridge {
 
             @Override
             public boolean isLocationBarShown() {
-                return current() != null || fallback.isLocationBarShown();
+                return isHomeToolbarActive(currentTab.get()) || fallback.isLocationBarShown();
             }
 
             @Override
             public boolean transitioningAwayFromLocationBar() {
-                return (mVisiblePage != null && current() == null)
+                return (mWasShowingHome && !isHomeToolbarActive(currentTab.get()))
                         || fallback.transitioningAwayFromLocationBar();
             }
 
             @Override
             public boolean hasCompletedFirstLayout() {
-                return current() != null || fallback.hasCompletedFirstLayout();
+                return isHomeToolbarActive(currentTab.get())
+                        ? current() != null : fallback.hasCompletedFirstLayout();
             }
 
             @Override
@@ -252,6 +305,7 @@ public final class ArgonHomeBridge {
                 }
                 // Detach any previous native NTP's scroll listener through its own delegate.
                 fallback.setSearchBoxScrollListener(callback);
+                mWasShowingHome = isHomeToolbarActive(currentTab.get());
                 mVisiblePage = current();
                 if (mVisiblePage != null) {
                     mVisiblePage.mScrollCallback = fraction -> {
@@ -259,6 +313,12 @@ public final class ArgonHomeBridge {
                         callback.onResult(fraction);
                     };
                     mVisiblePage.mScrollCallback.onResult(mVisiblePage.mScrollFraction);
+                } else if (mWasShowingHome && !isOmniboxFocused(currentTab.get())) {
+                    // Chromium hides its omnibox for an NTP without a completed first layout.
+                    // Use that transition before JNI registration instead of exposing a frame
+                    // of the old address bar while the WebUI renderer starts.
+                    transition.onResult(0f);
+                    callback.onResult(0f);
                 }
             }
 

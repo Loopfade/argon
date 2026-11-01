@@ -280,13 +280,15 @@ TOOLBAR_ACTIVATION_BEFORE = '''    private void onTabOrModelChanged() {
         mToolbar.onTabOrModelChanged();
         checkIfNtpLoaded();
     }'''
-TOOLBAR_ACTIVATION_AFTER = TOOLBAR_ACTIVATION_BEFORE.replace(
+TOOLBAR_ACTIVATION_REGISTERED_BEFORE = TOOLBAR_ACTIVATION_BEFORE.replace(
     '        checkIfNtpLoaded();', '''        checkIfNtpLoaded();
         // ARGON: a background WebUI may have reported its bounds before selection.
         Tab argonTab = mActivityTabProvider.get();
         if (org.chromium.chrome.browser.ntp.ArgonHomeBridge.isRegistered(argonTab)) {
             onArgonHomeSearchBoxChanged();
         }''')
+TOOLBAR_ACTIVATION_AFTER = TOOLBAR_ACTIVATION_REGISTERED_BEFORE.replace(
+    '.isRegistered(argonTab)', '.isHomeToolbarActive(argonTab)')
 TOOLBAR_REFRESH_BEFORE = '''    /** Refresh after the WebUI search box completes its first layout or is detached. */
     public void onArgonHomeSearchBoxChanged() {
         if (mIsDestroyed) return;
@@ -333,15 +335,21 @@ TOOLBAR_NATIVE_READY_BEFORE = '''        // Allow bitmap capturing once everythi
                 && !currentTab.getUrl().isEmpty()) {
             mControlContainer.setReadyForBitmapCapture(true);
         }'''
-TOOLBAR_NATIVE_READY_AFTER = TOOLBAR_NATIVE_READY_BEFORE.replace(
+TOOLBAR_NATIVE_READY_REGISTERED_BEFORE = TOOLBAR_NATIVE_READY_BEFORE.replace(
     '            mControlContainer.setReadyForBitmapCapture(true);',
     '''            mControlContainer.setReadyForBitmapCapture(true);
             if (org.chromium.chrome.browser.ntp.ArgonHomeBridge.isRegistered(currentTab)) {
                 onArgonHomeSearchBoxChanged();
             }''')
+TOOLBAR_NATIVE_READY_AFTER = TOOLBAR_NATIVE_READY_REGISTERED_BEFORE.replace(
+    '.isRegistered(currentTab)', '.isHomeToolbarActive(currentTab)')
 
 
 def patch_toolbar(text):
+    if TOOLBAR_ACTIVATION_REGISTERED_BEFORE in text:
+        text = replace_once(text, TOOLBAR_ACTIVATION_REGISTERED_BEFORE, TOOLBAR_ACTIVATION_AFTER)
+    if TOOLBAR_NATIVE_READY_REGISTERED_BEFORE in text:
+        text = replace_once(text, TOOLBAR_NATIVE_READY_REGISTERED_BEFORE, TOOLBAR_NATIVE_READY_AFTER)
     text = replace_once(text, TOOLBAR_INIT_BEFORE, TOOLBAR_INIT_AFTER)
     text = replace_once(text, TOOLBAR_PROVIDER_BEFORE, TOOLBAR_PROVIDER_AFTER)
     text = replace_once(text, TOOLBAR_BEFORE, TOOLBAR_AFTER)
