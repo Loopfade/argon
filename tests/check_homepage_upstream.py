@@ -7,8 +7,10 @@ from pathlib import Path
 import tempfile
 
 from upstream_sources import chromium_url, download
+from test_homepage_shortcut import verify_shortcut_sources
 from test_homepage_native import (
     DELEGATE_API, TOOLBAR_PHONE, PHONE_TOKEN, verify_delegate_api, verify_toolbar_scroll_source,
+    URL_OVERRIDES, verify_url_override_api,
     verify_toolbar_startup_source,
     verify_toolbar_capture_source,
     verify_phone_capture_source,
@@ -34,6 +36,8 @@ def main():
 
     delegate = read(DELEGATE_API)
     verify_delegate_api(delegate)
+    verify_url_override_api(read(URL_OVERRIDES))
+    verify_shortcut_sources(read)
     toolbar_phone = read(TOOLBAR_PHONE)
     verify_toolbar_scroll_source(toolbar_phone)
     token = read(PHONE_TOKEN)

@@ -107,6 +107,32 @@ public class ToolbarActivationFlow {
                 "A hidden status icon animation must not lose the homepage compositor refresh");
         manager.statusIconAnimating = false;
 
+        Tab pending = new Tab();
+        pending.url = new GURL("chrome://newtab/");
+        pending.contents = new WebContents();
+        pending.contents.window = new WindowAndroid();
+        pending.contents.window.activity = activity;
+        activity.tab = pending;
+        manager.seed("old address");
+        manager.selected();
+        manager.draw();
+        check("".equals(manager.bitmap()),
+                "Selecting home before JNI registration must replace the old compositor bitmap");
+        manager.mInitializedWithNative = false;
+        manager.seed("old address");
+        manager.nativeInitialized();
+        manager.draw();
+        check("".equals(manager.bitmap()),
+                "Native readiness must refresh an unregistered home before its first layout");
+        Object unmeasured = invoke(null, "create", new Class<?>[] {WebContents.class, long.class},
+                pending.contents, 9L);
+        pages.add(unmeasured);
+        manager.seed("old address");
+        manager.selected();
+        manager.draw();
+        check("".equals(manager.bitmap()) && !manager.delegate.hasCompletedFirstLayout(),
+                "A registered but unmeasured home must stay hidden until real layout");
+
         manager.onArgonHomeSearchBoxChanged();
         before = manager.captures();
         manager.mIsDestroyed = true;

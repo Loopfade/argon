@@ -29,8 +29,11 @@ def input_tree(root):
             + '\n' + homepage.TOOLBAR_NAV_FINISH + '\n    /**\n     * @return The {@link OmniboxStub}.\n     */\n'
             + '    public @Nullable OmniboxStub getOmniboxStub() {\n    }\n',
         homepage.TOOLBAR_CONTAINER: (FIXTURES / 'toolbar_capture.java.in').read_text(),
-        homepage.TOOLBAR_PHONE: homepage.PHONE_CAPTURE_FIELD_BEFORE + '\n'
-            + (FIXTURES / 'toolbar_phone_capture.java.in').read_text(),
+        homepage.TOOLBAR_PHONE: homepage.PHONE_SHORTCUT_IMPORT_BEFORE + '\n'
+            + homepage.PHONE_CAPTURE_FIELD_BEFORE + '\n'
+            + (FIXTURES / 'toolbar_phone_capture.java.in').read_text()
+            + (FIXTURES / 'toolbar_shortcut.java.in').read_text(),
+        homepage.NEW_TAB_BUTTON: (FIXTURES / 'new_tab_button.java.in').read_text(),
         homepage.JAVA_CATALOG: '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",\n',
         homepage.JNI_CATALOG: '  generate_jni("chrome_jni_headers") {\n    sources = [\n    ]\n  }\n',
     }
@@ -46,6 +49,21 @@ def snapshot(root):
 
 
 class HomepageTests(unittest.TestCase):
+    def test_changed_toolbar_shortcut_sources_reject_the_whole_patch(self):
+        for path, before, after in (
+            (homepage.TOOLBAR_PHONE, 'return !(isNtp && isSignInLevelUp);', 'return false;'),
+            (homepage.NEW_TAB_BUTTON, 'if (tab == null)', 'if (tab != null)'),
+        ):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                src = Path(directory)
+                input_tree(src)
+                target = src / path
+                target.write_text(target.read_text().replace(before, after, 1))
+                original = snapshot(src)
+                with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+                    homepage.apply(src)
+                self.assertEqual(snapshot(src), original)
+
     def test_patch_is_idempotent_and_bundles_every_frontend_file(self):
         with tempfile.TemporaryDirectory() as directory:
             src = Path(directory)
@@ -134,6 +152,11 @@ class HomepageTests(unittest.TestCase):
                 previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE)
                 self.assertEqual(homepage.patch_toolbar(previous), current)
             self.assertEqual(homepage.patch_toolbar(current), current)
+            previous = current.replace(homepage.TOOLBAR_ACTIVATION_AFTER,
+                                       homepage.TOOLBAR_ACTIVATION_REGISTERED_BEFORE)
+            previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER,
+                                        homepage.TOOLBAR_NATIVE_READY_REGISTERED_BEFORE)
+            self.assertEqual(homepage.patch_toolbar(previous), current)
 
     def test_changed_phone_capture_rejects_the_whole_patch(self):
         for before, after in (

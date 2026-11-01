@@ -13,10 +13,12 @@ TOOLBAR_PHONE = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/ch
 PHONE_TOKEN = TOOLBAR_PHONE.with_name('PhoneCaptureStateToken.java')
 RESOURCE_COORDINATOR = Path('components/browser_ui/widget/android/java/src/org/chromium/components/browser_ui/widget/ViewResourceCoordinatorLayout.java')
 VIEW_RESOURCE_ADAPTER = Path('ui/android/java/src/org/chromium/ui/resources/dynamics/ViewResourceAdapter.java')
+URL_OVERRIDES = Path('chrome/browser/url_constants/android/java/src/org/chromium/chrome/browser/url_constants/UrlOverrideUtils.java')
 TOOLBAR_SCROLL_SIGNATURES = (
     '    private void onNtpScrollChanged(float scrollFraction) {',
     '    private void updateLocationBarTranslationOnScroll() {',
     '    private float getLocationBarTranslationY() {',
+    '    private void updateNtpTransitionAnimation() {',
 )
 BRIDGE = ROOT / 'chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'
 
@@ -33,6 +35,15 @@ def verify_toolbar_scroll_source(source):
     for signature in TOOLBAR_SCROLL_SIGNATURES:
         if homepage.method_source(source, signature) != homepage.method_source(fixture, signature):
             raise ValueError('Chromium toolbar scrolling changed; review the keyboard regression')
+
+
+def verify_url_override_api(source):
+    from test_homepage import homepage
+
+    signature = '    public static boolean isNtpOverrideEnabled() {'
+    expected = (FIXTURES / 'url_override_check.java.in').read_text().rstrip('\n')
+    if homepage.method_source(source, signature) != expected:
+        raise ValueError('Chromium NTP override detection changed; review early-home routing')
 
 
 def verify_toolbar_startup_source(source):
@@ -80,6 +91,8 @@ def verify_activation_sources(manager, container, coordinator, adapter):
     from test_homepage import homepage
 
     manager = manager.replace(homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE, 1)
+    manager = manager.replace(homepage.TOOLBAR_ACTIVATION_REGISTERED_BEFORE,
+                              homepage.TOOLBAR_ACTIVATION_BEFORE, 1)
     if homepage.method_source(manager, homepage.TOOLBAR_ACTIVATION_SIGNATURE) != (
             FIXTURES / 'toolbar_activation.java.in').read_text().rstrip('\n'):
         raise ValueError('Chromium toolbar activation changed; review the first-frame regression')
@@ -120,6 +133,7 @@ public class Rect {
     public void set(int a, int b, int c, int d) { left=a; top=b; right=c; bottom=d; }
     public void set(Rect r) { set(r.left, r.top, r.right, r.bottom); }
     public void setEmpty() { set(0, 0, 0, 0); }
+    public void inset(int x, int y) { left+=x; top+=y; right-=x; bottom-=y; }
     public int width() { return right - left; }
     public boolean isEmpty() { return left>=right || top>=bottom; }
     public void union(Rect r) {
@@ -205,6 +219,13 @@ public class GURL {
     public String getScheme() { return uri.getScheme(); }
     public String getHost() { return uri.getHost(); }
     public boolean isEmpty() { return uri.toString().isEmpty(); }
+}
+""",
+    'org/chromium/chrome/browser/url_constants/UrlOverrideUtils.java': """
+package org.chromium.chrome.browser.url_constants;
+public class UrlOverrideUtils {
+    public static boolean ntpOverrideEnabled;
+    public static boolean isNtpOverrideEnabled() { return ntpOverrideEnabled; }
 }
 """,
     'org/chromium/chrome/browser/tab/Tab.java': """

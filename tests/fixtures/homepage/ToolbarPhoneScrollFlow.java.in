@@ -10,7 +10,14 @@ public class ToolbarPhoneScrollFlow {
     private final Position mActiveLocationBarBackgroundView = new Position();
     private final Rect mNtpSearchBoxBounds = new Rect();
     private final Point mNtpSearchBoxTranslation = new Point();
-    private float mNtpSearchBoxScrollFraction;
+    private final Rect mLocationBarBackgroundBounds = new Rect();
+    private final Rect mLocationBarBackgroundNtpOffset = new Rect();
+    private float mNtpSearchBoxScrollFraction = UNINITIALIZED_FRACTION;
+    private float mUrlExpansionFraction, mUrlFocusChangeFraction;
+    private float mUrlActionsNtpEndOffset, mLocationBarNtpOffsetLeft, mLocationBarNtpOffsetRight;
+    private boolean mUrlFocusChangeInProgress, mForceDrawLocationBarBackground;
+    private static final int TAB_SWITCHER = 1, ENTERING_TAB_SWITCHER = 2;
+    private int mTabSwitcherState;
     private float mRefactoredNtpStartingOffset;
     private int mTopPaddingForEdgeToEdgeNtp;
     private int mVisualState;
@@ -19,7 +26,7 @@ public class ToolbarPhoneScrollFlow {
     private boolean mFocused;
 
     private static class Position {
-        float y, alpha;
+        float y, alpha = 1f;
         void setTranslationY(float value) { y = value; }
         void setAlpha(float value) { alpha = value; }
         int getTop() { return 0; }
@@ -27,6 +34,19 @@ public class ToolbarPhoneScrollFlow {
     private static class LocationBar {
         final Position view = new Position();
         Position getPhoneCoordinator() { return view; }
+    }
+    private static class Interpolators {
+        static final Interpolators FAST_OUT_SLOW_IN_INTERPOLATOR = new Interpolators();
+        float getInterpolation(float fraction) { return fraction; }
+    }
+    private static class R {
+        static class dimen {
+            static final int location_bar_url_action_offset_ntp=0,
+                    location_bar_url_action_offset=1, fake_search_box_end_padding=2;
+        }
+    }
+    private static class Resources {
+        int getDimensionPixelSize(int id) { return 0; }
     }
     private final FeatureFlags ChromeFeatureList = new FeatureFlags();
     private static class FeatureFlags {
@@ -48,6 +68,8 @@ public class ToolbarPhoneScrollFlow {
     public void onScroll(float fraction) { onNtpScrollChanged(fraction); }
     public void focus(float fraction) {
         mFocused = true;
+        mUrlFocusChangeFraction = fraction;
+        updateUrlExpansionFraction();
         delegate.setUrlFocusChangeAnimationPercent(fraction);
         // The legacy transition gets its vertical offset from the NTP delegate;
         // the refactored focus transition snaps the focused omnibox to zero.
@@ -57,6 +79,8 @@ public class ToolbarPhoneScrollFlow {
     }
     public void clearFocus() {
         mFocused = false;
+        mUrlFocusChangeFraction = 0f;
+        updateUrlExpansionFraction();
         delegate.setUrlFocusChangeAnimationPercent(0f);
     }
     public float inputTranslationY() { return mLocationBar.view.y; }
@@ -69,10 +93,20 @@ public class ToolbarPhoneScrollFlow {
     private void createAndRunNtpFocusAnimatorRefactored() {}
     private void updateLocationBarForNtp(int state, boolean focus) {}
     private void notifyToolbarExpandingOnNtp(boolean expanded) {}
-    private void updateUrlExpansionFraction() {}
-    private void invokeTransition() {
-        mLocationBar.view.setTranslationY(getLocationBarTranslationY());
+    private void updateUrlExpansionFraction() {
+        mUrlExpansionFraction = Math.max(mNtpSearchBoxScrollFraction, mUrlFocusChangeFraction);
     }
+    private void invokeTransition() {
+        updateNtpTransitionAnimation();
+    }
+    private void updateToolbarBackgroundFromState(int state) {}
+    private void setAncestorsShouldClipChildren(boolean clip) {}
+    private void setClipToPadding(boolean clip) {}
+    private Position getToolbarHairline() { return new Position(); }
+    private Resources getResources() { return new Resources(); }
+    private int getNtpTransitionVerticalInset() { return 0; }
+    private int getFocusedLeftPositionOfLocationBarBackground() { return 0; }
+    private int getFocusedRightPositionOfLocationBarBackground() { return 0; }
 
 ARGON_SCROLL_METHODS
 }
