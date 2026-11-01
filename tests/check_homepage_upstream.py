@@ -12,6 +12,7 @@ from test_homepage_native import (
     DELEGATE_API, TOOLBAR_PHONE, PHONE_TOKEN, verify_delegate_api, verify_toolbar_scroll_source,
     URL_OVERRIDES, verify_url_override_api,
     verify_toolbar_startup_source,
+    verify_native_toolbar_fallback_source,
     verify_toolbar_capture_source,
     verify_phone_capture_source,
     RESOURCE_COORDINATOR, VIEW_RESOURCE_ADAPTER, verify_activation_sources,
@@ -48,6 +49,7 @@ def main():
         extra[path] = read(path)
     verify_activation_sources(extra[homepage.TOOLBAR_MANAGER], extra[homepage.TOOLBAR_CONTAINER],
                               extra[RESOURCE_COORDINATOR], extra[VIEW_RESOURCE_ADAPTER])
+    verify_native_toolbar_fallback_source(extra[homepage.TOOLBAR_MANAGER])
     with tempfile.TemporaryDirectory() as directory:
         src = Path(directory)
         for path in homepage.INPUT_PATHS:

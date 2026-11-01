@@ -1,0 +1,34 @@
+        public void getSearchBoxBounds(Rect bounds, Point translation) {
+            assert getNewTabPageForCurrentTab() != null;
+            getNewTabPageForCurrentTab().getSearchBoxBounds(bounds, translation);
+        }
+
+        public void setSearchBoxAlpha(float alpha) {
+            assert getNewTabPageForCurrentTab() != null;
+            getNewTabPageForCurrentTab().setSearchBoxAlpha(alpha);
+        }
+
+        public void setSearchProviderLogoAlpha(float alpha) {
+            assert getNewTabPageForCurrentTab() != null;
+            getNewTabPageForCurrentTab().setSearchProviderLogoAlpha(alpha);
+        }
+
+        public boolean dispatchTouchEvent(MotionEvent ev) {
+            assert mVisibleNtp != null;
+            // No null check -- the toolbar should not be moved if we are not on an NTP.
+            return mVisibleNtp.getView().dispatchTouchEvent(ev);
+        }
+
+    private @Nullable NewTabPage getNewTabPageForCurrentTab() {
+        if (mLocationBarModel.hasTab()) {
+            Tab tab = mLocationBarModel.getTab();
+            assumeNonNull(tab);
+            NativePage nativePage = tab.getNativePage();
+            if (nativePage instanceof NewTabPage) return (NewTabPage) nativePage;
+        }
+        return null;
+    }
+
+    private boolean isNewTabPage() {
+        return getNewTabPageForCurrentTab() != null || isWebUiNtp();
+    }

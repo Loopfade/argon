@@ -1,0 +1,135 @@
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.view.MotionEvent;
+import android.view.View;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import org.chromium.base.Callback;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.chrome.browser.ntp.ArgonHomeBridge;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.url_constants.UrlOverrideUtils;
+import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.WindowAndroid;
+import org.chromium.url.GURL;
+
+/** Run real native NTP delegate calls while a WebUI has no native NewTabPage. */
+public class ArgonHomePendingFlow {
+    private static void check(boolean value, String message) {
+        if (!value) throw new AssertionError(message);
+    }
+
+    private static class NewTabPage {
+        int alphaWrites, logoWrites, boundsReads;
+        final View view = new View();
+        void setSearchBoxAlpha(float alpha) { alphaWrites++; }
+        void setSearchProviderLogoAlpha(float alpha) { logoWrites++; }
+        void getSearchBoxBounds(Rect bounds, Point translation) {
+            boundsReads++;
+            bounds.set(10, 20, 310, 76);
+            translation.set(2, 3);
+        }
+        View getView() { return view; }
+    }
+
+    private static class Fallback implements NewTabPageDelegate {
+        NewTabPage nativePage, mVisibleNtp;
+        boolean virtualNtp = true;
+        NewTabPage getNewTabPageForCurrentTab() { return nativePage; }
+        // Stock isCurrentlyVisible also accepts a virtual NTP URL without a native page.
+        @Override public boolean isCurrentlyVisible() { return nativePage != null || virtualNtp; }
+        @Override public boolean isLocationBarShown() { return nativePage != null; }
+        @Override public boolean hasCompletedFirstLayout() { return nativePage != null; }
+        @Override public void setSearchBoxScrollListener(Callback<Float> listener) {
+            mVisibleNtp = nativePage;
+        }
+
+ARGON_NATIVE_FALLBACK_METHODS
+    }
+
+    private static Object invoke(Object receiver, String name, Class<?>[] types, Object... args)
+            throws Exception {
+        Method method = ArgonHomeBridge.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method.invoke(receiver, args);
+    }
+
+    private static void noNativeView(NewTabPageDelegate delegate) {
+        Rect bounds = new Rect();
+        bounds.set(11, 22, 33, 44);
+        Point translation = new Point();
+        translation.set(55, 66);
+        delegate.setSearchBoxAlpha(0.5f);
+        delegate.setSearchProviderLogoAlpha(0.5f);
+        delegate.getSearchBoxBounds(bounds, translation);
+        check(bounds.isEmpty() && translation.x == 0 && translation.y == 0,
+                "Absent native NTP must clear stale fakebox bounds");
+        check(!delegate.dispatchTouchEvent(new MotionEvent()),
+                "Absent native NTP must not receive touch events");
+    }
+
+    public static void main(String[] args) throws Exception {
+        for (String url : new String[] {"chrome://argon/", "chrome://newtab/", "chrome-native://newtab/"}) {
+            for (boolean refactored : new boolean[] {false, true}) {
+                UrlOverrideUtils.ntpOverrideEnabled = false;
+                ChromeTabbedActivity activity = new ChromeTabbedActivity();
+                WindowAndroid window = new WindowAndroid();
+                window.activity = activity;
+                WebContents contents = new WebContents();
+                contents.window = window;
+                Tab tab = new Tab();
+                tab.contents = contents;
+                tab.url = new GURL(url);
+                activity.tab = tab;
+                Fallback fallback = new Fallback();
+                List<Float> transitions = new ArrayList<>();
+                NewTabPageDelegate delegate = ArgonHomeBridge.wrap(
+                        () -> activity.tab, new View(), fallback, transitions::add,
+                        () -> fallback.getNewTabPageForCurrentTab() != null);
+
+                ToolbarPhoneScrollFlow phone = new ToolbarPhoneScrollFlow(delegate, refactored);
+                delegate.setSearchBoxScrollListener(phone::onScroll);
+                check(phone.inputAlpha() == 0f && transitions.equals(List.of(0f)),
+                        "Pending WebUI must hide the omnibox in both animation paths");
+                noNativeView(delegate);
+
+                Object page = invoke(null, "create", new Class<?>[] {WebContents.class, long.class},
+                        contents, 42L);
+                delegate.setSearchBoxScrollListener(phone::onScroll);
+                noNativeView(delegate);
+                invoke(page, "destroy", new Class<?>[] {});
+                delegate.setSearchBoxScrollListener(phone::onScroll);
+                noNativeView(delegate);
+
+                ArgonHomeBridge.onNavigationStarted(tab, "https://example.com/");
+                tab.url = new GURL("https://example.com/");
+                fallback.virtualNtp = false;
+                delegate.setSearchBoxScrollListener(phone::onScroll);
+                noNativeView(delegate);
+
+                // A real stock NTP, including an override, must retain its view callbacks.
+                UrlOverrideUtils.ntpOverrideEnabled = true;
+                tab.url = new GURL("chrome://newtab/");
+                fallback.nativePage = new NewTabPage();
+                delegate.setSearchBoxScrollListener(phone::onScroll);
+                delegate.setSearchBoxAlpha(0.5f);
+                delegate.setSearchProviderLogoAlpha(0.5f);
+                Rect bounds = new Rect();
+                delegate.getSearchBoxBounds(bounds, new Point());
+                check(fallback.nativePage.alphaWrites == 1 && fallback.nativePage.logoWrites == 1
+                        && fallback.nativePage.boundsReads == 1 && !bounds.isEmpty()
+                        && delegate.dispatchTouchEvent(new MotionEvent()),
+                        "Native NTP callbacks must still reach the native page");
+
+                fallback.nativePage = null;
+                activity.tab = null;
+                delegate.setSearchBoxScrollListener(phone::onScroll);
+                noNativeView(delegate);
+            }
+        }
+        UrlOverrideUtils.ntpOverrideEnabled = false;
+        System.out.println("PASS: pending WebUI, absent native NTP, both toolbar animations and native handoff");
+    }
+}

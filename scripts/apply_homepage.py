@@ -297,7 +297,8 @@ TOOLBAR_AFTER = TOOLBAR_BEFORE.replace(
     'return new ToolbarNtpDelegate() {',
     'return org.chromium.chrome.browser.ntp.ArgonHomeBridge.wrap(\n'
     '                    mActivityTabProvider::get, mToolbarLayout, new ToolbarNtpDelegate() {'
-).replace('            };\n', '            }, mNtpSearchBoxTransitionPercentageSupplier::set);\n')
+).replace('            };\n', '            }, mNtpSearchBoxTransitionPercentageSupplier::set,\n'
+          '                    () -> getNewTabPageForCurrentTab() != null);\n')
 
 
 TOOLBAR_NAV_START = "                    public void onDidStartNavigationInPrimaryMainFrame(\n                            Tab tab, NavigationHandle navigationHandle) {"
