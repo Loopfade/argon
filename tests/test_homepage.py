@@ -128,10 +128,11 @@ class HomepageTests(unittest.TestCase):
             input_tree(src)
             original = (src / homepage.TOOLBAR_MANAGER).read_text()
             current = homepage.patch_toolbar(original)
-            previous = current.replace(homepage.TOOLBAR_REFRESH_AFTER, homepage.TOOLBAR_REFRESH_BEFORE)
-            previous = previous.replace(homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE)
-            previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE)
-            self.assertEqual(homepage.patch_toolbar(previous), current)
+            for refresh in (homepage.TOOLBAR_REFRESH_BEFORE, homepage.TOOLBAR_REFRESH_LAYOUT_BEFORE):
+                previous = current.replace(homepage.TOOLBAR_REFRESH_AFTER, refresh)
+                previous = previous.replace(homepage.TOOLBAR_ACTIVATION_AFTER, homepage.TOOLBAR_ACTIVATION_BEFORE)
+                previous = previous.replace(homepage.TOOLBAR_NATIVE_READY_AFTER, homepage.TOOLBAR_NATIVE_READY_BEFORE)
+                self.assertEqual(homepage.patch_toolbar(previous), current)
             self.assertEqual(homepage.patch_toolbar(current), current)
 
     def test_changed_phone_capture_rejects_the_whole_patch(self):
