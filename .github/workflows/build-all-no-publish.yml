@@ -11,7 +11,7 @@ on:
         default: Релизная
         required: true
       runner:
-        description: 'Исполнитель сборки Linux x64: не менее 100 ГиБ свободного места'
+        description: 'Исполнитель подготовки Chromium и сборки APK, Linux x64: не менее 100 ГиБ свободного места'
         type: string
         default: ubuntu-24.04
         required: true
@@ -86,6 +86,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.build == 'true'
     uses: ./.github/workflows/build-chromium-image.yml
+    with:
+      runner: ${{ inputs.runner }}
     secrets: inherit
 
   build:
