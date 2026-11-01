@@ -1,0 +1,13 @@
+                    public void onLoadStopped(Tab tab, boolean toDifferentDocument) {
+                        onBackPressStateChanged();
+                        if (!toDifferentDocument) return;
+                        updateTabLoadingState(true);
+                        mLocationBarModel.onPageLoadStopped();
+                        mToolbar.onPageLoadStopped();
+                    }
+
+                    public void onCrash(Tab tab) {
+                        mLocationBarModel.notifyOnCrash();
+                        updateTabLoadingState(false);
+                        updateButtonStatus();
+                    }

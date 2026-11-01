@@ -303,6 +303,10 @@ TOOLBAR_AFTER = TOOLBAR_BEFORE.replace(
 
 TOOLBAR_NAV_START = "                    public void onDidStartNavigationInPrimaryMainFrame(\n                            Tab tab, NavigationHandle navigationHandle) {"
 TOOLBAR_NAV_FINISH = "                    public void onDidFinishNavigationEnd() {"
+TOOLBAR_LOAD_STOP = '                    public void onLoadStopped(Tab tab, boolean toDifferentDocument) {'
+TOOLBAR_LOAD_STOP_DIGEST = '3ae3ca76bbf1034208c4bcda47f03e44c22cf8ad2ce44fdcebfc906dd50da2ce'
+TOOLBAR_CRASH = '                    public void onCrash(Tab tab) {'
+TOOLBAR_CRASH_DIGEST = 'd6197f275d513b218d32d9559da699ad30829b3f690b2261957987221649d593'
 
 TOOLBAR_INIT_BEFORE = '''        mToolbarLayout = mActivity.findViewById(R.id.toolbar);
         NewTabPageDelegate ntpDelegate = createNewTabPageDelegate();'''
@@ -387,6 +391,13 @@ TOOLBAR_NATIVE_READY_AFTER = TOOLBAR_NATIVE_READY_REGISTERED_BEFORE.replace(
 
 
 def patch_toolbar(text):
+    for signature, digest, callback in (
+        (TOOLBAR_LOAD_STOP, TOOLBAR_LOAD_STOP_DIGEST, 'onPageLoadStopped'),
+        (TOOLBAR_CRASH, TOOLBAR_CRASH_DIGEST, 'onPageCrashed'),
+    ):
+        before = signature + '\n'
+        after = before + f'                        org.chromium.chrome.browser.ntp.ArgonHomeBridge.{callback}(tab);\n'
+        text = reviewed_method(text, signature, digest, before, after)
     if TOOLBAR_ACTIVATION_REGISTERED_BEFORE in text:
         text = replace_once(text, TOOLBAR_ACTIVATION_REGISTERED_BEFORE, TOOLBAR_ACTIVATION_AFTER)
     if TOOLBAR_NATIVE_READY_REGISTERED_BEFORE in text:

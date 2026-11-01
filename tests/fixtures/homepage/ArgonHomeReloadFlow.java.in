@@ -1,0 +1,150 @@
+import android.view.View;
+import java.lang.reflect.Method;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.chrome.browser.ntp.ArgonHomeBridge;
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.WindowAndroid;
+import org.chromium.url.GURL;
+
+/** A Home-button reload replaces the WebUI handler before the next document registers. */
+public class ArgonHomeReloadFlow {
+    private static void check(boolean value, String message) {
+        if (!value) throw new AssertionError(message);
+    }
+    private static Object invoke(Object receiver, String name, Class<?>[] types, Object... args)
+            throws Exception {
+        Method method = ArgonHomeBridge.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method.invoke(receiver, args);
+    }
+    private static Object create(WebContents contents, long id) throws Exception {
+        return invoke(null, "create", new Class<?>[] {WebContents.class, long.class}, contents, id);
+    }
+    private static void layout(Object page) throws Exception {
+        invoke(page, "updateBounds",
+                new Class<?>[] {float.class, float.class, float.class, float.class, float.class},
+                10f, 100f, 300f, 56f, 0f);
+    }
+    private static void destroy(Object page) throws Exception {
+        invoke(page, "destroy", new Class<?>[] {});
+    }
+    private static class LifecycleCallbacks {
+        private static class Model {
+            void notifyOnCrash() {}
+            void onPageLoadStopped() {}
+        }
+        final Model mLocationBarModel = new Model(), mToolbar = new Model();
+        void onBackPressStateChanged() {}
+        void updateTabLoadingState(boolean loading) {}
+        void updateButtonStatus() {}
+ARGON_TOOLBAR_LIFECYCLE_METHODS
+    }
+    public static void main(String[] args) throws Exception {
+        for (String url : new String[] {"chrome://argon/", "chrome://newtab/", "chrome-native://newtab/"}) {
+            for (boolean refactored : new boolean[] {false, true}) {
+                for (boolean finishBeforeDetach : new boolean[] {false, true}) {
+                    ChromeTabbedActivity activity = new ChromeTabbedActivity();
+                    WindowAndroid window = new WindowAndroid();
+                    window.activity = activity;
+                    WebContents contents = new WebContents();
+                    contents.window = window;
+                    Tab tab = new Tab();
+                    tab.contents = contents;
+                    tab.url = new GURL(url);
+                    activity.tab = tab;
+                    NewTabPageDelegate delegate = ArgonHomeBridge.wrap(
+                            () -> activity.tab, new View(), NewTabPageDelegate.EMPTY,
+                            fraction -> {}, () -> false);
+                    LifecycleCallbacks events = new LifecycleCallbacks();
+                    ToolbarPhoneScrollFlow phone = new ToolbarPhoneScrollFlow(delegate, refactored);
+                    delegate.setSearchBoxScrollListener(phone::onScroll);
+                    Object old = create(contents, 11);
+                    layout(old);
+                    delegate.setSearchBoxScrollListener(phone::onScroll);
+                    check(delegate.hasCompletedFirstLayout() && phone.inputAlpha() == 0f,
+                            "Initial home must hide the omnibox");
+
+                    // Home starts a navigation to the same home; JNI teardown follows commit.
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    if (finishBeforeDetach) ArgonHomeBridge.onNavigationFinished(tab, false);
+                    destroy(old);
+                    check(delegate.isLocationBarShown() && !delegate.hasCompletedFirstLayout(),
+                            "Home reload must retain NTP state between old and new WebUI documents");
+                    delegate.setSearchBoxScrollListener(phone::onScroll);
+                    check(phone.inputAlpha() == 0f,
+                            "Home reload must not expose the omnibox before the new fakebox");
+                    if (!finishBeforeDetach) ArgonHomeBridge.onNavigationFinished(tab, false);
+                    Object replacement = create(contents, 12);
+                    delegate.setSearchBoxScrollListener(phone::onScroll);
+                    check(delegate.isLocationBarShown() && !delegate.hasCompletedFirstLayout(),
+                            "Unmeasured replacement must keep the pending home state");
+                    layout(replacement);
+                    delegate.setSearchBoxScrollListener(phone::onScroll);
+                    check(phone.inputAlpha() == 0f && delegate.hasCompletedFirstLayout(),
+                            "Replacement fakebox must retain the hidden omnibox");
+
+                    ArgonHomeBridge.onNavigationStarted(tab, "https://example.com/");
+                    destroy(replacement);
+                    check(!delegate.isLocationBarShown(),
+                            "External navigation must retain the normal address bar");
+
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    Object superseded = create(contents, 17);
+                    layout(superseded);
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    ArgonHomeBridge.onNavigationFinished(tab, true);
+                    destroy(superseded);
+                    check(!delegate.isLocationBarShown(),
+                            "A pending external URL must cancel home replacement prediction");
+
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    Object cancelled = create(contents, 13);
+                    layout(cancelled);
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    events.onLoadStopped(tab, false);
+                    destroy(cancelled);
+                    check(!delegate.isLocationBarShown(),
+                            "Cancelled same-URL load must not excuse an unrelated later detach");
+
+                    for (boolean crashBeforeDetach : new boolean[] {true, false}) {
+                        ArgonHomeBridge.onNavigationStarted(tab, url);
+                        Object crashed = create(contents, 14);
+                        layout(crashed);
+                        ArgonHomeBridge.onNavigationStarted(tab, url);
+                        if (crashBeforeDetach) events.onCrash(tab);
+                        destroy(crashed);
+                        if (!crashBeforeDetach) events.onCrash(tab);
+                        check(!delegate.isLocationBarShown(),
+                                "Renderer crash must stop home prediction in either teardown order");
+                    }
+
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    Object background = create(contents, 15);
+                    layout(background);
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    activity.tab = null;
+                    destroy(background);
+                    check(ArgonHomeBridge.isHomeToolbarActive(tab),
+                            "A background Home reload must retain the pending-home state");
+                    activity.tab = tab;
+                    delegate.setSearchBoxScrollListener(phone::onScroll);
+                    check(phone.inputAlpha() == 0f,
+                            "Reselecting the reloading home must keep the omnibox hidden");
+
+                    Object error = create(contents, 16);
+                    layout(error);
+                    ArgonHomeBridge.onNavigationStarted(tab, url);
+                    tab.error = true;
+                    destroy(error);
+                    check(!delegate.isLocationBarShown(), "Error page must expose the address bar");
+                    tab.error = false;
+                    check(!delegate.isLocationBarShown(),
+                            "Detached error document must not regain a predicted homepage");
+                }
+            }
+        }
+        System.out.println("PASS: Home reload keeps the omnibox hidden across WebUI replacement");
+    }
+}
