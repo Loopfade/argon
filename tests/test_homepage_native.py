@@ -373,6 +373,40 @@ public class VisibleUrlText {
 
 @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK required')
 class HomepageNativeTests(unittest.TestCase):
+    def test_home_button_reload_keeps_the_omnibox_hidden_between_documents(self):
+        from test_homepage import homepage, input_tree
+
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory)
+            input_tree(src)
+            manager = homepage.patch_toolbar((src / homepage.TOOLBAR_MANAGER).read_text())
+        lifecycle = '\n\n'.join(homepage.method_source(manager, signature)
+                                for signature in (homepage.TOOLBAR_LOAD_STOP, homepage.TOOLBAR_CRASH))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sources = dict(STUBS)
+            sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+            sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+            sources['ArgonHomeReloadFlow.java'] = (
+                FIXTURES / 'ArgonHomeReloadFlow.java.in').read_text().replace(
+                    'ARGON_TOOLBAR_LIFECYCLE_METHODS', lifecycle)
+            sources['ToolbarPhoneScrollFlow.java'] = (
+                FIXTURES / 'ToolbarPhoneScrollFlow.java.in').read_text().replace(
+                    'ARGON_SCROLL_METHODS', (FIXTURES / 'toolbar_phone_scroll.java.in').read_text())
+            for name, text in sources.items():
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text)
+            compiled = subprocess.run(
+                ['javac', '--release', '17', '-d', str(root), *map(str, root.rglob('*.java'))],
+                capture_output=True, text=True)
+            self.assertEqual(compiled.returncode, 0, compiled.stderr)
+            result = subprocess.run(['java', '-cp', str(root), 'ArgonHomeReloadFlow'],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('PASS: Home reload', result.stdout)
+
     def test_pending_home_never_dereferences_absent_native_ntp(self):
         from test_homepage import homepage
 

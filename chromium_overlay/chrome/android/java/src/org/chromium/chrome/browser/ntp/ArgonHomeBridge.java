@@ -38,6 +38,7 @@ public final class ArgonHomeBridge {
     private final WebContents mContents;
     private final Rect mLastBounds = new Rect();
     private long mNativeObserver;
+    private @Nullable WeakReference<Tab> mHomeNavigation;
     private boolean mHasBounds;
     private boolean mNavigatingAway;
     private float mLeft;
@@ -87,10 +88,19 @@ public final class ArgonHomeBridge {
     private void destroy() {
         var reference = PAGES.get(mContents);
         if (reference != null && reference.get() == this) {
-            // Do not mistake a detached document for a home that has not registered yet.
-            // A new document or navigation replaces this weak tombstone.
-            reference.clear();
+            Tab tab = mHomeNavigation == null ? null : mHomeNavigation.get();
+            if (tab != null && tab.getWebContents() == mContents && !tab.isDestroyed()
+                    && !tab.isIncognito() && !tab.isShowingErrorPage()
+                    && !EARLY_NAVIGATIONS.containsKey(tab) && isHomeUrl(tab.getUrl())) {
+                // Home/reload replaces this handler before the new document can register.
+                // Return to the same pending-home state used before the first JNI attachment.
+                PAGES.remove(mContents);
+            } else {
+                // Other detachments must not reactivate a dead document from its old URL.
+                reference.clear();
+            }
         }
+        mHomeNavigation = null;
         mNativeObserver = 0;
         mScrollCallback = null;
         refreshToolbar();
@@ -242,8 +252,27 @@ public final class ArgonHomeBridge {
         } else if (page != null || wasHome) {
             EARLY_NAVIGATIONS.put(tab, true);
         }
-        if (page != null) page.mNavigatingAway = leaving;
+        if (page != null) {
+            page.mNavigatingAway = leaving;
+            page.mHomeNavigation = leaving ? null : new WeakReference<>(tab);
+        }
         if (page != null || wasHome || isHomeToolbarActive(tab)) refreshToolbar(tab);
+    }
+
+    /** A cancelled load must not mark a later, unrelated detachment as a home replacement. */
+    public static void onPageLoadStopped(Tab tab) {
+        var page = registered(tab);
+        if (page != null) page.mHomeNavigation = null;
+    }
+
+    /** A renderer crash must end prediction even if it happens between home documents. */
+    public static void onPageCrashed(Tab tab) {
+        var page = registered(tab);
+        if (page != null) page.mHomeNavigation = null;
+        var contents = tab.getWebContents();
+        if (contents == null || (!PAGES.containsKey(contents) && !isHomeToolbarActive(tab))) return;
+        PAGES.put(contents, new WeakReference<>(null));
+        refreshToolbar(tab);
     }
 
     /** A cancelled navigation must restore the homepage, but never hide another pending URL. */
@@ -251,7 +280,10 @@ public final class ArgonHomeBridge {
         var page = registered(tab);
         boolean early = EARLY_NAVIGATIONS.containsKey(tab);
         if (!hasPendingNavigation) EARLY_NAVIGATIONS.remove(tab);
-        if (page != null) page.mNavigatingAway = hasPendingNavigation;
+        if (page != null) {
+            page.mNavigatingAway = hasPendingNavigation;
+            if (hasPendingNavigation) page.mHomeNavigation = null;
+        }
         if (page != null || early) refreshToolbar(tab);
     }
 

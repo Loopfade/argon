@@ -23,6 +23,7 @@ def input_tree(root):
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
         homepage.TOOLBAR_MANAGER: (FIXTURES / 'toolbar_constructor_init.java.in').read_text()
+            + '\n' + (FIXTURES / 'toolbar_page_lifecycle.java.in').read_text()
             + '\n' + (FIXTURES / 'toolbar_activation.java.in').read_text()
             + '\n' + homepage.TOOLBAR_NATIVE_READY_BEFORE
             + '\n' + homepage.TOOLBAR_BEFORE + '\n' + homepage.TOOLBAR_NAV_START
