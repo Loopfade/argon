@@ -1,0 +1,67 @@
+// Copyright 2020 The Chromium Authors
+// Copyright 2022 The Chromium Authors
+// Copyright 2025 The Chromium Authors
+// Use of this source code is governed by a BSD-style license found in LICENSE.chromium.
+
+    private void showHighestPrecedenceOptionalButton() {
+        if (mButtonDataProviders == null) return;
+        for (ButtonDataProvider provider : mButtonDataProviders) {
+            ButtonData buttonData = provider.get(mTabSupplier.get());
+            if (buttonData != null && buttonData.canShow()) {
+                // Same-provider updates are handled in updateCurrentOptionalButton; the below check
+                // prevents us from pointlessly updating with the same button data.
+                if (provider == mCurrentProvider) return;
+                setCurrentOptionalButton(provider, buttonData);
+                return;
+            }
+        }
+
+        // If no buttons can show, hide the currently showing button.
+        hideCurrentOptionalButton();
+    }
+
+    private void setCurrentOptionalButton(ButtonDataProvider provider, ButtonData buttonData) {
+        mCurrentProvider = provider;
+        if (mDelegate != null) {
+            mDelegate.setOptionalButtonData(buttonData);
+        } else {
+            mToolbarLayout.updateOptionalButton(buttonData);
+        }
+        // ToolbarPhone's optional button has animated transitions and it takes care of showing IPH
+        // on its own.
+        if (buttonData.getButtonSpec().getIphCommandBuilder() != null
+                && !(mToolbarLayout instanceof ToolbarPhone)) {
+            mUserEducationHelper.requestShowIph(
+                    buttonData.getButtonSpec().getIphCommandBuilder().build());
+        }
+    }
+
+    private void hideCurrentOptionalButton() {
+        if (mDelegate != null) {
+            mDelegate.setOptionalButtonData(null);
+        }
+        mToolbarLayout.hideOptionalButton();
+        mCurrentProvider = null;
+    }
+
+    private void updateCurrentOptionalButton(ButtonDataProvider provider) {
+        ButtonData buttonData = provider.get(mTabSupplier.get());
+        if (buttonData != null && buttonData.canShow()) {
+            setCurrentOptionalButton(provider, buttonData);
+        } else {
+            hideCurrentOptionalButton();
+            showHighestPrecedenceOptionalButton();
+        }
+    }
+
+    protected boolean shouldShowButton(@Nullable Tab tab) {
+        if (tab == null) return false;
+
+        if (tab.isIncognito() && !mShouldShowOnIncognitoTabs) return false;
+
+        return true;
+    }
+
+    public static void launchNtp(TabCreator tabCreator) {
+        tabCreator.launchNtp(TabLaunchType.FROM_CHROME_UI);
+    }

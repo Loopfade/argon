@@ -1,0 +1,217 @@
+import java.lang.annotation.*;
+import java.util.List;
+import java.util.function.Supplier;
+
+/** Pinned Chromium methods; Android drawing, settings selection and tab creation are boundaries. */
+public class ToolbarShortcutFlow {
+    @Target({ElementType.TYPE_USE, ElementType.PARAMETER, ElementType.METHOD})
+    @interface Nullable {}
+    @interface VisualState { int NORMAL=0, NEW_TAB_NORMAL=1, NEW_TAB_SEARCH_ENGINE_NO_LOGO=2; }
+    static class AdaptiveToolbarButtonVariant { static final int NEW_TAB=1, SHARE=2; }
+    static class Flag { boolean enabled; boolean isEnabled() { return enabled; } }
+    static class ChromeFeatureList { static final Flag sToolbarTabletResizeRefactor=new Flag(); }
+    static class SigninFeatureMap { static final Flag sSigninLevelUpButton=new Flag(); }
+    static class ToolbarVariationUtils {
+        static boolean modern;
+        static boolean shouldModifyToolbarButtons(Object context, boolean ntp) { return modern; }
+    }
+    static class StripVisibilityState { static final int HIDDEN_BY_FADE=1; }
+    static class View {}
+    static class Tab {
+        String url; boolean incognito;
+        Tab(String url, boolean incognito) { this.url=url; this.incognito=incognito; }
+        String getUrl() { return url; }
+        boolean isIncognito() { return incognito; }
+    }
+    static class UrlUtilities {
+        static boolean isNtpUrl(String url) {
+            return url.equals("chrome://newtab/") || url.equals("chrome-native://newtab/");
+        }
+    }
+    static class RecordUserAction { static void record(String action) {} }
+    static class EventConstants {
+        static final String ADAPTIVE_TOOLBAR_CUSTOMIZATION_NEW_TAB_OPENED="new-tab-opened";
+    }
+    static class Tracker { int events; void notifyEvent(String event) { events++; } }
+    static class TabLaunchType { static final int FROM_CHROME_UI=7; }
+    static class TabCreator {
+        int launches, launchType;
+        void launchNtp(int type) { launches++; launchType=type; }
+    }
+    static class TabCreatorManager {
+        final TabCreator regular=new TabCreator(), privateTabs=new TabCreator();
+        TabCreator getTabCreator(boolean incognito) { return incognito ? privateTabs : regular; }
+    }
+    static class TabCreatorUtil {
+ARGON_LAUNCH_METHOD
+    }
+    static class BaseProvider {
+        boolean mShouldShowOnIncognitoTabs=true;
+        public void onClick(View view) {}
+ARGON_BASE_PROVIDER_METHOD
+    }
+    static class NewTabController extends BaseProvider {
+        boolean mIsTablet;
+        Integer strip;
+        Supplier<Integer> mTabStripVisibilitySupplier=() -> strip;
+        Tab active;
+        TabCreatorManager manager=new TabCreatorManager();
+        final Tracker tracker=new Tracker();
+        Supplier<Tracker> mTrackerSupplier=() -> tracker;
+        private Tab getActiveTab() { return active; }
+        private TabCreatorManager getTabCreatorManager() { return manager; }
+ARGON_NEW_TAB_METHODS
+    }
+    static class IphBuilder { Object build() { return null; } }
+    static class ButtonSpec {
+        final int variant;
+        final Runnable click;
+        ButtonSpec(int variant, Runnable click) { this.variant=variant; this.click=click; }
+        int getButtonVariant() { return variant; }
+        IphBuilder getIphCommandBuilder() { return null; }
+    }
+    static class ButtonData {
+        final boolean show;
+        final ButtonSpec spec;
+        ButtonData(int variant, boolean show, Runnable click) {
+            this.show=show; spec=new ButtonSpec(variant,click);
+        }
+        boolean canShow() { return show; }
+        boolean isIdentityDisc() { return false; }
+        ButtonSpec getButtonSpec() { return spec; }
+    }
+    interface ButtonDataProvider { ButtonData get(Tab tab); }
+    static class Selection implements ButtonDataProvider {
+        boolean enabled=true, room=true;
+        int variant=AdaptiveToolbarButtonVariant.NEW_TAB;
+        final NewTabController action;
+        Selection(NewTabController action) { this.action=action; }
+        public ButtonData get(Tab tab) {
+            if (!enabled) return null;
+            action.active=tab;
+            boolean eligible=variant!=AdaptiveToolbarButtonVariant.NEW_TAB || action.shouldShowButton(tab);
+            return new ButtonData(variant, eligible && room, () -> action.onClick(new View()));
+        }
+    }
+    static class LocationBar {
+        float alpha=0f;
+        ButtonData data;
+        void updateOptionalButton(ButtonData value) { data=value; }
+        void hideOptionalButton() { data=null; }
+    }
+    static class OptionalButtonCoordinator {
+        ButtonData data;
+        void setBrandedColorScheme(int scheme) {}
+        void updateButton(ButtonData value, boolean incognito) { data=value; }
+    }
+    static class Theme { int getBrandedColorScheme() { return 0; } }
+    static class ToolbarPhone {
+        int mVisualState=VisualState.NEW_TAB_NORMAL;
+        boolean incognito;
+        ButtonData mButtonData;
+        final LocationBar mLocationBar=new LocationBar();
+        final Theme mThemeColorProvider=new Theme();
+        OptionalButtonCoordinator mOptionalButtonCoordinator;
+        Object getContext() { return this; }
+        boolean isIncognito() { return incognito; }
+        boolean isIncognitoBranded() { return incognito; }
+        void initializeOptionalButton() { mOptionalButtonCoordinator=new OptionalButtonCoordinator(); }
+        void hideToolbarOptionalButton() {
+            if (mOptionalButtonCoordinator!=null) mOptionalButtonCoordinator.data=null;
+        }
+        void hideOptionalButton() {
+            mButtonData=null; mLocationBar.hideOptionalButton(); hideToolbarOptionalButton();
+        }
+        boolean plusVisible() {
+            return mOptionalButtonCoordinator!=null && mOptionalButtonCoordinator.data!=null
+                    && mOptionalButtonCoordinator.data.spec.variant==AdaptiveToolbarButtonVariant.NEW_TAB;
+        }
+ARGON_PHONE_METHODS
+    }
+    interface Delegate { void setOptionalButtonData(ButtonData data); }
+    static class UserEducationHelper { void requestShowIph(Object command) {} }
+    static class BrowsingButtons {
+        List<ButtonDataProvider> mButtonDataProviders;
+        ButtonDataProvider mCurrentProvider;
+        ToolbarPhone mToolbarLayout;
+        Supplier<Tab> mTabSupplier;
+        Delegate mDelegate;
+        final UserEducationHelper mUserEducationHelper=new UserEducationHelper();
+        void refresh() {
+            if (mCurrentProvider==null) showHighestPrecedenceOptionalButton();
+            else updateCurrentOptionalButton(mCurrentProvider);
+        }
+ARGON_DISPATCH_METHODS
+    }
+    private static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+    public static void main(String[] args) {
+        for (boolean modern : List.of(false,true)) for (boolean signin : List.of(false,true)) {
+            ToolbarVariationUtils.modern=modern;
+            SigninFeatureMap.sSigninLevelUpButton.enabled=signin;
+            Tab tab=new Tab("chrome://newtab/",false);
+            NewTabController action=new NewTabController();
+            check(action.shouldShowButton(tab), "Selected new-tab action must be eligible on a phone homepage");
+            Selection selection=new Selection(action);
+            ToolbarPhone phone=new ToolbarPhone();
+            BrowsingButtons buttons=new BrowsingButtons();
+            buttons.mButtonDataProviders=List.of(selection);
+            buttons.mTabSupplier=() -> tab;
+            buttons.mToolbarLayout=phone;
+            buttons.refresh();
+            check(phone.plusVisible(), "Selected + must be in the visible toolbar on the homepage");
+            check(phone.mLocationBar.data==null && phone.mLocationBar.alpha==0f,
+                    "The + must stay outside the hidden address field");
+            phone.mOptionalButtonCoordinator.data.spec.click.run();
+            check(action.manager.regular.launches==1 && action.manager.privateTabs.launches==0
+                    && action.manager.regular.launchType==TabLaunchType.FROM_CHROME_UI,
+                    "Clicking + must launch a regular NTP through Chromium's tab creator");
+            check(action.tracker.events==1 && phone.mLocationBar.alpha==0f,
+                    "Opening a new tab must not reveal the address field");
+
+            selection.enabled=false; buttons.refresh();
+            check(!phone.plusVisible(), "Disabling the toolbar shortcut must hide +");
+            selection.enabled=true; buttons.refresh();
+            check(phone.plusVisible(), "Enabling the selected new-tab shortcut must restore +");
+            selection.room=false; buttons.refresh();
+            check(!phone.plusVisible(), "The existing width limit must still suppress the shortcut");
+            selection.room=true; buttons.refresh();
+            selection.variant=AdaptiveToolbarButtonVariant.SHARE; buttons.refresh();
+            check(!phone.plusVisible(), "Choosing another action must not force a + button");
+            selection.variant=AdaptiveToolbarButtonVariant.NEW_TAB; buttons.refresh();
+            for (String url : List.of("chrome-native://newtab/","chrome://argon/")) {
+                tab.url=url; buttons.refresh();
+                check(phone.plusVisible(), "The home URL alias must keep + visible: "+url);
+            }
+            tab.url="https://example.com/"; phone.mVisualState=VisualState.NORMAL;
+            phone.mLocationBar.alpha=1f; buttons.refresh();
+            check(modern ? phone.mLocationBar.data!=null : phone.plusVisible(),
+                    "Ordinary pages must retain the existing shortcut placement");
+            tab.url="chrome://newtab/"; phone.mVisualState=VisualState.NEW_TAB_NORMAL;
+            phone.mLocationBar.alpha=0f; buttons.refresh();
+            check(phone.plusVisible() && phone.mLocationBar.data==null,
+                    "Returning home must move + outside the address field");
+            tab.incognito=true; phone.incognito=true; buttons.refresh();
+            check(!phone.plusVisible(), "Incognito NTP must keep the stock shortcut policy");
+        }
+        NewTabController action=new NewTabController();
+        Tab ntp=new Tab("chrome://newtab/",false);
+        action.mIsTablet=true;
+        check(!action.shouldShowButton(ntp), "A tablet with its tab strip must retain the stock policy");
+        ChromeFeatureList.sToolbarTabletResizeRefactor.enabled=true;
+        action.strip=StripVisibilityState.HIDDEN_BY_FADE;
+        check(!action.shouldShowButton(ntp), "Even a collapsed tablet strip must retain the stock NTP policy");
+        ntp.url="https://example.com/";
+        check(action.shouldShowButton(ntp), "Tablet shortcuts on ordinary pages must keep working");
+        action.mIsTablet=false;
+        ntp.incognito=true;
+        action.mShouldShowOnIncognitoTabs=false;
+        check(!action.shouldShowButton(ntp), "The base provider veto must still win");
+        check(!action.shouldShowButton(null), "No active tab must never show +");
+        action.active=null; action.onClick(new View());
+        check(action.manager.regular.launches==0, "A stale click without a tab must do nothing");
+        action.active=ntp; action.manager=null; action.onClick(new View());
+        System.out.println("PASS: configured +, toolbar placement, click, toggles and NTP policies");
+    }
+}

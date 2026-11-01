@@ -21,11 +21,12 @@ TABBED_ACTIVITY = Path('chrome/android/java/src/org/chromium/chrome/browser/Chro
 TOOLBAR_MANAGER = Path('chrome/android/java/src/org/chromium/chrome/browser/toolbar/ToolbarManager.java')
 TOOLBAR_CONTAINER = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarControlContainer.java')
 TOOLBAR_PHONE = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/top/ToolbarPhone.java')
+NEW_TAB_BUTTON = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/adaptive/OptionalNewTabButtonController.java')
 JAVA_CATALOG = Path('chrome/android/chrome_java_sources.gni')
 JNI_CATALOG = Path('chrome/android/BUILD.gn')
 JAVA_BRIDGE = Path('chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java')
 INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
-               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, JAVA_CATALOG, JNI_CATALOG)
+               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, NEW_TAB_BUTTON, JAVA_CATALOG, JNI_CATALOG)
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
@@ -90,6 +91,30 @@ PHONE_VISIBILITY_AFTER = PHONE_VISIBILITY_BEFORE + '''
                 && isLocationBarCurrentlyShown()
                 && mLocationBar.getPhoneCoordinator().getAlpha() > 0f;
     }'''
+
+PHONE_SHORTCUT_SIGNATURE = '    private boolean shouldShowOptionalButtonInToolbar(@Nullable ButtonData buttonData) {'
+PHONE_SHORTCUT_DIGEST = '40f4421b494f0fbbba7b97967cbc69522a1baf428329a5f46a87850852fae198'
+PHONE_SHORTCUT_BEFORE = PHONE_SHORTCUT_SIGNATURE + '''
+        boolean isNtp = isNtpVisualState(mVisualState);'''
+PHONE_SHORTCUT_AFTER = PHONE_SHORTCUT_BEFORE + '''
+        // ARGON: keep the selected new-tab action outside the hidden NTP omnibox.
+        if (isNtp
+                && !isIncognito()
+                && buttonData != null
+                && buttonData.canShow()
+                && buttonData.getButtonSpec().getButtonVariant()
+                        == AdaptiveToolbarButtonVariant.NEW_TAB) {
+            return true;
+        }'''
+PHONE_SHORTCUT_IMPORT_BEFORE = 'import org.chromium.chrome.browser.toolbar.optional_button.ButtonData;'
+PHONE_SHORTCUT_IMPORT_AFTER = (
+    'import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;\n'
+    + PHONE_SHORTCUT_IMPORT_BEFORE)
+NEW_TAB_BUTTON_SIGNATURE = '    protected boolean shouldShowButton(@Nullable Tab tab) {'
+NEW_TAB_BUTTON_DIGEST = '1f3de33ead218e1b0fa70d25cfc2aac7acc7622de14d483eb3b8d8c5d47f64cc'
+NEW_TAB_BUTTON_BEFORE = '        if (UrlUtilities.isNtpUrl(tab.getUrl())) return false;'
+NEW_TAB_BUTTON_AFTER = '''        // ARGON: a regular phone NTP still needs its configured new-tab shortcut.
+        if (UrlUtilities.isNtpUrl(tab.getUrl()) && (mIsTablet || tab.isIncognito())) return false;'''
 
 STARTUP_BEFORE = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
                 if (isTabNtp && !currentTab.isNativePage() && !isTabWebUiNtp) {'''
@@ -222,6 +247,21 @@ def patch_phone_capture(text):
         text = reviewed_method(text, signature, digest, before, after)
     text = replace_once(text, PHONE_CAPTURE_FIELD_BEFORE, PHONE_CAPTURE_FIELD_AFTER)
     return replace_once(text, PHONE_VISIBILITY_BEFORE, PHONE_VISIBILITY_AFTER)
+
+
+def patch_phone_shortcut(text):
+    text = reviewed_method(text, PHONE_SHORTCUT_SIGNATURE, PHONE_SHORTCUT_DIGEST,
+                           PHONE_SHORTCUT_BEFORE, PHONE_SHORTCUT_AFTER)
+    return replace_once(text, PHONE_SHORTCUT_IMPORT_BEFORE, PHONE_SHORTCUT_IMPORT_AFTER)
+
+
+def patch_phone_toolbar(text):
+    return patch_phone_shortcut(patch_phone_capture(text))
+
+
+def patch_new_tab_button(text):
+    return reviewed_method(text, NEW_TAB_BUTTON_SIGNATURE, NEW_TAB_BUTTON_DIGEST,
+                           NEW_TAB_BUTTON_BEFORE, NEW_TAB_BUTTON_AFTER)
 
 
 def patch_configs(text):
@@ -414,7 +454,8 @@ def apply(src):
                   (TABBED_ACTIVITY, patch_startup_draw),
                   (TOOLBAR_MANAGER, patch_toolbar), (JAVA_CATALOG, patch_java_catalog),
                   (TOOLBAR_CONTAINER, patch_toolbar_capture),
-                  (TOOLBAR_PHONE, patch_phone_capture),
+                  (TOOLBAR_PHONE, patch_phone_toolbar),
+                  (NEW_TAB_BUTTON, patch_new_tab_button),
                   (JNI_CATALOG, patch_jni_catalog)]
     writes = {src / path: transform((src / path).read_text()) for path, transform in transforms}
     for source in (OVERLAY / UI).iterdir():
