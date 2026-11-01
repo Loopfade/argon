@@ -73,7 +73,7 @@ public class ArgonHomeBridgeFlow {
         Fallback fallback = new Fallback();
         List<Float> transitions = new ArrayList<>();
         NewTabPageDelegate delegate = ArgonHomeBridge.wrap(
-                () -> activity.tab, toolbar, fallback, transitions::add);
+                () -> activity.tab, toolbar, fallback, transitions::add, () -> fallback.visible);
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
                 && !delegate.hasCompletedFirstLayout(),
                 "Home must hide the native omnibox before JNI registration and first layout");

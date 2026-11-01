@@ -26,6 +26,7 @@ import org.chromium.url.GURL;
 
 import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /** Adapts the bundled WebUI search box to Chromium's existing NTP/omnibox transitions. */
@@ -254,10 +255,13 @@ public final class ArgonHomeBridge {
         if (page != null || early) refreshToolbar(tab);
     }
 
-    /** Only the phone delegate is wrapped; the native tablet and incognito policies remain intact. */
+    /**
+     * Wrap the phone delegate, querying its actual native NTP before accessing native views.
+     * The stock delegate's isCurrentlyVisible() also accepts WebUI URLs without a NewTabPage.
+     */
     public static NewTabPageDelegate wrap(
             Supplier<@Nullable Tab> currentTab, View toolbar, NewTabPageDelegate fallback,
-            Callback<Float> transition) {
+            Callback<Float> transition, BooleanSupplier hasNativeNtp) {
         return new NewTabPageDelegate() {
             private @Nullable ArgonHomeBridge mVisiblePage;
             private boolean mWasShowingHome;
@@ -327,12 +331,18 @@ public final class ArgonHomeBridge {
                 var page = current();
                 if (page != null) page.bounds(toolbar, bounds, translation);
                 else if (mVisiblePage != null) mVisiblePage.bounds(toolbar, bounds, translation);
-                else fallback.getSearchBoxBounds(bounds, translation);
+                else if (hasNativeNtp.getAsBoolean()) fallback.getSearchBoxBounds(bounds, translation);
+                else {
+                    // An early WebUI NTP has neither measured bounds nor a native NewTabPage.
+                    bounds.setEmpty();
+                    translation.set(0, 0);
+                }
             }
 
             @Override
             public int getSearchBoxBoundsVerticalInset() {
-                return current() != null ? 0 : fallback.getSearchBoxBoundsVerticalInset();
+                return current() != null || !hasNativeNtp.getAsBoolean()
+                        ? 0 : fallback.getSearchBoxBoundsVerticalInset();
             }
 
             @Override
@@ -340,12 +350,14 @@ public final class ArgonHomeBridge {
                 var page = current();
                 if (page != null) page.setAlpha(alpha);
                 else if (mVisiblePage != null) mVisiblePage.setAlpha(alpha);
-                else fallback.setSearchBoxAlpha(alpha);
+                else if (hasNativeNtp.getAsBoolean()) fallback.setSearchBoxAlpha(alpha);
             }
 
             @Override
             public void setSearchProviderLogoAlpha(float alpha) {
-                if (current() == null && mVisiblePage == null) fallback.setSearchProviderLogoAlpha(alpha);
+                if (current() == null && mVisiblePage == null && hasNativeNtp.getAsBoolean()) {
+                    fallback.setSearchProviderLogoAlpha(alpha);
+                }
             }
 
             @Override
@@ -353,7 +365,7 @@ public final class ArgonHomeBridge {
                 var page = current();
                 if (page == null) page = mVisiblePage;
                 if (page != null) page.mUrlFocusFraction = Math.max(0f, Math.min(1f, fraction));
-                else fallback.setUrlFocusChangeAnimationPercent(fraction);
+                else if (hasNativeNtp.getAsBoolean()) fallback.setUrlFocusChangeAnimationPercent(fraction);
             }
 
             @Override
@@ -364,7 +376,8 @@ public final class ArgonHomeBridge {
                 View content = tab == null ? null : tab.getContentView();
                 return page != null && content != null
                         ? content.dispatchTouchEvent(event)
-                        : mVisiblePage == null && fallback.dispatchTouchEvent(event);
+                        : mVisiblePage == null && hasNativeNtp.getAsBoolean()
+                                && fallback.dispatchTouchEvent(event);
             }
         };
     }

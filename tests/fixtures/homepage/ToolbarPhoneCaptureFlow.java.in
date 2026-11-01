@@ -151,7 +151,7 @@ ARGON_PHONE_CAPTURE_FIELD
             activity.tab = tab;
             home(contents, 7);
             NewTabPageDelegate delegate = ArgonHomeBridge.wrap(() -> activity.tab,
-                    new android.view.View(), NewTabPageDelegate.EMPTY, value -> {});
+                    new android.view.View(), NewTabPageDelegate.EMPTY, value -> {}, () -> false);
             check(delegate.isLocationBarShown(), "Real WebUI delegate must be active");
 
             ToolbarPhoneCaptureFlow empty = new ToolbarPhoneCaptureFlow(activity, delegate, refactored);

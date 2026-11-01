@@ -36,7 +36,7 @@ public class ToolbarActivationFlow {
         ToolbarManager manager = activity.toolbar;
         manager.mActivityTabProvider = () -> activity.tab;
         manager.delegate = ArgonHomeBridge.wrap(() -> activity.tab, manager.mToolbarLayout,
-                NewTabPageDelegate.EMPTY, value -> {});
+                NewTabPageDelegate.EMPTY, value -> {}, () -> false);
 
         manager.seed("old address");
         manager.mControlContainer.frame.mReadyForBitmapCapture = false;

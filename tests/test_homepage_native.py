@@ -20,6 +20,12 @@ TOOLBAR_SCROLL_SIGNATURES = (
     '    private float getLocationBarTranslationY() {',
     '    private void updateNtpTransitionAnimation() {',
 )
+NATIVE_FALLBACK_SIGNATURES = (
+    '        public void getSearchBoxBounds(Rect bounds, Point translation) {',
+    '        public void setSearchBoxAlpha(float alpha) {',
+    '        public void setSearchProviderLogoAlpha(float alpha) {',
+    '        public boolean dispatchTouchEvent(MotionEvent ev) {',
+)
 BRIDGE = ROOT / 'chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'
 
 
@@ -35,6 +41,17 @@ def verify_toolbar_scroll_source(source):
     for signature in TOOLBAR_SCROLL_SIGNATURES:
         if homepage.method_source(source, signature) != homepage.method_source(fixture, signature):
             raise ValueError('Chromium toolbar scrolling changed; review the keyboard regression')
+
+
+def verify_native_toolbar_fallback_source(source):
+    from test_homepage import homepage
+
+    fixture = (FIXTURES / 'toolbar_native_fallback.java.in').read_text()
+    for signature in (*NATIVE_FALLBACK_SIGNATURES,
+                      '    private @Nullable NewTabPage getNewTabPageForCurrentTab() {',
+                      '    private boolean isNewTabPage() {'):
+        if homepage.method_source(source, signature) != homepage.method_source(fixture, signature):
+            raise ValueError('Chromium native NTP view access changed; review pending-home callbacks')
 
 
 def verify_url_override_api(source):
@@ -356,6 +373,37 @@ public class VisibleUrlText {
 
 @unittest.skipUnless(shutil.which('javac') and shutil.which('java'), 'JDK required')
 class HomepageNativeTests(unittest.TestCase):
+    def test_pending_home_never_dereferences_absent_native_ntp(self):
+        from test_homepage import homepage
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sources = dict(STUBS)
+            sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+            sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+            sources['ArgonHomePendingFlow.java'] = (
+                FIXTURES / 'ArgonHomePendingFlow.java.in').read_text().replace(
+                    'ARGON_NATIVE_FALLBACK_METHODS',
+                    '\n\n'.join(homepage.method_source(
+                        (FIXTURES / 'toolbar_native_fallback.java.in').read_text(), signature)
+                        for signature in NATIVE_FALLBACK_SIGNATURES))
+            sources['ToolbarPhoneScrollFlow.java'] = (
+                FIXTURES / 'ToolbarPhoneScrollFlow.java.in').read_text().replace(
+                    'ARGON_SCROLL_METHODS', (FIXTURES / 'toolbar_phone_scroll.java.in').read_text())
+            for name, text in sources.items():
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text)
+            compiled = subprocess.run(
+                ['javac', '--release', '17', '-d', str(root), *map(str, root.rglob('*.java'))],
+                capture_output=True, text=True)
+            self.assertEqual(compiled.returncode, 0, compiled.stderr)
+            result = subprocess.run(['java', '-cp', str(root), 'ArgonHomePendingFlow'],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('PASS: pending WebUI', result.stdout)
+
     def test_activation_recovers_invalidations_dropped_before_the_first_frame(self):
         from test_homepage import homepage
 
@@ -476,7 +524,7 @@ public class OneShotPreDrawListener {
         # Compile the production phone wrapper expression, stubbing only the
         # stock NTP delegate. Preserve the bound method reference that crashed.
         start = patched.index('return org.chromium.chrome.browser.ntp.ArgonHomeBridge.wrap(')
-        end_marker = 'mNtpSearchBoxTransitionPercentageSupplier::set);'
+        end_marker = '() -> getNewTabPageForCurrentTab() != null);'
         end = patched.index(end_marker, start) + len(end_marker)
         phone_call = patched[start:end]
         fallback = homepage.method_source(phone_call, 'new ToolbarNtpDelegate() {')
@@ -511,6 +559,7 @@ ARGON_TOOLBAR_INITIALIZATION
     private NewTabPageDelegate createNewTabPageDelegate() {
 ARGON_PHONE_CALL
     }
+    private Object getNewTabPageForCurrentTab() { return null; }
 '''.replace('ARGON_TOOLBAR_INITIALIZATION', initialization)
    .replace('ARGON_PHONE_CALL', phone_call), 1)
                 sources = dict(STUBS)
