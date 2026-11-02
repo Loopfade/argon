@@ -127,6 +127,7 @@ import {connectBrowserSearch} from './browser-search.js';
     homeTheme.apply(state.theme);
     document.documentElement.dataset.density=state.density==='compact'?'compact':'comfortable';
     document.querySelectorAll('[data-theme-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeChoice===state.theme)));
+    updateThemeHelp();
   }
   const connectTheme = () => homeTheme.connect().catch(error => console.warn('Argon theme:', error));
   void connectTheme();
@@ -190,8 +191,8 @@ import {connectBrowserSearch} from './browser-search.js';
   }
   function renderEngine() {
     const engine=selectedEngine();setHtml($('selected-engine-icon'),engineMarkup(engine));$('selected-engine-name').textContent=engine.short||engine.name;
-    $('engine-trigger').title=t("Поисковая система: ")+engine.name;
-    setHtml($('engine-menu'),t("<div class=\"popover-title\">Поисковая система</div>")+engines().map(e=>'<button type="button" class="engine-option'+(e.id===engine.id?' active':'')+'" data-engine="'+esc(e.id)+'" aria-pressed="'+(e.id===engine.id)+'"><span class="engine-icon">'+engineMarkup(e)+'</span><span>'+esc(e.id==='noai'?'DuckDuckGo':e.name)+'</span>'+(e.id==='noai'?t("<span class=\"noai-badge\">БЕЗ ИИ</span>"):'')+(e.id===engine.id?svg('check','check'):'')+'</button>').join('')+'<div class="popover-divider"></div><button type="button" class="engine-option engine-add" id="add-engine">'+svg('plus')+t("Добавить свою</button>"));
+    $('engine-trigger').title=(nativeSearch()?t("Поисковик браузера: "):t("Поисковая система: "))+engine.name;
+    setHtml($('engine-menu'),'<div class="popover-title">'+(nativeSearch()?t("Поисковик браузера"):t("Поисковая система"))+'</div>'+(nativeSearch()?'<p class="popover-title">'+t("Используется и для поиска в адресной строке.")+'</p>':'')+engines().map(e=>'<button type="button" class="engine-option'+(e.id===engine.id?' active':'')+'" data-engine="'+esc(e.id)+'" aria-pressed="'+(e.id===engine.id)+'"><span class="engine-icon">'+engineMarkup(e)+'</span><span>'+esc(e.id==='noai'?'DuckDuckGo':e.name)+'</span>'+(e.id==='noai'?t("<span class=\"noai-badge\">БЕЗ ИИ</span>"):'')+(e.id===engine.id?svg('check','check'):'')+'</button>').join('')+'<div class="popover-divider"></div><button type="button" class="engine-option engine-add" id="add-engine">'+svg('plus')+t("Добавить свою</button>"));
     fallbackImages($('selected-engine-icon'));fallbackImages($('engine-menu'));
     $('engine-trigger').disabled=selectingEngine;
     if(nativeSearch()&&!browserSearchState.canChange) {
@@ -267,12 +268,22 @@ import {connectBrowserSearch} from './browser-search.js';
     let type=item?.type==='folder'?'folder':'site',draftIcon=item?.customIcon||'',draftMode=item?.iconMode||(item?.customIcon?'custom':'favicon');
     const folders=state.shortcuts.filter(s=>s.type==='folder');
     const position=item?shortcutList(state.shortcuts,parent).findIndex(s=>s.id===item.id):null;
-    openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(item?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(item?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p class=\"field-help\">PNG, JPG, SVG или WebP, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
+    openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(item?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(item?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p id=\"icon-help\" class=\"field-help\">PNG, JPG, WebP, GIF или SVG, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
     const form=$('shortcut-form');
     $('modal-root').querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{type=b.dataset.type;$('modal-root').querySelectorAll('[data-type]').forEach(t=>t.classList.toggle('active',t===b));$('site-fields').hidden=type==='folder';$('shortcut-url').required=type==='site';}));
+    function updatePositions(initial = false) {
+      const select=$('shortcut-position');if(!select)return;
+      const destination=type==='folder'?null:($('shortcut-folder')?.value||null);
+      const count=shortcutList(state.shortcuts,destination).filter(site=>site.id!==editId).length;
+      const selected=initial&&destination===originalParent?position:count;
+      setHtml(select,Array.from({length:count+1},(_,index)=>'<option value="'+index+'"'+(index===selected?' selected':'')+'>'+(index+1)+'</option>').join(''));
+    }
+    $('shortcut-folder')?.addEventListener('change',()=>updatePositions());
+    updatePositions(true);
     let previewTimer;
     function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
-    function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';preview(); }
+    function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';preview(); }
+    $('icon-help').hidden=draftMode!=='custom';
     $('favicon-choice').addEventListener('click',()=>chooseIcon('favicon'));$('custom-choice').addEventListener('click',()=>chooseIcon('custom'));
     $('shortcut-url').addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(preview,250);});
     $('shortcut-url').addEventListener('change',preview);$('upload-button').addEventListener('click',()=>$('icon-file').click());
@@ -287,7 +298,7 @@ import {connectBrowserSearch} from './browser-search.js';
         if(editId){const from=shortcutList(next.shortcuts,originalParent),index=from.findIndex(s=>s.id===editId);if(index<0||JSON.stringify(from[index])!==original)throw Error(t("Ярлык изменился в другой вкладке. Откройте его заново."));current=from.splice(index,1)[0];}
         const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(draftMode==='custom'&&item?.icon&&normalizedUrl(item.url)===url&&!draftIcon?{icon:item.icon}:{})};
         const to=shortcutList(next.shortcuts,targetParent);
-        const index=editId&&targetParent===originalParent?Math.min(desiredPosition,to.length):to.length;to.splice(index,0,result);
+        const index=editId?Math.max(0,Math.min(desiredPosition,to.length)):to.length;to.splice(index,0,result);
       },true,'form-error'))return;
       closeModal();renderShortcuts();notify(item?t("Изменения сохранены"):type==='folder'?t("Папка добавлена"):t("Сайт добавлен"));
     });
@@ -333,39 +344,43 @@ import {connectBrowserSearch} from './browser-search.js';
   document.addEventListener('pointercancel',()=>{if(touchDrag){touchDrag=null;clearDrag();}});
 
   function openEngineDialog() {
-    openModal(heading(t("Свой поисковик"))+t("<form id=\"engine-form\"><label class=\"field\"><span class=\"field-label\">Название</span><input id=\"engine-title\" placeholder=\"Например, Brave Search\" maxlength=\"40\" required autofocus></label><label class=\"field\"><span class=\"field-label\">Адрес поиска</span><input id=\"engine-url\" placeholder=\"https://example.com/?q={query}\" required spellcheck=\"false\"><span class=\"field-help\">Вставьте {query} вместо поискового запроса.</span></label><p id=\"form-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" type=\"button\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">Добавить</button></div></form>"),'engine');
+    openModal(heading(t("Свой поисковик"))+(nativeSearch()?'<p class="field-help">'+t("После добавления этот поисковик будет выбран для браузера.")+'</p>':'')+t("<form id=\"engine-form\"><label class=\"field\"><span class=\"field-label\">Название</span><input id=\"engine-title\" placeholder=\"Например, Brave Search\" maxlength=\"40\" required autofocus></label><label class=\"field\"><span class=\"field-label\">Адрес поиска</span><input id=\"engine-url\" placeholder=\"https://example.com/?q={query}\" required spellcheck=\"false\"><span class=\"field-help\">Вставьте {query} вместо поискового запроса.</span></label><p id=\"form-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" type=\"button\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">Добавить и выбрать</button></div></form>"),'engine');
     $('engine-form').addEventListener('submit',async e=>{e.preventDefault();const name=$('engine-title').value.trim(),template=$('engine-url').value.trim();if(!name||!template.includes('{query}')){showError(t("Укажите название и {query} в адресе поиска."));return;}let url;try{url=normalizedUrl(template.replaceAll('{query}','ARGON_QUERY')).replaceAll('ARGON_QUERY','{query}');}catch{showError(t("Укажите корректный адрес поиска."));return;}const engine={id:uid(),name,url};if(!commit(next=>{next.customEngines.push(engine);next.engine=engine.id;},false,'form-error'))return;renderEngine();closeModal();if(nativeSearch()){try{await browserSearch.select(engine);}catch{notify(t("Поисковик добавлен, но сменить поисковик браузера не удалось."));return;}}notify(t("Поисковик добавлен"));});
   }
   function exportBackup() {
-    try{const dump=createDump(state),url=URL.createObjectURL(new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='argon-dump-'+dump.createdAt.slice(0,16).replace('T','_').replace(':','-')+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);notify(t("Дамп подготовлен для скачивания"));}catch(error){backupError(error.message||t("Не удалось создать дамп."));}
+    try{const dump=createDump(state),url=URL.createObjectURL(new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='argon-dump-'+dump.createdAt.slice(0,16).replace('T','_').replace(':','-')+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);notify(t("Резервная копия подготовлена для скачивания"));}catch(error){backupError(error.message||t("Не удалось создать резервную копию."));}
   }
   function backupError(message) { const target=$('backup-error');if(target){target.textContent=message;target.hidden=false;}else notify(message); }
-  async function readBackup(event) {
-    const input=event.currentTarget,file=input.files[0];input.value='';if(!file)return;const button=$('backup-import');button.disabled=true;
-    try{if(file.size>MAX_DUMP_BYTES)throw Error(t("Выберите дамп JSON размером до 10 МБ."));const dump=parseDump(await file.text());if(input.isConnected)openRestoreDialog(dump,file.name);}catch(error){if(input.isConnected)backupError(error.message||t("Не удалось прочитать файл."));}finally{if(button.isConnected)button.disabled=false;}
+  async function readTransfer(event) {
+    const input=event.currentTarget,file=input.files[0];input.value='';if(!file)return;
+    const backup=input.id==='backup-file',button=$(backup?'backup-import':'bookmarks-import');
+    const report=backup?backupError:bookmarkError;button.disabled=true;
+    try {
+      if(file.size>Math.min(MAX_DUMP_BYTES,MAX_BOOKMARK_BYTES))throw Error(t("Выберите файл размером до 10 МБ."));
+      const source=(await file.text()).replace(/^\ufeff/,'').trim();
+      if(!input.isConnected)return;
+      let candidate;try{candidate=JSON.parse(source);}catch{}
+      if(candidate?.app==='argon-start')openRestoreDialog(parseDump(source),file.name);
+      else openBookmarkImport(parseBookmarks(source),file.name);
+    } catch(error) {if(input.isConnected)report(error.message||t("Не удалось прочитать файл."));}
+    finally {if(button.isConnected)button.disabled=false;}
   }
   function openRestoreDialog(dump,filename) {
     const stats=dumpStats(dump.state),date=new Intl.DateTimeFormat(language() === 'ru' ? 'ru-RU' : 'en-US',{dateStyle:'medium',timeStyle:'short'}).format(new Date(dump.createdAt));
-    openModal(heading(t("Восстановить дамп?"))+t("<div class=\"backup-summary\"><div><span>Файл</span><strong>")+esc(filename)+t("</strong></div><div><span>Создан</span><strong>")+esc(date)+t("</strong></div><div><span>Сайты</span><strong>")+stats.sites+t("</strong></div><div><span>Папки</span><strong>")+stats.folders+t("</strong></div><div><span>Свои поисковики</span><strong>")+stats.engines+t("</strong></div></div><p class=\"restore-note\">Текущие ярлыки, поисковики и настройки будут заменены данными из файла.</p><p id=\"backup-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" type=\"button\" id=\"cancel-restore\" autofocus>Отмена</button><button class=\"btn btn-primary\" type=\"button\" id=\"confirm-restore\">Восстановить</button></div>"),'restore');
-    $('cancel-restore').addEventListener('click',openSettings);
-    $('confirm-restore').addEventListener('click',()=>{try{state=store.replace(dump.state);}catch{backupError(t("Не удалось сохранить дамп. Прежние данные остаются на месте."));return;}closeModal();refresh();notify(t("Дамп восстановлен"));});
+    const rows=[[t("Файл"),filename],[t("Создан"),date],[t("Ярлыки"),stats.sites],[t("Папки"),stats.folders],[t("Загруженные иконки"),stats.icons],[t("Свои поисковики"),stats.engines]];
+    openModal(heading(t("Восстановить Argon?"))+'<div class="backup-summary">'+rows.map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>').join('')+'</div>'+
+      '<p class="restore-note">'+t("Текущие ярлыки, папки, свои иконки и настройки страницы будут заменены.")+'</p>'+
+      '<p class="field-help">'+t("Загруженные изображения встроены в файл JSON.")+' '+t("Активный поисковик браузера выбирается отдельно.")+'</p>'+
+      '<p id="backup-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn-secondary" type="button" id="cancel-restore" autofocus>'+t("Отмена")+'</button><button class="btn btn-primary" type="button" id="confirm-restore">'+t("Заменить и восстановить")+'</button></div>','restore');
+    $('cancel-restore').addEventListener('click',openDataSettings);
+    $('confirm-restore').addEventListener('click',()=>{try{state=store.replace(dump.state);}catch{backupError(t("Не удалось сохранить резервную копию. Прежние данные остаются на месте."));return;}closeModal();refresh();notify(t("Резервная копия восстановлена"));});
   }
   function bookmarkSettingsMarkup() {
-    return '<div class="backup-section"><span class="setting-label">'+t("Закладки из другого браузера")+'</span><p class="backup-description">'+t("Добавьте закладки из JSON, bookmarks.html или файла Bookmarks без расширения.")+'</p><button class="btn btn-secondary" id="bookmarks-import" type="button">'+svg('upload')+t("Импортировать закладки")+'</button><input type="file" id="bookmarks-file" hidden><p id="bookmarks-error" class="error" role="alert" hidden></p></div>';
+    return '<div class="backup-section"><span class="setting-label">'+t("Закладки из другого браузера")+'</span><p class="backup-description">'+t("Добавьте ссылки и папки к вашим ярлыкам.")+'</p><p class="field-help">'+t("HTML, JSON или файл Bookmarks без расширения.")+'</p><button class="btn btn-secondary" id="bookmarks-import" type="button">'+svg('upload')+t("Добавить закладки из файла")+'</button><p class="field-help">'+t("Новые ярлыки получат иконки с сайтов. Ваши ярлыки, свои иконки и настройки сохранятся.")+'</p><input type="file" id="bookmarks-file" hidden><p id="bookmarks-error" class="error" role="alert" hidden></p></div>';
   }
   function bookmarkError(message) {
     const target=$('bookmarks-error');
     if(target){target.textContent=message;target.hidden=false;}else notify(message);
-  }
-  async function readBookmarks(event) {
-    const input=event.currentTarget,file=input.files[0];input.value='';if(!file)return;
-    const button=$('bookmarks-import');button.disabled=true;
-    try {
-      if(file.size>MAX_BOOKMARK_BYTES)throw Error(t("Выберите файл закладок размером до 10 МБ."));
-      const parsed=parseBookmarks(await file.text());
-      if(input.isConnected)openBookmarkImport(parsed,file.name);
-    } catch(error) {if(input.isConnected)bookmarkError(error.message||t("Не удалось прочитать файл."));}
-    finally {if(button.isConnected)button.disabled=false;}
   }
   function openBookmarkImport(parsed,filename) {
     const preview=mergeBookmarks(store.latest(),parsed,uid);
@@ -376,7 +391,7 @@ import {connectBrowserSearch} from './browser-search.js';
     if(preview.shortened)notes+='<p class="field-help">'+t("Длинные названия будут сокращены: {count}.",{count:preview.shortened})+'</p>';
     if(!preview.imported)notes+='<p class="field-help">'+t("Все эти закладки уже есть на домашней странице.")+'</p>';
     openModal(heading(t("Импортировать закладки?"))+'<div class="backup-summary">'+rows.map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>').join('')+'</div>'+notes+'<p id="bookmarks-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn-secondary" type="button" id="cancel-bookmarks" autofocus>'+t("Отмена")+'</button><button class="btn btn-primary" type="button" id="confirm-bookmarks"'+(preview.imported?'':' disabled')+'>'+t("Добавить закладки")+'</button></div>','bookmarks');
-    $('cancel-bookmarks').addEventListener('click',openSettings);
+    $('cancel-bookmarks').addEventListener('click',openDataSettings);
     $('confirm-bookmarks').addEventListener('click',()=>{
       try {
         const result=store.importBookmarks(parsed,uid);state=result.state;
@@ -384,19 +399,55 @@ import {connectBrowserSearch} from './browser-search.js';
       } catch(error) {bookmarkError(error.message||t("Не удалось сохранить закладки. Прежние данные остаются на месте."));}
     });
   }
+  function openDataSettings() {
+    openModal(heading(t("Перенос данных"))+
+      '<div class="backup-section"><span class="setting-label">'+t("Резервная копия Argon")+'</span>'+
+      '<p class="backup-description">'+t("Ярлыки, папки, свои поисковики и оформление домашней страницы.")+'</p>'+
+      '<div class="backup-included">'+svg('image')+'<div><strong>'+t("Свои иконки включены")+'</strong><p class="field-help">'+t("Загруженные изображения встроены в файл JSON.")+'</p></div></div>'+
+      '<p class="field-help">'+t("Копия Argon .json, до 10 МБ.")+'</p><div class="backup-actions">'+
+      '<button class="btn btn-secondary" id="backup-export" type="button">'+svg('download')+t("Сохранить копию")+'</button>'+
+      '<button class="btn btn-secondary" id="backup-import" type="button">'+svg('upload')+t("Восстановить из копии")+'</button></div>'+
+      '<p class="field-help">'+t("Восстановление заменит текущие данные страницы.")+' '+t("Активный поисковик браузера выбирается отдельно.")+'</p>'+
+      '<input type="file" id="backup-file" accept=".json,application/json" hidden><p id="backup-error" class="error" role="alert" hidden></p></div>'+
+      bookmarkSettingsMarkup()+'<div class="dialog-actions"><button class="btn btn-secondary" id="data-back" type="button">'+t("Назад к настройкам")+'</button></div>','data');
+    $('data-back').addEventListener('click',openSettings);
+    $('backup-export').addEventListener('click',exportBackup);
+    $('backup-import').addEventListener('click',()=>$('backup-file').click());
+    $('bookmarks-import').addEventListener('click',()=>$('bookmarks-file').click());
+    $('backup-file').addEventListener('change',readTransfer);
+    $('bookmarks-file').addEventListener('change',readTransfer);
+  }
+  function updateThemeHelp() {
+    const target=$('theme-help');if(!target)return;
+    const descriptions={light:t("Светлое оформление домашней страницы."),dark:t("Тёмное оформление домашней страницы."),amoled:t("Чисто чёрный фон домашней страницы."),system:t("Тема меняется вместе с темой браузера.")};
+    target.textContent=descriptions[state.theme];
+  }
+  function updateDensityHelp() {
+    const target=$('density-help');if(target)target.textContent=state.density==='compact'
+      ?t("Мелкие ярлыки расположены плотнее: в строке помещается больше сайтов.")
+      :t("Крупные ярлыки легче различать: в строке помещается меньше сайтов.");
+  }
   function openSettings() {
     if(moving)cancelMove();
-    openModal(heading(t("Настроить страницу"))+'<button type="button" id="edit-shortcuts" class="setting-row edit-shortcuts"><span><strong>'+ (editing()?t("Завершить редактирование"):t("Редактировать ярлыки"))+t("</strong><small>Добавление, изменение, перемещение и удаление ярлыков.</small></span>")+svg('pencil')+t("</button><span class=\"setting-label\">Оформление</span><div class=\"theme-options\">")+[['light','sun',t("Светлая")],['dark','moon',t("Тёмная")],['amoled','amoled',t("Тёмная AMOLED")],['system','monitor',t("Как в браузере")]].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+t("</div><label class=\"setting-row\"><span>Размер значков</span><select id=\"density-select\" aria-label=\"Размер значков\" aria-describedby=\"density-help\"><option value=\"comfortable\">Крупные</option><option value=\"compact\">Мелкие</option></select></label><div id=\"size-preview\" class=\"shortcut-grid size-preview\" aria-label=\"Образец размеров значков\"></div><p id=\"density-help\" class=\"field-help\">Мелкие значки расположены плотнее: в строке помещается больше ярлыков.</p><div class=\"setting-row\"><span>Названия ярлыков</span><button id=\"labels-toggle\" class=\"toggle\" role=\"switch\" aria-label=\"Показывать названия ярлыков\" aria-checked=\"")+state.showLabels+t("\"></button></div><div class=\"setting-row\"><span>Открывать в новой вкладке</span><button id=\"newtab-toggle\" class=\"toggle\" role=\"switch\" aria-label=\"Открывать сайты в новой вкладке\" aria-checked=\"")+state.newTab+t("\"></button></div>")+bookmarkSettingsMarkup()+t("<div class=\"backup-section\"><span class=\"setting-label\">Резервная копия</span><p class=\"backup-description\">Ярлыки, папки, свои иконки, поисковики и оформление — в одном файле JSON.</p><div class=\"backup-actions\"><button class=\"btn btn-secondary\" id=\"backup-export\" type=\"button\">")+svg('download')+t("Снять дамп</button><button class=\"btn btn-secondary\" id=\"backup-import\" type=\"button\">")+svg('upload')+t("Восстановить</button></div><input type=\"file\" id=\"backup-file\" accept=\".json,application/json\" hidden><p id=\"backup-error\" class=\"error\" role=\"alert\" hidden></p></div><div class=\"dialog-actions\"><button class=\"btn btn-primary\" data-close type=\"button\">Готово</button></div>"),'settings');
+    openModal(heading(t("Настроить страницу"))+'<p class="field-help settings-autosave">'+t("Изменения сохраняются автоматически")+'</p>'+
+      '<button type="button" id="edit-shortcuts" class="setting-row edit-shortcuts"><span><strong>'+(editing()?t("Завершить редактирование"):t("Редактировать ярлыки"))+'</strong><small>'+t("Добавление, изменение, перемещение и удаление ярлыков.")+'</small></span>'+svg('pencil')+'</button>'+
+      '<span class="setting-label">'+t("Оформление")+'</span><div class="theme-options">'+
+      [['light','sun',t("Светлая")],['dark','moon',t("Тёмная")],['amoled','amoled',t("Тёмная AMOLED")],['system','monitor',t("Как в браузере")]].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+
+      '</div><p id="theme-help" class="field-help"></p>'+
+      '<label class="setting-row"><span>'+t("Размер ярлыков")+'</span><select id="density-select" aria-label="'+t("Размер ярлыков")+'" aria-describedby="density-help"><option value="comfortable">'+t("Крупные")+'</option><option value="compact">'+t("Мелкие")+'</option></select></label>'+
+      '<div id="size-preview" class="shortcut-grid size-preview" aria-label="'+t("Предпросмотр ярлыков")+'"></div><p id="density-help" class="field-help"></p>'+
+      '<div class="setting-row"><span>'+t("Показывать названия ярлыков")+'</span><button id="labels-toggle" class="toggle" role="switch" aria-label="'+t("Показывать названия ярлыков")+'" aria-checked="'+state.showLabels+'"></button></div>'+
+      '<div class="setting-row"><span>'+t("Открывать сайты из ярлыков в новой вкладке")+'</span><button id="newtab-toggle" class="toggle" role="switch" aria-label="'+t("Открывать сайты из ярлыков в новой вкладке")+'" aria-checked="'+state.newTab+'"></button></div>'+
+      '<button type="button" id="data-settings" class="setting-row edit-shortcuts"><span><strong>'+t("Перенос данных")+'</strong><small>'+t("Копия Argon с иконками и импорт закладок.")+'</small></span>'+svg('arrow')+'</button>'+
+      '<div class="dialog-actions"><button class="btn btn-primary" data-close type="button">'+t("Готово")+'</button></div>','settings');
     $('edit-shortcuts').addEventListener('click',()=>{const enabled=!editing();closeModal();setEditing(enabled);if(enabled)$('edit-done').focus();});
     $('density-select').value=state.density==='compact'?'compact':'comfortable';
     setHtml($('size-preview'),[{name:'Argon'},...builtins.filter(e=>['noai','google','bing'].includes(e.id))].map(e=>'<span class="shortcut"><span class="shortcut-icon">'+(e.url?engineMarkup(e):svg('brand'))+'</span><span class="shortcut-label">'+esc(e.name==='DuckDuckGo NoAI'?'DuckDuckGo':e.name)+'</span></span>').join(''));
-    fallbackImages($('size-preview'));
-    $('density-select').addEventListener('change',e=>{if(commit(s=>{s.density=e.target.value;})){applyTheme();renderShortcuts();}else e.target.value=state.density==='compact'?'compact':'comfortable';});
+    fallbackImages($('size-preview'));updateThemeHelp();updateDensityHelp();
+    $('density-select').addEventListener('change',e=>{if(commit(s=>{s.density=e.target.value;})){applyTheme();renderShortcuts();updateDensityHelp();}else e.target.value=state.density==='compact'?'compact':'comfortable';});
     $('labels-toggle').addEventListener('click',()=>{if(commit(s=>{s.showLabels=!s.showLabels;})){$('labels-toggle').setAttribute('aria-checked',String(state.showLabels));renderShortcuts();}});
     $('newtab-toggle').addEventListener('click',()=>{if(commit(s=>{s.newTab=!s.newTab;})){$('newtab-toggle').setAttribute('aria-checked',String(state.newTab));renderShortcuts();}});
-    $('backup-export').addEventListener('click',exportBackup);$('backup-import').addEventListener('click',()=>$('backup-file').click());$('backup-file').addEventListener('change',readBackup);
-    $('bookmarks-import').addEventListener('click',()=>$('bookmarks-file').click());
-    $('bookmarks-file').addEventListener('change',readBookmarks);
+    $('data-settings').addEventListener('click',openDataSettings);
   }
   $('settings-button').addEventListener('click',openSettings);
   window.addEventListener('storage',event=>{if(event.key!==storageKey&&event.key!==null)return;try{state=store.state=store.latest();if(modalKind)closeModal();setEditing(false);refresh();}catch{notify(t("Не удалось прочитать настройки из другой вкладки."));}});
@@ -410,3 +461,4 @@ import {connectBrowserSearch} from './browser-search.js';
   void connectSearch();
   if(store.loadError)notify(t("Не удалось прочитать настройки. Исходные данные сохранены; можно восстановить дамп."));
 })();
+
