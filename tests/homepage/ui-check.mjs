@@ -275,9 +275,16 @@ try {
   assert.equal(data.shortcuts[0].name,'Личный сайт','the chosen position must be honored when moving to another folder');
   assert.equal(data.shortcuts.find(item=>item.id===folder.id).children.length,0);
   await actions('Личный сайт');await page.locator('#shortcut-edit').click();
-  await page.locator('#shortcut-position').selectOption('2');await formSubmit();
+  await page.locator('#shortcut-position').selectOption('2');
+  assert.equal(await page.locator('#shortcut-position').inputValue(),'2');
+  await page.evaluate(()=>{
+    document.querySelector('#shortcut-form').addEventListener('submit',()=>{
+      window.argonPositionSubmit={position:document.querySelector('#shortcut-position').value,parent:document.querySelector('#shortcut-folder')?.value};
+    },{capture:true,once:true});
+  });
+  await formSubmit();
   data=await saved();
-  assert.equal(data.shortcuts[2].name,'Личный сайт');
+  assert.equal(data.shortcuts[2].name,'Личный сайт','saved order: '+JSON.stringify(data.shortcuts.map(item=>item.name))+'; submitted: '+JSON.stringify(await page.evaluate(()=>window.argonPositionSubmit)));
   await actions('Документы');await page.locator('#shortcut-edit').click();
   await page.getByRole('button',{name:'Удалить',exact:true}).click();
   assert.equal((await saved()).shortcuts.length,2);
