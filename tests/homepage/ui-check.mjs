@@ -268,23 +268,20 @@ try {
   await actions('Работа');await page.locator('#open-folder').click();
   await actions('Мой сайт');await page.locator('#shortcut-edit').click();
   await page.locator('#shortcut-folder').selectOption('');
-  await page.locator('#shortcut-position').selectOption('0');
+  await page.locator('#shortcut-position').selectOption({value:'0'});
   await page.getByLabel('Название',{exact:true}).fill('Личный сайт');
   await formSubmit();
   data=await saved();assert.equal(data.shortcuts.length,3);
   assert.equal(data.shortcuts[0].name,'Личный сайт','the chosen position must be honored when moving to another folder');
   assert.equal(data.shortcuts.find(item=>item.id===folder.id).children.length,0);
   await actions('Личный сайт');await page.locator('#shortcut-edit').click();
-  await page.locator('#shortcut-position').selectOption('2');
+  // Numeric labels overlap adjacent zero-based values. Select by value
+  // explicitly so Playwright cannot match the preceding option's label.
+  await page.locator('#shortcut-position').selectOption({value:'2'});
   assert.equal(await page.locator('#shortcut-position').inputValue(),'2');
-  await page.evaluate(()=>{
-    document.querySelector('#shortcut-form').addEventListener('submit',()=>{
-      window.argonPositionSubmit={position:document.querySelector('#shortcut-position').value,parent:document.querySelector('#shortcut-folder')?.value};
-    },{capture:true,once:true});
-  });
   await formSubmit();
   data=await saved();
-  assert.equal(data.shortcuts[2].name,'Личный сайт','saved order: '+JSON.stringify(data.shortcuts.map(item=>item.name))+'; submitted: '+JSON.stringify(await page.evaluate(()=>window.argonPositionSubmit)));
+  assert.equal(data.shortcuts[2].name,'Личный сайт','moving within the same folder must honor the selected position');
   await actions('Документы');await page.locator('#shortcut-edit').click();
   await page.getByRole('button',{name:'Удалить',exact:true}).click();
   assert.equal((await saved()).shortcuts.length,2);
