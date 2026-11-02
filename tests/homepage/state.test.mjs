@@ -17,8 +17,19 @@ test('dump round trip preserves folders, uploaded icon, engine and every prefere
   const state = sample();
   const restored = parseDump(JSON.stringify(createDump(state, new Date('2026-10-24T18:00:00Z'))));
   assert.deepEqual(restored.state, state);
-  assert.deepEqual(dumpStats(restored.state), {sites: 2, folders: 1, engines: 1});
+  assert.deepEqual(dumpStats(restored.state), {sites: 2, folders: 1, icons: 1, engines: 1});
   assert.equal(restored.createdAt, '2026-10-24T18:00:00.000Z');
+});
+
+test('backup statistics count embedded icons in folders and legacy shortcuts, excluding links and inactive images', () => {
+  const state = sample();
+  state.shortcuts.push(
+    {id: 'remote', name: 'Remote', url: 'https://remote.example', iconMode: 'custom', customIcon: 'https://remote.example/icon.png'},
+    {id: 'inactive', name: 'Inactive', url: 'https://inactive.example', iconMode: 'favicon', customIcon: 'data:image/png;base64,iVBORw0KGgo='},
+    {id: 'preset', name: 'Preset', url: 'https://preset.example', iconMode: 'custom', icon: 'book'},
+    {id: 'legacy-image', name: 'Legacy', url: 'https://legacy.example', customIcon: 'data:image/png;base64,iVBORw0KGgo='}
+  );
+  assert.deepEqual(dumpStats(state), {sites: 6, folders: 1, icons: 2, engines: 1});
 });
 
 test('migration removes original examples and keeps user edits and folder additions', () => {
@@ -111,3 +122,4 @@ test('Bing and manually added Yandex are valid search choices',()=>{
     assert.deepEqual(parseDump(JSON.stringify(createDump(state))).state,state);
   }
 });
+

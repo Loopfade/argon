@@ -151,9 +151,15 @@ export function restoreState(storage, key, nextState) {
 }
 
 export function dumpStats(state) {
-  let sites = 0, folders = 0;
-  state.shortcuts.forEach(item => { if (item.type === 'folder') { folders++; sites += item.children.length; } else sites++; });
-  return {sites, folders, engines: state.customEngines.length};
+  let sites = 0, folders = 0, icons = 0;
+  state.shortcuts.forEach(item => {
+    if (item.type === 'folder') folders++;
+    for (const site of item.type === 'folder' ? item.children : [item]) {
+      sites++;
+      if (site.iconMode !== 'favicon' && /^data:image\//i.test(site.customIcon ?? '')) icons++;
+    }
+  });
+  return {sites, folders, icons, engines: state.customEngines.length};
 }
 
 /** Plan an additive import; neither the source nor the current state is changed. */
@@ -284,3 +290,4 @@ export function navigationTarget(value, template) {
   if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) throw new Error(t("Проверьте адрес."));
   return url.href;
 }
+

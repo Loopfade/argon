@@ -18,7 +18,7 @@
 .shortcut-grid .folder-stack{width:calc(var(--shortcut-icon-size)*.6);height:calc(var(--shortcut-icon-size)*.6)}
 .shortcut-grid .folder-stack svg,.shortcut-grid .folder-stack img{width:calc(var(--shortcut-glyph-size)/3);height:calc(var(--shortcut-glyph-size)/3)}
 .edit-shortcuts{width:100%;text-align:left}.edit-shortcuts:hover{color:var(--accent-text)}.edit-shortcuts strong{font-weight:550}.edit-shortcuts>svg{flex-shrink:0;width:18px;height:18px}
-.size-preview{padding:20px 0 6px}.size-preview .shortcut{gap:8px}.size-preview .shortcut-icon{border:0}.size-preview .shortcut-label{display:block;font-size:10px}.size-preview .shortcut:hover .shortcut-icon{transform:none;box-shadow:none}
+.size-preview{padding:20px 0 6px}.size-preview .shortcut{gap:8px}.size-preview .shortcut-icon{border:0}.size-preview .shortcut-label{font-size:10px}.size-preview .shortcut:hover .shortcut-icon{transform:none;box-shadow:none}
 .editing-hint{font-size:12px;color:var(--secondary);line-height:1.6;margin:0 4px 20px}
 .move-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;margin-bottom:20px;border:1px solid var(--border);border-radius:14px;background:var(--accent-soft)}
 .move-toolbar strong{font-size:13px;font-weight:550}.move-toolbar p{font-size:11px;color:var(--secondary);line-height:1.6;margin:5px 0 0}.move-toolbar .btn{flex-shrink:0}
@@ -30,3 +30,8 @@
 
 :root[data-theme=amoled]{--bg:#000000;--surface:#141414;--surface-hover:#202020;--tile:#181818;--tile-hover:#242424;--border:#303030;--line:#242424;--overlay:#00000099}
 .theme-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+
+.settings-autosave{margin:0 0 14px}.backup-included{display:flex;align-items:flex-start;gap:10px;padding:13px;border-radius:12px;background:var(--accent-soft);margin:14px 0}.backup-included>svg{width:19px;height:19px;flex-shrink:0;color:var(--accent-text)}.backup-included strong{font-size:12px;font-weight:550}.backup-included .field-help{margin:4px 0 0}.theme-options~.field-help{margin-top:10px}
+.dialog-actions{flex-wrap:wrap}.backup-actions{flex-wrap:wrap}.backup-actions .btn{flex:1 1 150px}
+@media(max-width:480px){.backup-actions{flex-direction:column}.backup-actions .btn{flex-basis:auto}}

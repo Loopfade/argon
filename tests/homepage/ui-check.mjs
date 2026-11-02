@@ -60,6 +60,7 @@ page.on('pageerror',error=>errors.push(error.message));
 const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
 const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
 async function enableEditing(p=page){await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
+async function openDataSettings(p=page){await p.locator('#settings-button').click();await p.locator('#data-settings').click();}
 async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
 async function actions(name,p=page){await p.getByRole('button',{name:'Действия с ярлыком '+name,exact:true}).click();}
 async function add(name,url,type='site',deferFrame=false){
@@ -104,8 +105,8 @@ try {
     await p.locator('[data-item]').first().waitFor();
     assert.equal(await p.locator('[data-item] .shortcut-label').first().textContent(),'Избранное');
     await p.locator('#edit-done').click();
-    await p.locator('#settings-button').click();
-    assert(await p.getByRole('button',{name:'Export backup',exact:false}).isVisible());
+    await openDataSettings(p);
+    assert(await p.getByRole('button',{name:'Save backup',exact:false}).isVisible());
     const download=p.waitForEvent('download');
     await p.locator('#backup-export').click();
     assert((await download).suggestedFilename().startsWith('argon-dump-'));
@@ -131,7 +132,8 @@ try {
     <DT><A HREF="https://existing.example/">Дубль</A><DT><A HREF="javascript:alert(1)">Не сайт</A>
     <script>window.importScriptRan=true;</script><img src="https://import-should-not-load.example/image">
     </DL>`)};
-  await bookmarkPage.locator('#settings-button').click();
+  await openDataSettings(bookmarkPage);
+  assert(await bookmarkPage.locator('.dialog').evaluate(element=>element.scrollWidth<=element.clientWidth),'data settings must fit a narrow dialog');
   await bookmarkPage.locator('#bookmarks-file').setInputFiles(fileBookmarks);
   await bookmarkPage.locator('#confirm-bookmarks').waitFor();
   assert.deepEqual(await bookmarkState(),originalBookmarks,'preview cannot change storage');
@@ -153,9 +155,22 @@ try {
   await bookmarkPage.reload();
   assert.equal((await bookmarkState()).shortcuts.length,3);
   assert.equal(await bookmarkPage.locator('html').getAttribute('data-theme'),'amoled');
-  await bookmarkPage.locator('#settings-button').click();
+  await openDataSettings(bookmarkPage);
   await bookmarkPage.locator('#bookmarks-file').setInputFiles(fileBookmarks);
   assert(await bookmarkPage.locator('#confirm-bookmarks').isDisabled());
+  await bookmarkPage.locator('#cancel-bookmarks').click();
+  // Either file picker recognizes the contents; selecting the other format
+  // still previews the correct operation without changing saved data.
+  const backupForRouting={app:'argon-start',version:1,createdAt:'2026-11-02T10:00:00Z',state:originalBookmarks};
+  await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'argon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backupForRouting))});
+  await bookmarkPage.locator('#confirm-restore').waitFor();
+  assert(await bookmarkPage.locator('.dialog').evaluate(element=>element.scrollWidth<=element.clientWidth),'restore actions must fit a narrow dialog');
+  assert(await bookmarkPage.getByText('Загруженные иконки',{exact:true}).isVisible());
+  assert.deepEqual(await bookmarkState(),imported,'routing a backup through bookmark import cannot replace data');
+  await bookmarkPage.locator('#cancel-restore').click();
+  await bookmarkPage.locator('#backup-file').setInputFiles(fileBookmarks);
+  await bookmarkPage.locator('#confirm-bookmarks').waitFor();
+  assert.deepEqual(await bookmarkState(),imported,'routing bookmarks through restore cannot replace data');
   await bookmarkPage.locator('#cancel-bookmarks').click();
   await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{broken')});
   await bookmarkPage.locator('#bookmarks-error:not([hidden])').waitFor();
@@ -170,7 +185,7 @@ try {
   await bookmarkPage.evaluate(()=>{Storage.prototype.setItem=window.savedSetItem;delete window.savedSetItem;});
   await bookmarkPage.locator('#confirm-bookmarks').click();
   assert.equal((await bookmarkState()).shortcuts.length,4);
-  await bookmarkPage.locator('#settings-button').click();
+  await openDataSettings(bookmarkPage);
   await bookmarkPage.locator('#bookmarks-file').setInputFiles({name:'firefox.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({root:'placesRoot',children:[{title:'Firefox',uri:'https://firefox-bookmark.example/',type:'text/x-moz-place'}]}))});
   await bookmarkPage.locator('#confirm-bookmarks').click();
   assert.equal((await bookmarkState()).shortcuts.length,5);
@@ -191,15 +206,19 @@ try {
   }));
   await enableEditing(iconPage);
   await iconPage.locator('[data-add]').click();
+  assert(await iconPage.locator('#icon-help').isHidden());
   await iconPage.locator('#shortcut-title').fill('Иконка');
   await iconPage.locator('#shortcut-url').fill('primary-icon.example/private/path');
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.naturalWidth===1);
   assert.equal(await iconPage.evaluate(()=>document.activeElement.id),'shortcut-url','icon preview should update while the address is still focused');
   assert.equal(await iconPage.locator('#icon-preview img').getAttribute('src'),'https://primary-icon.example/favicon.ico');
   await iconPage.locator('#custom-choice').click();
+  assert(await iconPage.locator('#icon-help').isVisible());
+  assert((await iconPage.locator('#icon-help').textContent()).includes('GIF'));
   await iconPage.locator('#icon-file').setInputFiles({name:'icon.png',mimeType:'image/png',buffer:iconPng});
   await iconPage.locator('#icon-preview img[src^="data:"]').waitFor();
   await iconPage.locator('#favicon-choice').click();
+  assert(await iconPage.locator('#icon-help').isHidden());
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.naturalWidth===1);
   await iconPage.locator('#shortcut-form button[type=submit]').click();
   let iconState=await iconPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
@@ -227,6 +246,8 @@ try {
   await iconPage.evaluate(()=>localStorage.clear());
   await iconPage.close();
   await page.goto(base);
+  assert.equal(await page.locator('.header .brand').textContent(),'');
+  assert.equal(await page.locator('.header .brand use').getAttribute('href'),'#i-brand');
   assert(await page.locator('#edit-done').isHidden());
   assert.equal(await page.locator('[data-add]').count(),0);
   assert.equal(await page.locator('[data-item]').count(),0);
@@ -247,10 +268,20 @@ try {
   await actions('Работа');await page.locator('#open-folder').click();
   await actions('Мой сайт');await page.locator('#shortcut-edit').click();
   await page.locator('#shortcut-folder').selectOption('');
+  await page.locator('#shortcut-position').selectOption({value:'0'});
   await page.getByLabel('Название',{exact:true}).fill('Личный сайт');
   await formSubmit();
-  data=await saved();assert.equal(data.shortcuts.length,3);assert.equal(data.shortcuts[1].children.length,0);
-  assert.equal(data.shortcuts[2].name,'Личный сайт');
+  data=await saved();assert.equal(data.shortcuts.length,3);
+  assert.equal(data.shortcuts[0].name,'Личный сайт','the chosen position must be honored when moving to another folder');
+  assert.equal(data.shortcuts.find(item=>item.id===folder.id).children.length,0);
+  await actions('Личный сайт');await page.locator('#shortcut-edit').click();
+  // Numeric labels overlap adjacent zero-based values. Select by value
+  // explicitly so Playwright cannot match the preceding option's label.
+  await page.locator('#shortcut-position').selectOption({value:'2'});
+  assert.equal(await page.locator('#shortcut-position').inputValue(),'2');
+  await formSubmit();
+  data=await saved();
+  assert.equal(data.shortcuts[2].name,'Личный сайт','moving within the same folder must honor the selected position');
   await actions('Документы');await page.locator('#shortcut-edit').click();
   await page.getByRole('button',{name:'Удалить',exact:true}).click();
   assert.equal((await saved()).shortcuts.length,2);
@@ -288,6 +319,7 @@ try {
     const sizes={};
     for(const size of ['comfortable','compact']){
       await page.locator('#density-select').selectOption(size);
+      assert((await page.locator('#density-help').textContent()).startsWith(size==='compact'?'Мелкие':'Крупные'));
       sizes[size]=await page.evaluate(()=>{
         const real=document.querySelector('#shortcut-grid .shortcut-icon'),sample=document.querySelector('#size-preview .shortcut-icon');
         return {icon:real.getBoundingClientRect().width,preview:sample.getBoundingClientRect().width,columns:getComputedStyle(document.querySelector('#shortcut-grid')).gridTemplateColumns.split(' ').length};
@@ -300,7 +332,13 @@ try {
     if(out)await page.screenshot({path:resolve(out,'home-size-preview-'+width+'.png'),fullPage:true});
   }
   await page.setViewportSize({width:1100,height:850});
-  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Снять дамп'}).click();
+  await page.locator('#labels-toggle').click();
+  assert(await page.locator('#size-preview .shortcut-label').first().isHidden());
+  assert(await page.locator('#shortcut-grid .shortcut-label').first().isHidden());
+  await page.locator('#labels-toggle').click();
+  assert(await page.locator('#size-preview .shortcut-label').first().isVisible());
+  await page.locator('#data-settings').click();
+  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Сохранить копию',exact:true}).click();
   const dump=JSON.parse(await readFile(await(await downloadPromise).path(),'utf8'));
   assert.equal(dump.state.engine,'noai');assert.equal(dump.state.density,'compact');assert.equal(dump.state.shortcuts.length,3);
   await page.locator('#backup-file').setInputFiles({name:'argon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(dump))});
@@ -334,3 +372,4 @@ try {
   if(out)await active.screenshot({path:resolve(out,'failure.png'),fullPage:true}).catch(()=>{});
   throw error;
 } finally {await browser.close();await new Promise(r=>server.close(r));}
+

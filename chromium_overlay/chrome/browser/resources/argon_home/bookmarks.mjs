@@ -27,7 +27,7 @@ function collector(format) {
 function parseJson(source) {
   let data;
   try { data = JSON.parse(source); } catch { throw invalid(); }
-  if (data?.app === 'argon-start') throw new Error(t("Это дамп Argon. Используйте «Резервная копия → Восстановить»."));
+  if (data?.app === 'argon-start') throw new Error(t("Это резервная копия Argon. Используйте «Перенос данных → Восстановить из копии»."));
   let roots;
   if (Array.isArray(data)) roots = data;
   else if (object(data?.roots)) roots = Object.values(data.roots);
@@ -153,3 +153,4 @@ export function parseBookmarks(source) {
   if (!result.records.length) throw new Error(t("В файле нет закладок с адресами http:// или https://."));
   return result;
 }
+
