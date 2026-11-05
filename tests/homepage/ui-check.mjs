@@ -117,6 +117,48 @@ try {
       return !document.body.inert&&state?.newTab===true&&state.showLabels===false;
     });
     assert.equal(await second.evaluate(()=>document.body.inert),false);
+    // Deliver another tab's storage event while a real shortcut save is queued.
+    // Independent edits must merge; changes to the same shortcut must conflict.
+    for(const conflict of [false,true]) {
+      await enableEditing(second);
+      if(conflict) {
+        await actions('Сохранённый ярлык',second);
+        await second.locator('#shortcut-edit').click();
+      } else {
+        await second.locator('[data-add]').click();
+        await second.locator('#shortcut-url').fill('https://queued-save.example/');
+      }
+      await second.locator('#shortcut-title').fill(conflict?'Моя правка':'Сохранённый ярлык');
+      await first.evaluate(async conflict=>{
+        const {HomepageStore}=await import('./state.js');
+        const store=new HomepageStore(localStorage,'argon-start-v1');
+        window.lockReady=false;
+        window.pendingWrite=store.exclusive(async()=>{
+          window.applyHomeChange=()=>store.update(state=>{
+            state.theme=conflict?'amoled':'dark';
+            if(conflict)state.shortcuts[0].name='Правка другой вкладки';
+          });
+          window.lockReady=true;
+          await new Promise(resolve=>{window.releaseHomeWrite=resolve;});
+        });
+      },conflict);
+      await first.waitForFunction(()=>window.lockReady);
+      await second.evaluate(()=>{
+        window.externalStorageSeen=false;
+        window.addEventListener('storage',()=>{window.externalStorageSeen=true;},{once:true});
+      });
+      await second.locator('#shortcut-form button[type=submit]').click();
+      await second.waitForFunction(()=>document.body.inert);
+      await first.evaluate(()=>window.applyHomeChange());
+      await second.waitForFunction(()=>window.externalStorageSeen);
+      await first.evaluate(()=>window.releaseHomeWrite());
+      await first.evaluate(()=>window.pendingWrite);
+      const saved=await readState(second);
+      assert.equal(saved.shortcuts.length,1,'a queued shortcut save must retain its edit permission');
+      assert.equal(saved.shortcuts[0].name,conflict?'Правка другой вкладки':'Сохранённый ярлык');
+      assert.equal(saved.theme,conflict?'amoled':'dark');
+      if(conflict)await second.getByText('Ярлык изменился в другой вкладке. Откройте его заново.',{exact:true}).waitFor();
+    }
   } finally {
     await concurrentContext.close();
   }

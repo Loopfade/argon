@@ -120,6 +120,16 @@ import {connectBrowserSearch} from './browser-search.js';
     toast.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast.hidden=true;},undo?7000:3200);
   }
   let writing = false;
+  let deferredStorageSync = false;
+  function syncStoredState() {
+    try {
+      state=store.state=store.latest();
+      if(modalKind)closeModal();
+      setEditing(false);refresh();
+    } catch {
+      notify(t("Не удалось прочитать настройки из другой вкладки."));
+    }
+  }
   async function writeState(operation) {
     if (writing) throw new Error(t("Не удалось сохранить изменения."));
     writing = true;
@@ -129,6 +139,10 @@ import {connectBrowserSearch} from './browser-search.js';
     } finally {
       document.body.inert = false;
       writing = false;
+      if (deferredStorageSync) {
+        deferredStorageSync = false;
+        syncStoredState();
+      }
     }
   }
   async function commit(change, layout=false, errorId=null) {
@@ -414,7 +428,11 @@ import {connectBrowserSearch} from './browser-search.js';
     $('cancel-bookmarks').addEventListener('click',openDataSettings);
     $('confirm-bookmarks').addEventListener('click',async()=>{
       try {
-        const result=await writeState(() => store.importBookmarks(parsed,uid));state=result.state;
+        const result=await writeState(() => {
+          const imported=store.importBookmarks(parsed,uid);
+          state=imported.state;
+          return imported;
+        });
         closeModal();setEditing(false);refresh();notify(t("Добавлено закладок: {count}",{count:result.imported}));
       } catch(error) {bookmarkError(error.message||t("Не удалось сохранить закладки. Прежние данные остаются на месте."));}
     });
@@ -487,8 +505,15 @@ import {connectBrowserSearch} from './browser-search.js';
     $('data-settings').addEventListener('click',openDataSettings);
   }
   $('settings-button').addEventListener('click',openSettings);
-  window.addEventListener('storage',event=>{if(event.key!==storageKey&&event.key!==null)return;try{state=store.state=store.latest();if(modalKind)closeModal();setEditing(false);refresh();}catch{notify(t("Не удалось прочитать настройки из другой вкладки."));}});
+  window.addEventListener('storage',event=>{
+    if(event.key!==storageKey&&event.key!==null)return;
+    // A queued save still owns the current edit. Refreshing now would close its
+    // dialog and revoke editing before the write obtains the shared lock.
+    if(writing){deferredStorageSync=true;return;}
+    syncStoredState();
+  });
   document.addEventListener('keydown',e=>{
+    if(writing)return;
     if(e.key==='Escape'){if(moving){cancelMove();return;}if(modalKind){closeModal();return;}if(!$('engine-menu').hidden){closeEngine();$('engine-trigger').focus();return;}if(editing()){setEditing(false);return;}$('search-input').blur();}
     const typing=e.target.matches('input,textarea,select,[contenteditable=true]');
     if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!modalKind){e.preventDefault();closeEngine();void focusSearch();}
