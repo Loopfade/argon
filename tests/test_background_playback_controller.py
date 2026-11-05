@@ -21,6 +21,7 @@ ADAPTERS = {
     "android/app/Activity.java": '''package android.app;
 public class Activity extends android.content.Context {
   public boolean focused = true;
+  public int state = org.chromium.base.ActivityState.RESUMED;
   public final org.chromium.chrome.browser.tab.TabObscuringHandler obscuring = new org.chromium.chrome.browser.tab.TabObscuringHandler();
   public final org.chromium.base.supplier.NonNullObservableSupplier<Boolean> scrim = new org.chromium.base.supplier.NonNullObservableSupplier<>(false);
   public boolean hasWindowFocus() { return focused; }
@@ -92,8 +93,11 @@ public class ContextUtils {
   public static void registerNonExportedBroadcastReceiver(android.content.Context c,
       android.content.BroadcastReceiver r, android.content.IntentFilter f) { c.receivers.add(r); }
 }''',
+    "org/chromium/base/ActivityState.java": '''package org.chromium.base;
+public class ActivityState { public static final int RESUMED=3, STOPPED=5; }''',
     "org/chromium/base/ApplicationStatus.java": '''package org.chromium.base;
 public class ApplicationStatus {
+  public static int getStateForActivity(android.app.Activity activity) { return activity.state; }
   public interface ActivityStateListener { void onActivityStateChange(android.app.Activity a, int state); }
   public interface WindowFocusChangedListener { void onWindowFocusChanged(android.app.Activity a, boolean focused); }
   public static final java.util.List<ActivityStateListener> listeners = new java.util.ArrayList<>();

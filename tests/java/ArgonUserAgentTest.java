@@ -50,7 +50,13 @@ public class ArgonUserAgentTest {
         ContextUtils.getAppSharedPreferences().edit()
                 .putString("argon_user_agent.preset", "CUSTOM")
                 .putString("argon_user_agent.custom", "").apply();
+        assert ArgonUserAgent.getPreset() == Preset.CHROME_MOBILE;
         assert mobileChrome.equals(startBrowser());
+
+        ContextUtils.getAppSharedPreferences().edit()
+                .putString("argon_user_agent.custom", "RestoredBrowser/2.0").apply();
+        assert ArgonUserAgent.getPreset() == Preset.CUSTOM;
+        assert startBrowser().equals("RestoredBrowser/2.0");
 
         System.out.println("PASS: mobile Chrome default, legacy migration and saved choices");
     }

@@ -35,6 +35,7 @@ public final class ArgonBackgroundPlaybackControllerTest {
                 List.of(new ArgonBackgroundPlaybackPolicy.Rule("video.example", 1, true, false)));
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         WebContents contents = new WebContents();
         TestTab tab = new TestTab(contents);
@@ -138,6 +139,37 @@ public final class ArgonBackgroundPlaybackControllerTest {
         ArgonBackgroundPlaybackController.detach(activity);
     }
 
+    private static void visibleWindowWithoutFocus(boolean enabled) {
+        SystemClock.now = 0;
+        var store = ArgonBackgroundPlaybackStore.get();
+        store.policy.configure(enabled,
+                List.of(new ArgonBackgroundPlaybackPolicy.Rule("video.example", 1, true, false)));
+        store.policy.onForegroundVisit("video.example");
+        store.policy.mayPlay("video.example", false, 0, true);
+        Activity activity = new Activity();
+        activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.RESUMED;
+        TabModelSelector selector = new TabModelSelector();
+        WebContents contents = new WebContents();
+        contents.session = playingSession();
+        selector.tabs.add(new TestTab(contents));
+        ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
+        Handler.runPending();
+        check(contents.pauses == 0, "A focusable popup must not pause a visible page");
+
+        SystemClock.now = 60_000;
+        Handler.runPending();
+        check(contents.pauses == 0, "The visible page must keep playing without window focus");
+        activity.state = org.chromium.base.ActivityState.STOPPED;
+        for (var listener : List.copyOf(ApplicationStatus.listeners)) {
+            listener.onActivityStateChange(activity, activity.state);
+        }
+        Handler.runPending();
+        check(contents.pauses == 1,
+                "A stopped window must enforce permissions without renewing its old budget");
+        ArgonBackgroundPlaybackController.detach(activity);
+    }
+
     public static void main(String[] args) {
         check(org.chromium.chrome.browser.tab.Tab.class.isInterface(),
                 "The adapter must preserve Chromium's public Tab interface");
@@ -145,6 +177,8 @@ public final class ArgonBackgroundPlaybackControllerTest {
         startupWithoutSession(true);
         existingAndReplacementSessions();
         excludedAndClosedTabs();
+        visibleWindowWithoutFocus(false);
+        visibleWindowWithoutFocus(true);
         check(ContextUtils.context.receivers.isEmpty(), "Receiver leaked after controller destruction");
         check(ApplicationStatus.listeners.isEmpty(), "Activity listener leaked after destruction");
         check(ApplicationStatus.focusListeners.isEmpty(), "Focus listener leaked after destruction");

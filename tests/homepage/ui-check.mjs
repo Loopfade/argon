@@ -57,8 +57,9 @@ async function mockPage(){
 }
 const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
-const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
-const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
+const waitForWrite=(p=page)=>p.waitForFunction(()=>!document.body.inert);
+const saved=async()=>{await waitForWrite();return page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
+const formSubmit=async()=>{await page.locator('#shortcut-form button[type=submit]').click();await waitForWrite();};
 async function enableEditing(p=page){await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
 async function openDataSettings(p=page){await p.locator('#settings-button').click();await p.locator('#data-settings').click();}
 async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
@@ -87,6 +88,37 @@ async function add(name,url,type='site',deferFrame=false){
   await page.locator('#shortcut-form').waitFor({state:'hidden'});
 }
 try {
+  // One home tab writes while another tab's real settings action is queued.
+  // The browser's origin-wide lock must preserve both independent edits.
+  const concurrentContext=await browser.newContext({locale:'ru-RU'});
+  try {
+    const first=await concurrentContext.newPage(),second=await concurrentContext.newPage();
+    for(const p of [first,second])p.on('pageerror',error=>errors.push(error.message));
+    await Promise.all([first.goto(base),second.goto(base)]);
+    await first.evaluate(async()=>{
+      const {HomepageStore}=await import('./state.js');
+      const store=new HomepageStore(localStorage,'argon-start-v1');
+      window.pendingWrite=store.exclusive(async()=>{
+        window.lockReady=true;
+        await new Promise(resolve=>{window.releaseHomeWrite=resolve;});
+        store.update(state=>{state.showLabels=false;});
+      });
+    });
+    await first.waitForFunction(()=>window.lockReady===true);
+    await second.locator('#settings-button').click();
+    await second.locator('#newtab-toggle').click();
+    await second.waitForFunction(()=>document.body.inert);
+    assert.equal(await second.evaluate(()=>localStorage.getItem('argon-start-v1')),null);
+    await first.evaluate(()=>window.releaseHomeWrite());
+    await first.evaluate(()=>window.pendingWrite);
+    await second.waitForFunction(()=>{
+      const state=JSON.parse(localStorage.getItem('argon-start-v1'));
+      return !document.body.inert&&state?.newTab===true&&state.showLabels===false;
+    });
+    assert.equal(await second.evaluate(()=>document.body.inert),false);
+  } finally {
+    await concurrentContext.close();
+  }
   await checkNativeSearch(browser,base,errors,out);
   for(const locale of ['en-US','de-DE']) {
     const english=await browser.newContext({locale,acceptDownloads:true});
@@ -297,8 +329,10 @@ try {
   await page.getByRole('link',{name:'Личный сайт',exact:true}).click({button:'right'});
   assert.equal(await page.getByRole('dialog').count(),0);
   await page.locator('[data-theme-choice=dark]').click();
+  await waitForWrite();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
   await page.locator('[data-theme-choice=amoled]').click();
+  await waitForWrite();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'amoled');
   await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(0, 0, 0)');
   assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(0, 0, 0)');
@@ -319,6 +353,7 @@ try {
     const sizes={};
     for(const size of ['comfortable','compact']){
       await page.locator('#density-select').selectOption(size);
+      await waitForWrite();
       assert((await page.locator('#density-help').textContent()).startsWith(size==='compact'?'Мелкие':'Крупные'));
       sizes[size]=await page.evaluate(()=>{
         const real=document.querySelector('#shortcut-grid .shortcut-icon'),sample=document.querySelector('#size-preview .shortcut-icon');
@@ -333,9 +368,11 @@ try {
   }
   await page.setViewportSize({width:1100,height:850});
   await page.locator('#labels-toggle').click();
+  await waitForWrite();
   assert(await page.locator('#size-preview .shortcut-label').first().isHidden());
   assert(await page.locator('#shortcut-grid .shortcut-label').first().isHidden());
   await page.locator('#labels-toggle').click();
+  await waitForWrite();
   assert(await page.locator('#size-preview .shortcut-label').first().isVisible());
   await page.locator('#data-settings').click();
   const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Сохранить копию',exact:true}).click();

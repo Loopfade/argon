@@ -44,7 +44,12 @@ public final class ArgonUserAgent {
     public static Preset getPreset() {
         String saved = ContextUtils.getAppSharedPreferences().getString(PREF_PRESET, "");
         for (Preset preset : Preset.values()) {
-            if (preset.name().equals(saved)) return preset;
+            if (preset.name().equals(saved)) {
+                if (preset == Preset.CUSTOM && !isValidCustom(getCustom())) {
+                    return Preset.CHROME_MOBILE;
+                }
+                return preset;
+            }
         }
         return Preset.CHROME_MOBILE;
     }

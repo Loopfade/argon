@@ -34,6 +34,27 @@ TEST(TitaniumRuDomainPolicyTest, RejectsPublicAndPrivateSuffixes) {
   }
 }
 
+TEST(TitaniumRuDomainPolicyTest, MeasuresInternationalNamesAfterCanonicalization) {
+  std::string label;
+  for (int i = 0; i < 35; ++i) {
+    label += "\xD1\x8F";
+  }
+  const std::string input =
+      label + "." + label + "." + label + "." + label + ".com";
+  ASSERT_GT(input.size(), 253u);
+  std::string normalized;
+  EXPECT_EQ(TitaniumRuDomainValidationResult::kValid,
+            NormalizeTitaniumRussianRootDomain(input, &normalized));
+  EXPECT_LE(normalized.size(), 253u);
+  EXPECT_EQ(GURL("https://" + input + "/").host(), normalized);
+
+  const std::string too_long =
+      std::string(63, 'a') + "." + std::string(63, 'b') + "." +
+      std::string(63, 'c') + "." + std::string(63, 'd') + ".com";
+  EXPECT_EQ(TitaniumRuDomainValidationResult::kInvalid,
+            NormalizeTitaniumRussianRootDomain(too_long, &normalized));
+}
+
 TEST(TitaniumRuDomainPolicyTest, RejectsNonHostInput) {
   std::string normalized;
   for (const char* input : {"*", "*.example.com", "https://example.com",
