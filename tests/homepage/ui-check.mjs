@@ -58,8 +58,9 @@ async function mockPage(){
 const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 const waitForWrite=(p=page)=>p.waitForFunction(()=>!document.body.inert);
-const saved=async()=>{await waitForWrite();return page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
-const formSubmit=async()=>{await page.locator('#shortcut-form button[type=submit]').click();await waitForWrite();};
+const readState=async p=>{await waitForWrite(p);return p.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
+const saved=()=>readState(page);
+const formSubmit=async(p=page)=>{await p.locator('#shortcut-form button[type=submit]').click();await waitForWrite(p);};
 async function enableEditing(p=page){await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
 async function openDataSettings(p=page){await p.locator('#settings-button').click();await p.locator('#data-settings').click();}
 async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
@@ -133,7 +134,7 @@ try {
     await p.getByRole('button',{name:'Add site or folder',exact:true}).click();
     await p.getByLabel('Name',{exact:true}).fill('Избранное');
     await p.getByLabel('Site address',{exact:true}).fill('example.com');
-    await p.locator('#shortcut-form button[type=submit]').click();
+    await formSubmit(p);
     await p.locator('[data-item]').first().waitFor();
     assert.equal(await p.locator('[data-item] .shortcut-label').first().textContent(),'Избранное');
     await p.locator('#edit-done').click();
@@ -157,7 +158,7 @@ try {
     shortcuts:[{id:'existing',name:'Мой сайт',url:'https://existing.example/',iconMode:'custom',icon:'book'}]};
   await bookmarkPage.evaluate(value=>localStorage.setItem('argon-start-v1',JSON.stringify(value)),originalBookmarks);
   await bookmarkPage.reload();
-  const bookmarkState=()=>bookmarkPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+  const bookmarkState=()=>readState(bookmarkPage);
   const fileBookmarks={name:'bookmarks.html',mimeType:'text/html',buffer:Buffer.from(`<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p>
     <DT><H3>Работа</H3><DL><DT><A HREF="https://docs.example/?a=1&amp;b=2">Документы &amp; заметки</A>
     <DT><H3>Архив</H3><DL><DT><A HREF="https://archive.example/">Архив</A></DL></DL>
@@ -212,7 +213,7 @@ try {
   await bookmarkPage.locator('#confirm-bookmarks').waitFor();
   await bookmarkPage.evaluate(()=>{window.savedSetItem=Storage.prototype.setItem;Storage.prototype.setItem=()=>{throw new DOMException('Storage full','QuotaExceededError');};});
   await bookmarkPage.locator('#confirm-bookmarks').click();
-  assert(await bookmarkPage.locator('#bookmarks-error').isVisible());
+  await bookmarkPage.locator('#bookmarks-error:not([hidden])').waitFor();
   assert.deepEqual(await bookmarkState(),imported);
   await bookmarkPage.evaluate(()=>{Storage.prototype.setItem=window.savedSetItem;delete window.savedSetItem;});
   await bookmarkPage.locator('#confirm-bookmarks').click();
@@ -252,15 +253,15 @@ try {
   await iconPage.locator('#favicon-choice').click();
   assert(await iconPage.locator('#icon-help').isHidden());
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.naturalWidth===1);
-  await iconPage.locator('#shortcut-form button[type=submit]').click();
-  let iconState=await iconPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+  await formSubmit(iconPage);
+  let iconState=await readState(iconPage);
   assert.equal(iconState.shortcuts[0].iconMode,'favicon');
   assert.equal(iconState.shortcuts[0].customIcon,undefined);
   await editFirst(iconPage);
   await iconPage.locator('#shortcut-url').fill('fallback-icon.example');
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.src==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'&&document.querySelector('#icon-preview img')?.naturalWidth===1);
   assert(iconRequests.indexOf('https://fallback-icon.example/favicon.ico')<iconRequests.indexOf('https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'));
-  await iconPage.locator('#shortcut-form button[type=submit]').click();
+  await formSubmit(iconPage);
   await iconPage.reload();
   await iconPage.waitForFunction(()=>document.querySelector('.shortcut-icon img')?.naturalWidth===1);
   assert.equal(await iconPage.locator('.shortcut-icon img').getAttribute('src'),'https://icons.duckduckgo.com/ip3/fallback-icon.example.ico');
