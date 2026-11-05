@@ -554,10 +554,12 @@ public final class ArgonBackgroundPlaybackFlowTest {
             check(youtube.contents.pauses == 3, "Waking a locked screen must not bypass an off master");
             ContextUtils.context.keyguard.locked = false;
             activity.focused = false;
+            activity.state = org.chromium.base.ActivityState.STOPPED;
             screenEvent();
             play(youtube);
             check(youtube.contents.pauses == 4, "Another app in the foreground must not permit playback with the master off");
             activity.focused = true;
+            activity.state = org.chromium.base.ActivityState.RESUMED;
             screenEvent();
             check(youtube.contents.pauses == 4 && youtube.contents.session.playerPaused,
                     "Returning to the site must not restart its paused player");
@@ -598,6 +600,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("pause.test", 60);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://pause.test/watch");
         tab.contents.session.ignoreUiPauseHandler = true;
@@ -621,6 +624,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
     }
 
     private static void focus(Activity activity, boolean value) {
+        activity.state = value ? org.chromium.base.ActivityState.RESUMED
+                : org.chromium.base.ActivityState.STOPPED;
         activity.focused = value;
         for (var listener : List.copyOf(ApplicationStatus.focusListeners)) {
             listener.onWindowFocusChanged(activity, value);
@@ -634,6 +639,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
             add("order.test", 1);
             Activity activity = new Activity();
             activity.focused = false;
+            activity.state = org.chromium.base.ActivityState.STOPPED;
             TabModelSelector selector = new TabModelSelector();
             TestTab background = playing(selector, "https://order.test/");
             TestTab selected = playing(selector, "https://www.order.test/");
@@ -643,6 +649,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
             Handler.runPending();
             SystemClock.now = 60_000;
             activity.focused = true;
+            activity.state = org.chromium.base.ActivityState.RESUMED;
             selected.interactable = true;
             selector.observer.onInteractabilityChanged(selected, true);
             Handler.runPending();
@@ -668,6 +675,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("windows.test", 1);
         Activity first = new Activity(), second = new Activity();
         first.focused = second.focused = false;
+        first.state = org.chromium.base.ActivityState.STOPPED;
+        second.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector firstSelector = new TabModelSelector(), secondSelector = new TabModelSelector();
         background = playing(firstSelector, "https://windows.test/");
         selected = playing(secondSelector, "https://windows.test/");
@@ -676,6 +685,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Handler.runPending();
         SystemClock.now = 60_000;
         second.focused = true;
+        second.state = org.chromium.base.ActivityState.RESUMED;
         selected.interactable = true;
         screenEvent();
         check(background.contents.pauses == 0 && selected.contents.pauses == 0,
@@ -684,11 +694,12 @@ public final class ArgonBackgroundPlaybackFlowTest {
         ArgonBackgroundPlaybackController.detach(second);
     }
 
-    private static void focusWithoutActivityTransition() throws Exception {
+    private static void foregroundWithoutActivityCallback() throws Exception {
         fresh(true);
         add("focus.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://focus.test/");
         tab.interactable = true;
@@ -696,16 +707,16 @@ public final class ArgonBackgroundPlaybackFlowTest {
         Handler.runPending();
         SystemClock.now = 60_000;
         Handler.runPending();
-        check(tab.contents.pauses == 1, "The initial budget must expire before the focus-only visit");
+        check(tab.contents.pauses == 1, "The initial budget must expire before the foreground visit");
         SystemClock.now = 61_000;
         focus(activity, true);
         check(tab.contents.pauses == 1, "A foreground visit must not start playback automatically");
         focus(activity, false);
         play(tab);
-        check(tab.contents.pauses == 1, "A focus-only site visit must renew the budget even with no media polling or Activity transition");
+        check(tab.contents.pauses == 1, "A foreground site visit must renew the budget even with no media polling or Activity transition");
         SystemClock.now = 121_000;
         Handler.runPending();
-        check(tab.contents.pauses == 2, "The renewed focus-only budget must still expire");
+        check(tab.contents.pauses == 2, "The renewed foreground budget must still expire");
         ArgonBackgroundPlaybackController.detach(activity);
     }
 
@@ -714,6 +725,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("player.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab allowed = new TestTab(new WebContents()), denied = new TestTab(new WebContents());
         allowed.url = "https://player.test/";
@@ -743,6 +755,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("paused.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://paused.test/");
         tab.contents.session.suspended = true;
@@ -762,6 +775,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("navigation.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://navigation.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -926,6 +940,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("obscured.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://obscured.test/");
         tab.interactable = true;
@@ -970,6 +985,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("cached.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://cached.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -1040,6 +1056,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("visible.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://visible.test/");
         TestTab unlisted = playing(selector, "https://other.test/");
@@ -1160,21 +1177,25 @@ public final class ArgonBackgroundPlaybackFlowTest {
         ContextUtils.context.power.interactive = true;
         ContextUtils.context.keyguard.locked = true;
         activity.focused = true;
+        activity.state = org.chromium.base.ActivityState.RESUMED;
         main.interactable = true;
         screenEvent();
         play(main);
         check(main.contents.pauses == 3, "Waking a locked screen must not renew the budget");
         ContextUtils.context.keyguard.locked = false;
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         screenEvent();
         play(main);
         check(main.contents.pauses == 4, "Unlocking into another app must not renew the budget");
         activity.focused = true;
+        activity.state = org.chromium.base.ActivityState.RESUMED;
         screenEvent();
         check(main.contents.pauses == 4, "Returning to a site must not automatically start playback");
         play(main);
         check(main.contents.pauses == 4, "An unlocked, focused site visit must renew the budget");
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         main.interactable = false;
         screenEvent();
         var editor = open("video.example");
@@ -1196,6 +1217,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("budget.example", 2);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://budget.example/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -1232,6 +1254,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("video.example", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://video.example./");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -1245,6 +1268,8 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("windows.example", 1);
         Activity firstActivity = new Activity(), secondActivity = new Activity();
         firstActivity.focused = secondActivity.focused = false;
+        firstActivity.state = org.chromium.base.ActivityState.STOPPED;
+        secondActivity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector firstSelector = new TabModelSelector(), secondSelector = new TabModelSelector();
         TestTab first = playing(firstSelector, "https://windows.example/");
         TestTab second = playing(secondSelector, "https://www.windows.example/");
@@ -1279,6 +1304,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         add("overlap.test", 1);
         Activity activity = new Activity();
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         TabModelSelector selector = new TabModelSelector();
         TestTab tab = playing(selector, "https://video.overlap.test/");
         ArgonBackgroundPlaybackController.attach(activity, selector, activity.obscuring, activity.scrim);
@@ -1296,10 +1322,12 @@ public final class ArgonBackgroundPlaybackFlowTest {
         check(tab.contents.pauses == 3, "Falling back to the parent must not restart the original minute");
         SystemClock.now = 61_000;
         activity.focused = true;
+        activity.state = org.chromium.base.ActivityState.RESUMED;
         tab.interactable = true;
         selector.observer.onInteractabilityChanged(tab, true);
         add("video.overlap.test", 1);
         activity.focused = false;
+        activity.state = org.chromium.base.ActivityState.STOPPED;
         tab.interactable = false;
         selector.observer.onInteractabilityChanged(tab, false);
         play(tab);
@@ -1314,7 +1342,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         if (args.length > 0) {
             switch (args[0]) {
                 case "order": foregroundBeforeEnforcement(); break;
-                case "focus": focusWithoutActivityTransition(); break;
+                case "focus": foregroundWithoutActivityCallback(); break;
                 case "players": nativePlayersWithoutControllableSession(); break;
                 case "paused": pausedBeforeBackground(); break;
                 case "navigation": stoppedNavigation(); break;
@@ -1365,7 +1393,7 @@ public final class ArgonBackgroundPlaybackFlowTest {
         multipleWindowsAndDeletion();
         liveOverlapReassignment();
         foregroundBeforeEnforcement();
-        focusWithoutActivityTransition();
+        foregroundWithoutActivityCallback();
         nativePlayersWithoutControllableSession();
         pausedBeforeBackground();
         stoppedNavigation();

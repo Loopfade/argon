@@ -207,7 +207,7 @@ export function mergeBookmarks(state, parsed, makeId = () => globalThis.crypto?.
   return {state: validateState(next), imported, folders, duplicates, shortened, skipped: parsed.skipped};
 }
 
-/** Saves accepted edits atomically. Editing is local to this page session. */
+/** Editing is local to this page session; shared browser writes run inside exclusive(). */
 export class HomepageStore {
   constructor(storage, key) {
     this.storage = storage;
@@ -224,6 +224,13 @@ export class HomepageStore {
   }
 
   setEditing(editing) { this.editing = Boolean(editing); }
+
+  exclusive(operation, locks = globalThis.navigator?.locks) {
+    if (!locks?.request) {
+      return Promise.reject(new Error(t("Не удалось сохранить изменения.")));
+    }
+    return locks.request(this.key, {mode: 'exclusive'}, operation);
+  }
 
   update(change, {shortcuts = false} = {}) {
     if (shortcuts && !this.editing) throw new Error(t("Включите редактирование ярлыков в настройках."));

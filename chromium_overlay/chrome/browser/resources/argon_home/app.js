@@ -119,8 +119,34 @@ import {connectBrowserSearch} from './browser-search.js';
     if (undo) { const b=document.createElement('button'); b.type='button'; b.textContent=t("Отменить"); b.addEventListener('click',undo); toast.append(b); }
     toast.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast.hidden=true;},undo?7000:3200);
   }
-  function commit(change, layout=false, errorId=null) {
-    try { state=store.update(change,{shortcuts:layout}); return true; }
+  let writing = false;
+  let deferredStorageSync = false;
+  function syncStoredState() {
+    try {
+      state=store.state=store.latest();
+      if(modalKind)closeModal();
+      setEditing(false);refresh();
+    } catch {
+      notify(t("Не удалось прочитать настройки из другой вкладки."));
+    }
+  }
+  async function writeState(operation) {
+    if (writing) throw new Error(t("Не удалось сохранить изменения."));
+    writing = true;
+    document.body.inert = true;
+    try {
+      return await store.exclusive(operation);
+    } finally {
+      document.body.inert = false;
+      writing = false;
+      if (deferredStorageSync) {
+        deferredStorageSync = false;
+        syncStoredState();
+      }
+    }
+  }
+  async function commit(change, layout=false, errorId=null) {
+    try { await writeState(() => { state=store.update(change,{shortcuts:layout}); }); return true; }
     catch (error) { const target=errorId && $(errorId); if(target){target.textContent=error.message||t("Не удалось сохранить изменения.");target.hidden=false;}else notify(error.message||t("Не удалось сохранить изменения.")); return false; }
   }
   function applyTheme() {
@@ -132,7 +158,7 @@ import {connectBrowserSearch} from './browser-search.js';
   const connectTheme = () => homeTheme.connect().catch(error => console.warn('Argon theme:', error));
   void connectTheme();
   window.addEventListener('pageshow', event => { if (event.persisted) void connectTheme(); });
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-choice]');if(b&&commit(s=>{s.theme=b.dataset.themeChoice;}))applyTheme();});
+  document.addEventListener('click',async e=>{const b=e.target.closest('[data-theme-choice]');if(b&&await commit(s=>{s.theme=b.dataset.themeChoice;}))applyTheme();});
   function updateEditing() {
     document.body.classList.toggle('editing',editing());
     $('edit-done').hidden=!editing();
@@ -206,7 +232,7 @@ import {connectBrowserSearch} from './browser-search.js';
   async function selectEngine(engine) {
     if(engine.id===selectedEngine().id){closeEngine();void focusSearch();return;}
     if(!nativeSearch()) {
-      if(commit(s=>{s.engine=engine.id;})){renderEngine();closeEngine();void focusSearch();}
+      if(await commit(s=>{s.engine=engine.id;})){renderEngine();closeEngine();void focusSearch();}
       return;
     }
     selectingEngine=true;closeEngine();renderEngine();
@@ -288,12 +314,12 @@ import {connectBrowserSearch} from './browser-search.js';
     $('shortcut-url').addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(preview,250);});
     $('shortcut-url').addEventListener('change',preview);$('upload-button').addEventListener('click',()=>$('icon-file').click());
     $('icon-file').addEventListener('change',()=>{const file=$('icon-file').files[0];if(!file)return;if(file.size>1024*1024||!/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(file.type)){showError(t("Выберите изображение подходящего формата размером до 1 МБ."));return;}const reader=new FileReader();reader.onload=()=>{if($('shortcut-form')!==form)return;draftIcon=String(reader.result);chooseIcon('custom');$('form-error').hidden=true;};reader.onerror=()=>{if($('shortcut-form')===form)showError(t("Не удалось прочитать изображение."));};reader.readAsDataURL(file);});
-    form.addEventListener('submit',e=>{
+    form.addEventListener('submit',async e=>{
       e.preventDefault();const name=$('shortcut-title').value.trim();if(!name){showError(t("Укажите название."));return;}let url;
       if(type==='site'){try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}if(draftMode==='custom'&&!draftIcon&&!item?.icon){showError(t("Загрузите иконку или выберите «С сайта»."));return;}}
       const folderSelect=$('shortcut-folder'),targetParent=type==='site'?(folderSelect?(folderSelect.value||null):parent):null;
       const desiredPosition=item?Number($('shortcut-position').value):null;
-      if(!commit(next=>{
+      if(!await commit(next=>{
         let current;
         if(editId){const from=shortcutList(next.shortcuts,originalParent),index=from.findIndex(s=>s.id===editId);if(index<0||JSON.stringify(from[index])!==original)throw Error(t("Ярлык изменился в другой вкладке. Откройте его заново."));current=from.splice(index,1)[0];}
         const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(draftMode==='custom'&&item?.icon&&normalizedUrl(item.url)===url&&!draftIcon?{icon:item.icon}:{})};
@@ -305,10 +331,10 @@ import {connectBrowserSearch} from './browser-search.js';
     $('delete-shortcut')?.addEventListener('click',()=>{if(item.type==='folder'&&item.children.length){openDeleteFolder(item);return;}deleteShortcut(editId,originalParent);});
     preview();
   }
-  function deleteShortcut(id,parent) {
+  async function deleteShortcut(id,parent) {
     let previous,after;
-    if(!commit(next=>{previous=structuredClone(next.shortcuts);const list=shortcutList(next.shortcuts,parent),index=list.findIndex(s=>s.id===id);if(index<0)throw Error(t("Ярлык больше не существует."));const item=list.splice(index,1)[0];if(item.type==='folder')next.shortcuts.push(...item.children);after=JSON.stringify(next.shortcuts);},true,'form-error'))return;
-    closeModal();renderShortcuts();notify(t("Удалено. Изменения сохранены"),()=>{if(!commit(next=>{if(JSON.stringify(next.shortcuts)!==after)throw Error(t("После удаления избранное уже изменилось."));next.shortcuts=previous;},true))return;renderShortcuts();notify(t("Удаление отменено"));});
+    if(!await commit(next=>{previous=structuredClone(next.shortcuts);const list=shortcutList(next.shortcuts,parent),index=list.findIndex(s=>s.id===id);if(index<0)throw Error(t("Ярлык больше не существует."));const item=list.splice(index,1)[0];if(item.type==='folder')next.shortcuts.push(...item.children);after=JSON.stringify(next.shortcuts);},true,'form-error'))return;
+    closeModal();renderShortcuts();notify(t("Удалено. Изменения сохранены"),async()=>{if(!await commit(next=>{if(JSON.stringify(next.shortcuts)!==after)throw Error(t("После удаления избранное уже изменилось."));next.shortcuts=previous;},true))return;renderShortcuts();notify(t("Удаление отменено"));});
   }
   function openDeleteFolder(item) { openModal(heading(t("Удалить папку?"))+t("<p class=\"dialog-subtitle\">Сайты из «")+esc(item.name)+t("» переместятся в избранное.</p><p id=\"form-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" id=\"confirm-delete\">Удалить папку</button></div>"),'delete');$('confirm-delete').addEventListener('click',()=>deleteShortcut(item.id,null)); }
   function renderFolderContents() {
@@ -318,14 +344,14 @@ import {connectBrowserSearch} from './browser-search.js';
     const tools=$('folder-move-toolbar');
     if(tools){tools.hidden=!moving;setHtml(tools,moving?t("<p class=\"editing-hint\">Нажмите новое место или перетащите ярлык.</p><div class=\"dialog-actions\"><button type=\"button\" class=\"btn btn-secondary\" id=\"move-to-root\">В избранное</button><button type=\"button\" class=\"btn btn-secondary\" id=\"cancel-folder-move\">Отмена переноса</button></div>"):'');
       $('cancel-folder-move')?.addEventListener('click',cancelMove);
-      $('move-to-root')?.addEventListener('click',()=>{const source=moving;if(!source||!commit(next=>moveShortcut(next.shortcuts,source.id,source.parent,null,next.shortcuts.length),true))return;moving=null;closeModal();updateEditing();renderShortcuts();notify(t("Ярлык перемещён"));});}
+      $('move-to-root')?.addEventListener('click',async()=>{const source=moving;if(!source||!await commit(next=>moveShortcut(next.shortcuts,source.id,source.parent,null,next.shortcuts.length),true))return;moving=null;closeModal();updateEditing();renderShortcuts();notify(t("Ярлык перемещён"));});}
   }
   function openFolder(id) {const folder=state.shortcuts.find(s=>s.id===id);if(!folder)return;openModal(heading(folder.name)+'<div id="folder-move-toolbar" hidden></div><div class="shortcut-grid" id="folder-grid"></div><div class="dialog-actions">'+(editing()&&!moving?t("<button class=\"btn btn-secondary\" id=\"edit-folder\">Изменить папку</button>"):'')+t("<button class=\"btn btn-primary\" data-close>Готово</button></div>"),'folder','folder-dialog');currentFolder=id;renderFolderContents();$('edit-folder')?.addEventListener('click',()=>openShortcutDialog(folder));}
 
   function clearDrag() {document.querySelectorAll('.drag-source,.drop-target').forEach(el=>el.classList.remove('drag-source','drop-target'));drag=null;}
-  function reorder(source,target) {
+  async function reorder(source,target) {
     if(!editing()||!moving||!source||source.id!==moving.id||!target||source.id===target.id)return;
-    if(!commit(next=>{
+    if(!await commit(next=>{
       const from=shortcutList(next.shortcuts,source.parent),item=from.find(s=>s.id===source.id),to=shortcutList(next.shortcuts,target.parent),onto=to.find(s=>s.id===target.id);
       if(!item||!onto)throw Error(t("Избранное изменилось. Повторите перенос."));
       if(onto.type==='folder'&&item.type!=='folder')moveShortcut(next.shortcuts,item.id,source.parent,onto.id,onto.children.length);
@@ -345,7 +371,7 @@ import {connectBrowserSearch} from './browser-search.js';
 
   function openEngineDialog() {
     openModal(heading(t("Свой поисковик"))+(nativeSearch()?'<p class="field-help">'+t("После добавления этот поисковик будет выбран для браузера.")+'</p>':'')+t("<form id=\"engine-form\"><label class=\"field\"><span class=\"field-label\">Название</span><input id=\"engine-title\" placeholder=\"Например, Brave Search\" maxlength=\"40\" required autofocus></label><label class=\"field\"><span class=\"field-label\">Адрес поиска</span><input id=\"engine-url\" placeholder=\"https://example.com/?q={query}\" required spellcheck=\"false\"><span class=\"field-help\">Вставьте {query} вместо поискового запроса.</span></label><p id=\"form-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" type=\"button\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">Добавить и выбрать</button></div></form>"),'engine');
-    $('engine-form').addEventListener('submit',async e=>{e.preventDefault();const name=$('engine-title').value.trim(),template=$('engine-url').value.trim();if(!name||!template.includes('{query}')){showError(t("Укажите название и {query} в адресе поиска."));return;}let url;try{url=normalizedUrl(template.replaceAll('{query}','ARGON_QUERY')).replaceAll('ARGON_QUERY','{query}');}catch{showError(t("Укажите корректный адрес поиска."));return;}const engine={id:uid(),name,url};if(!commit(next=>{next.customEngines.push(engine);next.engine=engine.id;},false,'form-error'))return;renderEngine();closeModal();if(nativeSearch()){try{await browserSearch.select(engine);}catch{notify(t("Поисковик добавлен, но сменить поисковик браузера не удалось."));return;}}notify(t("Поисковик добавлен"));});
+    $('engine-form').addEventListener('submit',async e=>{e.preventDefault();const name=$('engine-title').value.trim(),template=$('engine-url').value.trim();if(!name||!template.includes('{query}')){showError(t("Укажите название и {query} в адресе поиска."));return;}let url;try{url=normalizedUrl(template.replaceAll('{query}','ARGON_QUERY')).replaceAll('ARGON_QUERY','{query}');}catch{showError(t("Укажите корректный адрес поиска."));return;}const engine={id:uid(),name,url};if(!await commit(next=>{next.customEngines.push(engine);next.engine=engine.id;},false,'form-error'))return;renderEngine();closeModal();if(nativeSearch()){try{await browserSearch.select(engine);}catch{notify(t("Поисковик добавлен, но сменить поисковик браузера не удалось."));return;}}notify(t("Поисковик добавлен"));});
   }
   function exportBackup() {
     try{const dump=createDump(state),url=URL.createObjectURL(new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='argon-dump-'+dump.createdAt.slice(0,16).replace('T','_').replace(':','-')+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);notify(t("Резервная копия подготовлена для скачивания"));}catch(error){backupError(error.message||t("Не удалось создать резервную копию."));}
@@ -373,7 +399,15 @@ import {connectBrowserSearch} from './browser-search.js';
       '<p class="field-help">'+t("Загруженные изображения встроены в файл JSON.")+' '+t("Активный поисковик браузера выбирается отдельно.")+'</p>'+
       '<p id="backup-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn-secondary" type="button" id="cancel-restore" autofocus>'+t("Отмена")+'</button><button class="btn btn-primary" type="button" id="confirm-restore">'+t("Заменить и восстановить")+'</button></div>','restore');
     $('cancel-restore').addEventListener('click',openDataSettings);
-    $('confirm-restore').addEventListener('click',()=>{try{state=store.replace(dump.state);}catch{backupError(t("Не удалось сохранить резервную копию. Прежние данные остаются на месте."));return;}closeModal();refresh();notify(t("Резервная копия восстановлена"));});
+    $('confirm-restore').addEventListener('click',async()=>{
+      try {
+        await writeState(() => { state=store.replace(dump.state); });
+      } catch {
+        backupError(t("Не удалось сохранить резервную копию. Прежние данные остаются на месте."));
+        return;
+      }
+      closeModal();refresh();notify(t("Резервная копия восстановлена"));
+    });
   }
   function bookmarkSettingsMarkup() {
     return '<div class="backup-section"><span class="setting-label">'+t("Закладки из другого браузера")+'</span><p class="backup-description">'+t("Добавьте ссылки и папки к вашим ярлыкам.")+'</p><p class="field-help">'+t("HTML, JSON или файл Bookmarks без расширения.")+'</p><button class="btn btn-secondary" id="bookmarks-import" type="button">'+svg('upload')+t("Добавить закладки из файла")+'</button><p class="field-help">'+t("Новые ярлыки получат иконки с сайтов. Ваши ярлыки, свои иконки и настройки сохранятся.")+'</p><input type="file" id="bookmarks-file" hidden><p id="bookmarks-error" class="error" role="alert" hidden></p></div>';
@@ -392,9 +426,13 @@ import {connectBrowserSearch} from './browser-search.js';
     if(!preview.imported)notes+='<p class="field-help">'+t("Все эти закладки уже есть на домашней странице.")+'</p>';
     openModal(heading(t("Импортировать закладки?"))+'<div class="backup-summary">'+rows.map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>').join('')+'</div>'+notes+'<p id="bookmarks-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn-secondary" type="button" id="cancel-bookmarks" autofocus>'+t("Отмена")+'</button><button class="btn btn-primary" type="button" id="confirm-bookmarks"'+(preview.imported?'':' disabled')+'>'+t("Добавить закладки")+'</button></div>','bookmarks');
     $('cancel-bookmarks').addEventListener('click',openDataSettings);
-    $('confirm-bookmarks').addEventListener('click',()=>{
+    $('confirm-bookmarks').addEventListener('click',async()=>{
       try {
-        const result=store.importBookmarks(parsed,uid);state=result.state;
+        const result=await writeState(() => {
+          const imported=store.importBookmarks(parsed,uid);
+          state=imported.state;
+          return imported;
+        });
         closeModal();setEditing(false);refresh();notify(t("Добавлено закладок: {count}",{count:result.imported}));
       } catch(error) {bookmarkError(error.message||t("Не удалось сохранить закладки. Прежние данные остаются на месте."));}
     });
@@ -444,14 +482,38 @@ import {connectBrowserSearch} from './browser-search.js';
     $('density-select').value=state.density==='compact'?'compact':'comfortable';
     setHtml($('size-preview'),[{name:'Argon'},...builtins.filter(e=>['noai','google','bing'].includes(e.id))].map(e=>'<span class="shortcut"><span class="shortcut-icon">'+(e.url?engineMarkup(e):svg('brand'))+'</span><span class="shortcut-label">'+esc(e.name==='DuckDuckGo NoAI'?'DuckDuckGo':e.name)+'</span></span>').join(''));
     fallbackImages($('size-preview'));updateThemeHelp();updateDensityHelp();
-    $('density-select').addEventListener('change',e=>{if(commit(s=>{s.density=e.target.value;})){applyTheme();renderShortcuts();updateDensityHelp();}else e.target.value=state.density==='compact'?'compact':'comfortable';});
-    $('labels-toggle').addEventListener('click',()=>{if(commit(s=>{s.showLabels=!s.showLabels;})){$('labels-toggle').setAttribute('aria-checked',String(state.showLabels));renderShortcuts();}});
-    $('newtab-toggle').addEventListener('click',()=>{if(commit(s=>{s.newTab=!s.newTab;})){$('newtab-toggle').setAttribute('aria-checked',String(state.newTab));renderShortcuts();}});
+    $('density-select').addEventListener('change',async e=>{
+      const density=e.target.value;
+      if(await commit(s=>{s.density=density;})){
+        applyTheme();renderShortcuts();updateDensityHelp();
+      } else {
+        e.target.value=state.density==='compact'?'compact':'comfortable';
+      }
+    });
+    $('labels-toggle').addEventListener('click',async()=>{
+      if(await commit(s=>{s.showLabels=!s.showLabels;})){
+        $('labels-toggle')?.setAttribute('aria-checked',String(state.showLabels));
+        renderShortcuts();
+      }
+    });
+    $('newtab-toggle').addEventListener('click',async()=>{
+      if(await commit(s=>{s.newTab=!s.newTab;})){
+        $('newtab-toggle')?.setAttribute('aria-checked',String(state.newTab));
+        renderShortcuts();
+      }
+    });
     $('data-settings').addEventListener('click',openDataSettings);
   }
   $('settings-button').addEventListener('click',openSettings);
-  window.addEventListener('storage',event=>{if(event.key!==storageKey&&event.key!==null)return;try{state=store.state=store.latest();if(modalKind)closeModal();setEditing(false);refresh();}catch{notify(t("Не удалось прочитать настройки из другой вкладки."));}});
+  window.addEventListener('storage',event=>{
+    if(event.key!==storageKey&&event.key!==null)return;
+    // A queued save still owns the current edit. Refreshing now would close its
+    // dialog and revoke editing before the write obtains the shared lock.
+    if(writing){deferredStorageSync=true;return;}
+    syncStoredState();
+  });
   document.addEventListener('keydown',e=>{
+    if(writing)return;
     if(e.key==='Escape'){if(moving){cancelMove();return;}if(modalKind){closeModal();return;}if(!$('engine-menu').hidden){closeEngine();$('engine-trigger').focus();return;}if(editing()){setEditing(false);return;}$('search-input').blur();}
     const typing=e.target.matches('input,textarea,select,[contenteditable=true]');
     if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!modalKind){e.preventDefault();closeEngine();void focusSearch();}

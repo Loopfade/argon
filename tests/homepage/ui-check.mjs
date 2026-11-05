@@ -57,8 +57,10 @@ async function mockPage(){
 }
 const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
-const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
-const formSubmit=()=>page.locator('#shortcut-form button[type=submit]').click();
+const waitForWrite=(p=page)=>p.waitForFunction(()=>!document.body.inert);
+const readState=async p=>{await waitForWrite(p);return p.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
+const saved=()=>readState(page);
+const formSubmit=async(p=page)=>{await p.locator('#shortcut-form button[type=submit]').click();await waitForWrite(p);};
 async function enableEditing(p=page){await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
 async function openDataSettings(p=page){await p.locator('#settings-button').click();await p.locator('#data-settings').click();}
 async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
@@ -87,6 +89,79 @@ async function add(name,url,type='site',deferFrame=false){
   await page.locator('#shortcut-form').waitFor({state:'hidden'});
 }
 try {
+  // One home tab writes while another tab's real settings action is queued.
+  // The browser's origin-wide lock must preserve both independent edits.
+  const concurrentContext=await browser.newContext({locale:'ru-RU'});
+  try {
+    const first=await concurrentContext.newPage(),second=await concurrentContext.newPage();
+    for(const p of [first,second])p.on('pageerror',error=>errors.push(error.message));
+    await Promise.all([first.goto(base),second.goto(base)]);
+    await first.evaluate(async()=>{
+      const {HomepageStore}=await import('./state.js');
+      const store=new HomepageStore(localStorage,'argon-start-v1');
+      window.pendingWrite=store.exclusive(async()=>{
+        window.lockReady=true;
+        await new Promise(resolve=>{window.releaseHomeWrite=resolve;});
+        store.update(state=>{state.showLabels=false;});
+      });
+    });
+    await first.waitForFunction(()=>window.lockReady===true);
+    await second.locator('#settings-button').click();
+    await second.locator('#newtab-toggle').click();
+    await second.waitForFunction(()=>document.body.inert);
+    assert.equal(await second.evaluate(()=>localStorage.getItem('argon-start-v1')),null);
+    await first.evaluate(()=>window.releaseHomeWrite());
+    await first.evaluate(()=>window.pendingWrite);
+    await second.waitForFunction(()=>{
+      const state=JSON.parse(localStorage.getItem('argon-start-v1'));
+      return !document.body.inert&&state?.newTab===true&&state.showLabels===false;
+    });
+    assert.equal(await second.evaluate(()=>document.body.inert),false);
+    // Deliver another tab's storage event while a real shortcut save is queued.
+    // Independent edits must merge; changes to the same shortcut must conflict.
+    for(const conflict of [false,true]) {
+      await enableEditing(second);
+      if(conflict) {
+        await actions('Сохранённый ярлык',second);
+        await second.locator('#shortcut-edit').click();
+      } else {
+        await second.locator('[data-add]').click();
+        await second.locator('#shortcut-url').fill('https://queued-save.example/');
+      }
+      await second.locator('#shortcut-title').fill(conflict?'Моя правка':'Сохранённый ярлык');
+      await first.evaluate(async conflict=>{
+        const {HomepageStore}=await import('./state.js');
+        const store=new HomepageStore(localStorage,'argon-start-v1');
+        window.lockReady=false;
+        window.pendingWrite=store.exclusive(async()=>{
+          window.applyHomeChange=()=>store.update(state=>{
+            state.theme=conflict?'amoled':'dark';
+            if(conflict)state.shortcuts[0].name='Правка другой вкладки';
+          });
+          window.lockReady=true;
+          await new Promise(resolve=>{window.releaseHomeWrite=resolve;});
+        });
+      },conflict);
+      await first.waitForFunction(()=>window.lockReady);
+      await second.evaluate(()=>{
+        window.externalStorageSeen=false;
+        window.addEventListener('storage',()=>{window.externalStorageSeen=true;},{once:true});
+      });
+      await second.locator('#shortcut-form button[type=submit]').click();
+      await second.waitForFunction(()=>document.body.inert);
+      await first.evaluate(()=>window.applyHomeChange());
+      await second.waitForFunction(()=>window.externalStorageSeen);
+      await first.evaluate(()=>window.releaseHomeWrite());
+      await first.evaluate(()=>window.pendingWrite);
+      const saved=await readState(second);
+      assert.equal(saved.shortcuts.length,1,'a queued shortcut save must retain its edit permission');
+      assert.equal(saved.shortcuts[0].name,conflict?'Правка другой вкладки':'Сохранённый ярлык');
+      assert.equal(saved.theme,conflict?'amoled':'dark');
+      if(conflict)await second.getByText('Ярлык изменился в другой вкладке. Откройте его заново.',{exact:true}).waitFor();
+    }
+  } finally {
+    await concurrentContext.close();
+  }
   await checkNativeSearch(browser,base,errors,out);
   for(const locale of ['en-US','de-DE']) {
     const english=await browser.newContext({locale,acceptDownloads:true});
@@ -101,7 +176,7 @@ try {
     await p.getByRole('button',{name:'Add site or folder',exact:true}).click();
     await p.getByLabel('Name',{exact:true}).fill('Избранное');
     await p.getByLabel('Site address',{exact:true}).fill('example.com');
-    await p.locator('#shortcut-form button[type=submit]').click();
+    await formSubmit(p);
     await p.locator('[data-item]').first().waitFor();
     assert.equal(await p.locator('[data-item] .shortcut-label').first().textContent(),'Избранное');
     await p.locator('#edit-done').click();
@@ -125,7 +200,7 @@ try {
     shortcuts:[{id:'existing',name:'Мой сайт',url:'https://existing.example/',iconMode:'custom',icon:'book'}]};
   await bookmarkPage.evaluate(value=>localStorage.setItem('argon-start-v1',JSON.stringify(value)),originalBookmarks);
   await bookmarkPage.reload();
-  const bookmarkState=()=>bookmarkPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+  const bookmarkState=()=>readState(bookmarkPage);
   const fileBookmarks={name:'bookmarks.html',mimeType:'text/html',buffer:Buffer.from(`<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p>
     <DT><H3>Работа</H3><DL><DT><A HREF="https://docs.example/?a=1&amp;b=2">Документы &amp; заметки</A>
     <DT><H3>Архив</H3><DL><DT><A HREF="https://archive.example/">Архив</A></DL></DL>
@@ -180,7 +255,7 @@ try {
   await bookmarkPage.locator('#confirm-bookmarks').waitFor();
   await bookmarkPage.evaluate(()=>{window.savedSetItem=Storage.prototype.setItem;Storage.prototype.setItem=()=>{throw new DOMException('Storage full','QuotaExceededError');};});
   await bookmarkPage.locator('#confirm-bookmarks').click();
-  assert(await bookmarkPage.locator('#bookmarks-error').isVisible());
+  await bookmarkPage.locator('#bookmarks-error:not([hidden])').waitFor();
   assert.deepEqual(await bookmarkState(),imported);
   await bookmarkPage.evaluate(()=>{Storage.prototype.setItem=window.savedSetItem;delete window.savedSetItem;});
   await bookmarkPage.locator('#confirm-bookmarks').click();
@@ -220,15 +295,15 @@ try {
   await iconPage.locator('#favicon-choice').click();
   assert(await iconPage.locator('#icon-help').isHidden());
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.naturalWidth===1);
-  await iconPage.locator('#shortcut-form button[type=submit]').click();
-  let iconState=await iconPage.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+  await formSubmit(iconPage);
+  let iconState=await readState(iconPage);
   assert.equal(iconState.shortcuts[0].iconMode,'favicon');
   assert.equal(iconState.shortcuts[0].customIcon,undefined);
   await editFirst(iconPage);
   await iconPage.locator('#shortcut-url').fill('fallback-icon.example');
   await iconPage.waitForFunction(()=>document.querySelector('#icon-preview img')?.src==='https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'&&document.querySelector('#icon-preview img')?.naturalWidth===1);
   assert(iconRequests.indexOf('https://fallback-icon.example/favicon.ico')<iconRequests.indexOf('https://icons.duckduckgo.com/ip3/fallback-icon.example.ico'));
-  await iconPage.locator('#shortcut-form button[type=submit]').click();
+  await formSubmit(iconPage);
   await iconPage.reload();
   await iconPage.waitForFunction(()=>document.querySelector('.shortcut-icon img')?.naturalWidth===1);
   assert.equal(await iconPage.locator('.shortcut-icon img').getAttribute('src'),'https://icons.duckduckgo.com/ip3/fallback-icon.example.ico');
@@ -297,8 +372,10 @@ try {
   await page.getByRole('link',{name:'Личный сайт',exact:true}).click({button:'right'});
   assert.equal(await page.getByRole('dialog').count(),0);
   await page.locator('[data-theme-choice=dark]').click();
+  await waitForWrite();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
   await page.locator('[data-theme-choice=amoled]').click();
+  await waitForWrite();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'amoled');
   await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(0, 0, 0)');
   assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(0, 0, 0)');
@@ -319,6 +396,7 @@ try {
     const sizes={};
     for(const size of ['comfortable','compact']){
       await page.locator('#density-select').selectOption(size);
+      await waitForWrite();
       assert((await page.locator('#density-help').textContent()).startsWith(size==='compact'?'Мелкие':'Крупные'));
       sizes[size]=await page.evaluate(()=>{
         const real=document.querySelector('#shortcut-grid .shortcut-icon'),sample=document.querySelector('#size-preview .shortcut-icon');
@@ -333,9 +411,11 @@ try {
   }
   await page.setViewportSize({width:1100,height:850});
   await page.locator('#labels-toggle').click();
+  await waitForWrite();
   assert(await page.locator('#size-preview .shortcut-label').first().isHidden());
   assert(await page.locator('#shortcut-grid .shortcut-label').first().isHidden());
   await page.locator('#labels-toggle').click();
+  await waitForWrite();
   assert(await page.locator('#size-preview .shortcut-label').first().isVisible());
   await page.locator('#data-settings').click();
   const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Сохранить копию',exact:true}).click();

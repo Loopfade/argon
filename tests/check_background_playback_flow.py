@@ -233,6 +233,7 @@ public class SystemClock { public static long now;
         "android/app/Activity.java": '''package android.app;
 public class Activity extends android.content.Context {
   public boolean focused = true; public int backs;
+  public int state = org.chromium.base.ActivityState.RESUMED;
   public final org.chromium.chrome.browser.tab.TabObscuringHandler obscuring = new org.chromium.chrome.browser.tab.TabObscuringHandler();
   public final org.chromium.base.supplier.NonNullObservableSupplier<Boolean> scrim = new org.chromium.base.supplier.NonNullObservableSupplier<>(false);
   public boolean hasWindowFocus() { return focused; }

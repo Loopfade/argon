@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="argon_user_agent_title">User-Agent</string>
+    <string name="argon_user_agent_summary">%1$s. Changes take effect after restarting Argon.</string>
+    <string name="argon_user_agent_search_summary">Change the user agent reported to websites</string>
+    <string name="argon_user_agent_chrome_mobile">Chrome (mobile)</string>
+    <string name="argon_user_agent_chrome_desktop">Chrome (desktop)</string>
+    <string name="argon_user_agent_firefox_mobile">Firefox (mobile)</string>
+    <string name="argon_user_agent_firefox_desktop">Firefox (desktop)</string>
+    <string name="argon_user_agent_yandex_mobile">Yandex Browser (mobile)</string>
+    <string name="argon_user_agent_yandex_desktop">Yandex Browser (desktop)</string>
+    <string name="argon_user_agent_custom">Custom User-Agent</string>
+    <string name="argon_user_agent_invalid">Enter a User-Agent of up to 1024 printable ASCII characters.</string>
+</resources>

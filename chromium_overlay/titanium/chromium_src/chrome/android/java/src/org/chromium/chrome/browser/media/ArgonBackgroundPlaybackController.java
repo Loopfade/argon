@@ -15,6 +15,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 
+import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
@@ -304,11 +305,18 @@ public final class ArgonBackgroundPlaybackController {
         }
     }
 
-    private boolean isForeground(Tab tab) {
+    private boolean isVisible(Tab tab) {
         return mPower != null && mPower.isInteractive()
                 && (mKeyguard == null || !mKeyguard.isKeyguardLocked())
-                && mActivity.hasWindowFocus() && tab.isUserInteractable()
+                && ApplicationStatus.getStateForActivity(mActivity) == ActivityState.RESUMED
+                && tab.isUserInteractable()
                 && !mObscuringHandler.isTabContentObscured() && !mScrimVisible.get();
+    }
+
+    private boolean isForeground(Tab tab) {
+        // A focusable app menu does not hide the page. Focus is required only
+        // when a genuine visit may renew the shared background budget.
+        return isVisible(tab) && mActivity.hasWindowFocus();
     }
 
     private void updateForegroundVisits() {
@@ -349,7 +357,7 @@ public final class ArgonBackgroundPlaybackController {
         for (State state : new ArrayList<>(mTabs.values())) {
             if (state.contents.isDestroyed() || state.tab.isDestroyed()) continue;
             String host = state.host;
-            boolean allowed = mStore.policy.mayPlay(host, state.wasForeground, now, state.playing);
+            boolean allowed = mStore.policy.mayPlay(host, isVisible(state.tab), now, state.playing);
             if (!allowed && state.playing) pause(state);
             boolean keepVisible = state.playing && mStore.policy.isEnabled()
                     && mStore.policy.isSiteEnabled(host) && allowed;

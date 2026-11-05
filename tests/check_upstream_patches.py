@@ -33,6 +33,7 @@ import apply_background_playback as background
 import apply_modulemap as modulemap
 import apply_browsing_data_period as deletion_period
 import apply_exit as explicit_exit
+import apply_user_agent as user_agent
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
 from test_exit_downloads import run_download_guard
@@ -97,7 +98,10 @@ EXIT_DOWNLOAD_API = Path("components/download/public/common/simple_download_mana
 BASE_PATHS += (EXIT_DOWNLOAD_API,)
 BASE_PATHS += (SETTINGS_API,)
 BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
+                    if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 EXTENSION_PATHS = (
+    user_agent.PRIVACY_HOOKS,
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
     patch.TITANIUM_ANDROID_CC_SOURCES, patch.TITANIUM_ANDROID_CC_DEPS,
     patch.TITANIUM_PRIVACY_PREFERENCES, patch.TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
@@ -591,6 +595,7 @@ def main():
         deletion_period.apply(src)
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
+        user_agent.apply(src)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
         explicit_exit.apply(src)
@@ -638,17 +643,21 @@ def main():
         deletion_period.apply(src)
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
+        user_agent.apply(src)
         background.apply(src)
         explicit_exit.apply(src)
         after = {path: path.read_bytes() for path in src.rglob("*")
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
-            raise ValueError("Argon patch is not idempotent on the pinned upstream")
+            changed = sorted(str(path.relative_to(src)) for path in before.keys() | after.keys()
+                             if before.get(path) != after.get(path))
+            raise ValueError("Argon patch is not idempotent on the pinned upstream: "
+                             + ", ".join(changed))
         gn = obtain_pinned_gn(src, values["DEPS"])
         verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and background media observer API; idempotent Argon dark themes/CA/JNI/About/Russian translation/background playback/deletion period/explicit exit '
+          'and background media observer API; idempotent Argon dark themes/CA/JNI/About/Russian translation/background playback/deletion period/explicit exit/User-Agent '
           'patches; pinned GN catalog, XTB consumer and two-language packaging checks '
           '(Android/desktop, official/development)')
 

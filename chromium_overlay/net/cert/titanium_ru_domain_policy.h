@@ -54,7 +54,7 @@ inline TitaniumRuDomainValidationResult NormalizeTitaniumRussianRootDomain(
     std::string* normalized) {
   normalized->clear();
   std::string candidate(base::TrimWhitespaceASCII(input, base::TRIM_ALL));
-  if (candidate.empty() || candidate.size() > 253 || candidate.front() == '.' ||
+  if (candidate.empty() || candidate.front() == '.' ||
       candidate.find_first_of("*/\\:@?#[]%") != std::string::npos) {
     return TitaniumRuDomainValidationResult::kInvalid;
   }
