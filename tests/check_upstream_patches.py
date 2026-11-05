@@ -649,7 +649,10 @@ def main():
         after = {path: path.read_bytes() for path in src.rglob("*")
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
-            raise ValueError("Argon patch is not idempotent on the pinned upstream")
+            changed = sorted(str(path.relative_to(src)) for path in before.keys() | after.keys()
+                             if before.get(path) != after.get(path))
+            raise ValueError("Argon patch is not idempotent on the pinned upstream: "
+                             + ", ".join(changed))
         gn = obtain_pinned_gn(src, values["DEPS"])
         verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '

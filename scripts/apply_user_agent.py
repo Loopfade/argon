@@ -43,9 +43,11 @@ def apply(src: Path) -> None:
     anchor = "            PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);"
     replace(STARTUP, anchor, "            ArgonUserAgent.applySavedOverride();\n" + anchor)
 
-    anchor = f'  "{PRIVACY}/PrivacySettingsExt.java",'
+    # The theme patch prepends to PrivacySettingsExt. Use a separate entry so
+    # both registrations retain their anchors during repeated preparation.
+    anchor = '  "java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderHooks.java",'
     replace(TITANIUM_CHROME_JAVA_SOURCES, anchor,
-            f'  "{PRIVACY}/ArgonUserAgentPreference.java",\n' + anchor)
+            anchor + f'\n  "{PRIVACY}/ArgonUserAgentPreference.java",')
     anchor = '  "java/res/xml/privacy_preferences_ext.xml",'
     replace(TITANIUM_CHROME_RESOURCES, anchor,
             '  "java/res/values/argon_user_agent_strings.xml",\n'

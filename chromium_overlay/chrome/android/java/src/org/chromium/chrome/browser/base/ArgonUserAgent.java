@@ -22,7 +22,6 @@ public final class ArgonUserAgent {
     private static final int MAX_CUSTOM_LENGTH = 1024;
 
     public enum Preset {
-        DEFAULT(""),
         CHROME_MOBILE("Mozilla/5.0 (Linux; Android 10; K)" + CHROME + " Mobile Safari/537.36"),
         CHROME_DESKTOP(WINDOWS + ")" + CHROME + " Safari/537.36"),
         FIREFOX_MOBILE("Mozilla/5.0 (Android 10; Mobile; rv:" + FIREFOX
@@ -47,7 +46,7 @@ public final class ArgonUserAgent {
         for (Preset preset : Preset.values()) {
             if (preset.name().equals(saved)) return preset;
         }
-        return Preset.DEFAULT;
+        return Preset.CHROME_MOBILE;
     }
 
     public static String getCustom() {
@@ -76,8 +75,7 @@ public final class ArgonUserAgent {
     static void applySavedOverride() {
         Preset preset = getPreset();
         String userAgent = preset == Preset.CUSTOM ? getCustom() : preset.mUserAgent;
-        if (isValidCustom(userAgent)) {
-            CommandLine.getInstance().appendSwitchWithValue("argon-user-agent", userAgent);
-        }
+        if (!isValidCustom(userAgent)) userAgent = Preset.CHROME_MOBILE.mUserAgent;
+        CommandLine.getInstance().appendSwitchWithValue("argon-user-agent", userAgent);
     }
 }

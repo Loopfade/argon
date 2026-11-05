@@ -36,7 +36,6 @@ final class ArgonUserAgentPreference {
 
     private static int label(Preset preset) {
         return switch (preset) {
-            case DEFAULT -> R.string.argon_user_agent_default;
             case CHROME_MOBILE -> R.string.argon_user_agent_chrome_mobile;
             case CHROME_DESKTOP -> R.string.argon_user_agent_chrome_desktop;
             case FIREFOX_MOBILE -> R.string.argon_user_agent_firefox_mobile;

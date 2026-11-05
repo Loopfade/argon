@@ -3,7 +3,6 @@
     <string name="argon_user_agent_title">User-Agent</string>
     <string name="argon_user_agent_summary">%1$s. Изменения применяются после перезапуска Argon.</string>
     <string name="argon_user_agent_search_summary">Изменить строку пользовательского агента (User Agent), которую браузер передаёт сайтам</string>
-    <string name="argon_user_agent_default">По умолчанию (Argon)</string>
     <string name="argon_user_agent_chrome_mobile">Chrome (мобильный)</string>
     <string name="argon_user_agent_chrome_desktop">Chrome (настольный)</string>
     <string name="argon_user_agent_firefox_mobile">Firefox (мобильный)</string>
