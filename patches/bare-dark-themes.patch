@@ -261,10 +261,10 @@ diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_
  
  }  // namespace
  
-@@ -420,6 +475,13 @@
-     const JavaRef<jobject>& jcontext_menu_populator_factory) {
-   web_contents_.reset(web_contents);
+@@ -422,6 +477,13 @@
    CHECK(web_contents_.get(), base::NotFatalUntil::M161);
+ 
+   night_mode::WebContentsThemeClient::CreateForWebContents(web_contents_.get());
 +
 +  // De-Googled build: keep the canvas dark until a page first paints, on a dark
 +  // theme. Without it every navigation flashed white before the page appeared,
@@ -273,8 +273,8 @@ diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_
 +  PrePaintBackground::CreateForWebContents(web_contents_.get());
 +  PrePaintBackground::FromWebContents(web_contents_.get())->Apply();
  
-   night_mode::WebContentsThemeClient::CreateForWebContents(web_contents_.get());
- 
+   if (!base::FeatureList::IsEnabled(
+           chrome::android::kClankStartupTabOptimizations)) {
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
