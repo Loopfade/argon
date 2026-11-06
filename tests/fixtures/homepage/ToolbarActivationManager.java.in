@@ -56,6 +56,10 @@ ARGON_NATIVE_READY_BLOCK
     public String bitmap() { return mControlContainer.frame.adapter.bitmap; }
     public int captures() { return mControlContainer.frame.adapter.captures; }
 
+    private static class ViewGroup {
+        static class LayoutParams { int height = 56; }
+    }
+
     public class ControlContainer {
         public final Frame frame = new Frame();
         public ViewResourceAdapter getToolbarResourceAdapter() { return frame.adapter; }
@@ -65,6 +69,7 @@ ARGON_NATIVE_READY_BLOCK
         private int getTop() { return 0; }
         private int getMeasuredWidth() { return mToolbarLayout.getWidth(); }
         private int getMeasuredHeight() { return mToolbarLayout.getHeight(); }
+        private ViewGroup.LayoutParams getLayoutParams() { return new ViewGroup.LayoutParams(); }
         private void measure(int widthSpec, int heightSpec) {}
         private void layout(int left, int top, int right, int bottom) {
             layoutPending = false;

@@ -28,11 +28,11 @@
 
 Актуальные версии и commit SHA задаются в `build-lock.json`:
 
-- Chromium: `156.0.8078.47`, commit
-  `1d17a2e2ee147bb7d6ae2ab6abdb3a2510c17775`;
-- Titanium: `a3e4b86339a8db237d95d8e8e78248c8f6a1df68`;
-- Vanadium: `2ae4335402eabcc6e025f3400185fe25094d8521`;
-- BoringSSL: `2ea3200c3a3ec176613ab7a0b9a4ffc6db846120`;
+- Chromium: `157.0.8103.38`, commit
+  `a733b5afbb3ba618844ff8876b89ad1a774b2f18`;
+- Titanium: `8516166ece02309125af6edc9fd80dde7470df05`;
+- Vanadium: `99a6c8285bf88edf55d7614e8ceb247350620d52`;
+- BoringSSL: `5b83e5d1abf0ae0033ae52ab579d906b67633b2c`;
 - release revision: автоматически, отдельно для каждой версии Chromium.
 
 Старое поле `argon_revision` в `build-lock.json` сохраняется для совместимости

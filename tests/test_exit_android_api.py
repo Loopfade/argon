@@ -187,7 +187,7 @@ def production_prepare_method(tab_impl=None):
         tab_impl = exit_patch.patch_tab('''
     public boolean loadIfNeeded(boolean forceBackingSize) {
     public LoadUrlResult loadUrl(LoadUrlParams params) {
-        boolean eligibleToCreateWebContents = webContents == null && !isDormant();
+        boolean needsToCallInitWebContents = true;
     private @TabDestroyStatus int destroyWebContents(boolean deleteNativeWebContents) {
 ''')
     return re.search(r'    public boolean prepareForArgonExit\(boolean preserveNavigation\) \{.*?\n    \}',

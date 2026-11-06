@@ -185,7 +185,7 @@ diff --git a/chrome/android/junit/src/org/chromium/chrome/browser/night_mode/Nig
 diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_android.cc
 --- a/chrome/browser/android/tab_android.cc
 +++ b/chrome/browser/android/tab_android.cc
-@@ -78,6 +78,7 @@
+@@ -77,6 +77,7 @@
  #include "content/public/browser/devtools_agent_host.h"
  #include "content/public/browser/navigation_controller.h"
  #include "content/public/browser/navigation_entry.h"
@@ -193,7 +193,7 @@ diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_
  #include "content/public/browser/render_frame_host.h"
  #include "content/public/browser/render_process_host.h"
  #include "content/public/browser/render_view_host.h"
-@@ -85,6 +86,7 @@
+@@ -84,6 +85,7 @@
  #include "content/public/browser/web_contents.h"
  #include "content/public/browser/web_contents_observer.h"
  #include "content/public/browser/web_contents_user_data.h"
@@ -201,7 +201,7 @@ diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_
  #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
  #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
  #include "ui/android/view_android.h"
-@@ -115,6 +117,59 @@
+@@ -114,6 +116,59 @@
    }
    return nullptr;
  }
@@ -261,10 +261,10 @@ diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_
  
  }  // namespace
  
-@@ -397,6 +452,13 @@
-   DCHECK(web_contents_.get());
- 
-   night_mode::WebContentsThemeClient::CreateForWebContents(web_contents_.get());
+@@ -420,6 +475,13 @@
+     const JavaRef<jobject>& jcontext_menu_populator_factory) {
+   web_contents_.reset(web_contents);
+   CHECK(web_contents_.get(), base::NotFatalUntil::M161);
 +
 +  // De-Googled build: keep the canvas dark until a page first paints, on a dark
 +  // theme. Without it every navigation flashed white before the page appeared,
@@ -273,8 +273,8 @@ diff --git a/chrome/browser/android/tab_android.cc b/chrome/browser/android/tab_
 +  PrePaintBackground::CreateForWebContents(web_contents_.get());
 +  PrePaintBackground::FromWebContents(web_contents_.get())->Apply();
  
-   renderer_preferences_util::UpdateFromSystemSettings(
-       web_contents_->GetMutableRendererPrefs(),
+   night_mode::WebContentsThemeClient::CreateForWebContents(web_contents_.get());
+ 
 diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
@@ -369,17 +369,16 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
  import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
  
  import android.content.SharedPreferences;
-@@ -30,6 +31,9 @@
+@@ -35,6 +36,8 @@
       * initialized yet.
       */
      private Boolean mNightModeOn;
-+    // Dark and Dark AMOLED are both night mode, so the flag above does not change between them.
-+    // Tracked separately so observers still get told to re-theme when the user switches.
++    // Dark and Dark AMOLED are both night mode.
 +    private Boolean mAmoledOn;
  
-     private final SharedPreferences.OnSharedPreferenceChangeListener mPreferenceListener;
- 
-@@ -43,7 +47,10 @@
+     /** The last observed theme setting. If null, it has not been read yet. */
+     private @ThemeType @Nullable Integer mThemeSetting;
+@@ -51,7 +54,10 @@
      GlobalNightModeStateController() {
          mPreferenceListener =
                  (prefs, key) -> {
@@ -391,36 +390,32 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
                  };
  
          updateNightMode();
-@@ -122,12 +129,25 @@
+@@ -132,13 +138,19 @@
          final boolean newNightModeOn =
                  (theme == ThemeType.SYSTEM_DEFAULT
                                  && SystemNightModeMonitor.getInstance().isSystemNightModeOn())
 -                        || theme == ThemeType.DARK;
--        if (mNightModeOn != null && newNightModeOn == mNightModeOn) return;
+-        if (mNightModeOn == null || newNightModeOn != mNightModeOn) {
 +                        || theme == ThemeType.DARK
 +                        || theme == ThemeType.DARK_AMOLED;
 +        final boolean newAmoledOn = NightModeUtils.isAmoledActive(newNightModeOn);
-+        if (mNightModeOn != null
-+                && newNightModeOn == mNightModeOn
-+                && mAmoledOn != null
-+                && newAmoledOn == mAmoledOn) {
-+            return;
-+        }
- 
 +        final boolean nightModeChanged = mNightModeOn == null || newNightModeOn != mNightModeOn;
-         mNightModeOn = newNightModeOn;
--        AppCompatDelegate.setDefaultNightMode(
--                mNightModeOn ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-+        mAmoledOn = newAmoledOn;
-+        if (nightModeChanged) {
-+            AppCompatDelegate.setDefaultNightMode(
-+                    mNightModeOn
-+                            ? AppCompatDelegate.MODE_NIGHT_YES
-+                            : AppCompatDelegate.MODE_NIGHT_NO);
-+        }
-         for (Observer observer : mObservers) observer.onNightModeStateChanged();
++        if (nightModeChanged || mAmoledOn == null || newAmoledOn != mAmoledOn) {
+             mNightModeOn = newNightModeOn;
+-            AppCompatDelegate.setDefaultNightMode(
+-                    mNightModeOn
+-                            ? AppCompatDelegate.MODE_NIGHT_YES
+-                            : AppCompatDelegate.MODE_NIGHT_NO);
++            mAmoledOn = newAmoledOn;
++            if (nightModeChanged) {
++                AppCompatDelegate.setDefaultNightMode(
++                        mNightModeOn
++                                ? AppCompatDelegate.MODE_NIGHT_YES
++                                : AppCompatDelegate.MODE_NIGHT_NO);
++            }
+             for (Observer observer : mObservers) observer.onNightModeStateChanged();
  
-         NightModeMetrics.recordNightModeState(mNightModeOn);
+             NightModeMetrics.recordNightModeState(mNightModeOn);
 diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java
 --- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java
 +++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/NightModeUtils.java
@@ -432,7 +427,7 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
  import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
  
  import android.app.Activity;
-@@ -96,7 +97,27 @@
+@@ -100,7 +101,27 @@
                  nightMode ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
          config.uiMode = nightModeFlag | (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK);
          wrapper.applyOverrideConfiguration(config);
@@ -460,7 +455,20 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
      }
  
      /**
-@@ -124,6 +145,8 @@
+@@ -117,6 +138,12 @@
+         } else {
+             return userSetting;
+         }
++    }
++
++    @CalledByNative
++    private static @ThemeType int getThemeSettingForNative() {
++        @ThemeType int theme = getThemeSetting();
++        return theme == ThemeType.DARK_AMOLED ? ThemeType.DARK : theme;
+     }
+ 
+     /**
+@@ -141,6 +168,8 @@
          switch (theme) {
              case ThemeType.DARK:
                  return context.getString(R.string.dark_mode);
@@ -472,16 +480,20 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
 diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java
 --- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java
 +++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/ThemeType.java
-@@ -15,7 +15,7 @@
-  * Theme setting variations. This is also used for histograms and should therefore be treated
-  * as append-only. See DarkThemePreferences in tools/metrics/histograms/enums.xml.
+@@ -14,9 +14,10 @@
+ /**
+  * Theme setting variations. This is also used for histograms and should therefore be treated as
+  * append-only. See DarkThemePreferences in tools/metrics/histograms/enums.xml. Values must also
+- * match ThemeService::BrowserColorScheme (static_assert'ed in theme_service_android.cc).
++ * match ThemeService::BrowserColorScheme for the three built-in schemes.
++ * NightModeUtils maps the Argon AMOLED scheme to dark before passing it to native code.
   */
 -@IntDef({ThemeType.SYSTEM_DEFAULT, ThemeType.LIGHT, ThemeType.DARK})
 +@IntDef({ThemeType.SYSTEM_DEFAULT, ThemeType.LIGHT, ThemeType.DARK, ThemeType.DARK_AMOLED})
  @Retention(RetentionPolicy.SOURCE)
  @NullMarked
  public @interface ThemeType {
-@@ -23,6 +23,7 @@
+@@ -24,6 +25,7 @@
      int SYSTEM_DEFAULT = 0;
      int LIGHT = 1;
      int DARK = 2;
@@ -570,19 +582,23 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
 diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
 --- a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
 +++ b/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment.java
-@@ -4,6 +4,7 @@
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
  
  package org.chromium.chrome.browser.night_mode.settings;
- 
++
 +import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.ARGON_AMOLED_WHEN_SYSTEM_DARK;
- import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
  
  import android.content.Context;
-@@ -24,17 +25,23 @@
- import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+ import android.os.Bundle;
+@@ -18,19 +20,26 @@
+ import org.chromium.chrome.browser.night_mode.ThemeType;
+ import org.chromium.chrome.browser.night_mode.WebContentsDarkModeController;
+ import org.chromium.chrome.browser.night_mode.WebContentsDarkModeMessageController;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
++import org.chromium.chrome.browser.preferences.Pref;
  import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
  import org.chromium.chrome.browser.settings.search.ChromeBaseSearchIndexProvider;
-+import org.chromium.chrome.browser.preferences.Pref;
 +import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
  import org.chromium.components.browser_ui.settings.CustomDividerFragment;
  import org.chromium.components.browser_ui.settings.SettingsUtils;
@@ -602,7 +618,7 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
  
      private boolean mWebContentsDarkModeEnabled;
  
-@@ -53,6 +60,39 @@
+@@ -48,6 +57,40 @@
                  WebContentsDarkModeController.isGlobalUserSettingsEnabled(getProfile());
          radioButtonGroupThemePreference.initialize(
                  NightModeUtils.getThemeSetting(), mWebContentsDarkModeEnabled);
@@ -630,6 +646,7 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
 +        // for System default.
 +        ChromeSwitchPreference amoledWhenSystemDark = findPreference(PREF_AMOLED_WHEN_SYSTEM_DARK);
 +        assert amoledWhenSystemDark != null;
++        ChromeSharedPreferences sharedPreferencesManager = ChromeSharedPreferences.getInstance();
 +        amoledWhenSystemDark.setChecked(
 +                sharedPreferencesManager.readBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, false));
 +        amoledWhenSystemDark.setVisible(NightModeUtils.getThemeSetting() == ThemeType.SYSTEM_DEFAULT);
@@ -642,19 +659,21 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
  
          radioButtonGroupThemePreference.setOnPreferenceChangeListener(
                  (preference, newValue) -> {
-@@ -64,9 +104,11 @@
+@@ -59,9 +102,12 @@
                                      radioButtonGroupThemePreference.isDarkenWebsitesEnabled();
                              WebContentsDarkModeController.setGlobalUserSettings(
                                      getProfile(), mWebContentsDarkModeEnabled);
 +                            amoledBackgrounds.setEnabled(mWebContentsDarkModeEnabled);
                          }
                      }
-                     int theme = (int) newValue;
+-                    NightModeUtils.setThemeSetting((int) newValue);
++                    int theme = (int) newValue;
 +                    amoledWhenSystemDark.setVisible(theme == ThemeType.SYSTEM_DEFAULT);
-                     sharedPreferencesManager.writeInt(UI_THEME_SETTING, theme);
++                    NightModeUtils.setThemeSetting(theme);
                      return true;
                  });
-@@ -133,6 +175,16 @@
+ 
+@@ -127,6 +173,16 @@
                              PREF_UI_THEME_PREF,
                              2,
                              darkTitle,
@@ -1521,3 +1540,15 @@ diff --git a/third_party/blink/renderer/platform/graphics/graphics_context.h b/t
  };
  
  struct ImageAutoDarkMode : AutoDarkMode {
+diff --git a/chrome/browser/themes/theme_service_android.cc b/chrome/browser/themes/theme_service_android.cc
+--- a/chrome/browser/themes/theme_service_android.cc
++++ b/chrome/browser/themes/theme_service_android.cc
+@@ -73,7 +73,7 @@
+ ThemeService::BrowserColorScheme ThemeServiceAndroid::GetBrowserColorScheme()
+     const {
+   return static_cast<BrowserColorScheme>(
+-      NightModeUtilsJni::getThemeSetting(jni_zero::AttachCurrentThread()));
++      NightModeUtilsJni::getThemeSettingForNative(jni_zero::AttachCurrentThread()));
+ }
+ 
+ namespace night_mode {

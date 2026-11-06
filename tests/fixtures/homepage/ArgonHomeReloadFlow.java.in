@@ -30,7 +30,12 @@ public class ArgonHomeReloadFlow {
     private static void destroy(Object page) throws Exception {
         invoke(page, "destroy", new Class<?>[] {});
     }
+    private static class OmniboxFeatures {
+        static boolean isZeroSuggestPrefetchOnPageLoadAndTabSwitchEnabled() { return false; }
+    }
     private static class LifecycleCallbacks {
+        final java.util.function.Supplier<Tab> mActivityTabProvider = () -> null;
+        void maybeTriggerCacheRefreshForZeroSuggest(GURL url) {}
         private static class Model {
             void notifyOnCrash() {}
             void onPageLoadStopped() {}

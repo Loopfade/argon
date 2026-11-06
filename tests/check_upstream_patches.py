@@ -140,30 +140,17 @@ def verify_pins(lock, version_text, deps_text, titanium_tree):
 
 
 def verify_extension_install_dialog(source):
-    lines = source.splitlines()
     parent_window = (
         "  ui::WindowAndroid* window_android = show_params->GetParentWindow();"
     )
-    web_contents = (
-        "  content::WebContents* web_contents = "
-        "show_params->GetParentWebContents();"
-    )
-    if parent_window not in lines:
+    if parent_window not in source:
         raise ValueError("Pinned Chromium no longer contains the reviewed M154 dialog fix")
-    try:
-        old_range_start = lines.index(web_contents)
-    except ValueError as exc:
-        raise ValueError("Pinned Chromium dialog source moved the old patch anchor") from exc
-    if any("DCHECK(view_android);" in line for line in lines[old_range_start:]):
-        raise ValueError("Pinned Chromium unexpectedly restored the retired end anchor")
-
-    # The retired sed range has no end anchor in either reviewed version.
-    # M155/M156 add two headers and use OpenURLParams::CreateBrowserInitiated;
-    # it keeps the parent-window fix and must also remain byte-for-byte intact.
-    if (len(lines), old_range_start + 1) not in ((203, 57), (206, 59)):
-        raise ValueError(
-            "Pinned dialog source changed; review the retired M154 patch regression"
-        )
+    # M157 passes the optional WebContents and required parent window separately.
+    # Preserve permission prompts originating from background contexts.
+    if ("if (!window_android) {" not in source
+            or "show_params->GetParentWebContents(), std::move(prompt)," not in source
+            or "std::move(done_callback), window_android);" not in source):
+        raise ValueError("Pinned Chromium extension dialog changed its parent-window contract")
 
     script = (ROOT / "patch.sh").read_text()
     if "DCHECK(view_android);/{/GetParentWebContents/!d" in script:

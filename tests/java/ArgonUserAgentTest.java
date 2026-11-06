@@ -4,6 +4,7 @@ import java.util.HashSet;
 
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.version_info.VersionConstants;
 import org.chromium.chrome.browser.base.ArgonUserAgent.Preset;
 
 public class ArgonUserAgentTest {
@@ -16,7 +17,8 @@ public class ArgonUserAgentTest {
     public static void main(String[] args) {
         String mobileChrome = startBrowser();
         assert ArgonUserAgent.getPreset() == Preset.CHROME_MOBILE;
-        assert mobileChrome.contains("Chrome/156.0.0.0 Mobile Safari/537.36");
+        assert mobileChrome.contains(
+                "Chrome/" + VersionConstants.PRODUCT_MAJOR_VERSION + ".0.0.0 Mobile Safari/537.36");
         assert Preset.values().length == 7;
 
         for (String legacy : new String[] {"DEFAULT", "", "removed-preset"}) {

@@ -11,10 +11,6 @@ public class ToolbarShortcutFlow {
     static class Flag { boolean enabled; boolean isEnabled() { return enabled; } }
     static class ChromeFeatureList { static final Flag sToolbarTabletResizeRefactor=new Flag(); }
     static class SigninFeatureMap { static final Flag sSigninLevelUpButton=new Flag(); }
-    static class ToolbarVariationUtils {
-        static boolean modern;
-        static boolean shouldModifyToolbarButtons(Object context, boolean ntp) { return modern; }
-    }
     static class StripVisibilityState { static final int HIDDEN_BY_FADE=1; }
     static class View {}
     static class Tab {
@@ -108,6 +104,7 @@ ARGON_NEW_TAB_METHODS
     static class ToolbarPhone {
         int mVisualState=VisualState.NEW_TAB_NORMAL;
         boolean incognito;
+        boolean mIsToolbarUiRefactorEnabled;
         ButtonData mButtonData;
         final LocationBar mLocationBar=new LocationBar();
         final Theme mThemeColorProvider=new Theme();
@@ -148,13 +145,13 @@ ARGON_DISPATCH_METHODS
     }
     public static void main(String[] args) {
         for (boolean modern : List.of(false,true)) for (boolean signin : List.of(false,true)) {
-            ToolbarVariationUtils.modern=modern;
             SigninFeatureMap.sSigninLevelUpButton.enabled=signin;
             Tab tab=new Tab("chrome://newtab/",false);
             NewTabController action=new NewTabController();
             check(action.shouldShowButton(tab), "Selected new-tab action must be eligible on a phone homepage");
             Selection selection=new Selection(action);
             ToolbarPhone phone=new ToolbarPhone();
+            phone.mIsToolbarUiRefactorEnabled=modern;
             BrowsingButtons buttons=new BrowsingButtons();
             buttons.mButtonDataProviders=List.of(selection);
             buttons.mTabSupplier=() -> tab;

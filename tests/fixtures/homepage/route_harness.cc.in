@@ -7,6 +7,13 @@
 
 class GURL {
  public:
+  struct Replacements {
+    std::string scheme;
+    void SetSchemeStr(const char* value) { scheme = value; }
+  };
+  GURL ReplaceComponents(const Replacements& replacements) const {
+    return GURL(replacements.scheme + value_.substr(value_.find(':')));
+  }
   explicit GURL(std::string value) : value_(std::move(value)) {}
   bool SchemeIs(const char* scheme) const {
     return value_.substr(0, value_.find(':')) == scheme;
@@ -36,6 +43,10 @@ struct Profile : content::BrowserContext {
 };
 namespace base {
 struct FeatureList { static bool IsEnabled(int) { return true; } };
+namespace android::device_info {
+bool desktop = false;
+bool is_desktop() { return desktop; }
+}
 }
 struct ExtensionUrlOverrides {
   static inline int count = 0;
@@ -52,9 +63,11 @@ constexpr char kChromeNativeScheme[] = "chrome-native";
 constexpr char kChromeUINewTabHost[] = "newtab";
 constexpr char kChromeUINativeNewTabURL[] = "chrome-native://newtab/";
 constexpr char kChromeUIBookmarksHost[] = "bookmarks";
+constexpr char kChromeUIHistoryHost[] = "history";
 constexpr char kChromeUINativeBookmarksURL[] = "chrome-native://bookmarks/";
 namespace android {
 constexpr int kChromeNativeUrlOverriding = 1;
+constexpr int kAndroidDesktopWebUiHistory = 2;
 namespace { constexpr char kBookmarkFolderPath[] = "folder/"; }
 ARGON_HANDLER_BODY
 }
@@ -75,6 +88,9 @@ int main() {
   check("http://newtab/", &regular, false, "http://newtab/");
   check("https://example.com/", &regular, false, "https://example.com/");
   check("chrome-native://bookmarks/#123", &regular, true, "chrome-native://bookmarks/folder/123");
+  check("chrome-native://history/", &regular, false, "chrome-native://history/");
+  base::android::device_info::desktop = true;
+  check("chrome-native://history/", &regular, true, "chrome://history/");
   ExtensionUrlOverrides::count = 1;
   check("chrome://newtab/", &regular, false, "chrome://newtab/");
 }

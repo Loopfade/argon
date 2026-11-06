@@ -90,8 +90,7 @@ def patch_lifetime(text):
 def patch_controller(text):
     text = insert(text, '    public static void initialize() {',
                   f'\n        {PACKAGE}.installRestartGuard();')
-    before = '''        TabbedStartupWindowPolicyDelegate.getInstance()
-                .maybeSaveSessionStateOnTermination(SessionStartupPolicy.RESTORE_ALL);'''
+    before = '        TabbedStartupCoordinator.onSessionTerminated(SessionStartupPolicy.RESTORE_ALL);'
     text = replace(text, before, f'''        if (!{PACKAGE}.isClosing()
                 || {PACKAGE}.shouldPreserveTabs()) {{
     {before}
@@ -125,7 +124,7 @@ def patch_tab(text):
             mUrl = new GURL(params.getUrl());
             return new LoadUrlResult(TabLoadStatus.DEFAULT_PAGE_LOAD, null);
         }}''')
-    text = insert(text, '        boolean eligibleToCreateWebContents = webContents == null && !isDormant();',
+    text = insert(text, '        boolean needsToCallInitWebContents = true;',
                   f'\n        initializeRenderer &= !{PACKAGE}.isBlockingPages();')
     before = '    private @TabDestroyStatus int destroyWebContents(boolean deleteNativeWebContents) {'
     after = '''    /** Stop loads while keeping WebContents alive for tab-model observer notifications. */

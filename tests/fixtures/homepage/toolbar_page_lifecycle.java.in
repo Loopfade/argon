@@ -4,6 +4,13 @@
                         updateTabLoadingState(true);
                         mLocationBarModel.onPageLoadStopped();
                         mToolbar.onPageLoadStopped();
+                        if (OmniboxFeatures.isZeroSuggestPrefetchOnPageLoadAndTabSwitchEnabled()) {
+                            // Desktop parity: trigger zero-suggest prefetch once document loading
+                            // completes on the active tab.
+                            if (tab != null && tab == mActivityTabProvider.get()) {
+                                maybeTriggerCacheRefreshForZeroSuggest(tab.getUrl());
+                            }
+                        }
                     }
 
                     public void onCrash(Tab tab) {
