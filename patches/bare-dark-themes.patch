@@ -1180,7 +1180,7 @@ diff --git a/third_party/blink/renderer/core/paint/paint_auto_dark_mode.h b/thir
 diff --git a/third_party/blink/renderer/core/style/computed_style_extra_fields.json5 b/third_party/blink/renderer/core/style/computed_style_extra_fields.json5
 --- a/third_party/blink/renderer/core/style/computed_style_extra_fields.json5
 +++ b/third_party/blink/renderer/core/style/computed_style_extra_fields.json5
-@@ -1041,6 +1041,18 @@
+@@ -1041,6 +1041,19 @@
        invalidate: ["paint"],
      },
      {
@@ -1189,6 +1189,7 @@ diff --git a/third_party/blink/renderer/core/style/computed_style_extra_fields.j
 +      // with ColorSchemeForced, i.e. on a page Blink is darkening itself.
 +      name: "AmoledDarkBackgrounds",
 +      field_template: "primitive",
++      field_group: "inherited",
 +      type_name: "bool",
 +      default_value: "false",
 +      custom_compare: true,

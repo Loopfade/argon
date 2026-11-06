@@ -34,6 +34,15 @@ for arch in arm64 arm; do
   python3 "$ROOT/.github/ci/check-exit-integration.py" --out "$graph_out" --java
 done
 
+# Blink checks the ComputedStyle layout when this object is compiled. The
+# Android graph alone cannot catch an extra word of storage on ARMv7.
+(
+  cd "$src"
+  autoninja -C out/Argon-graph-arm -j 4 \
+    obj/third_party/blink/renderer/core/core/computed_style.o
+)
+echo "PASS: ARMv7 ComputedStyle size assertion"
+
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert" "$src/chrome/browser/net"
 cp "$ROOT/tests/domain_policy/"* "$src/argon_tests/"
