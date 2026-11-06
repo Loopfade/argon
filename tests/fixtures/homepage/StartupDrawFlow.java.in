@@ -74,6 +74,7 @@ final class StartupDrawFlow {
     boolean recreating;
     int historyCalls;
     Tab getActivityTab() { return activeTab; }
+    static void assumeNonNull(Object value) {}
     boolean isTabRegularNtp(Tab tab) {
         if (tab == null || tab.incognito) return false;
         String scheme = tab.url.getScheme();

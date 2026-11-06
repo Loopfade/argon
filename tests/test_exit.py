@@ -70,7 +70,7 @@ class ExitTests(unittest.TestCase):
         source = exit_patch.patch_tab('''
     public boolean loadIfNeeded(boolean forceBackingSize) {
     public LoadUrlResult loadUrl(LoadUrlParams params) {
-        boolean eligibleToCreateWebContents = webContents == null && !isDormant();
+        boolean needsToCallInitWebContents = true;
     private @TabDestroyStatus int destroyWebContents(boolean deleteNativeWebContents) {
 ''')
         start = source.index('if (' + exit_patch.PACKAGE + '.isBlockingPages())',

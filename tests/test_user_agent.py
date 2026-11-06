@@ -1,4 +1,5 @@
 """Exercise the production User-Agent default and migration with Android adapters."""
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -6,6 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+CHROMIUM_MAJOR = int(json.loads((ROOT / "build-lock.json").read_text())["chromium_version"].split(".", 1)[0])
 MODEL = ROOT / (
     "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/base/"
     "ArgonUserAgent.java"
@@ -63,9 +65,9 @@ public class CommandLine {
     "org/chromium/base/version_info/VersionConstants.java": """
 package org.chromium.base.version_info;
 public class VersionConstants {
-    public static final int PRODUCT_MAJOR_VERSION = 156;
+    public static final int PRODUCT_MAJOR_VERSION = %d;
 }
-""",
+""" % CHROMIUM_MAJOR,
     "org/chromium/build/annotations/NullMarked.java": """
 package org.chromium.build.annotations;
 public @interface NullMarked {}

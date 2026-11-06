@@ -34,6 +34,8 @@ import apply_modulemap as modulemap
 import apply_browsing_data_period as deletion_period
 import apply_exit as explicit_exit
 import apply_user_agent as user_agent
+import apply_homepage as homepage
+from test_dark_theme_prepaint import run_prepaint_flow
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
 from test_exit_downloads import run_download_guard
@@ -100,6 +102,7 @@ BASE_PATHS += (SETTINGS_API,)
 BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in homepage.INPUT_PATHS if path not in BASE_PATHS)
 EXTENSION_PATHS = (
     user_agent.PRIVACY_HOOKS,
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
@@ -140,30 +143,17 @@ def verify_pins(lock, version_text, deps_text, titanium_tree):
 
 
 def verify_extension_install_dialog(source):
-    lines = source.splitlines()
     parent_window = (
         "  ui::WindowAndroid* window_android = show_params->GetParentWindow();"
     )
-    web_contents = (
-        "  content::WebContents* web_contents = "
-        "show_params->GetParentWebContents();"
-    )
-    if parent_window not in lines:
+    if parent_window not in source:
         raise ValueError("Pinned Chromium no longer contains the reviewed M154 dialog fix")
-    try:
-        old_range_start = lines.index(web_contents)
-    except ValueError as exc:
-        raise ValueError("Pinned Chromium dialog source moved the old patch anchor") from exc
-    if any("DCHECK(view_android);" in line for line in lines[old_range_start:]):
-        raise ValueError("Pinned Chromium unexpectedly restored the retired end anchor")
-
-    # The retired sed range has no end anchor in either reviewed version.
-    # M155/M156 add two headers and use OpenURLParams::CreateBrowserInitiated;
-    # it keeps the parent-window fix and must also remain byte-for-byte intact.
-    if (len(lines), old_range_start + 1) not in ((203, 57), (206, 59)):
-        raise ValueError(
-            "Pinned dialog source changed; review the retired M154 patch regression"
-        )
+    # M157 passes the optional WebContents and required parent window separately.
+    # Preserve permission prompts originating from background contexts.
+    if ("if (!window_android) {" not in source
+            or "show_params->GetParentWebContents(), std::move(prompt)," not in source
+            or "std::move(done_callback), window_android);" not in source):
+        raise ValueError("Pinned Chromium extension dialog changed its parent-window contract")
 
     script = (ROOT / "patch.sh").read_text()
     if "DCHECK(view_android);/{/GetParentWebContents/!d" in script:
@@ -593,12 +583,14 @@ def main():
         modulemap.apply(src)
         verify_pinned_generator(src)
         deletion_period.apply(src)
+        homepage.apply(src)
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
         explicit_exit.apply(src)
+        print(run_prepaint_flow((src / 'chrome/browser/android/tab_android.cc').read_text()).strip())
         print(verify_renderer_gate(src))
         print(verify_navigation_gate(src))
         print(verify_exit_android_api((src / SETTINGS_API).read_text(), (src / TAB_IMPL).read_text()))
@@ -641,6 +633,7 @@ def main():
                   if path.is_file() and ".git" not in path.relative_to(src).parts}
         modulemap.apply(src)
         deletion_period.apply(src)
+        homepage.apply(src)
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
@@ -657,7 +650,7 @@ def main():
         verify_locale_configuration(src, baseline_locales, gn)
     print(f'PASS: Chromium {lock["chromium_version"]}, dependency pins, '
           f'{count} relevant Vanadium patches, omnibox icon dependency '
-          'and background media observer API; idempotent Argon dark themes/CA/JNI/About/Russian translation/background playback/deletion period/explicit exit/User-Agent '
+          'and background media observer API; idempotent Argon homepage/dark themes/CA/JNI/About/Russian translation/background playback/deletion period/explicit exit/User-Agent '
           'patches; pinned GN catalog, XTB consumer and two-language packaging checks '
           '(Android/desktop, official/development)')
 

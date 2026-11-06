@@ -34,9 +34,9 @@ RESOLVER_SIGNATURE = '    private static UrlConstantResolver buildOriginalResolv
 STARTUP_SIGNATURE = '            if (!mPendingInitialTabCreation) {'
 CAPTURE_SIGNATURE = '        public boolean isDirty() {'
 FACTORY_DIGEST = '905c86c4d9066d43abfa512b02ae1649961991706ec493fe026a16f386b7d315'
-HANDLER_DIGEST = '6420fc2dfc3a1bea11edf3ea5c2fa928f93d79b12f00b16f83d31b040b0a6c7d'
+HANDLER_DIGEST = 'a09ff3d96542b4a7087fb747068004690df572bec9d9de4997dcde4140934c37'
 RESOLVER_DIGEST = 'c8676f48d70c326f26086693906f9fd97473ced55a21ff3c80053613f06748d3'
-STARTUP_DIGEST = '51130d436dad54a975a79a9ab5977a26cdf02768b3c18af6e75641fab357f6ac'
+STARTUP_DIGEST = 'dd8b71b758badb1913eddd6142d58425bc3a0178d03c41143acd5a3c84e6bc37'
 CAPTURE_DIGEST = 'edcc5010cebdfdd9165831bb13dc8d3c12b27c21ea405e03ed548972ea8b8656'
 
 CAPTURE_BEFORE = '''                    boolean isNativePage = tab == null || tab.isNativePage();
@@ -93,7 +93,7 @@ PHONE_VISIBILITY_AFTER = PHONE_VISIBILITY_BEFORE + '''
     }'''
 
 PHONE_SHORTCUT_SIGNATURE = '    private boolean shouldShowOptionalButtonInToolbar(@Nullable ButtonData buttonData) {'
-PHONE_SHORTCUT_DIGEST = '40f4421b494f0fbbba7b97967cbc69522a1baf428329a5f46a87850852fae198'
+PHONE_SHORTCUT_DIGEST = '8969502e39cf67a0277938d3a568225c92c22e39046bc4dceae29b6184310dbc'
 PHONE_SHORTCUT_BEFORE = PHONE_SHORTCUT_SIGNATURE + '''
         boolean isNtp = isNtpVisualState(mVisualState);'''
 PHONE_SHORTCUT_AFTER = PHONE_SHORTCUT_BEFORE + '''
@@ -117,8 +117,10 @@ NEW_TAB_BUTTON_AFTER = '''        // ARGON: a regular phone NTP still needs its 
         if (UrlUtilities.isNtpUrl(tab.getUrl()) && (mIsTablet || tab.isIncognito())) return false;'''
 
 STARTUP_BEFORE = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
+                assumeNonNull(currentTab);
                 if (isTabNtp && !currentTab.isNativePage() && !isTabWebUiNtp) {'''
 STARTUP_AFTER = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWebUiNtpOverrideEnabled();
+                assumeNonNull(currentTab);
                 // ARGON: regular chrome://newtab and chrome-native://newtab use WebUI.
                 // Restored tabs may already have WebContents, so waiting for a later
                 // NativePage/onContentChanged event can keep the launch window hidden forever.
@@ -304,7 +306,7 @@ TOOLBAR_AFTER = TOOLBAR_BEFORE.replace(
 TOOLBAR_NAV_START = "                    public void onDidStartNavigationInPrimaryMainFrame(\n                            Tab tab, NavigationHandle navigationHandle) {"
 TOOLBAR_NAV_FINISH = "                    public void onDidFinishNavigationEnd() {"
 TOOLBAR_LOAD_STOP = '                    public void onLoadStopped(Tab tab, boolean toDifferentDocument) {'
-TOOLBAR_LOAD_STOP_DIGEST = '3ae3ca76bbf1034208c4bcda47f03e44c22cf8ad2ce44fdcebfc906dd50da2ce'
+TOOLBAR_LOAD_STOP_DIGEST = '5abbc3db6753c334611eb05e1ebad251b0c3e2c9f09471dde8c51d39ed29424c'
 TOOLBAR_CRASH = '                    public void onCrash(Tab tab) {'
 TOOLBAR_CRASH_DIGEST = 'd6197f275d513b218d32d9559da699ad30829b3f690b2261957987221649d593'
 
