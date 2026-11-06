@@ -9,6 +9,7 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
+R8_JAR = Path('third_party/r8/cipd/lib/r8.jar')
 FLOW = ROOT / ('chromium_overlay/titanium/chromium_src/chrome/android/java/src/'
                'org/chromium/chrome/browser/exit/ArgonExitFlow.java')
 
@@ -44,7 +45,7 @@ def dex(src, jar, work, name):
         '--output', relative_work / (name + '.dex.jar'),
         '--depfile', relative_work / (name + '.d'),
         '--min-api=29',
-        '--r8-jar-path', 'third_party/r8/d8/cipd/lib/r8.jar',
+        '--r8-jar-path', R8_JAR,
         '--custom-d8-jar-path', 'third_party/r8/custom_d8.jar',
         '--warnings-as-errors',
         '--incremental-dir', relative_work / (name + '-incremental'),
@@ -64,7 +65,7 @@ def main():
     javac = src / 'third_party/jdk/current/bin/javac'
     for path in (javac, FLOW, src / 'third_party/cpython3/host/bin/python3',
                  src / 'build/android/gyp/dex.py',
-                 src / 'third_party/r8/d8/cipd/lib/r8.jar',
+                 src / R8_JAR,
                  src / 'third_party/r8/custom_d8.jar'):
         if not path.is_file():
             raise ValueError('Missing prepared DEX input: ' + str(path))
