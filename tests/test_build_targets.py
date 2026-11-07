@@ -205,6 +205,50 @@ class ApkArchitectureTests(unittest.TestCase):
                         with self.assertRaisesRegex(SystemExit, "Unexpected APK native ABIs"):
                             sign_and_verify.verify_apk_abi(apk, expected)
 
+    def test_armv7_apk_accepts_chromiums_empty_arm64_placeholder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "input.apk"
+            self.write_apk(apk, ["armeabi-v7a"])
+            with zipfile.ZipFile(apk, "a") as archive:
+                archive.writestr("lib/arm64-v8a/libplaceholder.so", b"")
+            sign_and_verify.verify_apk_abi(apk, "armeabi-v7a")
+
+    def test_placeholder_exception_does_not_allow_foreign_native_libraries(self):
+        for entry, contents in [
+            ("lib/arm64-v8a/libplaceholder.so", b"native code"),
+            ("lib/arm64-v8a/libchrome.so", b""),
+            ("lib/arm64-v8a/libchrome.so", b"native code"),
+            ("lib/arm64-v8a/nested/libplaceholder.so", b""),
+            ("lib/x86_64/libplaceholder.so", b""),
+        ]:
+            with self.subTest(entry=entry, contents=contents), tempfile.TemporaryDirectory() as tmp:
+                apk = Path(tmp) / "input.apk"
+                self.write_apk(apk, ["armeabi-v7a"])
+                with zipfile.ZipFile(apk, "a") as archive:
+                    # A valid placeholder must not hide other foreign libraries.
+                    if entry != "lib/arm64-v8a/libplaceholder.so":
+                        archive.writestr("lib/arm64-v8a/libplaceholder.so", b"")
+                    archive.writestr(entry, contents)
+                with self.assertRaisesRegex(SystemExit, "Unexpected APK native ABIs"):
+                    sign_and_verify.verify_apk_abi(apk, "armeabi-v7a")
+
+    def test_placeholder_does_not_replace_the_selected_abi(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "input.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("lib/arm64-v8a/libplaceholder.so", b"")
+            with self.assertRaisesRegex(SystemExit, "Unexpected APK native ABIs"):
+                sign_and_verify.verify_apk_abi(apk, "armeabi-v7a")
+
+    def test_arm64_apk_does_not_accept_an_armv7_placeholder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "input.apk"
+            self.write_apk(apk, ["arm64-v8a"])
+            with zipfile.ZipFile(apk, "a") as archive:
+                archive.writestr("lib/armeabi-v7a/libplaceholder.so", b"")
+            with self.assertRaisesRegex(SystemExit, "Unexpected APK native ABIs"):
+                sign_and_verify.verify_apk_abi(apk, "arm64-v8a")
+
     def test_signing_rejects_wrong_abi_before_using_tools(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp) / "input.apk"
@@ -259,6 +303,9 @@ class ApkArchitectureTests(unittest.TestCase):
                 commands.clear()
                 apk = root / "input.apk"
                 self.write_apk(apk, [abi])
+                if cpu == "arm":
+                    with zipfile.ZipFile(apk, "a") as archive:
+                        archive.writestr("lib/arm64-v8a/libplaceholder.so", b"")
                 argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", str(root / "sdk"),
                         "--jdk", str(root / "jdk"), "--mode", "test", "--arch", abi]
                 with patch.object(sign_and_verify, "ROOT", root), patch.object(sys, "argv", argv), \

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sign and verify a single-ABI APK, then write checksums and build metadata."""
+"""Sign and verify APK native architecture, then write checksums and metadata."""
 import argparse
 import base64
 import binascii
@@ -43,8 +43,20 @@ def verify_apk_abi(apk: Path, expected_abi: str):
     with zipfile.ZipFile(apk) as archive:
         if archive.testzip() is not None:
             raise SystemExit("APK ZIP integrity failure")
-        abis = {p.split('/')[1] for p in archive.namelist()
-                if p.startswith('lib/') and p.endswith('.so')}
+        abis = set()
+        for entry in archive.infolist():
+            name = entry.filename
+            if not (name.startswith("lib/") and name.endswith(".so")):
+                continue
+            # Chromium packages this empty, never-loaded library in 32-bit
+            # Chrome APKs to avoid Android's deprecated-ABI warning. It is
+            # independent of enable_android_secondary_abi. Only this exact
+            # empty entry is allowed; foreign native code still fails below.
+            if (expected_abi == "armeabi-v7a"
+                    and name == "lib/arm64-v8a/libplaceholder.so"
+                    and entry.file_size == 0):
+                continue
+            abis.add(name.split("/")[1])
         if abis != {expected_abi}:
             raise SystemExit(
                 f"Unexpected APK native ABIs: {sorted(abis)}; expected {expected_abi}"
