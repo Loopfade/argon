@@ -1,0 +1,16 @@
+diff --git a/base/android/linker/linker_jni.h b/base/android/linker/linker_jni.h
+--- a/base/android/linker/linker_jni.h
++++ b/base/android/linker/linker_jni.h
+@@ -76,6 +76,12 @@ namespace chromium_android_linker {
+
+ // Larger than the largest library we might attempt to load.
++#if defined(ARCH_CPU_ARM64)
++// Argon's arm64 libchrome.so needs about 220 MiB of virtual address space.
++// Leave headroom so shared RELRO loading fits the library's loadable segments.
++static const size_t kAddressSpaceReservationSize = 256 * 1024 * 1024;
++#else
+ static const size_t kAddressSpaceReservationSize = 192 * 1024 * 1024;
++#endif
+
+ // A simple scoped UTF String class that can be initialized from
+ // a Java jstring handle. Modeled like std::string, which cannot
