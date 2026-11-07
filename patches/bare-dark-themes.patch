@@ -646,7 +646,7 @@ diff --git a/chrome/browser/ui/android/night_mode/java/src/org/chromium/chrome/b
 +        // for System default.
 +        ChromeSwitchPreference amoledWhenSystemDark = findPreference(PREF_AMOLED_WHEN_SYSTEM_DARK);
 +        assert amoledWhenSystemDark != null;
-+        ChromeSharedPreferences sharedPreferencesManager = ChromeSharedPreferences.getInstance();
++        var sharedPreferencesManager = ChromeSharedPreferences.getInstance();
 +        amoledWhenSystemDark.setChecked(
 +                sharedPreferencesManager.readBoolean(ARGON_AMOLED_WHEN_SYSTEM_DARK, false));
 +        amoledWhenSystemDark.setVisible(NightModeUtils.getThemeSetting() == ThemeType.SYSTEM_DEFAULT);
