@@ -35,8 +35,10 @@ public class ArgonUserAgentTest {
         HashSet<String> values = new HashSet<>();
         for (Preset preset : Preset.values()) {
             if (preset == Preset.CUSTOM) continue;
+            var startupArguments = new java.util.HashMap<>(CommandLine.getInstance().values);
             ArgonUserAgent.save(preset, "");
             assert ArgonUserAgent.getPreset() == preset;
+            assert CommandLine.getInstance().values.equals(startupArguments);
             assert values.add(startBrowser());
         }
         assert values.size() == 6;

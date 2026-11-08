@@ -42,6 +42,7 @@ done
     obj/third_party/blink/renderer/core/core/computed_style.o \
     obj/chrome/browser/ui/android/night_mode/java.javac.jar \
     obj/chrome/browser/android/android/content_utils.o \
+    obj/components/embedder_support/user_agent/user_agent_utils.o \
     obj/content/renderer/renderer/render_thread_impl.o \
     chrome_java
 )

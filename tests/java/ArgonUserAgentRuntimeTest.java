@@ -56,6 +56,8 @@ public class ArgonUserAgentRuntimeTest {
         current.checkbox(false);
         expect(current, false, "YaBrowser/");
         assert ArgonUserAgent.getPreset() == Preset.YANDEX_DESKTOP;
+        select(Preset.YANDEX_DESKTOP);
+        expect(current, true, "YaBrowser/");
         current.checkbox(true);
         expect(current, true, "YaBrowser/");
 
@@ -109,6 +111,19 @@ public class ArgonUserAgentRuntimeTest {
         restored.initialize();
         expect(restored, false, "YaBrowser/");
         assert !normal.desktop;
+
+        // Privacy settings may be opened directly while no tabs exist.
+        current.destroy();
+        hidden.destroy();
+        dormant.destroy();
+        restored.destroy();
+        ArgonUserAgentController.initialize();
+        select(Preset.FIREFOX_DESKTOP);
+        assert ArgonUserAgent.needsModeSync();
+        Tab firstTab = new Tab(new Profile(false), "https://first.example/");
+        firstTab.initialize();
+        expect(firstTab, true, "Firefox/");
+        assert !ArgonUserAgent.needsModeSync();
         System.out.println("PASS: live User-Agent, desktop checkbox, renderer replies and tab lifecycle");
     }
 }
