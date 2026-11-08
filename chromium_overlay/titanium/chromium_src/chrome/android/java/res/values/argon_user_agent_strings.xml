@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="argon_user_agent_title">User-Agent</string>
-    <string name="argon_user_agent_summary">%1$s. Changes take effect after restarting Argon.</string>
+    <string name="argon_user_agent_summary">%1$s. Applies immediately, without restarting the browser.</string>
     <string name="argon_user_agent_search_summary">Change the user agent reported to websites</string>
     <string name="argon_user_agent_chrome_mobile">Chrome (mobile)</string>
     <string name="argon_user_agent_chrome_desktop">Chrome (desktop)</string>

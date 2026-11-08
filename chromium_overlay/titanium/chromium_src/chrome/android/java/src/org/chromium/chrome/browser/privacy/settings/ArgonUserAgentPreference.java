@@ -16,6 +16,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.base.ArgonUserAgent;
+import org.chromium.chrome.browser.base.ArgonUserAgentController;
 import org.chromium.chrome.browser.base.ArgonUserAgent.Preset;
 
 @NullMarked
@@ -26,6 +27,7 @@ final class ArgonUserAgentPreference {
         Preference preference = fragment.findPreference("argon_user_agent");
         if (preference == null) return;
 
+        ArgonUserAgentController.initialize();
         updateSummary(preference);
         preference.setOnPreferenceClickListener(
                 pref -> {

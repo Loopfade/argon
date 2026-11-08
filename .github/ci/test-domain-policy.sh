@@ -34,16 +34,21 @@ for arch in arm64 arm; do
   python3 "$ROOT/.github/ci/check-exit-integration.py" --out "$graph_out" --java
 done
 
-# Compile the theme targets to check Blink's ARMv7 layout and the Android
-# preferences API with the actual production toolchain and dependencies.
+# Compile the theme and UA targets with the production toolchain: ARMv7 layout,
+# renderer Mojo API, ContentUtils JNI and the complete browser Java sources.
 (
   cd "$src"
   autoninja -C out/Argon-graph-arm -j 4 \
     obj/third_party/blink/renderer/core/core/computed_style.o \
-    obj/chrome/browser/ui/android/night_mode/java.javac.jar
+    obj/chrome/browser/ui/android/night_mode/java.javac.jar \
+    obj/chrome/browser/android/android/content_utils.o \
+    obj/components/embedder_support/user_agent/user_agent_utils.o \
+    obj/content/renderer/renderer/render_thread_impl.o \
+    chrome_java
 )
 echo "PASS: ARMv7 ComputedStyle size assertion"
 echo "PASS: night mode Java module compiled"
+echo "PASS: User-Agent renderer, JNI and browser Java targets compiled"
 
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert" "$src/chrome/browser/net"
