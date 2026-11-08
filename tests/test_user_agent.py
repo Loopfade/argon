@@ -54,11 +54,12 @@ public class ContextUtils {
 package org.chromium.base;
 public class CommandLine {
     private static final CommandLine INSTANCE = new CommandLine();
-    public String value;
+    public final java.util.Map<String, String> values = new java.util.HashMap<>();
     public static CommandLine getInstance() { return INSTANCE; }
     public void appendSwitchWithValue(String key, String value) {
-        if (!key.equals("argon-user-agent")) throw new AssertionError(key);
-        this.value = value;
+        if (!key.equals("argon-user-agent") && !key.equals("argon-user-agent-desktop"))
+            throw new AssertionError(key);
+        values.put(key, value);
     }
 }
 """,
@@ -71,6 +72,11 @@ public class VersionConstants {
     "org/chromium/build/annotations/NullMarked.java": """
 package org.chromium.build.annotations;
 public @interface NullMarked {}
+""",
+    "org/chromium/build/annotations/Nullable.java": """
+package org.chromium.build.annotations;
+import java.lang.annotation.*;
+@Target({ElementType.TYPE_USE, ElementType.PARAMETER}) public @interface Nullable {}
 """,
 }
 

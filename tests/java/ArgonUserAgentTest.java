@@ -9,9 +9,13 @@ import org.chromium.chrome.browser.base.ArgonUserAgent.Preset;
 
 public class ArgonUserAgentTest {
     private static String startBrowser() {
-        CommandLine.getInstance().value = null;
+        CommandLine.getInstance().values.clear();
         ArgonUserAgent.applySavedOverride();
-        return CommandLine.getInstance().value;
+        assert CommandLine.getInstance().values.get("argon-user-agent")
+                .equals(ArgonUserAgent.getUserAgent(false));
+        assert CommandLine.getInstance().values.get("argon-user-agent-desktop")
+                .equals(ArgonUserAgent.getUserAgent(true));
+        return ArgonUserAgent.getUserAgent(Boolean.TRUE.equals(ArgonUserAgent.requestedDesktopMode()));
     }
 
     public static void main(String[] args) {
@@ -36,6 +40,17 @@ public class ArgonUserAgentTest {
             assert values.add(startBrowser());
         }
         assert values.size() == 6;
+
+        ArgonUserAgent.save(Preset.YANDEX_DESKTOP, "");
+        assert ArgonUserAgent.requestedDesktopMode();
+        assert ArgonUserAgent.needsModeSync();
+        assert ArgonUserAgent.getUserAgent(false).contains("YaBrowser/");
+        assert ArgonUserAgent.getUserAgent(false).contains("Mobile");
+        assert !ArgonUserAgent.getUserAgent(true).contains("Mobile");
+        ArgonUserAgent.markModeSynced();
+        assert !ArgonUserAgent.needsModeSync();
+        ArgonUserAgent.save(Preset.YANDEX_DESKTOP, "");
+        assert ArgonUserAgent.needsModeSync();
 
         ArgonUserAgent.save(Preset.CUSTOM, "  MyBrowser/1.0 Mobile  ");
         assert startBrowser().equals("MyBrowser/1.0 Mobile");

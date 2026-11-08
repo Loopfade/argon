@@ -42,6 +42,8 @@ from test_exit_downloads import run_download_guard
 from test_exit_renderer import verify_renderer_gate
 from test_exit_navigation import verify_navigation_gate
 from test_exit_android_api import SETTINGS_API, verify_exit_android_api
+from test_user_agent_runtime import run_runtime_flow
+from test_user_agent_renderer import verify_renderer_update
 from upstream_sources import chromium_url, download
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
@@ -613,6 +615,10 @@ def main():
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
+        if "ArgonUserAgentController.java" in (src / user_agent.ANDROID_GN).read_text():
+            raise ValueError("The live UA controller must not enter the startup base module")
+        print(run_runtime_flow((src / user_agent.CONTENT_JAVA).read_text()).strip())
+        print(verify_renderer_update((src / user_agent.RENDER_THREAD).read_text()))
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
         explicit_exit.apply(src)

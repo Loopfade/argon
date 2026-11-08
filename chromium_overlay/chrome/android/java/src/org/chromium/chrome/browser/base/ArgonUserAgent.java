@@ -10,16 +10,19 @@ import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.version_info.VersionConstants;
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 
 @NullMarked
 public final class ArgonUserAgent {
     private static final String PREF_PRESET = "argon_user_agent.preset";
     private static final String PREF_CUSTOM = "argon_user_agent.custom";
+    private static final String PREF_MODE_SYNC = "argon_user_agent.mode_sync";
     private static final String WINDOWS = "Mozilla/5.0 (Windows NT 10.0; Win64; x64";
     private static final String CHROMIUM = " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/";
     private static final String CHROME = CHROMIUM + VersionConstants.PRODUCT_MAJOR_VERSION + ".0.0.0";
     private static final String FIREFOX = "154.0";
     private static final int MAX_CUSTOM_LENGTH = 1024;
+    private static @Nullable Runnable sChangeListener;
 
     public enum Preset {
         CHROME_MOBILE("Mozilla/5.0 (Linux; Android 10; K)" + CHROME + " Mobile Safari/537.36"),
@@ -74,13 +77,51 @@ public final class ArgonUserAgent {
             if (!isValidCustom(custom)) return;
             editor.putString(PREF_CUSTOM, custom.trim());
         }
-        editor.putString(PREF_PRESET, preset.name()).apply();
+        editor.putString(PREF_PRESET, preset.name()).putString(PREF_MODE_SYNC, "").apply();
+        Runnable listener = sChangeListener;
+        if (listener != null) listener.run();
+    }
+
+    public static void setChangeListener(Runnable listener) {
+        sChangeListener = listener;
+    }
+
+    public static String getUserAgent(boolean desktop) {
+        Preset preset = getPreset();
+        if (preset == Preset.CUSTOM) return getCustom();
+        Preset resolved = switch (preset) {
+            case FIREFOX_MOBILE, FIREFOX_DESKTOP ->
+                    desktop ? Preset.FIREFOX_DESKTOP : Preset.FIREFOX_MOBILE;
+            case YANDEX_MOBILE, YANDEX_DESKTOP ->
+                    desktop ? Preset.YANDEX_DESKTOP : Preset.YANDEX_MOBILE;
+            default -> desktop ? Preset.CHROME_DESKTOP : Preset.CHROME_MOBILE;
+        };
+        return resolved.mUserAgent;
+    }
+
+    public static @Nullable Boolean requestedDesktopMode() {
+        return switch (getPreset()) {
+            case CHROME_DESKTOP, FIREFOX_DESKTOP, YANDEX_DESKTOP -> true;
+            case CUSTOM -> null;
+            default -> false;
+        };
+    }
+
+    public static boolean needsModeSync() {
+        var preferences = ContextUtils.getAppSharedPreferences();
+        String saved = preferences.getString(PREF_PRESET, "");
+        return requestedDesktopMode() != null && getPreset().name().equals(saved)
+                && !getPreset().name().equals(preferences.getString(PREF_MODE_SYNC, ""));
+    }
+
+    public static void markModeSynced() {
+        ContextUtils.getAppSharedPreferences().edit()
+                .putString(PREF_MODE_SYNC, getPreset().name()).apply();
     }
 
     static void applySavedOverride() {
-        Preset preset = getPreset();
-        String userAgent = preset == Preset.CUSTOM ? getCustom() : preset.mUserAgent;
-        if (!isValidCustom(userAgent)) userAgent = Preset.CHROME_MOBILE.mUserAgent;
-        CommandLine.getInstance().appendSwitchWithValue("argon-user-agent", userAgent);
+        CommandLine.getInstance().appendSwitchWithValue("argon-user-agent", getUserAgent(false));
+        CommandLine.getInstance().appendSwitchWithValue(
+                "argon-user-agent-desktop", getUserAgent(true));
     }
 }
