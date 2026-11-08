@@ -617,6 +617,15 @@ def main():
         user_agent.apply(src)
         if "ArgonUserAgentController.java" in (src / user_agent.ANDROID_GN).read_text():
             raise ValueError("The live UA controller must not enter the startup base module")
+        if '"//content/common:mojo_bindings"' in (src / user_agent.ANDROID_NATIVE_GN).read_text():
+            raise ValueError("Android must not depend directly on private Content Mojo bindings")
+        if "UpdateArgonUserAgent(" not in (src / user_agent.RENDER_PROCESS_HOST_HEADER).read_text():
+            raise ValueError("Missing public RenderProcessHost UA update API")
+        if "GetRendererInterface()->UpdateUserAgent(" not in (
+                src / user_agent.RENDER_PROCESS_HOST_IMPL).read_text():
+            raise ValueError("Missing Content-internal UA Mojo bridge")
+        if "renderer->UpdateArgonUserAgent(" not in (src / user_agent.DESKTOP_UA).read_text():
+            raise ValueError("Android must use the public RenderProcessHost UA update API")
         print(run_runtime_flow((src / user_agent.CONTENT_JAVA).read_text()).strip())
         print(verify_renderer_update((src / user_agent.RENDER_THREAD).read_text()))
         print(verify_native_state((src / user_agent.UA_UTILS).read_text()))
