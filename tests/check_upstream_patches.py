@@ -626,6 +626,13 @@ def main():
             raise ValueError("Missing Content-internal UA Mojo bridge")
         if "renderer->UpdateArgonUserAgent(" not in (src / user_agent.DESKTOP_UA).read_text():
             raise ValueError("Android must use the public RenderProcessHost UA update API")
+        native_ua = (src / user_agent.DESKTOP_UA).read_text()
+        if '#include "third_party/jni_zero/jni_zero.h"' not in native_ua:
+            raise ValueError("Missing JNI Zero Runnable API header in ContentUtils")
+        if native_ua.count("jni_zero::RunRunnable(") != 2:
+            raise ValueError("Both UA completion paths must call JNI Zero RunRunnable")
+        if "RunRunnableAndroid" in native_ua:
+            raise ValueError("Obsolete Chromium Runnable helper is not available")
         print(run_runtime_flow((src / user_agent.CONTENT_JAVA).read_text()).strip())
         print(verify_renderer_update((src / user_agent.RENDER_THREAD).read_text()))
         print(verify_native_state((src / user_agent.UA_UTILS).read_text()))

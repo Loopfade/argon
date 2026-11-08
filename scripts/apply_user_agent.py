@@ -174,7 +174,7 @@ bool SetArgonUserAgentOverrides(const std::string& mobile,
     replace(DESKTOP_UA, anchor, """\
 #include <vector>
 
-#include "base/android/callback_android.h"
+#include "third_party/jni_zero/jni_zero.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/barrier_closure.h"
 #include "base/functional/bind.h"
@@ -192,7 +192,7 @@ static void JNI_ContentUtils_UpdateUserAgent(
     const std::string& desktop,
     const base::android::JavaRef<jobject>& j_ready) {
   if (!embedder_support::SetArgonUserAgentOverrides(mobile, desktop)) {
-    base::android::RunRunnableAndroid(j_ready);
+    jni_zero::RunRunnable(j_ready);
     return;
   }
   std::vector<content::RenderProcessHost*> renderers;
@@ -207,7 +207,7 @@ static void JNI_ContentUtils_UpdateUserAgent(
       renderers.size(),
       base::BindOnce(
           [](base::android::ScopedJavaGlobalRef<jobject> ready) {
-            base::android::RunRunnableAndroid(ready);
+            jni_zero::RunRunnable(ready);
           },
           base::android::ScopedJavaGlobalRef<jobject>(env, j_ready)));
   const auto user_agent = embedder_support::GetUserAgent();
