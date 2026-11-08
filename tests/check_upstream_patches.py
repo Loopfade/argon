@@ -540,7 +540,7 @@ def fetch_sources(urls):
 
 def apply_and_verify_linker_reservation(src):
     subprocess.run(
-        ["git", "apply", str(ROOT / "patches/android-arm64-linker-reservation.patch")],
+        ["git", "apply", str(ROOT / "patches/android-linker-reservation.patch")],
         cwd=src, check=True,
     )
     header = (src / LINKER_HEADER).read_text()
@@ -552,7 +552,7 @@ def apply_and_verify_linker_reservation(src):
     # is the actual ELF mapping size from the failing Android loader, not APK size.
     for cpu, condition in (
         ("ARM64", "kAddressSpaceReservationSize >= 231137280"),
-        ("ARMEL", "kAddressSpaceReservationSize == 192 * 1024 * 1024"),
+        ("ARMEL", "kAddressSpaceReservationSize == 256 * 1024 * 1024"),
     ):
         subprocess.run(
             ["c++", "-std=c++17", "-x", "c++", "-fsyntax-only", f"-DARCH_CPU_{cpu}", "-"],

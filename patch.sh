@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python3 "$SCRIPT_DIR/scripts/apply_modulemap.py" --chromium-src "$PWD"
-git apply "$SCRIPT_DIR/patches/android-arm64-linker-reservation.patch"
+git apply "$SCRIPT_DIR/patches/android-linker-reservation.patch"
 python3 "$SCRIPT_DIR/scripts/apply_browsing_data_period.py" --chromium-src "$PWD"
 python3 "$SCRIPT_DIR/scripts/apply_homepage.py" --chromium-src "$PWD"
 

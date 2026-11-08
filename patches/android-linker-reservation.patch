@@ -4,9 +4,9 @@ diff --git a/base/android/linker/linker_jni.h b/base/android/linker/linker_jni.h
 @@ -76,6 +76,12 @@ namespace chromium_android_linker {
 
  // Larger than the largest library we might attempt to load.
-+#if defined(ARCH_CPU_ARM64)
-+// Argon's arm64 libchrome.so needs about 220 MiB of virtual address space.
-+// Leave headroom so shared RELRO loading fits the library's loadable segments.
++#if defined(ARCH_CPU_ARM64) || defined(ARCH_CPU_ARMEL)
++// Use the same headroom for both ARM builds. The arm64 library currently
++// needs about 220 MiB of virtual address space for shared RELRO loading.
 +static const size_t kAddressSpaceReservationSize = 256 * 1024 * 1024;
 +#else
  static const size_t kAddressSpaceReservationSize = 192 * 1024 * 1024;
