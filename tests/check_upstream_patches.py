@@ -2,8 +2,8 @@
 """Check Argon's patches against the pinned upstream sources.
 
 This small integration check downloads the Chromium files needed to validate
-the CA/JNI overlay, About screen, omnibox icon dependency and M154+
-extension-install dialog regression, applies the relevant Vanadium patches,
+the CA/JNI overlay, About screen, native linker reservation, omnibox icon
+dependency and M154+ extension-install dialog regression, applies the relevant Vanadium patches,
 and applies Argon's overlay twice. A small GN project checks source catalogs,
 the upstream strings consumer and Android locale packaging. This does not
 replace full Chromium GN generation,
@@ -103,6 +103,8 @@ BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE
 BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in homepage.INPUT_PATHS if path not in BASE_PATHS)
+LINKER_HEADER = Path("base/android/linker/linker_jni.h")
+BASE_PATHS += (LINKER_HEADER,)
 EXTENSION_PATHS = (
     user_agent.PRIVACY_HOOKS,
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
@@ -536,6 +538,29 @@ def fetch_sources(urls):
     return values
 
 
+def apply_and_verify_linker_reservation(src):
+    subprocess.run(
+        ["git", "apply", str(ROOT / "patches/android-linker-reservation.patch")],
+        cwd=src, check=True,
+    )
+    header = (src / LINKER_HEADER).read_text()
+    _, namespace, declarations = header.partition("namespace chromium_android_linker {")
+    declarations, boundary, _ = declarations.partition("// A simple scoped UTF String")
+    if not namespace or not boundary:
+        raise ValueError("Chromium linker declarations moved; review the reservation check")
+    # Compile the patched declaration for both architectures. The arm64 minimum
+    # is the actual ELF mapping size from the failing Android loader, not APK size.
+    for cpu, condition in (
+        ("ARM64", "kAddressSpaceReservationSize >= 231137280"),
+        ("ARMEL", "kAddressSpaceReservationSize == 256 * 1024 * 1024"),
+    ):
+        subprocess.run(
+            ["c++", "-std=c++17", "-x", "c++", "-fsyntax-only", f"-DARCH_CPU_{cpu}", "-"],
+            input="#include <stddef.h>\n" + declarations + "\nstatic_assert(" + condition + ");\n",
+            text=True, check=True,
+        )
+
+
 def main():
     lock = json.loads((ROOT / "build-lock.json").read_text())
     for key in ("chromium_commit", "boringssl_commit", "titanium_commit", "vanadium_commit"):
@@ -580,6 +605,7 @@ def main():
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
         verify_devtools_version_gate(src, lock["chromium_version"])
         verify_background_media_observer_api(src)
+        apply_and_verify_linker_reservation(src)
         modulemap.apply(src)
         verify_pinned_generator(src)
         deletion_period.apply(src)
