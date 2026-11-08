@@ -56,8 +56,10 @@ public final class ArgonUserAgentController {
         // Once synchronized, subsequent launches preserve manual desktop-site settings.
         if (ArgonUserAgent.needsModeSync()) {
             Boolean desktop = ArgonUserAgent.requestedDesktopMode();
-            if (desktop != null) setDefaultMode(tab.getProfile(), desktop);
-            if (!tab.isOffTheRecord()) ArgonUserAgent.markModeSynced();
+            if (desktop != null) {
+                setDefaultMode(tab.getProfile().getOriginalProfile(), desktop);
+                ArgonUserAgent.markModeSynced();
+            }
         }
     }
 
@@ -70,15 +72,16 @@ public final class ArgonUserAgentController {
             var tabs = new ArrayList<>(sTabs.keySet());
             Boolean desktop = ArgonUserAgent.requestedDesktopMode();
             var profiles = new HashSet<Profile>();
-            boolean regularProfileUpdated = false;
+            boolean defaultUpdated = false;
             for (Tab tab : tabs) {
                 if (tab.isDestroyed() || tab.isClosing()) continue;
-                if (desktop != null && profiles.add(tab.getProfile())) {
-                    setDefaultMode(tab.getProfile(), desktop);
-                    regularProfileUpdated |= !tab.isOffTheRecord();
+                Profile original = tab.getProfile().getOriginalProfile();
+                if (desktop != null && profiles.add(original)) {
+                    setDefaultMode(original, desktop);
+                    defaultUpdated = true;
                 }
             }
-            if (regularProfileUpdated) ArgonUserAgent.markModeSynced();
+            if (defaultUpdated) ArgonUserAgent.markModeSynced();
             for (Tab tab : tabs) {
                 if (tab.isDestroyed() || tab.isClosing()) continue;
                 var contents = tab.getWebContents();

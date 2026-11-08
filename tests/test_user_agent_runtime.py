@@ -27,8 +27,14 @@ RUNTIME = {
         public class Profile {
             public boolean desktop;
             public final boolean incognito;
+            private final Profile original;
             public final java.util.Map<String,Boolean> sites=new java.util.HashMap<>();
-            public Profile(boolean incognito) { this.incognito=incognito; }
+            public Profile(boolean incognito) { this.incognito=incognito; original=this; }
+            public Profile(boolean incognito,Profile original) {
+                this.incognito=incognito; this.original=original;
+            }
+            public Profile getOriginalProfile() { return original; }
+            public boolean defaultDesktop() { return original==this ? desktop : original.defaultDesktop(); }
         }""",
     "org/chromium/components/content_settings/ContentSetting.java": """
         package org.chromium.components.content_settings;
@@ -42,7 +48,7 @@ RUNTIME = {
         import org.chromium.components.content_settings.ContentSetting;
         public class WebsitePreferenceBridge {
             public static void setDefaultContentSetting(Profile p,int type,int value) {
-                p.desktop=value==ContentSetting.ALLOW;
+                if (!p.incognito) p.desktop=value==ContentSetting.ALLOW;
             }
         }""",
     PREFIX + "desktop_site/DesktopSiteUtils.java": """
@@ -55,7 +61,7 @@ RUNTIME = {
                 p.sites.put(u.getHost(),d);
             }
             public static boolean shouldOverrideDesktopSite(Profile p,GURL u,Context c) {
-                return p.sites.getOrDefault(u.getHost(),p.desktop);
+                return p.sites.getOrDefault(u.getHost(),p.defaultDesktop());
             }
         }""",
     "org/chromium/content_public/browser/WebContents.java": """

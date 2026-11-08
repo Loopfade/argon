@@ -29,7 +29,7 @@ public class ArgonUserAgentRuntimeTest {
         current.initialize();
         expect(current, true, "YaBrowser/");
         assert normal.desktop && !ArgonUserAgent.needsModeSync();
-        Profile privateProfile = new Profile(true);
+        Profile privateProfile = new Profile(true, normal);
         Tab privateTab = new Tab(privateProfile, "https://example.org/");
         privateTab.initialize();
         Tab hidden = new Tab(normal, "https://example.com/");
@@ -43,7 +43,7 @@ public class ArgonUserAgentRuntimeTest {
         expect(current, false, "YaBrowser/");
         expect(privateTab, false, "YaBrowser/");
         assert current.reloads == reloads + 1 && hidden.reloads == 0;
-        assert !normal.desktop && !privateProfile.desktop;
+        assert !normal.defaultDesktop() && !privateProfile.defaultDesktop();
         hidden.show();
         assert hidden.reloads == 1;
         hidden.show();
@@ -51,7 +51,7 @@ public class ArgonUserAgentRuntimeTest {
 
         select(Preset.YANDEX_DESKTOP);
         expect(current, true, "YaBrowser/");
-        assert normal.desktop && privateProfile.desktop;
+        assert normal.defaultDesktop() && privateProfile.defaultDesktop();
         // Menu changes the site mode while retaining the selected browser family.
         current.checkbox(false);
         expect(current, false, "YaBrowser/");
@@ -124,6 +124,28 @@ public class ArgonUserAgentRuntimeTest {
         firstTab.initialize();
         expect(firstTab, true, "Firefox/");
         assert !ArgonUserAgent.needsModeSync();
+
+        // OTR default settings ignore direct writes and inherit the original profile.
+        firstTab.destroy();
+        Profile original = firstTab.getProfile();
+        original.desktop = false;
+        Profile onlyPrivate = new Profile(true, original);
+        Tab privateOnly = new Tab(onlyPrivate, "https://private-only.example/");
+        privateOnly.initialize();
+        select(Preset.YANDEX_DESKTOP);
+        assert original.defaultDesktop();
+        expect(privateOnly, true, "YaBrowser/");
+        Tab newPrivateSite = new Tab(onlyPrivate, "https://new-private.example/");
+        newPrivateSite.initialize();
+        expect(newPrivateSite, true, "YaBrowser/");
+        privateOnly.destroy();
+        newPrivateSite.destroy();
+        original.desktop = false;
+        ContextUtils.getAppSharedPreferences().edit().putString("argon_user_agent.mode_sync", "").apply();
+        Tab privateMigration = new Tab(onlyPrivate, "https://private-migration.example/");
+        privateMigration.initialize();
+        assert original.defaultDesktop() && !ArgonUserAgent.needsModeSync();
+        expect(privateMigration, true, "YaBrowser/");
         System.out.println("PASS: live User-Agent, desktop checkbox, renderer replies and tab lifecycle");
     }
 }
