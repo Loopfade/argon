@@ -82,6 +82,15 @@ class UserAgentRendererTests(unittest.TestCase):
         script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
         self.assertIn("PASS:", verify_native_state(script))
 
+    def test_chrome_ua_update_uses_public_content_api(self):
+        script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
+        self.assertNotIn('"//content/common:mojo_bindings",', script)
+        self.assertIn("renderer->UpdateArgonUserAgent(", script)
+        self.assertIn("GetRendererInterface()->UpdateUserAgent(", script)
+        self.assertIn('content/common/renderer.mojom.h', script)
+        self.assertIn("RENDER_PROCESS_HOST_HEADER", script)
+        self.assertIn("RENDER_PROCESS_HOST_IMPL", script)
+
     def test_update_keeps_security_initialization_out_of_the_runtime_handler(self):
         script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
         match = re.search(r"void RenderThreadImpl::UpdateUserAgent\([\s\S]*?\n}\n", script)
