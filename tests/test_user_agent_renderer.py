@@ -91,6 +91,13 @@ class UserAgentRendererTests(unittest.TestCase):
         self.assertIn("RENDER_PROCESS_HOST_HEADER", script)
         self.assertIn("RENDER_PROCESS_HOST_IMPL", script)
 
+    def test_android_runnable_callback_matches_pinned_jni_zero_api(self):
+        script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
+        # This generated native code is compiled by the Android ARM CI job.
+        self.assertIn('#include "third_party/jni_zero/jni_zero.h"', script)
+        self.assertEqual(script.count("jni_zero::RunRunnable("), 2)
+        self.assertNotIn("base::android::RunRunnableAndroid", script)
+
     def test_update_keeps_security_initialization_out_of_the_runtime_handler(self):
         script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
         match = re.search(r"void RenderThreadImpl::UpdateUserAgent\([\s\S]*?\n}\n", script)
