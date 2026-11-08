@@ -15,12 +15,14 @@ export class BrowserSearch {
   }
 
   get available() { return this.state?.available === true; }
+  get tablet() { return this.state?.tablet === true; }
   get canChange() { return this.state?.canChange === true; }
   get engine() { return this.state?.engine; }
 
   update(state) {
     if (!state || !Number.isInteger(state.revision) || state.revision < 0 || state.revision < this.revision
         || typeof state.available !== 'boolean' || typeof state.canChange !== 'boolean'
+        || (state.tablet !== undefined && typeof state.tablet !== 'boolean')
         || typeof state.enabled !== 'boolean'
         || typeof state.engine?.id !== 'string' || typeof state.engine.name !== 'string'
         || typeof state.engine.url !== 'string') return;
@@ -48,7 +50,7 @@ export class BrowserSearch {
   }
 
   bounds(rect, scrollY) {
-    if (!this.available) return;
+    if (!this.available || this.tablet) return;
     const originalTop = rect.top + scrollY;
     const values = [rect.left, rect.top, rect.width, rect.height,
       Math.max(0, Math.min(1, scrollY / Math.max(1, originalTop)))];

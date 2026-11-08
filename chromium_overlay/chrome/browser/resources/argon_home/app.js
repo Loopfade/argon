@@ -52,7 +52,9 @@ import {connectBrowserSearch} from './browser-search.js';
     return [current,...pageEngines().filter(engine=>engine.id!==current.id)];
   }
   function reportSearchBounds() {
-    if(browserSearch?.available)browserSearch.bounds($('search-form').getBoundingClientRect(),window.scrollY);
+    // The tablet toolbar owns the visible omnibox; it has no WebUI fakebox.
+    if(browserSearch?.available&&!browserSearch.tablet)
+      browserSearch.bounds($('search-form').getBoundingClientRect(),window.scrollY);
   }
   function scheduleSearchBounds() {
     if(searchBoundsFrame)return;
@@ -71,6 +73,7 @@ import {connectBrowserSearch} from './browser-search.js';
   }
   function applyBrowserSearch(value) {
     browserSearchState=value;
+    document.documentElement.classList.toggle('native-tablet-search',value.tablet===true);
     if(value.available)nativeSearchRetries=0;
     if(value.available&&$('search-input').tagName==='INPUT') {
       const draft=$('search-input').value, editingSearch=document.activeElement===$('search-input');

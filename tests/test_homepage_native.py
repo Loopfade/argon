@@ -200,12 +200,19 @@ public @interface Nullable {}
 package org.chromium.base;
 public interface Callback<T> { void onResult(T value); }
 """,
+    'org/chromium/ui/base/DeviceFormFactor.java': """
+package org.chromium.ui.base;
+public class DeviceFormFactor {
+    public static boolean isWindowOnTablet(WindowAndroid window) { return window.isTablet; }
+}
+""",
     'org/chromium/ui/base/WindowAndroid.java': """
 package org.chromium.ui.base;
 import android.app.Activity;
 import java.lang.ref.WeakReference;
 public class WindowAndroid {
     public Activity activity;
+    public boolean isTablet;
     public WeakReference<Activity> getActivity() { return new WeakReference<>(activity); }
 }
 """,

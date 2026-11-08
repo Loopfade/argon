@@ -25,7 +25,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
       const startup=new Promise(resolve=>{release=resolve;});
       const f=window.argonNativeFixture={
         calls:[],listenerCalls:[],blocked:false,newBridge:false,release:()=>release(),
-        state:{revision:1,available:true,canChange:true,enabled:true,
+        state:{revision:1,available:true,tablet:false,canChange:true,enabled:true,
           engine:{id:'google',name:'Google',url:'https://www.google.com/search?q=example'}},
         emit(name,value){listeners.get(name)?.(value);},
         update(patch){
@@ -165,6 +165,31 @@ export async function checkNativeSearch(browser, base, errors, out) {
     assert.equal(saved.customEngines.length,1);
     assert.equal(saved.theme,original.theme);assert.equal(saved.density,original.density);
     assert.deepEqual(saved.shortcuts,original.shortcuts);
+    // Tablet is identified by native Chromium, not by CSS viewport width.
+    await page.setViewportSize({width:1024,height:768});
+    await native(()=>window.argonNativeFixture.update({tablet:true}));
+    await page.locator('html.native-tablet-search').waitFor();
+    assert.equal(await page.locator('.search-wrap').isVisible(),false,
+      'Tablet must show only the Chromium omnibox');
+    assert(await page.locator('#shortcut-grid').isVisible(),
+      'Favorites remain on the tablet home page');
+    assert(await page.locator('#settings-button').isVisible(),
+      'Homepage settings remain visible');
+    const tabletBounds=await native(()=>window.argonNativeFixture.calls
+      .filter(call=>call[0]==='setArgonSearchBoxBounds').length);
+    const tabletFocus=await native(()=>window.argonNativeFixture.calls
+      .filter(call=>call[0]==='focusArgonOmnibox').length);
+    await page.keyboard.press('Control+k');
+    await focusCount(tabletFocus+1);
+    await page.setViewportSize({width:1200,height:760});
+    await page.waitForTimeout(100);
+    assert.equal(await native(()=>window.argonNativeFixture.calls
+      .filter(call=>call[0]==='setArgonSearchBoxBounds').length),tabletBounds,
+      'Hidden tablet fakebox must not send geometry on focus or resize');
+    await native(()=>window.argonNativeFixture.update({tablet:false}));
+    await page.locator('html:not(.native-tablet-search)').waitFor();
+    assert(await page.locator('.search-wrap').isVisible(),
+      'Phone home page must retain its central search');
     if(out)await page.screenshot({path:resolve(out,'home-native-search-360.png'),fullPage:true,animations:'disabled'});
   } finally {await context.close();}
 }
