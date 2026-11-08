@@ -27,13 +27,15 @@ TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl
 RENDERER_MOJOM = Path("content/common/renderer.mojom")
 RENDER_THREAD_HEADER = Path("content/renderer/render_thread_impl.h")
 RENDER_THREAD = RENDER_THREAD_HEADER.with_suffix(".cc")
+RENDER_PROCESS_HOST_HEADER = Path("content/public/browser/render_process_host.h")
+RENDER_PROCESS_HOST_IMPL = Path("content/browser/renderer_host/render_process_host_impl.cc")
 
 INPUT_PATHS = (
     ANDROID_GN, STARTUP, PRIVACY_HOOKS, UA_UTILS, UA_HEADER, DESKTOP_UA,
     TITANIUM_CHROME_JAVA_SOURCES, TITANIUM_CHROME_RESOURCES,
     TITANIUM_PRIVACY_PREFERENCES, TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
     CONTENT_JAVA, TAB_IMPL, RENDERER_MOJOM, RENDER_THREAD_HEADER, RENDER_THREAD,
-    ANDROID_NATIVE_GN,
+    ANDROID_NATIVE_GN, RENDER_PROCESS_HOST_HEADER, RENDER_PROCESS_HOST_IMPL,
 )
 
 
@@ -176,7 +178,6 @@ bool SetArgonUserAgentOverrides(const std::string& mobile,
 #include "base/android/scoped_java_ref.h"
 #include "base/barrier_closure.h"
 #include "base/functional/bind.h"
-#include "content/common/renderer.mojom.h"
 #include "content/public/browser/back_forward_cache.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_process_host.h"
@@ -212,7 +213,7 @@ static void JNI_ContentUtils_UpdateUserAgent(
   const auto user_agent = embedder_support::GetUserAgent();
   const auto metadata = embedder_support::GetUserAgentMetadata();
   for (auto* renderer : renderers) {
-    renderer->GetRendererInterface()->UpdateUserAgent(
+    renderer->UpdateArgonUserAgent(
         user_agent, metadata,
         mojo::WrapCallbackWithDefaultInvokeIfNotRun(
             base::BindOnce([](base::RepeatingClosure done) { done.Run(); }, done)));
@@ -234,10 +235,34 @@ static void JNI_ContentUtils_UpdateUserAgent(
     replace(TAB_IMPL, anchor, anchor + "\n"
             "            org.chromium.chrome.browser.base.ArgonUserAgentController"
             ".onTabInitialized(this);")
-    anchor = '      "//components/webauthn/android",\n      "//content/public/browser",'
-    replace(ANDROID_NATIVE_GN, anchor,
-            '      "//components/webauthn/android",\n'
-            '      "//content/common:mojo_bindings",\n      "//content/public/browser",')
+
+    # Keep Chromium's private renderer Mojo interface inside //content.
+    # Android Chrome communicates through the public RenderProcessHost API.
+    anchor = "class StorageKey;"
+    replace(RENDER_PROCESS_HOST_HEADER, anchor,
+            anchor + "\nstruct UserAgentMetadata;")
+    anchor = "  virtual mojom::Renderer* GetRendererInterface() = 0;"
+    replace(RENDER_PROCESS_HOST_HEADER, anchor, """\
+  // Update only the renderer UA cache; security state stays initialized.
+  void UpdateArgonUserAgent(const std::string& user_agent,
+                            const blink::UserAgentMetadata& metadata,
+                            base::OnceClosure callback);
+
+""" + anchor)
+    anchor = '#include "content/common/child_process.mojom.h"'
+    replace(RENDER_PROCESS_HOST_IMPL, anchor,
+            anchor + '\n#include "content/common/renderer.mojom.h"')
+    anchor = "// static\nvoid RenderProcessHost::SetMaxRendererProcessCount(size_t count) {"
+    replace(RENDER_PROCESS_HOST_IMPL, anchor, """\
+void RenderProcessHost::UpdateArgonUserAgent(
+    const std::string& user_agent,
+    const blink::UserAgentMetadata& metadata,
+    base::OnceClosure callback) {
+  GetRendererInterface()->UpdateUserAgent(user_agent, metadata,
+                                          std::move(callback));
+}
+
+""" + anchor)
 
     anchor = "  // Initialize renderer user agent string, user agent metadata, CORS exempt"
     replace(RENDERER_MOJOM, anchor, """\
