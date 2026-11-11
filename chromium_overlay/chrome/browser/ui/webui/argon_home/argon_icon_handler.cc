@@ -17,7 +17,6 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_message_handler.h"
-#include "net/base/load_flags.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_response_headers.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
@@ -138,7 +137,7 @@ class ArgonIconHandler final : public content::WebUIMessageHandler {
     auto resource = std::make_unique<network::ResourceRequest>();
     resource->url = url.GetWithoutRef();
     resource->credentials_mode = network::mojom::CredentialsMode::kOmit;
-    resource->load_flags = net::LOAD_DO_NOT_SEND_AUTH_DATA;
+    resource->do_not_prompt_for_login = true;
     auto loader = network::SimpleURLLoader::Create(
         std::move(resource),
         net::DefineNetworkTrafficAnnotation("argon_site_icon_discovery", R"(

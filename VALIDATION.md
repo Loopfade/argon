@@ -71,7 +71,9 @@ Validation:
    production DNS/IP constraints.
 6. В отдельной job генерирует полные Android GN-графы для ARM64 и ARMv7,
    проверяет наличие явных JNI, Java и APK-целей основного `build.sh`,
-   затем собирает host target `argon_domain_policy_tests` и запускает
+   компилирует ARMv7-объекты контроллера домашней страницы и её обработчиков
+   иконок, поиска и темы с настоящими заголовками Chromium и сгенерированным
+   JNI, затем собирает host target `argon_domain_policy_tests` и запускает
    `TitaniumRuDomainPolicyTest.*` и `ArgonRussianCaPolicyTest.*`
    с настоящими GURL, ICU и public/private PSL
    закреплённого Chromium. Prepared image предоставляет sources/toolchain;

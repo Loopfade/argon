@@ -17,7 +17,7 @@ python3 "$ROOT/.github/ci/check-exit-dex.py" --src "$src"
 # Validate the full Android graphs for both APK architectures before narrowing
 # the host-test graph. Query the same explicit JNI, Java and APK targets used by
 # build.sh; missing targets must fail validation before the manual build starts.
-# Compilation and APK verification still belong to the full build workflow.
+# Compile the native WebUI objects below; APK verification belongs to the full build.
 for arch in arm64 arm; do
   graph_out="$src/out/Argon-graph-$arch"
   python3 "$ROOT/scripts/configure_build.py" --arch "$arch" --output "$graph_out/args.gn"
@@ -26,6 +26,8 @@ for arch in arm64 arm; do
     gn gen "$graph_out"
     ninja -C "$graph_out" -t query \
       obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
+      obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o \
+      obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \
       chrome_java chrome_public_apk > "$graph_out/argon-targets.txt"
@@ -34,11 +36,15 @@ for arch in arm64 arm; do
   python3 "$ROOT/.github/ci/check-exit-integration.py" --out "$graph_out" --java
 done
 
-# Compile the theme and UA targets with the production toolchain: ARMv7 layout,
+# Compile the WebUI, theme and UA targets with the production toolchain: ARMv7 layout,
 # renderer Mojo API, ContentUtils JNI and the complete browser Java sources.
 (
   cd "$src"
   autoninja -C out/Argon-graph-arm -j 4 \
+    obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o \
+    obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o \
+    obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o \
+    obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \
     obj/third_party/blink/renderer/core/core/computed_style.o \
     obj/chrome/browser/ui/android/night_mode/java.javac.jar \
     obj/chrome/browser/android/android/content_utils.o \
@@ -46,6 +52,7 @@ done
     obj/content/renderer/renderer/render_thread_impl.o \
     chrome_java
 )
+echo "PASS: homepage WebUI controller, icon, search and theme handlers compiled"
 echo "PASS: ARMv7 ComputedStyle size assertion"
 echo "PASS: night mode Java module compiled"
 echo "PASS: User-Agent renderer, JNI and browser Java targets compiled"

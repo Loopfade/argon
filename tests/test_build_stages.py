@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ANDROID_TARGETS = [
     "obj/chrome/browser/android/android/argon_certificate_domains_settings.o",
     "obj/chrome/browser/android/android/argon_exit.o",
+    "obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o",
+    "obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o",
     "obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o",
     "obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o",
     "chrome_java",
