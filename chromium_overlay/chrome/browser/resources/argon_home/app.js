@@ -4,6 +4,7 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
 import {imageSource, faviconSources, engineIcon} from './icons.js';
 import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
 import {connectBrowserSearch} from './browser-search.js';
+import {discoverSiteIcons} from './site-icons.js';
 
 (() => {
   'use strict';
@@ -52,7 +53,9 @@ import {connectBrowserSearch} from './browser-search.js';
     return [current,...pageEngines().filter(engine=>engine.id!==current.id)];
   }
   function reportSearchBounds() {
-    if(browserSearch?.available)browserSearch.bounds($('search-form').getBoundingClientRect(),window.scrollY);
+    // The tablet toolbar owns the visible omnibox; it has no WebUI fakebox.
+    if(browserSearch?.available&&!browserSearch.tablet)
+      browserSearch.bounds($('search-form').getBoundingClientRect(),window.scrollY);
   }
   function scheduleSearchBounds() {
     if(searchBoundsFrame)return;
@@ -71,6 +74,7 @@ import {connectBrowserSearch} from './browser-search.js';
   }
   function applyBrowserSearch(value) {
     browserSearchState=value;
+    document.documentElement.classList.toggle('native-tablet-search',value.tablet===true);
     if(value.available)nativeSearchRetries=0;
     if(value.available&&$('search-input').tagName==='INPUT') {
       const draft=$('search-input').value, editingSearch=document.activeElement===$('search-input');
@@ -119,6 +123,7 @@ import {connectBrowserSearch} from './browser-search.js';
     if (undo) { const b=document.createElement('button'); b.type='button'; b.textContent=t("Отменить"); b.addEventListener('click',undo); toast.append(b); }
     toast.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{toast.hidden=true;},undo?7000:3200);
   }
+  let cancelIconSearch = () => {};
   let writing = false;
   let deferredStorageSync = false;
   function syncStoredState() {
@@ -246,6 +251,7 @@ import {connectBrowserSearch} from './browser-search.js';
   $('search-form').addEventListener('submit',e=>{e.preventDefault();if(nativeSearch()){void focusSearch();return;}try{const target=navigationTarget($('search-input').value,selectedEngine().url);if(target)location.assign(target);else void focusSearch();}catch{notify(t("Проверьте адрес сайта или поисковой системы."));}});
 
   function openModal(content,kind,extra='') {
+    cancelIconSearch();cancelIconSearch=()=>{};
     closeEngine();if(!modalKind)returnFocus=document.activeElement;modalKind=kind;
     setHtml($('modal-root'),'<div class="overlay"><section class="dialog '+extra+'" role="dialog" aria-modal="true" aria-labelledby="dialog-title">'+content+'</section></div>');
     document.querySelectorAll('body>.header,body>.workspace,body>.footer').forEach(el=>{el.inert=true;});
@@ -255,6 +261,7 @@ import {connectBrowserSearch} from './browser-search.js';
     const field=$('modal-root').querySelector('[autofocus]')||$('modal-root').querySelector('button,input,select');field?.focus();
   }
   function closeModal() {
+    cancelIconSearch();cancelIconSearch=()=>{};
     const cancelFolderMove=modalKind==='folder'&&moving?.parent===currentFolder;
     if(cancelFolderMove){moving=null;touchDrag=null;clearDrag();}
     const focus=returnFocus;modalKind=null;currentFolder=null;returnFocus=null;setHtml($('modal-root'),'');
@@ -296,6 +303,8 @@ import {connectBrowserSearch} from './browser-search.js';
     const position=item?shortcutList(state.shortcuts,parent).findIndex(s=>s.id===item.id):null;
     openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(item?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(item?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p id=\"icon-help\" class=\"field-help\">PNG, JPG, WebP, GIF или SVG, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
     const form=$('shortcut-form');
+    $('icon-preview').parentElement.insertAdjacentElement('afterend',document.createElement('div')).id='site-icon-finder';
+    setHtml($('site-icon-finder'),'<button type="button" id="find-site-icons" class="upload-zone">'+svg('search')+esc(t('Найти иконки'))+'</button><section id="site-icon-results" class="site-icon-results" hidden><p id="site-icon-status" class="field-help" role="status" aria-live="polite"></p><div id="site-icon-options"></div><p id="site-icon-selection" class="field-help" aria-live="polite"></p></section>');
     $('modal-root').querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{type=b.dataset.type;$('modal-root').querySelectorAll('[data-type]').forEach(t=>t.classList.toggle('active',t===b));$('site-fields').hidden=type==='folder';$('shortcut-url').required=type==='site';}));
     function updatePositions(initial = false) {
       const select=$('shortcut-position');if(!select)return;
@@ -308,7 +317,57 @@ import {connectBrowserSearch} from './browser-search.js';
     updatePositions(true);
     let previewTimer;
     function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
-    function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';preview(); }
+    function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';preview();updateIconSelection(); }
+    const finder=$('site-icon-finder'), findButton=$('find-site-icons'), results=$('site-icon-results');
+    let iconJob=null, foundIcons=[];
+    const iconDescription=icon=>icon.vector?'SVG':icon.width+' × '+icon.height;
+    const updateIconSelection=()=>{
+      finder.querySelectorAll('[data-site-icon]').forEach(button=>button.setAttribute('aria-pressed',String(draftMode==='custom'&&foundIcons[Number(button.dataset.siteIcon)]?.data===draftIcon)));
+    };
+    const resetIconSearch=()=>{
+      iconJob?.abort();iconJob=null;foundIcons=[];
+      results.hidden=true;$('site-icon-options').replaceChildren();$('site-icon-selection').textContent='';
+      findButton.disabled=false;findButton.textContent=t('Найти иконки');results.removeAttribute('aria-busy');
+    };
+    cancelIconSearch=resetIconSearch;
+    // Decode HTML entities using an inert title containing escaped angle
+    // brackets. The downloaded site's elements never enter any document.
+    const decodeIconAttribute=value=>{
+      const markup='<title>'+value.replaceAll('<','&lt;').replaceAll('>','&gt;')+'</title>';
+      return new DOMParser().parseFromString(htmlPolicy?htmlPolicy.createHTML(markup):markup,'text/html').querySelector('title').textContent;
+    };
+    findButton.addEventListener('click',async()=>{
+      let url;try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}
+      resetIconSearch();const job=iconJob=new AbortController();
+      results.hidden=false;results.setAttribute('aria-busy','true');findButton.disabled=true;findButton.textContent=t('Ищем иконки…');
+      $('site-icon-status').textContent=t('Ищем иконки…');$('form-error').hidden=true;
+      try {
+        const icons=await discoverSiteIcons(url,{decodeAttribute:decodeIconAttribute,signal:job.signal});
+        if(job.signal.aborted||$('shortcut-form')!==form)return;
+        foundIcons=icons;
+        $('site-icon-status').textContent=icons.length?t('Найдено иконок: {count}',{count:icons.length}):t('Не удалось найти иконки. Можно загрузить свою.');
+        const group=vector=>{
+          const entries=icons.map((icon,index)=>({icon,index})).filter(entry=>entry.icon.vector===vector);
+          if(!entries.length)return '';
+          return '<p class="site-icon-group">'+esc(t(vector?'Масштабируемые':'Растровые · по форме и разрешению'))+'</p><div class="site-icon-grid">'+entries.map(({icon,index})=>'<button type="button" class="site-icon-option" data-site-icon="'+index+'" aria-pressed="false" aria-label="'+esc(t('Выбрать иконку {size}',{size:iconDescription(icon)}))+'"><span class="site-icon-check" aria-hidden="true">'+svg('check')+'</span><img src="'+esc(icon.data)+'" alt=""><span>'+esc(iconDescription(icon))+'</span><small>'+esc(icon.format||(vector?'SVG':'PNG'))+'</small></button>').join('')+'</div>';
+        };
+        setHtml($('site-icon-options'),group(true)+group(false));updateIconSelection();
+        $('site-icon-selection').textContent=icons.length?t('Выберите вариант. Он применится после сохранения ярлыка.'):'';
+      } catch(error) {
+        if(!job.signal.aborted&&$('shortcut-form')===form)$('site-icon-status').textContent=t('Не удалось найти иконки. Можно загрузить свою.');
+      } finally {
+        if(iconJob===job&&$('shortcut-form')===form){iconJob=null;findButton.disabled=false;findButton.textContent=t('Найти иконки');results.removeAttribute('aria-busy');}
+      }
+    });
+    finder.addEventListener('click',event=>{
+      const button=event.target.closest('[data-site-icon]');if(!button)return;
+      const icon=foundIcons[Number(button.dataset.siteIcon)];if(!icon)return;
+      draftIcon=icon.data;chooseIcon('custom');updateIconSelection();
+      $('site-icon-selection').textContent=t('Выбрано: {size}. Сохраните ярлык.',{size:iconDescription(icon)});$('form-error').hidden=true;
+    });
+    $('shortcut-url').addEventListener('input',resetIconSearch);
+    form.querySelectorAll('[data-type]').forEach(button=>button.addEventListener('click',resetIconSearch));
+    $('icon-file').addEventListener('change',resetIconSearch);
     $('icon-help').hidden=draftMode!=='custom';
     $('favicon-choice').addEventListener('click',()=>chooseIcon('favicon'));$('custom-choice').addEventListener('click',()=>chooseIcon('custom'));
     $('shortcut-url').addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(preview,250);});

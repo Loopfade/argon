@@ -2,6 +2,7 @@
 // Use of this source code is governed by the repository's LICENSE file.
 
 #include "chrome/browser/ui/webui/argon_home/argon_home_ui.h"
+#include "chrome/browser/ui/webui/argon_home/argon_icon_handler.h"
 #include "chrome/browser/ui/webui/argon_home/argon_search_handler.h"
 #include "chrome/browser/ui/webui/argon_home/argon_theme_handler.h"
 
@@ -61,6 +62,9 @@ std::string_view GetResource(std::string_view path) {
   if (path == "browser-search.js") {
     return kArgonHomeSearch;
   }
+  if (path == "site-icons.js") {
+    return kArgonHomeSiteIcons;
+  }
   return {};
 }
 
@@ -74,6 +78,7 @@ bool ArgonHomeUIConfig::IsWebUIEnabled(
 ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
   web_ui->AddMessageHandler(CreateArgonThemeHandler());
   web_ui->AddMessageHandler(CreateArgonSearchHandler());
+  web_ui->AddMessageHandler(CreateArgonIconHandler());
   auto* profile = Profile::FromWebUI(web_ui);
   content::URLDataSource::Add(profile,
                             std::make_unique<SanitizedImageSource>(profile));

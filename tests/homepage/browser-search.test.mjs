@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BrowserSearch, connectBrowserSearch} from '../../chromium_overlay/chrome/browser/resources/argon_home/browser-search.mjs';
 
-const state = (revision=1, id='google', extra={}) => ({revision,available:true,canChange:true,
+const state = (revision=1, id='google', extra={}) => ({revision,available:true,tablet:false,canChange:true,
   enabled:true,engine:{id,name:id,url:'https://'+id+'.example/?q=example'},...extra});
 function fixture(request=async()=>state()) {
   const listeners=new Map(),requests=[],sent=[],updates=[],alphas=[];
@@ -66,6 +66,19 @@ test('only measured, finite bounds are sent; repeated layout notifications do no
   assert.equal(f.sent.length,count);
   await f.search.refresh();f.search.bounds({...rect,top:-10},110);
   assert.equal(f.sent.length,count+1,'restoring the same layout must reattach the native adapter');
+});
+
+test('tablet keeps native omnibox and never reports WebUI fakebox bounds',async()=>{
+  const f=fixture(name=>name==='focusArgonOmnibox');
+  const rect={left:12,top:100,width:300,height:56};
+  f.search.update(state(1,'google',{tablet:true}));
+  assert.equal(f.search.tablet,true);
+  f.search.bounds(rect,0);
+  assert.deepEqual(f.sent,[],'Tablet must not send fakebox geometry');
+  assert.equal(await f.search.focus(),true,'Native focus remains available for keyboard shortcuts');
+  f.search.update(state(2,'google',{tablet:false}));
+  f.search.bounds(rect,0);
+  assert.equal(f.sent.length,1,'Phones still report fakebox bounds');
 });
 
 test('native alpha is bounded and malformed state cannot replace a valid selection',()=>{

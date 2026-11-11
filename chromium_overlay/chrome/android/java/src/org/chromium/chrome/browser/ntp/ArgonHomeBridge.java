@@ -23,6 +23,7 @@ import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.content_public.browser.RenderCoordinates;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
+import org.chromium.ui.base.DeviceFormFactor;
 
 import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
@@ -82,6 +83,14 @@ public final class ArgonHomeBridge {
     @CalledByNative
     private boolean isSupported() {
         return !mContents.isDestroyed() && activity() != null;
+    }
+
+    /** Use Chromium's own tablet form-factor detection, independent of viewport width. */
+    @CalledByNative
+    private boolean isTablet() {
+        if (mContents.isDestroyed()) return false;
+        var window = mContents.getTopLevelNativeWindow();
+        return window != null && DeviceFormFactor.isWindowOnTablet(window);
     }
 
     @CalledByNative

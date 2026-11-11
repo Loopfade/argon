@@ -110,6 +110,9 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
     state.Set("revision", revision_);
     state.Set("available", !bridge_.is_null()
         && Java_ArgonHomeBridge_isSupported(base::android::AttachCurrentThread(), bridge_));
+    // Chromium keeps the native omnibox in the tablet toolbar.
+    state.Set("tablet", !bridge_.is_null()
+        && Java_ArgonHomeBridge_isTablet(base::android::AttachCurrentThread(), bridge_));
     state.Set("canChange", service_ && service_->loaded()
         && service_->CanDefaultSearchProviderBeModifiedByUser());
     base::DictValue engine;
