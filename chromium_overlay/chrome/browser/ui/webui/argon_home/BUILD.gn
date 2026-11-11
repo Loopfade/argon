@@ -3,6 +3,8 @@
 
 source_set("argon_home") {
   sources = [
+    "argon_icon_handler.cc",
+    "argon_icon_handler.h",
     "argon_home_ui.cc",
     "argon_home_ui.h",
     "argon_search_handler.cc",
@@ -21,6 +23,8 @@ source_set("argon_home") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/search_engines",
     "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
+    "//net",
+    "//services/network/public/cpp",
     "//services/network/public/mojom",
     "//url",
   ]

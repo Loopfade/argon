@@ -5,6 +5,15 @@ export function language(value = globalThis.document?.documentElement?.lang ?? '
 }
 
 const english = {
+  "Найти иконки": "Find icons",
+  "Ищем иконки…": "Finding icons…",
+  "Найдено иконок: {count}": "Icons found: {count}",
+  "Не удалось найти иконки. Можно загрузить свою.": "No icons found. You can upload your own.",
+  "Масштабируемые": "Scalable",
+  "Растровые · по форме и разрешению": "Raster · by shape and resolution",
+  "Выбрать иконку {size}": "Choose {size} icon",
+  "Выберите вариант. Он применится после сохранения ярлыка.": "Choose an icon. It will be applied when you save the shortcut.",
+  "Выбрано: {size}. Сохраните ярлык.": "Selected: {size}. Save the shortcut to apply it.",
   "Поисковик браузера: ": "Browser search engine: ",
   "Поисковик браузера": "Browser search engine",
   "Используется и для поиска в адресной строке.": "Also used for searches from the address bar.",

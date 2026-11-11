@@ -5,12 +5,13 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {resolve,dirname} from 'node:path';
 import {checkNativeSearch} from './native-ui-check.mjs';
+import {checkSiteIcons} from './site-icons-ui-check.mjs';
 
 const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE).href);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
+const files={'/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -444,6 +445,7 @@ try {
   await page.goto(base);await page.locator('#search-input').fill('тест поиска');
   const search=page.waitForRequest(r=>r.isNavigationRequest()&&r.url().startsWith('https://noai.duckduckgo.com/?q='));
   await page.locator('#search-form button[type=submit]').click();await search;
+  await checkSiteIcons(browser,base,errors,out);
   assert.deepEqual(errors,[]);
   console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');
 } catch(error) {
