@@ -317,7 +317,7 @@ import {discoverSiteIcons} from './site-icons.js';
     updatePositions(true);
     let previewTimer;
     function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
-    function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';preview(); }
+    function chooseIcon(mode) { draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';preview();updateIconSelection(); }
     const finder=$('site-icon-finder'), findButton=$('find-site-icons'), results=$('site-icon-results');
     let iconJob=null, foundIcons=[];
     const iconDescription=icon=>icon.vector?'SVG':icon.width+' × '+icon.height;
@@ -334,7 +334,7 @@ import {discoverSiteIcons} from './site-icons.js';
     // brackets. The downloaded site's elements never enter any document.
     const decodeIconAttribute=value=>{
       const markup='<title>'+value.replaceAll('<','&lt;').replaceAll('>','&gt;')+'</title>';
-      return new DOMParser().parseFromString(htmlPolicy?htmlPolicy.createHTML(markup):markup,'text/html').title;
+      return new DOMParser().parseFromString(htmlPolicy?htmlPolicy.createHTML(markup):markup,'text/html').querySelector('title').textContent;
     };
     findButton.addEventListener('click',async()=>{
       let url;try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}
@@ -367,8 +367,6 @@ import {discoverSiteIcons} from './site-icons.js';
     });
     $('shortcut-url').addEventListener('input',resetIconSearch);
     form.querySelectorAll('[data-type]').forEach(button=>button.addEventListener('click',resetIconSearch));
-    $('favicon-choice').addEventListener('click',()=>queueMicrotask(updateIconSelection));
-    $('custom-choice').addEventListener('click',()=>queueMicrotask(updateIconSelection));
     $('icon-file').addEventListener('change',resetIconSearch);
     $('icon-help').hidden=draftMode!=='custom';
     $('favicon-choice').addEventListener('click',()=>chooseIcon('favicon'));$('custom-choice').addEventListener('click',()=>chooseIcon('custom'));

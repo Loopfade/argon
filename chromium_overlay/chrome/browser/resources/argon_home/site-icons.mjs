@@ -168,7 +168,7 @@ function textResource(resource, page = false) {
 export function decodeIconImage(candidate, resource) {
   return new Promise(resolve => {
     let source = candidate.url;
-    if (!source.startsWith('data:')) {
+    if (!/^data:/i.test(source)) {
       if (!IMAGE_MIME.test(resource?.mime || '') || typeof resource.body !== 'string'
           || resource.body.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4) { resolve(null); return; }
       source = 'data:' + resource.mime.toLowerCase() + ';base64,' + resource.body;
@@ -247,7 +247,7 @@ export async function discoverSiteIcons(value, {readResource = readBrowserResour
     while (index < unique.length) {
       check();
       const position = index++, candidate = unique[position];
-      const resource = candidate.url.startsWith('data:') ? {} : await read('image', candidate.url);
+      const resource = /^data:/i.test(candidate.url) ? {} : await read('image', candidate.url);
       check();
       const icon = await loadImage(candidate, resource);
       check(); if (icon) decoded[position] = icon;
