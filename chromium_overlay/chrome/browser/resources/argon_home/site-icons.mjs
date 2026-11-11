@@ -188,7 +188,7 @@ export function decodeIconImage(candidate, resource) {
           // Uploaded SVGs are already supported by the homepage. Keep vectors
           // local and scalable, normalizing non-base64 data URLs as well.
           const comma = source.indexOf(','), header = source.slice(0, comma);
-          if (/;base64$/i.test(header)) data = source;
+          if (/;base64$/i.test(header)) data = 'data:image/svg+xml;base64,' + source.slice(comma + 1);
           else {
             const bytes = new TextEncoder().encode(decodeURIComponent(source.slice(comma + 1)));
             let binary = '';

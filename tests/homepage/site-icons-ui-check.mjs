@@ -29,6 +29,7 @@ export async function checkSiteIcons(browser, base, errors, out) {
         '<link rel="icon" href="vector.svg">'+
         '<link rel="apple-touch-icon" href="large.png" sizes="16x16">'+
         '<link rel="manifest" href="../pwa/app.webmanifest">'+
+        '<link rel="icon" href="DATA:IMAGE/SVG+XML;base64,'+images['https://icons.example/assets/vector.svg'].body+'">'+
         '<script>window.untrustedIconScriptExecuted=true;</script>'+ '<img src="https://tripwire.example/should-never-load.png">';
       const fixture=window.argonIconFixture={calls:[],hold:false,release:null,
         async read(kind,url){
