@@ -8,8 +8,8 @@ import android.os.Looper;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.exit.ArgonExitCoordinator;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.content_public.browser.WebContents;
 
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public final class ArgonHomeStartup {
         for (var waiter : new ArrayList<>(WAITERS)) waiter.check();
     }
 
-    private static final class Waiter extends EmptyTabObserver implements Runnable {
+    private static final class Waiter implements TabObserver, Runnable {
         private final Tab mTab;
         private @Nullable Runnable mReady;
 
