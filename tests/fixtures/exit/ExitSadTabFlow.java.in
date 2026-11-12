@@ -1,0 +1,150 @@
+import java.util.ArrayList;
+import java.util.List;
+
+final class ExitSadTabFlow {
+    static final String TAG = "Tab";
+    static final class Gate {
+        static boolean closing, pending, backgroundBlocked;
+        static boolean isBlockingPages() { return closing || pending; }
+    }
+    static final class Activity {}
+    static final class ActivityState {
+        static final int RESUMED = 1, PAUSED = 2, STOPPED = 3, DESTROYED = 4;
+    }
+    static final class ApplicationStatus {
+        static int state = ActivityState.RESUMED;
+        static int getStateForActivity(Activity ignored) { return state; }
+    }
+    static final class Window {
+        java.lang.ref.WeakReference<Activity> getActivity() {
+            return new java.lang.ref.WeakReference<>(new Activity());
+        }
+    }
+    static final class GURL {
+        String getSpec() { return "https://example.org/"; }
+    }
+    static final class NativePage {
+        GURL getUrl() { return new GURL(); }
+        static boolean isNativePageUrl(GURL url, boolean incognito, boolean pdf) { return false; }
+    }
+    static final class PdfUtils {
+        static boolean shouldOpenPdfInline(boolean incognito) { return false; }
+        static boolean isDownloadedPdf(String url) { return false; }
+    }
+    static final class Tab {
+        boolean destroyed, hidden, needsReload;
+        int crashes, shown;
+        SadTab sad;
+        boolean isDestroyed() { return destroyed; }
+        boolean isHidden() { return hidden; }
+        boolean needsReload() { return needsReload; }
+        void setNeedsReload() { needsReload = true; }
+        boolean isNativePage() { return false; }
+        boolean isIncognito() { return false; }
+        NativePage getNativePage() { return new NativePage(); }
+        GURL getUrl() { return new GURL(); }
+        int getId() { return 1; }
+        Object getProfile() { return this; }
+        Window getWindowAndroidChecked() { return new Window(); }
+        void reload() { needsReload = false; }
+        void handleTabCrash() { crashes++; }
+    }
+    static final class TabImpl {
+        static Object getThemedApplicationContext() { return null; }
+    }
+    static final class TabUtils {
+        static Activity getActivity(Tab ignored) { return new Activity(); }
+    }
+    static final class R {
+        static final class string { static final int help_context_sad_tab = 1; }
+    }
+    static final class HelpAndFeedbackLauncherImpl {
+        static HelpAndFeedbackLauncherImpl getForProfile(Object profile) {
+            return new HelpAndFeedbackLauncherImpl();
+        }
+        void show(Activity activity, String context, Object unused) {}
+        void showHelpAndFeedbackForUrl(Activity activity, String url, String context) {}
+    }
+    static final class SadTab {
+        final Tab tab;
+        SadTab(Tab tab) { this.tab = tab; }
+        static SadTab from(Tab tab) {
+            if (tab.sad == null) tab.sad = new SadTab(tab);
+            return tab.sad;
+        }
+        static boolean isShowing(Tab tab) { return tab.shown > 0; }
+        boolean showSendFeedbackView() { return false; }
+        void show(Object context, Runnable suggestionAction, Runnable buttonAction) { tab.shown++; }
+    }
+    static final class Log { static void i(String tag, String message) {} }
+    static final class TaskTraits { static final int UI_DEFAULT = 0; }
+    static final class PostTask {
+        static final List<Runnable> queue = new ArrayList<>();
+        static void postTask(int traits, Runnable action) { queue.add(action); }
+        static void drain() {
+            var pending = new ArrayList<>(queue); queue.clear();
+            for (var action : pending) action.run();
+        }
+    }
+    static final class RecordHistogram {
+        static int crashes;
+        static void recordBooleanHistogram(String name, boolean value) { crashes++; }
+    }
+    static <T> T assumeNonNull(T object) { return object; }
+    final Tab mTab = new Tab();
+
+    // PRODUCTION_METHODS
+
+    static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+    static ExitSadTabFlow fresh() {
+        Gate.closing = false; Gate.pending = false; Gate.backgroundBlocked = false;
+        PostTask.queue.clear(); RecordHistogram.crashes = 0;
+        ApplicationStatus.state = ActivityState.RESUMED;
+        return new ExitSadTabFlow();
+    }
+    public static void main(String[] args) {
+        var normal = fresh();
+        normal.primaryMainFrameRenderProcessGone(1);
+        check(normal.mTab.shown == 0 && PostTask.queue.size() == 1, "real crash must post SadTab");
+        PostTask.drain();
+        check(normal.mTab.shown == 1 && normal.mTab.crashes == 1, "real crash handling was lost");
+
+        for (boolean recovery : new boolean[] {false, true}) {
+            var exit = fresh();
+            Gate.closing = !recovery; Gate.pending = recovery;
+            exit.primaryMainFrameRenderProcessGone(1);
+            check(PostTask.queue.isEmpty(), "intentional exit queued SadTab");
+            check(exit.mTab.needsReload && exit.mTab.crashes == 1,
+                    "exit must retain reload state and crash observer notifications");
+            check(RecordHistogram.crashes == 0, "intentional exit recorded as renderer crash");
+        }
+
+        var queued = fresh();
+        queued.primaryMainFrameRenderProcessGone(1);
+        Gate.closing = true;
+        PostTask.drain();
+        check(queued.mTab.shown == 0 && queued.mTab.crashes == 1,
+                "SadTab queued before Exit was still displayed");
+
+        var destroyed = fresh();
+        destroyed.primaryMainFrameRenderProcessGone(1);
+        destroyed.mTab.destroyed = true; PostTask.drain();
+        check(destroyed.mTab.shown == 0, "destroyed tab displayed a queued SadTab");
+
+        for (int state : new int[] {ActivityState.RESUMED, ActivityState.PAUSED, ActivityState.STOPPED}) {
+            var background = fresh();
+            ApplicationStatus.state = state; background.mTab.hidden = true;
+            background.primaryMainFrameRenderProcessGone(1);
+            check(background.mTab.needsReload && background.mTab.crashes == 1
+                    && PostTask.queue.isEmpty(), "background-tab crash handling changed");
+        }
+
+        var reopened = fresh();
+        Gate.backgroundBlocked = true;
+        reopened.primaryMainFrameRenderProcessGone(1); PostTask.drain();
+        check(reopened.mTab.shown == 1, "background-work policy must not suppress a real crash");
+        System.out.println("PASS: exit/recovery SadTab suppression, queued callback, real crashes and background tabs");
+    }
+}

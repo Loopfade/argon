@@ -1,0 +1,94 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
+    private void showSadTab(SadTab sadTab) {
+        sadTab.show(
+                TabImpl.getThemedApplicationContext(),
+                /* suggestionAction= */ () -> {
+                    Activity activity = mTab.getWindowAndroidChecked().getActivity().get();
+                    assert activity != null;
+                    HelpAndFeedbackLauncherImpl.getForProfile(mTab.getProfile())
+                            .show(
+                                    activity,
+                                    activity.getString(R.string.help_context_sad_tab),
+                                    null);
+                },
+
+                /* buttonAction= */ () -> {
+                    if (sadTab.showSendFeedbackView()) {
+                        Activity activity = TabUtils.getActivity(mTab);
+                        if (activity != null) {
+                            HelpAndFeedbackLauncherImpl.getForProfile(mTab.getProfile())
+                                    .showHelpAndFeedbackForUrl(
+                                            activity,
+                                            mTab.getUrl().getSpec(),
+                                            "MobileSadTabFeedback");
+                        }
+                    } else {
+                        mTab.reload();
+                    }
+                });
+    }
+
+        public void primaryMainFrameRenderProcessGone(@TerminationStatus int terminationStatus) {
+            // If the renderer process was destroyed due to the tab being destroyed, don't try to
+            // handle this or treat it as a tab crash.
+            if (mTab.isDestroyed()) return;
+
+            Log.i(
+                    TAG,
+                    "primaryMainFrameRenderProcessGone() for tab id: "
+                            + mTab.getId()
+                            + ", already needs reload: "
+                            + Boolean.toString(mTab.needsReload())
+                            + ", termination status: "
+                            + Integer.toString(terminationStatus));
+            // Do nothing for subsequent calls that happen while the tab remains crashed. This
+            // can occur when the tab is in the background and it shares the renderer with other
+            // tabs. After the renderer crashes, the WebContents of its tabs are still around
+            // and they still share the RenderProcessHost. When one of the tabs reloads spawning
+            // a new renderer for the shared RenderProcessHost and the new renderer crashes
+            // again, all tabs sharing this renderer will be notified about the crash (including
+            // potential background tabs that did not reload yet).
+            if (mTab.needsReload() || SadTab.isShowing(mTab)) return;
+
+            // If the renderer crashes for a native page, it can be ignored as we never show that
+            // content. The URL check is done in addition to the isNativePage to ensure a navigation
+            // off the native page did not result in the crash.
+            if (mTab.isNativePage()
+                    && (assumeNonNull(mTab.getNativePage()).getUrl().equals(mTab.getUrl().getSpec())
+                            || NativePage.isNativePageUrl(
+                                    mTab.getUrl(),
+                                    mTab.isIncognito(),
+                                    PdfUtils.shouldOpenPdfInline(mTab.isIncognito())
+                                            && PdfUtils.isDownloadedPdf(
+                                                    mTab.getUrl().getSpec())))) {
+                return;
+            }
+
+            int activityState =
+                    ApplicationStatus.getStateForActivity(
+                            mTab.getWindowAndroidChecked().getActivity().get());
+            if (mTab.isHidden()
+                    || activityState == ActivityState.PAUSED
+                    || activityState == ActivityState.STOPPED
+                    || activityState == ActivityState.DESTROYED) {
+                // The tab crashed in background or was killed by the OS out-of-memory killer.
+                mTab.setNeedsReload();
+            } else {
+                // TODO(crbug.com/40127852): Remove the PostTask and call SadTab directly when
+                // WebContentsObserverProxy observers' iterator concurrency issue is fixed.
+                // Showing the SadTab will cause the content view hosting WebContents to lose focus.
+                // Post the show in order to avoid immediately triggering
+                // {@link WebContentsObserver#onWebContentsLostFocus}. This will ensure all
+                // observers in {@link WebContentsObserverProxy} receive callbacks for
+                // {@link WebContentsObserver#primaryMainFrameRenderProcessGone} first.
+                SadTab sadTab = SadTab.from(mTab);
+                PostTask.postTask(TaskTraits.UI_DEFAULT, () -> showSadTab(sadTab));
+                // This is necessary to correlate histogram data with stability counts.
+                RecordHistogram.recordBooleanHistogram("Stability.Android.RendererCrash", true);
+            }
+
+            mTab.handleTabCrash();
+        }

@@ -1,3 +1,4 @@
+.argon-home-starting body{visibility:hidden}
 .browser-search-ready .native-search-box{text-align:start;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text}
 /* Tablet Chromium already renders its omnibox; never show another search field. */
 .native-tablet-search .search-wrap{display:none!important}

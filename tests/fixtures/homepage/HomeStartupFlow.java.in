@@ -1,0 +1,92 @@
+package org.chromium.chrome.browser.ntp;
+
+import android.os.Handler;
+import org.chromium.chrome.browser.exit.ArgonExitCoordinator;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.content_public.browser.WebContents;
+
+final class HomeStartupFlow {
+    static int callbacks;
+    static void check(boolean value, String message) {
+        if (!value) throw new AssertionError(message);
+    }
+    static void wait(Tab tab) { ArgonHomeStartup.waitForFirstFrame(tab, () -> callbacks++); }
+    static void idle() {
+        check(Handler.tasks.isEmpty(), "startup timeout leaked");
+    }
+    public static void main(String[] args) {
+        Tab home = new Tab();
+        wait(home);
+        check(callbacks == 0 && home.observers.size() == 1, "cover released before homepage frame");
+        home.changed();
+        check(callbacks == 0, "WebContents attachment alone released the cover");
+        ArgonHomeStartup.onFirstFrameReady(home.contents);
+        check(callbacks == 1 && home.observers.isEmpty(), "paint did not release/clean up startup");
+        idle();
+
+        wait(home);
+        check(callbacks == 2, "already-painted restored homepage waited for a missing event");
+        idle();
+        ArgonHomeStartup.reset(home.contents);
+        wait(home);
+        check(callbacks == 2, "reload reused the previous document's readiness");
+        WebContents old = home.contents;
+        home.contents = new WebContents(); home.changed();
+        ArgonHomeStartup.onFirstFrameReady(old);
+        check(callbacks == 2, "old WebContents released the new page");
+        ArgonHomeStartup.onFirstFrameReady(home.contents);
+        check(callbacks == 3, "replacement frame did not release startup");
+        idle();
+
+        Tab frozen = new Tab(); frozen.contents = null;
+        wait(frozen); check(callbacks == 3, "frozen homepage was exposed before attachment");
+        frozen.contents = new WebContents(); frozen.changed();
+        check(callbacks == 3, "attachment exposed a blank initial frame");
+        ArgonHomeStartup.onFirstFrameReady(frozen.contents);
+        check(callbacks == 4, "attached homepage did not become ready"); idle();
+
+        Tab firstWindow = new Tab(), secondWindow = new Tab();
+        wait(firstWindow); wait(firstWindow); wait(secondWindow);
+        ArgonHomeStartup.onFirstFrameReady(firstWindow.contents);
+        check(callbacks == 6 && secondWindow.observers.size() == 1,
+                "readiness crossed windows or lost an Activity recreation callback");
+        secondWindow.home = false; secondWindow.urlChanged();
+        check(callbacks == 7, "navigation away left the launch window blocked"); idle();
+
+        for (int failure = 0; failure < 4; failure++) {
+            Tab tab = new Tab(); wait(tab);
+            int before = callbacks;
+            if (failure == 0) { tab.error = true; tab.changed(); }
+            if (failure == 1) tab.crash();
+            if (failure == 2) tab.destroy();
+            if (failure == 3) Handler.expire();
+            check(callbacks == before + 1 && tab.observers.isEmpty(),
+                    "failed startup did not expose recovery UI and detach observers");
+            ArgonHomeStartup.onFirstFrameReady(tab.contents);
+            check(callbacks == before + 1, "late frame invoked startup callback twice"); idle();
+        }
+
+        ArgonExitCoordinator.blocking = true;
+        Tab recovery = new Tab(); int before = callbacks;
+        wait(recovery);
+        check(callbacks == before + 1, "pending cleanup's status UI was hidden behind startup");
+        idle(); ArgonExitCoordinator.blocking = false;
+
+        for (int other = 0; other < 4; other++) {
+            Tab tab = new Tab();
+            if (other == 0) tab.home = false;
+            if (other == 1) tab.incognito = true;
+            if (other == 2) tab.extensionOverride = true;
+            before = callbacks; wait(other == 3 ? null : tab);
+            check(callbacks == before + 1, "ordinary/native/extension page waited for Argon WebUI");
+            idle();
+        }
+
+        Tab background = new Tab(); background.hidden = true;
+        before = callbacks; wait(background);
+        check(callbacks == before, "background state was confused with Exit");
+        ArgonHomeStartup.onFirstFrameReady(background.contents);
+        check(callbacks == before + 1, "background homepage did not acknowledge its frame"); idle();
+        System.out.println("PASS: first frame, frozen/restored tabs, reload, windows, failures, recovery and background state");
+    }
+}

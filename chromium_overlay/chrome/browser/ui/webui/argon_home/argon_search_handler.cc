@@ -16,6 +16,7 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
@@ -27,6 +28,7 @@
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/template_url_service_observer.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_message_handler.h"
@@ -61,6 +63,8 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
         &ArgonSearchHandler::Focus, base::Unretained(this)));
     web_ui()->RegisterMessageCallback("setArgonSearchBoxBounds", base::BindRepeating(
         &ArgonSearchHandler::SetBounds, base::Unretained(this)));
+    web_ui()->RegisterMessageCallback("argonHomeReady", base::BindRepeating(
+        &ArgonSearchHandler::HomeReady, base::Unretained(this)));
   }
 
   void OnSearchBoxAlphaChanged(float alpha, bool focused) {
@@ -86,6 +90,7 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
   void OnJavascriptDisallowed() override { Stop(); }
 
   void Stop() {
+    weak_factory_.InvalidateWeakPtrs();
     pending_.clear();
     if (service_) {
       service_->RemoveObserver(this);
@@ -257,10 +262,28 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
         values[0], values[1], values[2], values[3], values[4]);
   }
 
+  void HomeReady(const base::ListValue& args) {
+    if (!args.empty() || !IsJavascriptAllowed() || bridge_.is_null()) return;
+    auto* frame = web_ui()->GetWebContents()->GetPrimaryMainFrame();
+    if (!frame) return;
+    // Wait for the configured DOM to reach a renderer frame before releasing
+    // Android's launch cover. Stop() invalidates callbacks from old documents.
+    frame->InsertVisualStateCallback(base::BindOnce(
+        &ArgonSearchHandler::OnFirstFrameReady, weak_factory_.GetWeakPtr()));
+  }
+
+  void OnFirstFrameReady(bool success) {
+    if (success && IsJavascriptAllowed() && !bridge_.is_null()) {
+      Java_ArgonHomeBridge_onFirstFrameReady(
+          base::android::AttachCurrentThread(), bridge_);
+    }
+  }
+
   raw_ptr<TemplateURLService> service_ = nullptr;
   int revision_ = 0;
   std::vector<base::Value> pending_;
   base::android::ScopedJavaGlobalRef<jobject> bridge_;
+  base::WeakPtrFactory<ArgonSearchHandler> weak_factory_{this};
 };
 
 static void JNI_ArgonHomeBridge_OnSearchBoxAlphaChanged(

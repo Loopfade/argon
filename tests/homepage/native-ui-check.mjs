@@ -24,7 +24,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
       let release;
       const startup=new Promise(resolve=>{release=resolve;});
       const f=window.argonNativeFixture={
-        calls:[],listenerCalls:[],blocked:false,newBridge:false,release:()=>release(),
+        calls:[],listenerCalls:[],readyFrames:[],blocked:false,newBridge:false,release:()=>release(),
         state:{revision:1,available:true,tablet:false,canChange:true,enabled:true,
           engine:{id:'google',name:'Google',url:'https://www.google.com/search?q=example'}},
         emit(name,value){listeners.get(name)?.(value);},
@@ -37,6 +37,11 @@ export async function checkNativeSearch(browser, base, errors, out) {
         addWebUiListener(name,callback){f.listenerCalls.push(name);listeners.set(name,callback);},
         send(name,args){
           f.calls.push([name,...args]);
+          if(name==='argonHomeReady')f.readyFrames.push({
+            provider:document.querySelector('#selected-engine-name').textContent,
+            theme:document.documentElement.dataset.theme,
+            visibility:getComputedStyle(document.body).visibility,
+          });
           if(name==='setArgonSearchBoxBounds'&&f.newBridge){
             f.newBridge=false;
             f.emit('argon-search-box-state',{alpha:1,focused:false});
@@ -70,9 +75,16 @@ export async function checkNativeSearch(browser, base, errors, out) {
     const focusCount=number=>page.waitForFunction(count=>window.argonNativeFixture.calls
       .filter(call=>call[0]==='focusArgonOmnibox').length>=count,number);
     await page.goto(base);
-    await page.locator('#search-input').fill('черновик запроса');
+    assert.equal(await page.locator('body').evaluate(node=>getComputedStyle(node).visibility),'hidden',
+      'Saved DuckDuckGo provider must not be painted before the browser replies with Google');
+    // A draft can also arrive through restoration/autofill before the bridge.
+    await native(()=>{document.querySelector('#search-input').value='черновик запроса';});
     await native(()=>window.argonNativeFixture.release());
     await focusCount(1);
+    await page.waitForFunction(()=>window.argonNativeFixture.readyFrames.length===1);
+    assert.deepEqual(await native(()=>window.argonNativeFixture.readyFrames[0]),
+      {provider:'Google',theme:'amoled',visibility:'visible'},
+      'First native frame acknowledgement must follow provider and theme configuration');
     assert.equal(await page.locator('#search-input').evaluate(node=>node.tagName),'BUTTON');
     assert.equal(await native(()=>window.argonNativeFixture.calls
       .find(call=>call[0]==='focusArgonOmnibox')[1]),'черновик запроса');
@@ -109,6 +121,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
 
     const boundsBefore=await native(()=>window.argonNativeFixture.calls
       .filter(call=>call[0]==='setArgonSearchBoxBounds').length);
+    const readyBefore=await native(()=>window.argonNativeFixture.readyFrames.length);
     await native(()=>{
       const f=window.argonNativeFixture;
       f.emit('argon-search-box-state',{alpha:0,focused:true});
@@ -116,6 +129,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
       dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
     });
     await page.waitForFunction(()=>!document.querySelector('#search-form').inert);
+    await page.waitForFunction(count=>window.argonNativeFixture.readyFrames.length>count,readyBefore);
     assert((await native(()=>window.argonNativeFixture.calls
       .filter(call=>call[0]==='setArgonSearchBoxBounds').length))>boundsBefore,
       'Restored document must resend unchanged geometry to a new adapter');
