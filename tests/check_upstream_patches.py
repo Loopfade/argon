@@ -42,6 +42,7 @@ from test_exit_downloads import run_download_guard
 from test_exit_renderer import verify_renderer_gate
 from test_exit_navigation import verify_navigation_gate
 from test_exit_android_api import SETTINGS_API, verify_exit_android_api
+from test_exit_sad_tab import verify_sad_tab_source
 from test_user_agent_runtime import run_runtime_flow
 from test_user_agent_renderer import verify_native_state, verify_renderer_update
 from upstream_sources import chromium_url, download
@@ -638,6 +639,7 @@ def main():
         print(verify_native_state((src / user_agent.UA_UTILS).read_text()))
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
+        verify_sad_tab_source((src / 'chrome/android/java/src/org/chromium/chrome/browser/tab/TabWebContentsObserver.java').read_text())
         explicit_exit.apply(src)
         print(run_prepaint_flow((src / 'chrome/browser/android/tab_android.cc').read_text()).strip())
         print(verify_renderer_gate(src))

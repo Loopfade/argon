@@ -128,6 +128,14 @@ def verify_activation_sources(manager, container, coordinator, adapter):
 
 # Android and browser boundaries only. The adapter itself and its interface are unmodified.
 STUBS = {
+    'org/chromium/chrome/browser/ntp/ArgonHomeStartup.java': '''
+package org.chromium.chrome.browser.ntp;
+import org.chromium.content_public.browser.WebContents;
+public class ArgonHomeStartup {
+    static void reset(WebContents contents) {}
+    static void onFirstFrameReady(WebContents contents) {}
+}
+''',
     'android/app/Activity.java': """
 package android.app;
 public class Activity {

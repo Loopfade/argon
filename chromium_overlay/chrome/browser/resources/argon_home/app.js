@@ -26,6 +26,7 @@ import {discoverSiteIcons} from './site-icons.js';
   const homeTheme = globalThis.argonHomeTheme;
   let browserSearch=null, browserSearchState=null, selectingEngine=false, searchBoundsFrame=0;
   let connectingSearch=null, nativeSearchRetries=0;
+  let initialThemeReady=false, startupFinished=false;
   const nativeSearch = () => browserSearchState?.available === true;
   const originalSearchInput=$('search-input').cloneNode(true);
   const builtins = [
@@ -61,6 +62,15 @@ import {discoverSiteIcons} from './site-icons.js';
     if(searchBoundsFrame)return;
     searchBoundsFrame=requestAnimationFrame(()=>{searchBoundsFrame=0;reportSearchBounds();});
   }
+  function reportHomeFrame() {
+    reportSearchBounds();
+    globalThis.argonHomeStartup.finish(()=>browserSearch?.bindings.send('argonHomeReady',[]));
+  }
+  function finishStartup() {
+    if(startupFinished)return;
+    startupFinished=true;
+    reportHomeFrame();
+  }
   async function focusSearch(text = '') {
     if(!nativeSearch()){$('search-input').focus();return;}
     closeEngine();
@@ -95,10 +105,12 @@ import {discoverSiteIcons} from './site-icons.js';
       scheduleSearchBounds();
     }
     renderEngine();
+    if(initialThemeReady&&value.available)finishStartup();
   }
   const connectSearch = async () => {
     if(connectingSearch)return connectingSearch;
     connectingSearch=(async()=>{
+      const reconnecting=startupFinished;
       try {
         if(browserSearch)await browserSearch.refresh();
         else browserSearch=await connectBrowserSearch(applyBrowserSearch,(alpha,focused)=>{
@@ -107,6 +119,9 @@ import {discoverSiteIcons} from './site-icons.js';
           $('search-form').inert=focused;
         });
         scheduleSearchBounds();
+        // A restored document may acquire a new native bridge without running
+        // this module again. Acknowledge its current frame without hiding it.
+        if(reconnecting&&browserSearch?.available)reportHomeFrame();
         if(browserSearch&&!browserSearch.available&&!document.hidden&&nativeSearchRetries++<20)
           setTimeout(()=>void connectSearch(),250);
       }catch(error){console.warn('Argon search:',error);}
@@ -161,7 +176,7 @@ import {discoverSiteIcons} from './site-icons.js';
     updateThemeHelp();
   }
   const connectTheme = () => homeTheme.connect().catch(error => console.warn('Argon theme:', error));
-  void connectTheme();
+  const initialTheme=connectTheme();
   window.addEventListener('pageshow', event => { if (event.persisted) void connectTheme(); });
   document.addEventListener('click',async e=>{const b=e.target.closest('[data-theme-choice]');if(b&&await commit(s=>{s.theme=b.dataset.themeChoice;}))applyTheme();});
   function updateEditing() {
@@ -579,7 +594,12 @@ import {discoverSiteIcons} from './site-icons.js';
     if(e.key==='Tab'&&modalKind){const controls=[...$('modal-root').querySelectorAll('a[href],button:not([disabled]),input:not([type=hidden]),select')].filter(el=>el.offsetParent!==null);const first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
   });
   refresh();
-  void connectSearch();
+  // Normal startup is released by the native provider reply, followed by a
+  // visual-state acknowledgement. startup.js owns the independent fail-open.
+  void Promise.all([initialTheme,connectSearch()]).then(()=>{
+    initialThemeReady=true;
+    if(!browserSearch||browserSearch.available)finishStartup();
+  });
   if(store.loadError)notify(t("Не удалось прочитать настройки. Исходные данные сохранены; можно восстановить дамп."));
 })();
 

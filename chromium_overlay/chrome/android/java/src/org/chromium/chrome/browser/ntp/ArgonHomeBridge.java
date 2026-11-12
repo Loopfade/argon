@@ -76,6 +76,7 @@ public final class ArgonHomeBridge {
     @CalledByNative
     private static @Nullable ArgonHomeBridge create(WebContents contents, long observer) {
         var page = new ArgonHomeBridge(contents, observer);
+        ArgonHomeStartup.reset(contents);
         PAGES.put(contents, new WeakReference<>(page));
         return page;
     }
@@ -94,9 +95,15 @@ public final class ArgonHomeBridge {
     }
 
     @CalledByNative
+    private void onFirstFrameReady() {
+        ArgonHomeStartup.onFirstFrameReady(mContents);
+    }
+
+    @CalledByNative
     private void destroy() {
         var reference = PAGES.get(mContents);
         if (reference != null && reference.get() == this) {
+            ArgonHomeStartup.reset(mContents);
             Tab tab = mHomeNavigation == null ? null : mHomeNavigation.get();
             if (tab != null && tab.getWebContents() == mContents && !tab.isDestroyed()
                     && !tab.isIncognito() && !tab.isShowingErrorPage()
@@ -221,6 +228,16 @@ public final class ArgonHomeBridge {
 
     /** Recognize our home before the renderer and the measured fakebox are ready. */
     public static boolean isHomeToolbarActive(@Nullable Tab tab) {
+        return isHomeActive(tab, true);
+    }
+
+    // Launch readiness must also cover the interval before WebContents has
+    // acquired its Activity. Toolbar availability is not a first-frame signal.
+    static boolean isHomeStartup(@Nullable Tab tab) {
+        return isHomeActive(tab, false);
+    }
+
+    private static boolean isHomeActive(@Nullable Tab tab, boolean requireActivity) {
         if (tab == null || tab.isDestroyed() || tab.isIncognito() || tab.isShowingErrorPage()
                 || EARLY_NAVIGATIONS.containsKey(tab) || !isHomeUrl(tab.getUrl())) return false;
         var contents = tab.getWebContents();
@@ -229,7 +246,7 @@ public final class ArgonHomeBridge {
         if (reference != null) {
             var page = reference.get();
             return page != null && page.mNativeObserver != 0 && !page.mNavigatingAway
-                    && page.isSupported();
+                    && (!requireActivity || page.isSupported());
         }
         // Direct chrome://argon belongs to us even with an NTP override. Aliases must
         // preserve an extension's or enterprise policy's replacement new-tab page.

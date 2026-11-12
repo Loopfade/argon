@@ -57,6 +57,11 @@ final class StartupDrawFlow {
         void onActiveTabAvailable() { initial = false; }
         void onActiveTabAvailableForRecreation() { recreation = false; }
     }
+    // The readiness lifecycle is exercised with the production helper in
+    // test_homepage_startup.py; this routing harness supplies an already-ready frame.
+    static final class HomeStartup {
+        static void waitForFirstFrame(Tab tab, Runnable ready) { ready.run(); }
+    }
     static final class Compositor {
         Runnable swapCallback;
         void addDidSwapBuffersCallback(Runnable callback) { swapCallback = callback; }

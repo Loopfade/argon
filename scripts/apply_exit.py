@@ -12,6 +12,7 @@ INPUT_PATHS = tuple(map(Path, (
     JAVA + 'app/ChromeActivity.java', JAVA + 'ConfirmQuitHelper.java',
     JAVA + 'ChromeTabbedActivity.java',
     JAVA + 'init/ChromeLifetimeController.java', JAVA + 'tab/TabImpl.java',
+    JAVA + 'tab/TabWebContentsObserver.java',
     JAVA + 'LaunchIntentDispatcher.java',
     JAVA + 'background_task_scheduler/ChromeBackgroundTaskFactory.java',
     JAVA + 'tabbed_mode/TabbedAppMenuPropertiesDelegate.java',
@@ -152,6 +153,17 @@ def patch_tab_native(text):
       chrome::android::kTabAndroidGracefulShutdown);'''
     return replace(text, before, '''  bool enable_graceful_shutdown = !argon::IsExitInProgress() &&
       base::FeatureList::IsEnabled(chrome::android::kTabAndroidGracefulShutdown);''')
+
+
+def patch_tab_observer(text):
+    # Preserve reload/crash notifications and session saving, but do not turn
+    # intentional renderer shutdown into a visible SadTab. Recheck when the
+    # posted UI task runs: Exit may start after that task was queued.
+    text = insert(text, '    private void showSadTab(SadTab sadTab) {', f'''
+        if (mTab.isDestroyed() || {PACKAGE}.isBlockingPages()) return;''')
+    return replace(text, '            if (mTab.isHidden()\n', f'''            if ({PACKAGE}.isBlockingPages()
+                    || mTab.isHidden()
+''')
 
 
 def patch_android_gn(text):
@@ -343,7 +355,7 @@ def patch_search_index(text):
 
 
 TRANSFORMS = dict(zip(INPUT_PATHS, (
-    patch_activity, patch_quit, patch_tabbed_activity, patch_controller, patch_tab, patch_launch,
+    patch_activity, patch_quit, patch_tabbed_activity, patch_controller, patch_tab, patch_tab_observer, patch_launch,
     patch_background_tasks, patch_menu, patch_lifetime, patch_tab_native,
     patch_android_gn, patch_content_client, patch_content_client_source,
     patch_chrome_client, patch_chrome_client_source, patch_renderer,

@@ -47,6 +47,9 @@ std::string_view GetResource(std::string_view path) {
   if (path == "theme.js") {
     return kArgonHomeTheme;
   }
+  if (path == "startup.js") {
+    return kArgonHomeStartup;
+  }
   if (path == "state.js") {
     return kArgonHomeState;
   }

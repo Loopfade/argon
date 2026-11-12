@@ -19,7 +19,8 @@ def input_tree(root):
         homepage.NATIVE_FACTORY: (FIXTURES / 'native_page_factory_method.java.in').read_text(),
         homepage.NATIVE_HANDLER: (FIXTURES / 'new_tab_page_url_handler.cc.in').read_text(),
         homepage.URL_RESOLVER_FACTORY: (FIXTURES / 'UrlConstantResolverFactory.java.in').read_text(),
-        homepage.TABBED_ACTIVITY: (FIXTURES / 'startup_draw_block.java.in').read_text(),
+        homepage.TABBED_ACTIVITY: (FIXTURES / 'startup_draw_block.java.in').read_text()
+            + '\n' + (FIXTURES / 'create_initial_tab.java.in').read_text(),
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
         homepage.TOOLBAR_MANAGER: (FIXTURES / 'toolbar_constructor_init.java.in').read_text()
@@ -271,6 +272,8 @@ class HomepageTests(unittest.TestCase):
                 text = homepage.patch_startup_draw(original) if patched else original
                 block = homepage.method_source(text, homepage.STARTUP_SIGNATURE)
                 harness = template.replace('ARGON_STARTUP_BLOCK', block)
+                harness = harness.replace('org.chromium.chrome.browser.ntp.ArgonHomeStartup',
+                                          'HomeStartup')
                 harness = harness.replace('ARGON_FACTORY_METHOD', factory)
                 src = Path(directory) / 'StartupDrawFlow.java'
                 src.write_text(harness)

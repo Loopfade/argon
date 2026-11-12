@@ -1,0 +1,44 @@
+// Copyright 2015 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
+    private void createInitialTab() {
+        Log.i(TAG, "#createInitialTab executed.");
+        mPendingInitialTabCreation = false;
+        boolean incognito = mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD;
+
+        String url = null;
+        GURL homepageGurl = HomepageManager.getInstance().getHomepageGurlForZeroTabs(incognito);
+
+        ProfileProvider profileProvider = getProfileProviderSupplier().get();
+        assumeNonNull(profileProvider);
+        Profile profile =
+                incognito
+                        ? profileProvider.getOffTheRecordProfile()
+                        : profileProvider.getOriginalProfile();
+        UrlConstantResolver urlConstantResolver = UrlConstantResolverFactory.getForProfile(profile);
+        // Migrate legacy NTP URLs (chrome://newtab) to the newer format
+        // (chrome-native://newtab).
+        if (homepageGurl.isEmpty() || UrlUtilities.isNtpUrl(homepageGurl)) {
+            url = urlConstantResolver.getNtpUrl();
+        } else {
+            url = homepageGurl.getSpec();
+        }
+        getTabCreator(incognito).launchUrl(url, TabLaunchType.FROM_STARTUP);
+        PartnerBrowserCustomizations.getInstance()
+                .onCreateInitialTab(
+                        url,
+                        getLifecycleDispatcher(),
+                        HomepageManager::getHomepageCharacterizationHelper);
+
+        // If we didn't call setInitialOverviewState() in onStartWithNative() because
+        // mPendingInitialTabCreation was true then do so now.
+        if (hasStartWithNativeBeenCalled()) {
+            setInitialOverviewState();
+        }
+
+        mAppLaunchDrawBlocker.onActiveTabAvailable();
+        mAppLaunchDrawBlocker.onActiveTabAvailableForRecreation();
+        // Launch history as a fresh instance of Chrome.
+        maybeLaunchHistory();
+    }

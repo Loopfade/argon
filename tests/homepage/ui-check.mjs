@@ -11,7 +11,7 @@ const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE)
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
+const files={'/startup.js':'startup.js','/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}

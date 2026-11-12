@@ -25,6 +25,7 @@ NEW_TAB_BUTTON = Path('chrome/browser/ui/android/toolbar/java/src/org/chromium/c
 JAVA_CATALOG = Path('chrome/android/chrome_java_sources.gni')
 JNI_CATALOG = Path('chrome/android/BUILD.gn')
 JAVA_BRIDGE = Path('chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java')
+JAVA_STARTUP = JAVA_BRIDGE.with_name('ArgonHomeStartup.java')
 INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
                TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, NEW_TAB_BUTTON, JAVA_CATALOG, JNI_CATALOG)
 
@@ -131,6 +132,21 @@ STARTUP_AFTER = '''                boolean isTabWebUiNtp = UrlOverrideUtils.isWe
                         && !isTabWebUiNtp
                         && !isArgonHomeNtp) {'''
 
+STARTUP_FRAME_BEFORE = '''                } else {
+                    mAppLaunchDrawBlocker.onActiveTabAvailable();
+                }'''
+STARTUP_FRAME_AFTER = '''                } else {
+                    org.chromium.chrome.browser.ntp.ArgonHomeStartup.waitForFirstFrame(
+                            currentTab, mAppLaunchDrawBlocker::onActiveTabAvailable);
+                }'''
+INITIAL_TAB_SIGNATURE = '    private void createInitialTab() {'
+INITIAL_TAB_DIGEST = 'af29387383df44396d7b8f95fc6148f0cf2fa9afe4e95cc7fe4f5c1bcbfe8588'
+INITIAL_TAB_BEFORE = '''        mAppLaunchDrawBlocker.onActiveTabAvailable();
+        mAppLaunchDrawBlocker.onActiveTabAvailableForRecreation();'''
+INITIAL_TAB_AFTER = '''        org.chromium.chrome.browser.ntp.ArgonHomeStartup.waitForFirstFrame(
+                getActivityTab(), mAppLaunchDrawBlocker::onActiveTabAvailable);
+        mAppLaunchDrawBlocker.onActiveTabAvailableForRecreation();'''
+
 RESOLVER_BEFORE = '''        UrlConstantResolver resolver = new UrlConstantResolver();
         resolver.registerOverride(
                 getOriginalNativeNtpUrl(),
@@ -231,8 +247,18 @@ def patch_resolver_factory(text):
 
 
 def patch_startup_draw(text):
-    return reviewed_method(text, STARTUP_SIGNATURE, STARTUP_DIGEST,
-                           STARTUP_BEFORE, STARTUP_AFTER)
+    original = method_source(text, STARTUP_SIGNATURE)
+    reviewed = original.replace(STARTUP_FRAME_AFTER, STARTUP_FRAME_BEFORE)
+    reviewed = reviewed_method(reviewed, STARTUP_SIGNATURE, STARTUP_DIGEST,
+                               STARTUP_BEFORE, STARTUP_AFTER)
+    patched = replace_once(reviewed, STARTUP_FRAME_BEFORE, STARTUP_FRAME_AFTER)
+    return replace_once(text, original, patched)
+
+
+def patch_activity_startup(text):
+    text = patch_startup_draw(text)
+    return reviewed_method(text, INITIAL_TAB_SIGNATURE, INITIAL_TAB_DIGEST,
+                           INITIAL_TAB_BEFORE, INITIAL_TAB_AFTER)
 
 
 def patch_toolbar_capture(text):
@@ -430,8 +456,10 @@ def patch_toolbar(text):
 
 def patch_java_catalog(text):
     anchor = '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",'
-    return replace_once(text, anchor,
-                        '  "java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",\n' + anchor)
+    previous = '  "java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",\n' + anchor
+    current = previous.replace(anchor,
+        '  "java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",\n' + anchor)
+    return replace_once(text, previous if previous in text else anchor, current)
 
 
 def patch_jni_catalog(text):
@@ -447,6 +475,7 @@ def resource_header(resources):
                ('app.css', 'kArgonHomeCss', 'ARGON_CSS'),
                ('app.js', 'kArgonHomeJs', 'ARGON_JS'),
                ('theme.js', 'kArgonHomeTheme', 'ARGON_THEME'),
+               ('startup.js', 'kArgonHomeStartup', 'ARGON_STARTUP'),
                ('state.mjs', 'kArgonHomeState', 'ARGON_STATE'),
                ('icons.mjs', 'kArgonHomeIcons', 'ARGON_ICONS'),
                ('bookmarks.mjs', 'kArgonHomeBookmarks', 'ARGON_BOOKMARKS'),
@@ -466,7 +495,7 @@ def apply(src):
     transforms = [(CONFIGS, patch_configs), (GN, patch_gn),
                   (NATIVE_FACTORY, patch_factory), (NATIVE_HANDLER, patch_handler),
                   (URL_RESOLVER_FACTORY, patch_resolver_factory),
-                  (TABBED_ACTIVITY, patch_startup_draw),
+                  (TABBED_ACTIVITY, patch_activity_startup),
                   (TOOLBAR_MANAGER, patch_toolbar), (JAVA_CATALOG, patch_java_catalog),
                   (TOOLBAR_CONTAINER, patch_toolbar_capture),
                   (TOOLBAR_PHONE, patch_phone_toolbar),
@@ -481,10 +510,11 @@ def apply(src):
                 raise ValueError(f'Refusing to overwrite an unexpected homepage source: {target}')
             writes[target] = value
     writes[src / UI / 'argon_home_resources.inc'] = resource_header(OVERLAY / RESOURCES)
-    bridge = (OVERLAY / JAVA_BRIDGE).read_text()
-    if (src / JAVA_BRIDGE).exists() and (src / JAVA_BRIDGE).read_text() != bridge:
-        raise ValueError('Unexpected Argon home bridge source')
-    writes[src / JAVA_BRIDGE] = bridge
+    for path in (JAVA_BRIDGE, JAVA_STARTUP):
+        value = (OVERLAY / path).read_text()
+        if (src / path).exists() and (src / path).read_text() != value:
+            raise ValueError(f'Unexpected Argon home source: {path}')
+        writes[src / path] = value
     for target, value in writes.items():
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists() or target.read_text() != value:
