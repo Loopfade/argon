@@ -8,6 +8,7 @@ import tempfile
 
 from upstream_sources import chromium_url, download
 from test_homepage_shortcut import verify_shortcut_sources
+from test_homepage_startup import run_startup_flow
 from test_homepage_native import (
     DELEGATE_API, TOOLBAR_PHONE, PHONE_TOKEN, verify_delegate_api, verify_toolbar_scroll_source,
     URL_OVERRIDES, verify_url_override_api,
@@ -37,6 +38,9 @@ def main():
 
     delegate = read(DELEGATE_API)
     verify_delegate_api(delegate)
+    observer = read('chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java')
+    print(run_startup_flow(observer).strip())
+    print('PASS: production homepage startup compiles with the complete pinned TabObserver interface')
     verify_url_override_api(read(URL_OVERRIDES))
     verify_shortcut_sources(read)
     toolbar_phone = read(TOOLBAR_PHONE)
