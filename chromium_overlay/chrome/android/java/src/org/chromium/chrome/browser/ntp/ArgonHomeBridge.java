@@ -326,11 +326,6 @@ public final class ArgonHomeBridge {
 
             private @Nullable ArgonHomeBridge current() { return page(currentTab.get()); }
 
-            private boolean hasErrorPage() {
-                Tab tab = currentTab.get();
-                return tab != null && tab.isShowingErrorPage();
-            }
-
             @Override
             public boolean wasShowingNtp() {
                 return mWasShowingHome || fallback.wasShowingNtp();
@@ -338,8 +333,9 @@ public final class ArgonHomeBridge {
 
             @Override
             public boolean isCurrentlyVisible() {
-                return !hasErrorPage()
-                        && (isHomeToolbarActive(currentTab.get()) || fallback.isCurrentlyVisible());
+                Tab tab = currentTab.get();
+                return (tab == null || !tab.isShowingErrorPage())
+                        && (isHomeToolbarActive(tab) || fallback.isCurrentlyVisible());
             }
 
             @Override
@@ -349,8 +345,9 @@ public final class ArgonHomeBridge {
 
             @Override
             public boolean isLocationBarShown() {
-                return !hasErrorPage()
-                        && (isHomeToolbarActive(currentTab.get()) || fallback.isLocationBarShown());
+                Tab tab = currentTab.get();
+                return (tab == null || !tab.isShowingErrorPage())
+                        && (isHomeToolbarActive(tab) || fallback.isLocationBarShown());
             }
 
             @Override
