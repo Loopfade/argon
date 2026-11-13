@@ -88,7 +88,7 @@ class ArgonBookmarksHandler final : public content::WebUIMessageHandler,
     return result;
   }
 
-  base::DictValue Snapshot() const {
+  base::DictValue Snapshot() {
     base::DictValue result;
     const bool ready = model_ && model_->loaded();
     result.Set("available", model_ != nullptr);

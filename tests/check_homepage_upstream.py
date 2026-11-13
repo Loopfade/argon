@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 
 from upstream_sources import chromium_url, download
+from test_homepage_bookmarks import WEBUI_HANDLER, verify_bookmark_webui_api
 from test_homepage_shortcut import verify_shortcut_sources
 from test_homepage_startup import run_startup_flow
 from test_homepage_native import (
@@ -36,6 +37,8 @@ def main():
             return (args.chromium_src / path).read_text()
         return download(chromium_url(revision, path))
 
+    verify_bookmark_webui_api(read(WEBUI_HANDLER))
+    print('PASS: production bookmark snapshot compiles with the pinned WebUI accessor')
     delegate = read(DELEGATE_API)
     verify_delegate_api(delegate)
     observer = read('chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java')
