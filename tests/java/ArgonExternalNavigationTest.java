@@ -96,6 +96,16 @@ public class ArgonExternalNavigationTest {
         var fallback=new GURL("https://play.google.com/store/apps/details?id=test.app");
         check(flow.navigate(app,new Intent("tg://resolve"),fallback).action.equals("fallback:"+fallback.url), "Blocked intent fallbacks navigate inside the browser, including store URLs");
         check(flow.launches==1 && !app.started, "Fallback must not take the WebAPK or app-store launch branches");
+        var webIntent=new NavigationFlow.Params("intent://denied.test");
+        check(flow.navigate(webIntent,new Intent("https://denied.test/watch"),empty).action.equals("fallback:https://denied.test/watch"), "An intent's HTTP(S) data is usable as its web version without an explicit fallback");
+        var allowedParams=new NavigationFlow.Params("https://allowed.test");
+        check(flow.fallback(allowedParams,new GURL("https://denied.test"),true).action.equals("fallback:https://denied.test"), "An allowed initial destination cannot authorize an unlisted fallback WebAPK");
+        check(flow.market(allowedParams,"missing.app",empty).action.startsWith("fallback:https://play.google.com/"), "A missing app cannot bypass the allow list by launching the store");
+        check(flow.launches==1, "Fallback and store checks prevent all unlisted dispatches");
+        policy.addSite("play.google.com");
+        check(flow.market(allowedParams,"missing.app",empty).action.equals("usual-market-rules"), "An explicitly allowed store site retains Chromium rules");
+        check(flow.fallback(allowedParams,new GURL("https://allowed.test/web"),true).action.equals("usual-fallback-rules"), "Allowed fallback URLs retain Chromium rules");
+        flow.launches=1;
         var params=new NavigationFlow.Params("tg://resolve?domain=allowed.test");
         check(flow.navigate(params,new Intent("tg://resolve"),empty).action.equals("cancel"), "Blocked app-only links are consumed");
         check(params.started && !params.completed && flow.notices==1, "The current page stays while a notice explains the block");

@@ -24,6 +24,13 @@ USER_GUARD = '''        // ARGON: apply the user's destination-site policy befor
             if (!browserFallbackUrl.isEmpty()) {
                 return OverrideUrlLoadingResult.forNavigateTab(browserFallbackUrl, params);
             }
+            var data = targetIntent.getData();
+            if (data != null) {
+                GURL webUrl = new GURL(data.toString());
+                if (webUrl.isValid() && UrlUtilities.isHttpOrHttps(webUrl)) {
+                    return OverrideUrlLoadingResult.forNavigateTab(webUrl, params);
+                }
+            }
             if (params.isMainFrame() && params.hasUserGesture()
                     && !params.isBackgroundTabNavigation() && mDelegate.isApplicationInForeground()) {
                 mDelegate.onExternalNavigationBlocked();
@@ -39,6 +46,25 @@ USER_GUARD = '''        // ARGON: apply the user's destination-site policy befor
                         }
                     });
             return OverrideUrlLoadingResult.forAsyncAction();
+        }
+'''
+
+FALLBACK_GUARD = '''        // ARGON: a fallback is a new destination, not an inherited permission.
+        if (canLaunchExternalFallback
+                && mDelegate.shouldBlockExternalNavigationForUser(browserFallbackUrl,
+                        new Intent(Intent.ACTION_VIEW, Uri.parse(browserFallbackUrl.getSpec())))) {
+            canLaunchExternalFallback = false;
+        }
+'''
+
+MARKET_GUARD = '''        // ARGON: installing a missing app must also respect the store site's permission.
+        GURL storeUrl = fallbackUrl.isEmpty()
+                ? new GURL("https://play.google.com/store/apps/details?id="
+                        + Uri.encode(packageName == null ? "" : packageName))
+                : fallbackUrl;
+        if (mDelegate.shouldBlockExternalNavigationForUser(storeUrl,
+                new Intent(Intent.ACTION_VIEW, Uri.parse(storeUrl.getSpec())))) {
+            return OverrideUrlLoadingResult.forNavigateTab(storeUrl, params);
         }
 '''
 
@@ -66,7 +92,11 @@ def patch_delegate(text):
 
 def patch_handler(text):
     anchor = "        targetIntent.removeExtra(EXTRA_BROWSER_FALLBACK_URL);\n"
-    return replace_once(text, anchor, anchor + "\n" + USER_GUARD)
+    text = replace_once(text, anchor, anchor + "\n" + USER_GUARD)
+    anchor = "        if (canLaunchExternalFallback) {\n"
+    text = replace_once(text, anchor, FALLBACK_GUARD + "\n" + anchor)
+    anchor = '        Uri.Builder builder = new Uri.Builder().scheme("market").authority("details");'
+    return replace_once(text, anchor, MARKET_GUARD + "\n" + anchor)
 
 
 def patch_chrome_delegate(text):
@@ -85,7 +115,8 @@ def patch_chrome_delegate(text):
 
 
 def patch_menu(text):
-    anchor = "</PreferenceScreen>"
+    anchor = ('    <org.chromium.components.browser_ui.settings.ChromeBasePreference\n'
+              '        android:fragment="org.chromium.chrome.browser.homepage.settings.HomepageSettings"')
     return replace_once(text, anchor, '''    <org.chromium.components.browser_ui.settings.ChromeBasePreference
         android:key="argon_external_navigation"
         android:order="25"
@@ -96,14 +127,14 @@ def patch_menu(text):
 
 
 def patch_java_sources(text):
-    anchor = '  "java/src/org/chromium/chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",'
+    anchor = "chrome_java_ext_rel_path_sources = ["
     block = "\n".join('  "java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigation'
                       + name + '.java",' for name in ("Policy", "Settings"))
     return replace_once(text, anchor, anchor + "\n" + block)
 
 
 def patch_resources(text):
-    anchor = '  "java/res/values-ru/argon_widget_strings.xml",'
+    anchor = "chrome_app_java_resources_ext_rel_path_sources = ["
     block = "\n".join('  "java/res/' + folder + '/argon_external_navigation_strings.xml",'
                       for folder in ("values", "values-ru"))
     return replace_once(text, anchor, anchor + "\n" + block)

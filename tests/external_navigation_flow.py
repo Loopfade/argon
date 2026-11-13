@@ -51,10 +51,13 @@ public class Context {
 public class ContextUtils { public static android.content.Context getApplicationContext() { return new android.content.Context(); } }''',
     "android/net/Uri.java": '''package android.net;
 public class Uri { private final String value; private Uri(String v) { value=v; }
+  public static String encode(String v) { return java.net.URLEncoder.encode(v, java.nio.charset.StandardCharsets.UTF_8); }
   public static Uri parse(String v) { return new Uri(v); } public String toString() { return value; } }''',
     "android/content/Intent.java": '''package android.content;
 public class Intent {
+  public static final String ACTION_VIEW="view";
   private android.net.Uri data; public Intent() {}
+  public Intent(String action, android.net.Uri value) { data=value; }
   public Intent(String value) { data = value == null ? null : android.net.Uri.parse(value); }
   public android.net.Uri getData() { return data; }
 }''',
@@ -92,7 +95,8 @@ public class GURL {
       valid=!scheme.isEmpty() && (!(scheme.equals("http")||scheme.equals("https")) || !host.isEmpty());
     } catch(Exception ignored) {}
   }
-  public boolean isValid() { return valid; } public boolean isEmpty() { return url.isEmpty(); } public String getScheme() { return scheme; }
+  public boolean isValid() { return valid; } public boolean isEmpty() { return url.isEmpty(); }
+  public String getSpec() { return url; } public String getScheme() { return scheme; }
   public String getHost() { return host; } public String getUsername() { return user; } public String getPassword() { return password; }
 }''',
     "org/chromium/components/embedder_support/util/UrlUtilities.java": '''package org.chromium.components.embedder_support.util;
@@ -150,9 +154,10 @@ def resources_java(sources):
     return result + "public static java.util.Map<Integer,String> text=java.util.Map.ofEntries(" + ",".join(entries) + ");}\n"
 
 
-def run_flow(guard):
+def run_flow(guard, fallback_guard, market_guard):
     adapters = dict(ADAPTERS)
     flow = (ROOT / "tests/fixtures/external_navigation/NavigationFlow.java.in").read_text().replace("/* USER_GUARD */", guard)
+    flow = flow.replace("/* FALLBACK_GUARD */", fallback_guard).replace("/* MARKET_GUARD */", market_guard)
     test = ROOT / "tests/java/ArgonExternalNavigationTest.java"
     production = [OVERLAY / "src" / PACKAGE / ("ArgonExternalNavigation" + name + ".java")
                   for name in ("Policy", "Settings")]
@@ -182,8 +187,9 @@ def run_flow(guard):
 def verify_upstream(src):
     import apply_external_navigation as patch
     handler = (src / patch.HANDLER).read_text()
-    if handler.count(patch.USER_GUARD) != 1:
-        raise ValueError("Missing or duplicate destination-site guard")
+    for block in (patch.USER_GUARD, patch.FALLBACK_GUARD, patch.MARKET_GUARD):
+        if handler.count(block) != 1:
+            raise ValueError("Missing or duplicate destination-site guard")
     entry = handler.index("public OverrideUrlLoadingResult shouldOverrideUrlLoading(")
     guard = handler.index(patch.USER_GUARD, entry)
     if guard > handler.index("shouldOverrideUrlLoadingInternal(", entry):
@@ -196,4 +202,8 @@ def verify_upstream(src):
         raise ValueError("Review the custom tab inheritance of the user policy")
     if "shouldBlockExternalNavigationForUser(" in custom_tab:
         raise ValueError("Review the custom tab override of the user policy")
-    return run_flow(handler[guard:guard + len(patch.USER_GUARD)])
+    fallback = handler.index(patch.FALLBACK_GUARD)
+    market = handler.index(patch.MARKET_GUARD)
+    return run_flow(handler[guard:guard + len(patch.USER_GUARD)],
+                    handler[fallback:fallback + len(patch.FALLBACK_GUARD)],
+                    handler[market:market + len(patch.MARKET_GUARD)])

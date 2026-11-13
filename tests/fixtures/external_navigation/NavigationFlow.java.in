@@ -1,6 +1,7 @@
 package org.chromium.chrome.browser.externalnav;
 
 import android.content.Intent;
+import android.net.Uri;
 import org.chromium.url.GURL;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 
@@ -46,5 +47,20 @@ public class NavigationFlow {
 /* USER_GUARD */
         launches++;
         return new OverrideUrlLoadingResult("usual-browser-rules");
+    }
+
+    public OverrideUrlLoadingResult fallback(Params params, GURL browserFallbackUrl, boolean canLaunchExternalFallback) {
+/* FALLBACK_GUARD */
+        if (canLaunchExternalFallback) {
+            launches++;
+            return new OverrideUrlLoadingResult("usual-fallback-rules");
+        }
+        return OverrideUrlLoadingResult.forNavigateTab(browserFallbackUrl, params);
+    }
+
+    public OverrideUrlLoadingResult market(Params params, String packageName, GURL fallbackUrl) {
+/* MARKET_GUARD */
+        launches++;
+        return new OverrideUrlLoadingResult("usual-market-rules");
     }
 }
