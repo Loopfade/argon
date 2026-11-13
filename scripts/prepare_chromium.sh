@@ -89,6 +89,7 @@ case "${1:-}" in
     python3 "$SCRIPT_DIR/scripts/apply_user_agent.py" --chromium-src "$PWD"
     python3 "$SCRIPT_DIR/scripts/apply_background_playback.py" --chromium-src "$PWD"
     python3 "$SCRIPT_DIR/scripts/apply_exit.py" --chromium-src "$PWD"
+    python3 "$SCRIPT_DIR/scripts/apply_external_navigation.py" --chromium-src "$PWD"
     touch "$SCRIPT_DIR/.build/argon-patched"
     ;;
   validate)

@@ -46,6 +46,7 @@ RELEASE_PAYLOAD_FILES = {
     "scripts/apply_dark_themes.py",
     "scripts/apply_browsing_data_period.py",
     "scripts/apply_user_agent.py",
+    "scripts/apply_external_navigation.py",
     "scripts/configure_build.py",
     "scripts/fetch_pinned_extension.py",
     "scripts/fetch_pinned_filter_lists.py",

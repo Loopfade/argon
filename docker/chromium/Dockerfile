@@ -59,7 +59,7 @@ COPY --chown=argon:argon patch.sh ./
 COPY --chown=argon:argon scripts/apply_scoped_ca.py scripts/apply_background_playback.py \
     scripts/apply_modulemap.py scripts/apply_browsing_data_period.py \
     scripts/apply_homepage.py scripts/apply_exit.py scripts/apply_dark_themes.py \
-    scripts/apply_user_agent.py ./scripts/
+    scripts/apply_user_agent.py scripts/apply_external_navigation.py ./scripts/
 COPY --chown=argon:argon patches/ ./patches/
 COPY --chown=argon:argon chromium_overlay/ ./chromium_overlay/
 COPY --chown=argon:argon certificates/ ./certificates/

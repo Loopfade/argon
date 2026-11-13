@@ -35,6 +35,7 @@ import apply_browsing_data_period as deletion_period
 import apply_exit as explicit_exit
 import apply_user_agent as user_agent
 import apply_homepage as homepage
+import apply_external_navigation as external_navigation
 from test_dark_theme_prepaint import run_prepaint_flow
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
@@ -45,6 +46,7 @@ from test_exit_android_api import SETTINGS_API, verify_exit_android_api
 from test_exit_sad_tab import verify_sad_tab_source
 from test_user_agent_runtime import run_runtime_flow
 from test_user_agent_renderer import verify_native_state, verify_renderer_update
+from external_navigation_flow import verify_upstream as verify_external_navigation
 from upstream_sources import chromium_url, download
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
@@ -106,6 +108,8 @@ BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE
 BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in homepage.INPUT_PATHS if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in (*external_navigation.INPUT_PATHS, *external_navigation.API_PATHS)
+                    if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 LINKER_HEADER = Path("base/android/linker/linker_jni.h")
 BASE_PATHS += (LINKER_HEADER,)
 EXTENSION_PATHS = (
@@ -641,6 +645,8 @@ def main():
         background.apply(src)
         verify_sad_tab_source((src / 'chrome/android/java/src/org/chromium/chrome/browser/tab/TabWebContentsObserver.java').read_text())
         explicit_exit.apply(src)
+        external_navigation.apply(src)
+        print(verify_external_navigation(src))
         print(run_prepaint_flow((src / 'chrome/browser/android/tab_android.cc').read_text()).strip())
         print(verify_renderer_gate(src))
         print(verify_navigation_gate(src))
@@ -690,6 +696,7 @@ def main():
         user_agent.apply(src)
         background.apply(src)
         explicit_exit.apply(src)
+        external_navigation.apply(src)
         after = {path: path.read_bytes() for path in src.rglob("*")
                  if path.is_file() and ".git" not in path.relative_to(src).parts}
         if before != after:
