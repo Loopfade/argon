@@ -18,7 +18,7 @@ class ArgonHomeUIConfig : public content::DefaultWebUIConfig<ArgonHomeUI> {
   bool IsWebUIEnabled(content::BrowserContext* browser_context) override;
 };
 
-// The bundled homepage has no native message handlers or remote script sources.
+// The bundled homepage uses profile services and has no remote script sources.
 class ArgonHomeUI : public content::WebUIController {
  public:
   explicit ArgonHomeUI(content::WebUI* web_ui);

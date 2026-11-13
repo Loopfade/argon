@@ -231,7 +231,7 @@ class HomepageTests(unittest.TestCase):
         self.assertIn('AddMessageHandler(CreateArgonThemeHandler())', controller)
         self.assertLess(html.index('src="theme.js"'), html.index('href="app.css"'))
         self.assertIn('std::make_unique<SanitizedImageSource>(profile)', controller)
-        self.assertIn("img-src 'self' data: chrome://image;", controller)
+        self.assertIn("img-src 'self' data: chrome://image chrome://favicon2;", controller)
         self.assertIn('//chrome/browser/ui/webui/sanitized_image:sanitized_image_source',
                       (homepage.OVERLAY / homepage.UI / 'BUILD.gn').read_text())
 

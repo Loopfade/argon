@@ -60,6 +60,49 @@ export function validateState(raw) {
   // Keep density readable by older builds. They ignore the optional scale
   // fields and can still restore all shortcuts, icons and other preferences.
   const sizing = {};
+  if (raw.bookmarksMigrated !== undefined) {
+    if (typeof raw.bookmarksMigrated !== 'boolean') throw new Error(t("Некорректные настройки закладок."));
+    sizing.bookmarksMigrated = raw.bookmarksMigrated;
+  }
+  // Native bookmark backups retain full folder paths without changing the old
+  // shortcuts format. This field is imported only after an explicit Restore.
+  if (raw.browserBookmarks !== undefined) {
+    if (!Array.isArray(raw.browserBookmarks) || raw.browserBookmarks.length > 20000) throw new Error(t("Некорректные настройки закладок."));
+    sizing.browserBookmarks = raw.browserBookmarks.map(record => {
+      if (!object(record) || !Array.isArray(record.path) || record.path.length > 64) throw new Error(t("Некорректные настройки закладок."));
+      const result = {name:text(record.name,t("Название ярлыка"),4096), path:record.path.map(part=>text(part,t("Название папки"),4096))};
+      if (record.folder === true) result.folder = true;
+      else result.url = webUrl(record.url);
+      if (record.iconMode !== undefined) {
+        if (!['favicon','custom'].includes(record.iconMode)) throw new Error(t("Некорректные настройки закладок."));
+        result.iconMode = record.iconMode;
+      }
+      if (record.icon !== undefined) {
+        if (!ICONS.has(record.icon)) throw new Error(t("Неизвестная иконка в дампе."));
+        result.icon = record.icon;
+      }
+      if (record.customIcon !== undefined) result.customIcon = customIcon(record.customIcon);
+      if (record.legacyId !== undefined) result.legacyId = identifier(record.legacyId);
+      return result;
+    });
+  }
+  if (raw.bookmarkIcons !== undefined) {
+    if (!object(raw.bookmarkIcons) || Object.keys(raw.bookmarkIcons).length > 2000) throw new Error(t("Некорректные настройки закладок."));
+    sizing.bookmarkIcons = {};
+    for (const [id, value] of Object.entries(raw.bookmarkIcons)) {
+      if (!/^\d+$/.test(id) || !object(value)) throw new Error(t("Некорректные настройки закладок."));
+      const icon = {};
+      if (!['favicon', 'custom'].includes(value.iconMode)) throw new Error(t("Некорректные настройки закладок."));
+      icon.iconMode = value.iconMode;
+      if (value.icon !== undefined) {
+        if (!ICONS.has(value.icon)) throw new Error(t("Неизвестная иконка в дампе."));
+        icon.icon = value.icon;
+      }
+      if (value.customIcon !== undefined) icon.customIcon = customIcon(value.customIcon);
+      if (value.legacyId !== undefined) icon.legacyId = identifier(value.legacyId);
+      sizing.bookmarkIcons[id] = icon;
+    }
+  }
   if (raw.shortcutScale !== undefined) {
     if (!Number.isInteger(raw.shortcutScale) || raw.shortcutScale < 50 || raw.shortcutScale > 200) throw new Error(t("Укажите целое число от 50 до 200."));
     sizing.shortcutScale = raw.shortcutScale;
@@ -125,7 +168,18 @@ export function validateState(raw) {
     if (item.customIcon !== undefined) result.customIcon = customIcon(item.customIcon);
     return result;
   }
-  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, ...sizing, shortcuts: raw.shortcuts.map(item => shortcut(item))};
+  const result = {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, ...sizing, shortcuts: raw.shortcuts.map(item => shortcut(item))};
+  if (raw.bookmarkMigrationBackup !== undefined) {
+    result.bookmarkMigrationBackup = validateState({...initialState(), shortcuts:raw.bookmarkMigrationBackup}).shortcuts;
+  }
+  const legacyIds = new Set();
+  for (const item of result.bookmarkMigrationBackup??[]) {
+    for (const entry of item.children??[item]) legacyIds.add(entry.id);
+  }
+  for (const icon of [...Object.values(result.bookmarkIcons??{}),...(result.browserBookmarks??[])]) {
+    if (icon.legacyId && !legacyIds.has(icon.legacyId)) throw new Error(t("Некорректные настройки закладок."));
+  }
+  return result;
 }
 
 // These IDs belong to the first mockup. Only unchanged examples are removed.
@@ -198,6 +252,15 @@ export function dumpStats(state) {
       if (site.iconMode !== 'favicon' && /^data:image\//i.test(site.customIcon ?? '')) icons++;
     }
   });
+  if (state.browserBookmarks) {
+    for (const record of state.browserBookmarks) {
+      if (record.folder) folders++;
+      else {
+        sites++;
+        if (record.iconMode !== 'favicon' && /^data:image\//i.test(record.customIcon ?? '')) icons++;
+      }
+    }
+  }
   return {sites, folders, icons, engines: state.customEngines.length};
 }
 

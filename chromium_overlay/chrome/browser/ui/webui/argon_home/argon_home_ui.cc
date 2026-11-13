@@ -2,9 +2,11 @@
 // Use of this source code is governed by the repository's LICENSE file.
 
 #include "chrome/browser/ui/webui/argon_home/argon_home_ui.h"
+#include "chrome/browser/ui/webui/argon_home/argon_bookmarks_handler.h"
 #include "chrome/browser/ui/webui/argon_home/argon_icon_handler.h"
 #include "chrome/browser/ui/webui/argon_home/argon_search_handler.h"
 #include "chrome/browser/ui/webui/argon_home/argon_theme_handler.h"
+#include "chrome/browser/ui/webui/favicon_source.h"
 
 #include <memory>
 #include <string>
@@ -21,6 +23,7 @@
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "content/public/browser/web_ui_message_handler.h"
+#include "components/favicon_base/favicon_url_parser.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 
 namespace {
@@ -30,7 +33,8 @@ namespace {
 #include "chrome/browser/ui/webui/argon_home/argon_home_resources.inc"
 
 std::string_view ResourcePath(std::string_view path) {
-  return path.substr(0, path.find('?'));
+  // URLDataSource::URLToRequestPath includes the fragment, unlike HTTP requests.
+  return path.substr(0, path.find_first_of("?#"));
 }
 
 std::string_view GetResource(std::string_view path) {
@@ -62,6 +66,9 @@ std::string_view GetResource(std::string_view path) {
   if (path == "bookmarks.js") {
     return kArgonHomeBookmarks;
   }
+  if (path == "browser-bookmarks.js") {
+    return kArgonBrowserBookmarks;
+  }
   if (path == "browser-search.js") {
     return kArgonHomeSearch;
   }
@@ -82,10 +89,13 @@ bool ArgonHomeUIConfig::IsWebUIEnabled(
 }
 
 ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
+  web_ui->AddMessageHandler(CreateArgonBookmarksHandler());
   web_ui->AddMessageHandler(CreateArgonThemeHandler());
   web_ui->AddMessageHandler(CreateArgonSearchHandler());
   web_ui->AddMessageHandler(CreateArgonIconHandler());
   auto* profile = Profile::FromWebUI(web_ui);
+  content::URLDataSource::Add(profile, std::make_unique<FaviconSource>(
+      profile, chrome::FaviconUrlFormat::kFavicon2));
   content::URLDataSource::Add(profile,
                             std::make_unique<SanitizedImageSource>(profile));
   auto* source = content::WebUIDataSource::CreateAndAdd(
@@ -123,7 +133,7 @@ ArgonHomeUI::ArgonHomeUI(content::WebUI* web_ui) : WebUIController(web_ui) {
       "trusted-types argon-home;");
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ImgSrc,
-      "img-src 'self' data: chrome://image;");
+      "img-src 'self' data: chrome://image chrome://favicon2;");
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ConnectSrc, "connect-src 'none';");
   source->OverrideContentSecurityPolicy(

@@ -132,10 +132,11 @@ class HomepageAddTests(unittest.TestCase):
     def test_menu_only_opens_a_draft_in_a_new_regular_tab(self):
         self.assertIn('PASS: menu draft', run_add_flow())
 
-    def test_both_menu_variants_keep_the_command_next_to_bookmarks(self):
+    def test_both_menu_variants_use_native_bookmarks_without_a_duplicate_add_command(self):
         original = '\n'.join(homepage.SHORTCUT_MENU_ANCHORS)
         patched = homepage.patch_app_menu(original)
         self.assertEqual(patched.count(homepage.SHORTCUT_MENU_ADDITION), 2)
         self.assertEqual(homepage.patch_app_menu(patched), patched)
         for anchor in homepage.SHORTCUT_MENU_ANCHORS:
             self.assertIn(anchor + homepage.SHORTCUT_MENU_ADDITION, patched)
+        self.assertNotIn('argon_add_to_home_id', patched)
