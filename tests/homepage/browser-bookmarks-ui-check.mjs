@@ -137,7 +137,7 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   assert(await page.getByRole('link',{name:'Переименована',exact:true}).isVisible());
   const remapped=await page.evaluate(()=>nativeBookmarks.all().find(item=>item.url==='https://existing.example/').id);
   assert.notEqual(remapped,'1');assert.equal((await state()).bookmarkIcons[remapped].icon,'book','portable restore remaps custom icons by URL to new native IDs');
-  await checkBookmarkEditing(page,wait,state);
+  await checkBookmarkEditing(page,wait,state,out);
   await page.evaluate(()=>nativeBookmarks.replace([]));
   await page.getByText('Нет закладок',{exact:true}).waitFor();
   await page.reload();await page.getByText('Нет закладок',{exact:true}).waitFor();
@@ -148,15 +148,17 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
  } finally {await context.close();}
 }
 
-async function checkBookmarkEditing(page,wait,state) {
+async function checkBookmarkEditing(page,wait,state,out) {
  await page.evaluate(()=>{nativeBookmarks.next=1000;nativeBookmarks.canEdit=true;nativeBookmarks.replace([
   {id:'10',name:'Первый',url:'https://first.example/'},{id:'11',name:'Второй',url:'https://second.example/'}]);});
  await page.locator('#settings-button').click();
  assert((await page.locator('#edit-shortcuts').textContent()).includes('Редактировать закладки'));
  await page.locator('#edit-shortcuts').click();
+ if(out)await page.screenshot({path:resolve(out,'home-native-editing-320.png'),fullPage:true});
  await page.locator('[data-native-add=""]').click();
  await page.locator('#native-kind').selectOption('folder');
  await page.locator('#native-title').fill('Рабочая папка');
+ if(out)await page.screenshot({path:resolve(out,'home-native-add-320.png'),fullPage:true});
  await page.locator('#native-bookmark-form button[type=submit]').click();await wait();
  const folder=await page.evaluate(()=>nativeBookmarks.roots.find(item=>item.name==='Рабочая папка').id);
  await page.locator('[data-browser-bookmark="'+folder+'"]').click();await page.locator('#native-open-folder').click();
@@ -196,12 +198,12 @@ async function checkBookmarkEditing(page,wait,state) {
  await page.locator('#native-bookmark-form button[type=submit]').click();await wait();
  assert(await page.locator('#native-edit-error').isVisible());
  assert.equal(await page.evaluate(()=>nativeBookmarks.roots.find(item=>item.id==='11').name),'Изменено в браузере','a stale editor cannot overwrite a native change');
- await page.locator('.dialog [data-close]').click();
+ await page.locator('.dialog-header [data-close]').click();
  await page.evaluate(()=>{nativeBookmarks.canEdit=false;nativeBookmarks.replace(nativeBookmarks.roots);});
  assert.equal(await page.locator('[data-native-add]').count(),0,'read-only policies hide creation controls');
  await page.locator('[data-browser-bookmark="11"]').click();
  assert.equal(await page.locator('#native-edit').count(),0);assert(await page.locator('#native-icon').isVisible());
- await page.locator('.dialog [data-close]').click();
+ await page.locator('.dialog-header [data-close]').click();
  await page.evaluate(()=>{nativeBookmarks.canEdit=true;nativeBookmarks.replace(nativeBookmarks.roots);});
  await page.locator('#edit-done').click();
 }
