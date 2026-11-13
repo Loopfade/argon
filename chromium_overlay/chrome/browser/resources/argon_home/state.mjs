@@ -8,6 +8,22 @@ export function initialState() {
   return {schemaVersion: SCHEMA_VERSION, theme: 'system', engine: 'google', customEngines: [], showLabels: true, newTab: false, density: 'comfortable', shortcuts: []};
 }
 
+/** A menu navigation only supplies a draft; it never authorizes a storage write. */
+export function shortcutDraftFromHash(hash) {
+  if (!hash.startsWith('#add-site?')) return null;
+  const invalid = () => new Error(t("Не удалось получить адрес страницы. Добавьте сайт вручную."));
+  if (hash.length > 110000) throw invalid();
+  const params = new URLSearchParams(hash.slice('#add-site?'.length));
+  if (params.getAll('url').length !== 1 || params.getAll('title').length > 1) throw invalid();
+  let url;
+  try { url = new URL(params.get('url')); } catch { throw invalid(); }
+  if (!['https:', 'http:'].includes(url.protocol) || !url.hostname || url.href.length > 16384) throw invalid();
+  const title = (params.get('title') || '').replace(/\s+/g, ' ').trim() || url.hostname;
+  // The saved schema limits names to 40 UTF-16 units. Keep surrogate pairs intact.
+  const name = title.slice(0, 40).replace(/[\uD800-\uDBFF]$/, '');
+  return {name, url: url.href, iconMode: 'favicon'};
+}
+
 function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -41,6 +57,29 @@ export function validateState(raw) {
   if (!['system', 'light', 'dark', 'amoled'].includes(raw.theme) || typeof raw.showLabels !== 'boolean' || typeof raw.newTab !== 'boolean') throw new Error(t("Некорректные настройки оформления в дампе."));
   const density = raw.density ?? 'comfortable';
   if (!['comfortable', 'compact', 'large'].includes(density)) throw new Error(t("Некорректный размер ярлыков."));
+  // Keep density readable by older builds. They ignore the optional scale
+  // fields and can still restore all shortcuts, icons and other preferences.
+  const sizing = {};
+  if (raw.shortcutScale !== undefined) {
+    if (!Number.isInteger(raw.shortcutScale) || raw.shortcutScale < 50 || raw.shortcutScale > 200) throw new Error(t("Укажите целое число от 50 до 200."));
+    sizing.shortcutScale = raw.shortcutScale;
+  }
+  if (raw.shortcutScaleMode !== undefined) {
+    if (!['preset', 'manual'].includes(raw.shortcutScaleMode)
+        || (raw.shortcutScaleMode === 'manual' && sizing.shortcutScale === undefined)) throw new Error(t("Некорректный режим масштаба ярлыков."));
+    sizing.shortcutScaleMode = raw.shortcutScaleMode;
+  }
+  if (raw.background !== undefined) {
+    const background=raw.background;
+    if(!object(background)||!['custom','bing'].includes(background.source)
+        ||typeof background.image!=='string'||background.image.length>2_000_000
+        ||!/^data:image\/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/.test(background.image))throw new Error(t("Некорректный фон в резервной копии."));
+    sizing.background={source:background.source,image:background.image};
+    if(background.source==='bing') {
+      sizing.background.credit=text(background.credit,t("Автор фотографии"),1000);
+      sizing.background.creditUrl=webUrl(background.creditUrl);
+    }
+  }
   if (!Array.isArray(raw.customEngines) || raw.customEngines.length > 100 || !Array.isArray(raw.shortcuts)) throw new Error(t("Некорректный список ярлыков или поисковиков в дампе."));
   const engineIds = new Set(BUILTIN_ENGINES);
   const customEngines = raw.customEngines.map(engine => {
@@ -86,7 +125,7 @@ export function validateState(raw) {
     if (item.customIcon !== undefined) result.customIcon = customIcon(item.customIcon);
     return result;
   }
-  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, shortcuts: raw.shortcuts.map(item => shortcut(item))};
+  return {schemaVersion: SCHEMA_VERSION, theme: raw.theme, engine, customEngines, showLabels: raw.showLabels, newTab: raw.newTab, density, ...sizing, shortcuts: raw.shortcuts.map(item => shortcut(item))};
 }
 
 // These IDs belong to the first mockup. Only unchanged examples are removed.
@@ -261,6 +300,20 @@ export class HomepageStore {
     });
     this.editing = false;
     return {...result, state: this.state};
+  }
+
+  addShortcut(shortcut, parent = null) {
+    // Like an explicitly confirmed import, this adds one item without unlocking
+    // grid editing. The caller holds exclusive(); reread before checking duplicates.
+    this.update(next => {
+      if (shortcut.type === 'folder') throw new Error(t("Укажите корректный адрес сайта."));
+      const url = new URL(webUrl(shortcut.url)).href;
+      const sites = next.shortcuts.flatMap(item => item.type === 'folder' ? item.children : [item]);
+      const existing = sites.find(item => new URL(item.url).href === url);
+      if (existing) throw new Error(t("Этот адрес уже добавлен: «{name}».", {name: existing.name}));
+      shortcutList(next.shortcuts, parent).push({...shortcut, url});
+    });
+    return this.state;
   }
 }
 

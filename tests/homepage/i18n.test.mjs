@@ -21,7 +21,7 @@ test('Russian follows the browser locale and other locales fall back to English'
 
 test('every static page fragment and validation message has an English translation', async () => {
   const root = new URL('../../chromium_overlay/chrome/browser/resources/argon_home/',import.meta.url);
-  const sources = await Promise.all(['app.js','state.mjs','bookmarks.mjs'].map(name=>readFile(new URL(name,root),'utf8')));
+  const sources = await Promise.all(['app.js','state.mjs','bookmarks.mjs','backgrounds.mjs'].map(name=>readFile(new URL(name,root),'utf8')));
   const html = await readFile(new URL('index.html',root),'utf8');
   inLanguage('en',()=>{
     for(const source of sources) {
