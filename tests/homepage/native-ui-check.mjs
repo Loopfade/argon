@@ -240,6 +240,10 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await page.locator('#settings-button').click();await page.locator('#search-settings').click();
     assert(await page.locator('#search-settings-options').isVisible(),
       'Search providers must remain reachable when the tablet fakebox is hidden');
+    await native(()=>window.argonNativeFixture.update({canChange:false}));
+    assert(await page.locator('#search-settings-options button').evaluateAll(nodes=>nodes.every(node=>node.disabled)));
+    await native(()=>window.argonNativeFixture.update({canChange:true}));
+    if(out)await page.screenshot({path:resolve(out,'home-search-settings-tablet.png'),fullPage:true,animations:'disabled'});
     await page.locator('#search-settings-options [data-engine=bing]').click();
     await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='bing');await restore();
     await page.locator('#settings-button').click();await page.locator('#search-settings').click();

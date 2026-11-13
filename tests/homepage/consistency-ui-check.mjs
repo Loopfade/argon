@@ -61,7 +61,7 @@ export async function checkHomepageConsistency(browser,base,errors,out) {
     }
     {
       const {page,second}=await environment();
-      await addEngine(page,'Первый','https://first.example/?q={query}');
+      await addEngine(page,'W'.repeat(40),'https://first.example/?q={query}');
       await page.locator('#engine-trigger').click();await page.locator('#manage-engines').click();
       await addEngine(second,'Второй','https://second.example/?q={query}');
       await page.waitForFunction(()=>document.querySelectorAll('.custom-engine-row').length===2);
@@ -71,6 +71,10 @@ export async function checkHomepageConsistency(browser,base,errors,out) {
       await close(page);await close(second);
       await addEngine(page,'Поиск в поддомене','https://{query}.example/');
       assert.equal((await saved(page)).customEngines.at(-1).url,'https://{query}.example/');
+      await page.locator('#settings-button').click();await page.locator('#search-settings').click();
+      assert(await page.locator('.dialog').evaluate(node=>node.scrollWidth<=node.clientWidth),
+        'long custom engine names must wrap inside the narrow search chooser');
+      if(out)await page.screenshot({path:resolve(out,'home-search-settings-320.png'),fullPage:true,animations:'disabled'});
     }
     {
       const {page}=await environment();
