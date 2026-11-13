@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="argon_add_to_home_id" />
+    <string name="argon_add_to_home">Add to Argon home</string>
+</resources>

@@ -5,6 +5,9 @@ export function language(value = globalThis.document?.documentElement?.lang ?? '
 }
 
 const english = {
+  "Добавить на главную Argon": "Add to Argon home",
+  "Не удалось получить адрес страницы. Добавьте сайт вручную.": "Could not read the page address. Add the site manually.",
+  "Этот адрес уже добавлен: «{name}».": "This address is already added: «{name}».",
   "Выбрать тему": "Choose theme",
   "Тема: {name}": "Theme: {name}",
   "Не удалось показать фон. Выберите другое изображение в настройках.": "Could not display the background. Choose another image in settings.",

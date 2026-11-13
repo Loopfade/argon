@@ -1,6 +1,6 @@
 import {t, language, localizePage} from './i18n.js';
 import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
-  dumpStats, shortcutList, moveShortcut, navigationTarget, mergeBookmarks, restoreState} from './state.js';
+  dumpStats, shortcutList, moveShortcut, navigationTarget, mergeBookmarks, restoreState, shortcutDraftFromHash} from './state.js';
 import {imageSource, faviconSources, engineIcon} from './icons.js';
 import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
 import {connectBrowserSearch} from './browser-search.js';
@@ -380,15 +380,16 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   }
   function cancelMove() {moving=null;touchDrag=null;clearDrag();updateEditing();renderShortcuts();}
 
-  function openShortcutDialog(item,parent=null,originFolder=parent) {
-    if(!editing())return;
+  function openShortcutDialog(item,parent=null,originFolder=parent,draft=null) {
+    if(!editing()&&!draft)return;
+    const initial=item||draft;
     const editId=item?.id,originalParent=parent,original=item?JSON.stringify(item):null;
     let type=item?.type==='folder'?'folder':'site',draftIcon=item?.customIcon||'',draftMode=item?.iconMode||(item?.customIcon?'custom':'favicon');
     let iconReadTask=null,iconReadVersion=0,iconReadFailed=false;
     function cancelIconRead() {iconReadVersion++;iconReadTask=null;iconReadFailed=false;}
     const folders=state.shortcuts.filter(s=>s.type==='folder');
     const position=item?shortcutList(state.shortcuts,parent).findIndex(s=>s.id===item.id):null;
-    openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(item?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(item?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p id=\"icon-help\" class=\"field-help\">PNG, JPG, WebP, GIF или SVG, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
+    openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):draft?t("Добавить на главную Argon"):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent&&!draft?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(initial?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(initial?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p id=\"icon-help\" class=\"field-help\">PNG, JPG, WebP, GIF или SVG, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
     modalBack=originFolder?()=>openFolder(originFolder):null;
     const form=$('shortcut-form');
     $('icon-preview').parentElement.insertAdjacentElement('afterend',document.createElement('div')).id='site-icon-finder';
@@ -484,7 +485,11 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       if(type==='site'){try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}if(draftMode==='custom'&&!draftIcon&&!item?.icon){showError(t("Загрузите иконку или выберите «С сайта»."));return;}}
       const folderSelect=$('shortcut-folder'),targetParent=type==='site'?(folderSelect?(folderSelect.value||null):parent):null;
       const desiredPosition=item?Number($('shortcut-position').value):null;
-      if(!await commit(next=>{
+      if(draft) {
+        try {
+          await writeState(()=>{state=store.addShortcut({id:uid(),name,url,iconMode:draftMode,...(draftMode==='custom'?{customIcon:draftIcon}:{})},targetParent);});
+        } catch(error) {showError(error.message||t("Не удалось сохранить изменения."));return;}
+      } else if(!await commit(next=>{
         let current;
         if(editId){const from=shortcutList(next.shortcuts,originalParent),index=from.findIndex(s=>s.id===editId);if(index<0||JSON.stringify(from[index])!==original)throw Error(t("Ярлык изменился в другой вкладке. Откройте его заново."));current=from.splice(index,1)[0];}
         const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(draftMode==='custom'&&item?.icon&&!draftIcon?{icon:item.icon}:{})};
@@ -879,6 +884,16 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(e.key==='Tab'&&modalKind){const controls=[...$('modal-root').querySelectorAll('a[href],button:not([disabled]),input:not([type=hidden]),select')].filter(el=>el.offsetParent!==null);const first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}
   });
   refresh();
+  if(location.hash.startsWith('#add-site?')) {
+    const request=location.hash;
+    try {
+      // Consume the request before opening the editor: reload/back must never
+      // resubmit it. The full page address remains only in the editable draft.
+      history.replaceState(history.state,'',location.href.split('#')[0]);
+      const draft=shortcutDraftFromHash(request);
+      if(draft)openShortcutDialog(null,null,null,draft);
+    } catch(error) {notify(error.message);}
+  }
   // Normal startup is released by the native provider reply, followed by a
   // visual-state acknowledgement. startup.js owns the independent fail-open.
   void Promise.all([initialTheme,connectSearch(),backgroundReady]).then(()=>{

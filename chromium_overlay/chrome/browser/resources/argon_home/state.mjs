@@ -8,6 +8,22 @@ export function initialState() {
   return {schemaVersion: SCHEMA_VERSION, theme: 'system', engine: 'google', customEngines: [], showLabels: true, newTab: false, density: 'comfortable', shortcuts: []};
 }
 
+/** A menu navigation only supplies a draft; it never authorizes a storage write. */
+export function shortcutDraftFromHash(hash) {
+  if (!hash.startsWith('#add-site?')) return null;
+  const invalid = () => new Error(t("Не удалось получить адрес страницы. Добавьте сайт вручную."));
+  if (hash.length > 110000) throw invalid();
+  const params = new URLSearchParams(hash.slice('#add-site?'.length));
+  if (params.getAll('url').length !== 1 || params.getAll('title').length > 1) throw invalid();
+  let url;
+  try { url = new URL(params.get('url')); } catch { throw invalid(); }
+  if (!['https:', 'http:'].includes(url.protocol) || !url.hostname || url.href.length > 16384) throw invalid();
+  const title = (params.get('title') || '').replace(/\s+/g, ' ').trim() || url.hostname;
+  // The saved schema limits names to 40 UTF-16 units. Keep surrogate pairs intact.
+  const name = title.slice(0, 40).replace(/[\uD800-\uDBFF]$/, '');
+  return {name, url: url.href, iconMode: 'favicon'};
+}
+
 function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -284,6 +300,20 @@ export class HomepageStore {
     });
     this.editing = false;
     return {...result, state: this.state};
+  }
+
+  addShortcut(shortcut, parent = null) {
+    // Like an explicitly confirmed import, this adds one item without unlocking
+    // grid editing. The caller holds exclusive(); reread before checking duplicates.
+    this.update(next => {
+      if (shortcut.type === 'folder') throw new Error(t("Укажите корректный адрес сайта."));
+      const url = new URL(webUrl(shortcut.url)).href;
+      const sites = next.shortcuts.flatMap(item => item.type === 'folder' ? item.children : [item]);
+      const existing = sites.find(item => new URL(item.url).href === url);
+      if (existing) throw new Error(t("Этот адрес уже добавлен: «{name}».", {name: existing.name}));
+      shortcutList(next.shortcuts, parent).push({...shortcut, url});
+    });
+    return this.state;
   }
 }
 

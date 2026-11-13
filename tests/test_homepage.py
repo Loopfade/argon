@@ -20,7 +20,10 @@ def input_tree(root):
         homepage.NATIVE_HANDLER: (FIXTURES / 'new_tab_page_url_handler.cc.in').read_text(),
         homepage.URL_RESOLVER_FACTORY: (FIXTURES / 'UrlConstantResolverFactory.java.in').read_text(),
         homepage.TABBED_ACTIVITY: (FIXTURES / 'startup_draw_block.java.in').read_text()
-            + '\n' + (FIXTURES / 'create_initial_tab.java.in').read_text(),
+            + '\n' + (FIXTURES / 'create_initial_tab.java.in').read_text()
+            + '\n' + homepage.SHORTCUT_ACTION_BEFORE,
+        homepage.APP_MENU: '\n'.join(homepage.SHORTCUT_MENU_ANCHORS),
+        homepage.ANDROID_RESOURCES: 'chrome_java_resources = [\n  "java/res/values/ids.xml",\n]\n',
         homepage.CONFIGS: '#include "build/build_config.h"\nvoid RegisterChromeWebUIConfigs() {\n#if BUILDFLAG(IS_ANDROID)\n  map.AddWebUIConfig(std::make_unique<OtherUIConfig>());\n#endif\n}\n',
         homepage.GN: 'source_set("configs") {\n  if (is_android) {\n    deps += [\n      "//chrome/browser/ui/android/lens",\n    ]\n  }\n}\n',
         homepage.TOOLBAR_MANAGER: (FIXTURES / 'toolbar_constructor_init.java.in').read_text()
@@ -91,7 +94,8 @@ class HomepageTests(unittest.TestCase):
                            check=True, capture_output=True, text=True)
 
     def test_changed_toolbar_or_source_catalog_rejects_the_whole_patch(self):
-        for path in (homepage.TOOLBAR_MANAGER, homepage.JAVA_CATALOG, homepage.JNI_CATALOG):
+        for path in (homepage.TOOLBAR_MANAGER, homepage.JAVA_CATALOG, homepage.JNI_CATALOG,
+                     homepage.APP_MENU, homepage.ANDROID_RESOURCES):
             with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
                 src = Path(directory)
                 input_tree(src)

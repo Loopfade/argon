@@ -10,6 +10,7 @@ import {checkShortcutScale} from './shortcut-scale-ui-check.mjs';
 import {checkBackgrounds} from './backgrounds-ui-check.mjs';
 import {checkHomepageRegressions} from './regressions-ui-check.mjs';
 import {checkHomepageConsistency} from './consistency-ui-check.mjs';
+import {checkAddShortcut} from './add-shortcut-ui-check.mjs';
 
 const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE).href);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
@@ -453,6 +454,7 @@ try {
   await checkShortcutScale(browser,base,errors,out);
   await checkHomepageRegressions(browser,base,errors,out);
   await checkHomepageConsistency(browser,base,errors,out);
+  await checkAddShortcut(browser,base,errors,out);
   await checkBackgrounds(browser,base,errors,out);
   assert.deepEqual(errors,[]);
   console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');

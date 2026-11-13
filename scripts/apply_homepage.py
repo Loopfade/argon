@@ -26,8 +26,43 @@ JAVA_CATALOG = Path('chrome/android/chrome_java_sources.gni')
 JNI_CATALOG = Path('chrome/android/BUILD.gn')
 JAVA_BRIDGE = Path('chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java')
 JAVA_STARTUP = JAVA_BRIDGE.with_name('ArgonHomeStartup.java')
+JAVA_SHORTCUT = JAVA_BRIDGE.with_name('ArgonHomeShortcut.java')
+APP_MENU = Path('chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java')
+ANDROID_RESOURCES = Path('chrome/android/chrome_java_resources.gni')
+SHORTCUT_RESOURCES = tuple(Path('chrome/android/java/res') / locale / 'argon_home_strings.xml'
+                           for locale in ('values', 'values-ru'))
 INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
-               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, NEW_TAB_BUTTON, JAVA_CATALOG, JNI_CATALOG)
+               TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, NEW_TAB_BUTTON, JAVA_CATALOG, JNI_CATALOG,
+               APP_MENU, ANDROID_RESOURCES)
+
+SHORTCUT_ACTION_BEFORE = '''        final Tab currentTab = getActivityTab();
+        boolean currentTabIsNtp = isTabNtp(currentTab);'''
+SHORTCUT_ACTION_AFTER = SHORTCUT_ACTION_BEFORE + '''
+        if (id == R.id.argon_add_to_home_id) {
+            String draftUrl = org.chromium.chrome.browser.ntp.ArgonHomeShortcut.draftUrl(currentTab);
+            if (draftUrl != null) {
+                getTabCreator(/* incognito= */ false)
+                        .createNewTab(
+                                new LoadUrlParams(draftUrl, PageTransition.AUTO_BOOKMARK),
+                                TabLaunchType.FROM_CHROME_UI,
+                                currentTab);
+            }
+            return true;
+        }'''
+SHORTCUT_MENU_ANCHORS = (
+    '        modelList.add(mBookmarksItemBuilder.buildBookmarksItem(shouldShowIconBeforeItem));',
+    '        modelList.add(mBookmarksItemBuilder.buildBookmarksParentItem(currentTab));',
+)
+SHORTCUT_MENU_ADDITION = '''
+
+        // ARGON: keep browser-home shortcuts distinct from Android launcher shortcuts.
+        if (org.chromium.chrome.browser.ntp.ArgonHomeShortcut.canAdd(currentTab)) {
+            modelList.add(new ListItem(AppMenuHandler.AppMenuItemType.STANDARD,
+                    AppMenuItemUtils.buildModelForStandardMenuItem(mContext, getAppMenuItemTheme(),
+                            R.id.argon_add_to_home_id, R.string.argon_add_to_home,
+                            shouldShowIconBeforeItem() ? R.drawable.ic_home_24dp : Resources.ID_NULL,
+                            isMenuIconAtStart())));
+        }'''
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
@@ -261,6 +296,23 @@ def patch_activity_startup(text):
                            INITIAL_TAB_BEFORE, INITIAL_TAB_AFTER)
 
 
+def patch_activity(text):
+    return replace_once(patch_activity_startup(text), SHORTCUT_ACTION_BEFORE, SHORTCUT_ACTION_AFTER)
+
+
+def patch_app_menu(text):
+    for anchor in SHORTCUT_MENU_ANCHORS:
+        text = replace_once(text, anchor, anchor + SHORTCUT_MENU_ADDITION)
+    return text
+
+
+def patch_android_resources(text):
+    anchor = '  "java/res/values/ids.xml",'
+    addition = ''.join('\n  "' + str(path.relative_to('chrome/android')) + '",'
+                       for path in SHORTCUT_RESOURCES)
+    return replace_once(text, anchor, anchor + addition)
+
+
 def patch_toolbar_capture(text):
     return reviewed_method(text, CAPTURE_SIGNATURE, CAPTURE_DIGEST,
                            CAPTURE_BEFORE, CAPTURE_AFTER)
@@ -456,10 +508,15 @@ def patch_toolbar(text):
 
 def patch_java_catalog(text):
     anchor = '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",'
-    previous = '  "java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",\n' + anchor
-    current = previous.replace(anchor,
-        '  "java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",\n' + anchor)
-    return replace_once(text, previous if previous in text else anchor, current)
+    if text.count(anchor) != 1:
+        raise ValueError('Argon homepage Java catalog anchor changed')
+    for path in (JAVA_BRIDGE, JAVA_STARTUP, JAVA_SHORTCUT):
+        entry = '  "' + str(path.relative_to('chrome/android')) + '",'
+        if text.count(entry) > 1:
+            raise ValueError('Duplicate Argon home Java registration')
+        if entry not in text:
+            text = replace_once(text, anchor, entry + '\n' + anchor)
+    return text
 
 
 def patch_jni_catalog(text):
@@ -496,7 +553,8 @@ def apply(src):
     transforms = [(CONFIGS, patch_configs), (GN, patch_gn),
                   (NATIVE_FACTORY, patch_factory), (NATIVE_HANDLER, patch_handler),
                   (URL_RESOLVER_FACTORY, patch_resolver_factory),
-                  (TABBED_ACTIVITY, patch_activity_startup),
+                  (TABBED_ACTIVITY, patch_activity), (APP_MENU, patch_app_menu),
+                  (ANDROID_RESOURCES, patch_android_resources),
                   (TOOLBAR_MANAGER, patch_toolbar), (JAVA_CATALOG, patch_java_catalog),
                   (TOOLBAR_CONTAINER, patch_toolbar_capture),
                   (TOOLBAR_PHONE, patch_phone_toolbar),
@@ -511,7 +569,7 @@ def apply(src):
                 raise ValueError(f'Refusing to overwrite an unexpected homepage source: {target}')
             writes[target] = value
     writes[src / UI / 'argon_home_resources.inc'] = resource_header(OVERLAY / RESOURCES)
-    for path in (JAVA_BRIDGE, JAVA_STARTUP):
+    for path in (JAVA_BRIDGE, JAVA_STARTUP, JAVA_SHORTCUT, *SHORTCUT_RESOURCES):
         value = (OVERLAY / path).read_text()
         if (src / path).exists() and (src / path).read_text() != value:
             raise ValueError(f'Unexpected Argon home source: {path}')
