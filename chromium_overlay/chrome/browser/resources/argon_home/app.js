@@ -171,7 +171,8 @@ import {discoverSiteIcons} from './site-icons.js';
   }
   function applyTheme() {
     homeTheme.apply(state.theme);
-    document.documentElement.dataset.density=state.density==='compact'?'compact':'comfortable';
+    document.documentElement.dataset.density=state.shortcutScaleMode==='manual'?'manual':state.density==='compact'?'compact':'comfortable';
+    document.documentElement.style.setProperty('--shortcut-scale',String((state.shortcutScale??100)/100));
     document.querySelectorAll('[data-theme-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeChoice===state.theme)));
     updateThemeHelp();
   }
@@ -535,9 +536,12 @@ import {discoverSiteIcons} from './site-icons.js';
     target.textContent=descriptions[state.theme];
   }
   function updateDensityHelp() {
+    const manual=state.shortcutScaleMode==='manual';
+    const field=$('manual-shortcut-scale');if(field)field.hidden=!manual;
     const target=$('density-help');if(target)target.textContent=state.density==='compact'
       ?t("Мелкие ярлыки расположены плотнее: в строке помещается больше сайтов.")
       :t("Крупные ярлыки легче различать: в строке помещается меньше сайтов.");
+    if(manual&&target)target.textContent=t("Масштаб ярлыков: {percent}%. Количество колонок подстраивается под экран.",{percent:state.shortcutScale});
   }
   function openSettings() {
     if(moving)cancelMove();
@@ -546,24 +550,44 @@ import {discoverSiteIcons} from './site-icons.js';
       '<span class="setting-label">'+t("Оформление")+'</span><div class="theme-options">'+
       [['light','sun',t("Светлая")],['dark','moon',t("Тёмная")],['amoled','amoled',t("Тёмная AMOLED")],['system','monitor',t("Как в браузере")]].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+
       '</div><p id="theme-help" class="field-help"></p>'+
-      '<label class="setting-row"><span>'+t("Размер ярлыков")+'</span><select id="density-select" aria-label="'+t("Размер ярлыков")+'" aria-describedby="density-help"><option value="comfortable">'+t("Крупные")+'</option><option value="compact">'+t("Мелкие")+'</option></select></label>'+
+      '<label class="setting-row"><span>'+t("Размер ярлыков")+'</span><select id="density-select" aria-label="'+t("Размер ярлыков")+'" aria-describedby="density-help"><option value="comfortable">'+t("Крупные")+'</option><option value="compact">'+t("Мелкие")+'</option><option value="manual">'+t("Вручную")+'</option></select></label>'+
+      '<div id="manual-shortcut-scale" hidden><label class="setting-row"><span>'+t("Масштаб ярлыков, %")+'</span><input id="shortcut-scale" type="number" inputmode="numeric" min="50" max="200" step="1" value="'+(state.shortcutScale??100)+'" aria-describedby="shortcut-scale-help shortcut-scale-error"></label><p class="field-help" id="shortcut-scale-help">'+t("От 50 до 200%. 100% — стандартный размер. Сохраняется после ввода и выхода из поля или нажатия Enter.")+'</p><p id="shortcut-scale-error" class="error" role="alert" hidden></p></div>'+
       '<div id="size-preview" class="shortcut-grid size-preview" aria-label="'+t("Предпросмотр ярлыков")+'"></div><p id="density-help" class="field-help"></p>'+
       '<div class="setting-row"><span>'+t("Показывать названия ярлыков")+'</span><button id="labels-toggle" class="toggle" role="switch" aria-label="'+t("Показывать названия ярлыков")+'" aria-checked="'+state.showLabels+'"></button></div>'+
       '<div class="setting-row"><span>'+t("Открывать сайты из ярлыков в новой вкладке")+'</span><button id="newtab-toggle" class="toggle" role="switch" aria-label="'+t("Открывать сайты из ярлыков в новой вкладке")+'" aria-checked="'+state.newTab+'"></button></div>'+
       '<button type="button" id="data-settings" class="setting-row edit-shortcuts"><span><strong>'+t("Перенос данных")+'</strong><small>'+t("Копия Argon с иконками и импорт закладок.")+'</small></span>'+svg('arrow')+'</button>'+
       '<div class="dialog-actions"><button class="btn btn-primary" data-close type="button">'+t("Готово")+'</button></div>','settings');
     $('edit-shortcuts').addEventListener('click',()=>{const enabled=!editing();closeModal();setEditing(enabled);if(enabled)$('edit-done').focus();});
-    $('density-select').value=state.density==='compact'?'compact':'comfortable';
+    const densityValue=()=>state.shortcutScaleMode==='manual'?'manual':state.density==='compact'?'compact':'comfortable';
+    $('density-select').value=densityValue();
     setHtml($('size-preview'),[{name:'Argon'},...builtins.filter(e=>['noai','google','bing'].includes(e.id))].map(e=>'<span class="shortcut"><span class="shortcut-icon">'+(e.url?engineMarkup(e):svg('brand'))+'</span><span class="shortcut-label">'+esc(e.name==='DuckDuckGo NoAI'?'DuckDuckGo':e.name)+'</span></span>').join(''));
     fallbackImages($('size-preview'));updateThemeHelp();updateDensityHelp();
     $('density-select').addEventListener('change',async e=>{
       const density=e.target.value;
-      if(await commit(s=>{s.density=density;})){
+      if(await commit(s=>{
+        if(density==='manual'){s.shortcutScaleMode='manual';s.shortcutScale??=100;}
+        else{s.density=density;if(s.shortcutScaleMode)s.shortcutScaleMode='preset';}
+      })){
+        $('shortcut-scale').value=state.shortcutScale??100;
+        $('shortcut-scale-error').hidden=true;$('shortcut-scale').removeAttribute('aria-invalid');
         applyTheme();renderShortcuts();updateDensityHelp();
       } else {
-        e.target.value=state.density==='compact'?'compact':'comfortable';
+        e.target.value=densityValue();
       }
     });
+    const scaleInput=$('shortcut-scale');
+    const saveShortcutScale=async()=>{
+      if(writing||!scaleInput.isConnected||state.shortcutScaleMode!=='manual')return;
+      const percent=scaleInput.valueAsNumber,error=$('shortcut-scale-error');
+      if(!Number.isInteger(percent)||percent<50||percent>200){
+        error.textContent=t("Укажите целое число от 50 до 200.");error.hidden=false;scaleInput.setAttribute('aria-invalid','true');return;
+      }
+      error.hidden=true;scaleInput.removeAttribute('aria-invalid');
+      if(percent===state.shortcutScale)return;
+      if(await commit(s=>{s.shortcutScale=percent;},false,'shortcut-scale-error')){applyTheme();renderShortcuts();updateDensityHelp();}
+    };
+    scaleInput.addEventListener('change',()=>void saveShortcutScale());
+    scaleInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();void saveShortcutScale();}});
     $('labels-toggle').addEventListener('click',async()=>{
       if(await commit(s=>{s.showLabels=!s.showLabels;})){
         $('labels-toggle')?.setAttribute('aria-checked',String(state.showLabels));

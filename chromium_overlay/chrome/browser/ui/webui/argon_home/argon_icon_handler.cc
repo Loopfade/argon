@@ -39,7 +39,8 @@ bool ValidURL(const GURL& url) {
          !url.has_username() && !url.has_password();
 }
 
-// Only explicit discovery uses this transport. Page scripts are not run and
+// Only explicit icon discovery and Bing background selection use this transport.
+// Page scripts are not run and
 // the WebUI's connect-src/frame-src restrictions remain in place.
 class ArgonIconHandler final : public content::WebUIMessageHandler {
  public:
@@ -142,11 +143,12 @@ class ArgonIconHandler final : public content::WebUIMessageHandler {
         std::move(resource),
         net::DefineNetworkTrafficAnnotation("argon_site_icon_discovery", R"(
           semantics {
-            sender: "Argon site icon chooser"
+            sender: "Argon homepage image chooser"
             description: "Reads site HTML, an optional web manifest and a "
-                         "bounded set of images for a homepage icon chooser. "
+                         "bounded set of images for the homepage icon chooser, "
+                         "or a Bing JSON feed and a selected background image. "
                          "Page scripts are not executed."
-            trigger: "The user presses Find icons in the shortcut editor."
+            trigger: "The user presses Find icons or selects Bing backgrounds."
             data: "Page and icon URLs. No cookies, HTTP authentication "
                   "credentials or referrer are sent."
             destination: WEBSITE
