@@ -11,12 +11,13 @@ import {checkBackgrounds} from './backgrounds-ui-check.mjs';
 import {checkHomepageRegressions} from './regressions-ui-check.mjs';
 import {checkHomepageConsistency} from './consistency-ui-check.mjs';
 import {checkAddShortcut} from './add-shortcut-ui-check.mjs';
+import {checkBrowserBookmarks} from './browser-bookmarks-ui-check.mjs';
 
 const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE).href);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/startup.js':'startup.js','/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/backgrounds.js':'backgrounds.mjs','/backgrounds-production.js':'backgrounds.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
+const files={'/browser-bookmarks.js':'browser-bookmarks.mjs','/browser-bookmarks-production.js':'browser-bookmarks.mjs','/startup.js':'startup.js','/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/backgrounds.js':'backgrounds.mjs','/backgrounds-production.js':'backgrounds.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -33,7 +34,7 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const base='http://127.0.0.1:'+server.address().port+'/';
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.ARGON_CHROMIUM_PATH?{executablePath:process.env.ARGON_CHROMIUM_PATH}:{})});
 const context=await browser.newContext({viewport:{width:1100,height:850},acceptDownloads:true,locale:'ru-RU'});
 const iconRequests=[],allImageRequests=[],imageFailures=[],browserErrors=[];
 context.on('request',r=>{if(r.resourceType()==='image')allImageRequests.push(r.url());});
@@ -455,6 +456,7 @@ try {
   await checkHomepageRegressions(browser,base,errors,out);
   await checkHomepageConsistency(browser,base,errors,out);
   await checkAddShortcut(browser,base,errors,out);
+  await checkBrowserBookmarks(browser,base,errors,out);
   await checkBackgrounds(browser,base,errors,out);
   assert.deepEqual(errors,[]);
   console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');

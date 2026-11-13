@@ -54,15 +54,8 @@ SHORTCUT_MENU_ANCHORS = (
     '        modelList.add(mBookmarksItemBuilder.buildBookmarksParentItem(currentTab));',
 )
 SHORTCUT_MENU_ADDITION = '''
-
-        // ARGON: keep browser-home shortcuts distinct from Android launcher shortcuts.
-        if (org.chromium.chrome.browser.ntp.ArgonHomeShortcut.canAdd(currentTab)) {
-            modelList.add(new ListItem(AppMenuHandler.AppMenuItemType.STANDARD,
-                    AppMenuItemUtils.buildModelForStandardMenuItem(mContext, getAppMenuItemTheme(),
-                            R.id.argon_add_to_home_id, R.string.argon_add_to_home,
-                            shouldShowIconBeforeItem() ? R.drawable.ic_home_24dp : Resources.ID_NULL,
-                            isMenuIconAtStart())));
-        }'''
+        // ARGON: the homepage observes native bookmarks; the existing star adds sites.
+'''
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
@@ -536,6 +529,7 @@ def resource_header(resources):
                ('state.mjs', 'kArgonHomeState', 'ARGON_STATE'),
                ('icons.mjs', 'kArgonHomeIcons', 'ARGON_ICONS'),
                ('bookmarks.mjs', 'kArgonHomeBookmarks', 'ARGON_BOOKMARKS'),
+               ('browser-bookmarks.mjs', 'kArgonBrowserBookmarks', 'ARGON_BM'),
                ('browser-search.mjs', 'kArgonHomeSearch', 'ARGON_SEARCH'),
                ('site-icons.mjs', 'kArgonHomeSiteIcons', 'ARGON_SITE_ICONS'),
                ('backgrounds.mjs', 'kArgonHomeBackgrounds', 'ARGON_BG'),

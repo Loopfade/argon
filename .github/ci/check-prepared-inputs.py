@@ -11,6 +11,7 @@ PREPARED_INPUTS = (
     "scripts/prepare_chromium.sh", "scripts/image_source_inputs.py",
     "scripts/apply_scoped_ca.py", "scripts/fetch_pinned_extension.py",
     "scripts/apply_background_playback.py",
+    "scripts/apply_external_navigation.py",
     "scripts/apply_modulemap.py",
     "scripts/apply_browsing_data_period.py",
     "scripts/apply_homepage.py", "scripts/apply_exit.py",

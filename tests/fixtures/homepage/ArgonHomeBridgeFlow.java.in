@@ -97,7 +97,10 @@ public class ArgonHomeBridgeFlow {
         check(!delegate.isLocationBarShown(), "Unregistered incognito must keep its native delegate");
         tab.incognito = false;
         tab.error = true;
+        fallback.visible = true;
         check(!delegate.isLocationBarShown(), "An early error page must keep the address bar");
+        check(!delegate.isCurrentlyVisible(), "A stock virtual NTP delegate must not activate the failed homepage");
+        fallback.visible = false;
         tab.error = false;
         for (boolean refactored : List.of(false, true)) {
             ToolbarPhoneScrollFlow earlyToolbar = new ToolbarPhoneScrollFlow(delegate, refactored);

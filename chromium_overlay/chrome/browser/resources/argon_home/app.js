@@ -4,6 +4,7 @@ import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
 import {imageSource, faviconSources, engineIcon} from './icons.js';
 import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
 import {connectBrowserSearch} from './browser-search.js';
+import {connectBrowserBookmarks, bookmarkRecords, bookmarkMetadata, previewBookmarkImport, cachedBookmarkIcon} from './browser-bookmarks.js';
 import {discoverSiteIcons} from './site-icons.js';
 import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlob} from './backgrounds.js';
 
@@ -28,6 +29,10 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   const homeTheme = globalThis.argonHomeTheme;
   let browserSearch=null, browserSearchState=null, selectingEngine=false, searchBoundsFrame=0;
   let connectingSearch=null, nativeSearchRetries=0;
+  let browserBookmarks=null, browserBookmarksState=null, connectingBookmarks=null, migratingBookmarks=null;
+  let browserFolderPath=[];
+  let metadataState=null, metadataByUrl=new Map(), metadataById=new Map();
+  const nativeBookmarks = () => browserBookmarksState?.available === true;
   let initialThemeReady=false, startupFinished=false;
   let backgroundReady=Promise.resolve(),backgroundVersion=0,currentBackgroundImage;
   const nativeSearch = () => browserSearchState?.available === true;
@@ -132,7 +137,9 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     try{await connectingSearch;}finally{connectingSearch=null;}
   };
   window.addEventListener('pageshow',()=>void connectSearch());
+  window.addEventListener('pageshow',()=>void connectBookmarks());
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)void connectSearch();});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void connectBookmarks();});
   window.addEventListener('scroll',scheduleSearchBounds,{passive:true});
   window.addEventListener('resize',scheduleSearchBounds);
   new ResizeObserver(scheduleSearchBounds).observe($('search-form'));
@@ -225,6 +232,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(button&&await commit(next=>{next.theme=button.dataset.themeChoice;})){applyTheme();if(button.closest('#theme-menu'))closeThemeMenu(true);}
   });
   function updateEditing() {
+    if(nativeBookmarks())$('editing-hint').textContent=t("Нажмите на закладку, чтобы изменить её иконку.");
     let movingItem;try{movingItem=moving&&findItem(moving.id,moving.parent);}catch{}
     if(moving&&!movingItem)moving=null;
     document.body.classList.toggle('editing',editing());
@@ -249,9 +257,10 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   function imageMarkup(source,fallback='',eager=false) {
     return '<img src="'+esc(source)+'" data-icon-fallback="'+esc(fallback)+'" class="favicon" loading="'+(eager?'eager':'lazy')+'" alt="" draggable="false">';
   }
-  function iconMarkup(item,eager=false) {
+  function iconMarkup(item,eager=false,native=false) {
     if(item.iconMode!=='favicon'&&item.customIcon&&validIcon(item.customIcon))return imageMarkup(imageSource(item.customIcon,location.protocol),'',eager);
     if(item.iconMode!=='favicon'&&item.icon)return svg(item.icon);
+    if(native&&location.protocol==='chrome:')return imageMarkup(cachedBookmarkIcon(item.url),'',eager);
     const [source,fallback]=faviconSources(item.url,location.protocol);
     return source?imageMarkup(source,fallback,eager):svg('globe');
   }
@@ -260,9 +269,118 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     const fail=()=>{if(fallback){const next=fallback;fallback='';img.src=next;return;}const wrap=document.createElement('span');setHtml(wrap,svg('globe'));img.replaceWith(wrap.firstElementChild);};
     img.addEventListener('error',fail);
   }); }
-  function folderMarkup(folder) {
+  function folderMarkup(folder,native=false) {
     const children=folder.children||[];
-    return children.length?'<span class="folder-stack">'+Array.from({length:4},(_,i)=>children[i]?'<span>'+iconMarkup(children[i])+'</span>':'<span class="blank"></span>').join('')+'</span>':svg('folder');
+    return children.length?'<span class="folder-stack">'+Array.from({length:4},(_,i)=>children[i]?'<span>'+(children[i].type==='folder'?svg('folder'):iconMarkup(children[i],false,native))+'</span>':'<span class="blank"></span>').join('')+'</span>':svg('folder');
+  }
+  function decoratedBookmark(item) {
+    if(metadataState!==state){
+      metadataState=state;metadataByUrl=bookmarkMetadata(state.bookmarkMigrationBackup??state.shortcuts);metadataById=new Map();
+      const visit=items=>items.forEach(entry=>{metadataById.set(entry.id,entry);if(entry.children)visit(entry.children);});
+      visit(state.bookmarkMigrationBackup??state.shortcuts);
+    }
+    let metadata=state.bookmarkIcons?.[item.id] ?? metadataByUrl.get(item.url);
+    if(!metadata)return item;
+    if(metadata.legacyId)metadata={...metadataById.get(metadata.legacyId),...metadata};
+    return {...item,iconMode:metadata.iconMode,icon:metadata.icon,customIcon:metadata.customIcon};
+  }
+  function bookmarkIconsFor(roots,lookup,archive=[]) {
+    const originals=bookmarkMetadata(archive),icons={};
+    const byId=new Map();
+    for(const item of archive)for(const entry of item.children??[item])byId.set(entry.id,entry);
+    const visit=(items,path=[])=>items.forEach(item=>{
+      if(item.children){visit(item.children,[...path,item.name]);return;}
+      let old=lookup(item,path);if(!old||!(old.icon||old.customIcon||old.iconMode))return;
+      const original=byId.get(old.legacyId)??originals.get(item.url);
+      if(old.legacyId)old={...original,...old};
+      icons[item.id]={iconMode:old.iconMode??'custom',...(old.icon?{icon:old.icon}:{}),
+        ...(old.customIcon?(original?.customIcon===old.customIcon?{legacyId:original.id}:{customIcon:old.customIcon}):{})};
+    });
+    visit(roots);return icons;
+  }
+  function browserBookmarkMarkup(item) {
+    const folder=item.type==='folder',button=folder||editing(),tag=button?'button':'a';
+    const attrs=button?'type="button"':'href="'+esc(item.url)+'"'+(state.newTab?' target="_blank" rel="noopener noreferrer"':'');
+    return '<div class="shortcut-holder"><'+tag+' '+attrs+' class="shortcut" data-browser-bookmark="'+esc(item.id)+'" aria-label="'+esc((folder?t("Папка "):'')+item.name)+'"><span class="shortcut-icon">'+(folder?folderMarkup({...item,children:item.children.map(decoratedBookmark)},true):iconMarkup(decoratedBookmark(item),false,true))+'</span><span class="shortcut-label">'+esc(item.name)+'</span></'+tag+'></div>';
+  }
+  function renderBrowserBookmarks() {
+    const ready=browserBookmarksState.ready;
+    const roots=browserBookmarksState.roots;
+    let content=ready?roots.slice(0,200).map(browserBookmarkMarkup).join(''):'<p class="folder-empty">'+t("Загрузка закладок…")+'</p>';
+    if(ready&&!roots.length)content='<div class="empty-favorites"><span class="empty-favorites-icon">'+svg('book')+'</span><span>'+t("Нет закладок")+'</span><small>'+t("Сохраните сайт звёздочкой в меню браузера.")+'</small></div>';
+    if(browserBookmarksState.truncated||roots.length>200)content+='<p class="bookmark-notice">'+t("Остальные закладки доступны на штатном экране браузера.")+'</p>';
+    if(!state.bookmarksMigrated&&state.shortcuts.length)content+='<p class="bookmark-notice">'+t("Старые ярлыки сохранены. Они появятся в закладках после переноса.")+'</p>'+state.shortcuts.map(item=>shortcutMarkup(item)).join('');
+    setHtml($('shortcut-grid'),content);
+    fallbackImages($('shortcut-grid'));
+    let manage=$('browser-bookmarks-manager');
+    if(!manage){manage=document.createElement('a');manage.id='browser-bookmarks-manager';manage.className='text-button';manage.href='chrome-native://bookmarks/';$('favorites-heading').parentElement.append(manage);}
+    manage.textContent=t("Управлять закладками");
+    if(modalKind==='browser-folder')renderBrowserFolder();
+  }
+  function openBrowserFolder(id) {
+    const folder=browserBookmarks?.find(id);
+    if(!folder||folder.type!=='folder')return;
+    const previous=modalKind==='browser-folder'?browserFolderPath:[];
+    browserFolderPath=[...previous,id];
+    openModal(heading(folder.name)+'<div id="browser-folder-grid" class="shortcut-grid"></div><div class="dialog-actions"><button class="btn btn-secondary" id="browser-folder-back" type="button">'+t("Назад")+'</button><a class="btn btn-secondary" href="chrome-native://bookmarks/#'+esc(id)+'">'+t("Управлять закладками")+'</a></div>','browser-folder','folder-dialog');
+    $('browser-folder-back').addEventListener('click',()=>{const path=browserFolderPath.slice(0,-1);closeModal();browserFolderPath=[];if(path.length){openBrowserFolder(path.at(-1));browserFolderPath=path;}});
+    renderBrowserFolder();
+  }
+  function renderBrowserFolder() {
+    const folder=browserBookmarks?.find(browserFolderPath.at(-1));
+    if(!folder||folder.type!=='folder'){closeModal();browserFolderPath=[];return;}
+    $('dialog-title').textContent=folder.name;
+    const grid=$('browser-folder-grid');if(!grid)return;
+    setHtml(grid,(folder.children.slice(0,200).map(browserBookmarkMarkup).join('')||'<p class="folder-empty">'+t("В папке пока нет сайтов")+'</p>')+(folder.children.length>200?'<p class="bookmark-notice">'+t("Остальные закладки доступны на штатном экране браузера.")+'</p>':''));
+    fallbackImages(grid);
+  }
+  document.addEventListener('click',event=>{
+    const target=event.target.closest('[data-browser-bookmark]');if(!target)return;
+    const item=browserBookmarks?.find(target.dataset.browserBookmark);if(!item)return;
+    if(item.type==='folder'){event.preventDefault();openBrowserFolder(item.id);}
+    else if(editing()){event.preventDefault();openShortcutDialog(null,null,null,null,decoratedBookmark(item));}
+  });
+  document.addEventListener('contextmenu',event=>{
+    const target=event.target.closest('[data-browser-bookmark]');
+    const item=target&&browserBookmarks?.find(target.dataset.browserBookmark);
+    if(!item||item.type==='folder')return;
+    event.preventDefault();openShortcutDialog(null,null,null,null,decoratedBookmark(item));
+  });
+  async function migrateBookmarks() {
+    if(migratingBookmarks||!browserBookmarks?.ready)return migratingBookmarks;
+    migratingBookmarks=store.exclusive(async()=>{
+      const latest=store.latest();
+      if(latest.bookmarksMigrated)return;
+      if(latest.shortcuts.length&&!browserBookmarks.state.canEdit)return;
+      const metadata=bookmarkMetadata(latest.shortcuts);
+      if(latest.shortcuts.length)await browserBookmarks.import(bookmarkRecords(latest.shortcuts));
+      state=store.update(next=>{
+        // Keep a recovery copy: BookmarkModel persists asynchronously. It never
+        // participates in rendering or automatic re-import after this migration.
+        if(next.shortcuts.length)next.bookmarkMigrationBackup=next.shortcuts;
+        next.bookmarkIcons={...bookmarkIconsFor(browserBookmarks.state.roots,item=>metadata.get(item.url),next.bookmarkMigrationBackup),...next.bookmarkIcons};
+        next.shortcuts=[];next.bookmarksMigrated=true;
+      });
+    });
+    try{await migratingBookmarks;renderShortcuts();}
+    catch{notify(t("Не удалось перенести ярлыки. Исходные данные сохранены."));}
+    finally{migratingBookmarks=null;}
+  }
+  async function connectBookmarks() {
+    if(connectingBookmarks)return connectingBookmarks;
+    connectingBookmarks=(async()=>{
+      try {
+        if(browserBookmarks)await browserBookmarks.refresh();
+        else browserBookmarks=await connectBrowserBookmarks(value=>{
+          const activating=!nativeBookmarks()&&value.available;
+          browserBookmarksState=value;
+          if(activating){moving=null;setEditing(false);}else renderShortcuts();
+          if(value.ready&&browserBookmarks)void migrateBookmarks();
+        });
+        await migrateBookmarks();
+      }catch{notify(t("Не удалось прочитать закладки браузера."));}
+    })();
+    try{await connectingBookmarks;}finally{connectingBookmarks=null;}
   }
   function shortcutMarkup(item,parent=null) {
     const folder=item.type==='folder',tag=folder||editing()?'button':'a',selected=moving?.id===item.id;
@@ -272,6 +390,8 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   }
   function addMarkup(parent=null) { return editing()&&!moving?'<button type="button" class="shortcut shortcut-add" data-add data-parent="'+esc(parent||'')+t("\" aria-label=\"Добавить сайт")+(parent?t(" в папку"):t(" или папку"))+'"><span class="shortcut-icon">'+svg('plus')+t("</span><span class=\"shortcut-label\">Добавить</span></button>"):''; }
   function renderShortcuts() {
+    document.body.classList.toggle('hidden-labels',!state.showLabels);
+    if(nativeBookmarks()){renderBrowserBookmarks();return;}
     const positions=new Map([...document.querySelectorAll('[data-holder]')].map(el=>[el.dataset.holder,el.getBoundingClientRect()]));
     const content=state.shortcuts.map(s=>shortcutMarkup(s)).join('')+addMarkup();
     setHtml($('shortcut-grid'),content||'<div class="empty-favorites"><span class="empty-favorites-icon">'+svg('folder')+t("</span><span>Нет ярлыков</span><small>Добавьте сайты через «Настроить → Редактировать ярлыки».</small></div>"));
@@ -380,18 +500,27 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   }
   function cancelMove() {moving=null;touchDrag=null;clearDrag();updateEditing();renderShortcuts();}
 
-  function openShortcutDialog(item,parent=null,originFolder=parent,draft=null) {
-    if(!editing()&&!draft)return;
-    const initial=item||draft;
+  function openShortcutDialog(item,parent=null,originFolder=parent,draft=null,bookmark=null) {
+    if(!editing()&&!draft&&!bookmark)return;
+    const initial=bookmark||item||draft;
+    const bookmarkOrigin=bookmark&&modalKind==='browser-folder'?[...browserFolderPath]:[];
     const editId=item?.id,originalParent=parent,original=item?JSON.stringify(item):null;
-    let type=item?.type==='folder'?'folder':'site',draftIcon=item?.customIcon||'',draftMode=item?.iconMode||(item?.customIcon?'custom':'favicon');
+    let type=item?.type==='folder'?'folder':'site',draftIcon=initial?.customIcon||'',draftMode=initial?.iconMode||(initial?.customIcon?'custom':'favicon');
     let iconReadTask=null,iconReadVersion=0,iconReadFailed=false;
     function cancelIconRead() {iconReadVersion++;iconReadTask=null;iconReadFailed=false;}
-    const folders=state.shortcuts.filter(s=>s.type==='folder');
+    const folders=bookmark?[]:state.shortcuts.filter(s=>s.type==='folder');
     const position=item?shortcutList(state.shortcuts,parent).findIndex(s=>s.id===item.id):null;
     openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):draft?t("Добавить на главную Argon"):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent&&!draft?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(initial?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(initial?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p id=\"icon-help\" class=\"field-help\">PNG, JPG, WebP, GIF или SVG, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
     modalBack=originFolder?()=>openFolder(originFolder):null;
     const form=$('shortcut-form');
+    if(bookmark){
+      $('dialog-title').textContent=t("Иконка закладки");
+      $('shortcut-title').readOnly=true;$('shortcut-url').readOnly=true;
+      form.querySelector('.tabs')?.remove();
+      form.querySelector('button[type=submit]').textContent=t("Сохранить");
+      $('favicon-choice').focus();
+      if(bookmarkOrigin.length)modalBack=()=>{browserFolderPath=[];openBrowserFolder(bookmarkOrigin.at(-1));browserFolderPath=bookmarkOrigin;};
+    }
     $('icon-preview').parentElement.insertAdjacentElement('afterend',document.createElement('div')).id='site-icon-finder';
     setHtml($('site-icon-finder'),'<button type="button" id="find-site-icons" class="upload-zone">'+svg('search')+esc(t('Найти иконки'))+'</button><section id="site-icon-results" class="site-icon-results" hidden><p id="site-icon-status" class="field-help" role="status" aria-live="polite"></p><div id="site-icon-options"></div><p id="site-icon-selection" class="field-help" aria-live="polite"></p></section>');
     $('modal-root').querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{type=b.dataset.type;$('modal-root').querySelectorAll('[data-type]').forEach(t=>t.classList.toggle('active',t===b));$('site-fields').hidden=type==='folder';$('shortcut-url').required=type==='site';$('shortcut-title').placeholder=type==='folder'?t("Название папки"):t("Название сайта");}));
@@ -405,7 +534,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     $('shortcut-folder')?.addEventListener('change',()=>updatePositions());
     updatePositions(true);
     let previewTimer;
-    function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
+    function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(initial?.icon?svg(initial.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true,!!bookmark));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
     function chooseIcon(mode) { cancelIconRead();draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';$('form-error').hidden=true;preview();updateIconSelection(); }
     const finder=$('site-icon-finder'), findButton=$('find-site-icons'), results=$('site-icon-results');
     let iconJob=null, foundIcons=[];
@@ -482,12 +611,28 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       e.preventDefault();if(type==='site'&&iconReadTask&&!await iconReadTask)return;if($('shortcut-form')!==form)return;
       if(type==='site'&&iconReadFailed){showError(t("Не удалось прочитать изображение. Выберите исправный файл."));return;}
       const name=$('shortcut-title').value.trim();if(!name){showError(t("Укажите название."));return;}let url;
-      if(type==='site'){try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}if(draftMode==='custom'&&!draftIcon&&!item?.icon){showError(t("Загрузите иконку или выберите «С сайта»."));return;}}
+      if(type==='site'){try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}if(draftMode==='custom'&&!draftIcon&&!initial?.icon){showError(t("Загрузите иконку или выберите «С сайта»."));return;}}
       const folderSelect=$('shortcut-folder'),targetParent=type==='site'?(folderSelect?(folderSelect.value||null):parent):null;
       const desiredPosition=item?Number($('shortcut-position').value):null;
-      if(draft) {
+      if(bookmark) {
+        if(!browserBookmarks?.find(bookmark.id)){showError(t("Закладка больше не существует."));return;}
+        if(!await commit(next=>{
+          next.bookmarkIcons??={};
+          const previous=next.bookmarkIcons[bookmark.id];
+          next.bookmarkIcons[bookmark.id]={iconMode:draftMode,...(draftMode==='custom'&&draftIcon?(previous?.legacyId&&draftIcon===bookmark.customIcon?{legacyId:previous.legacyId}:{customIcon:draftIcon}):{}),...(draftMode==='custom'&&bookmark.icon&&!draftIcon?{icon:bookmark.icon}:{})};
+        },false,'form-error'))return;
+        dismissModal();renderShortcuts();notify(t("Изменения сохранены"));return;
+      } else if(draft) {
         try {
-          await writeState(()=>{state=store.addShortcut({id:uid(),name,url,iconMode:draftMode,...(draftMode==='custom'?{customIcon:draftIcon}:{})},targetParent);});
+          await writeState(async()=>{
+            if(nativeBookmarks()) {
+              await browserBookmarks.import([{name,url,path:[]}]);
+              const find=items=>{for(const entry of items){if(entry.url===url)return entry;if(entry.children){const found=find(entry.children);if(found)return found;}}};
+              const added=find(browserBookmarks.state.roots);
+              if(!added)throw Error();
+              state=store.update(next=>{next.bookmarkIcons??={};next.bookmarkIcons[added.id]={iconMode:draftMode,...(draftMode==='custom'?{customIcon:draftIcon}:{})};});
+            } else state=store.addShortcut({id:uid(),name,url,iconMode:draftMode,...(draftMode==='custom'?{customIcon:draftIcon}:{})},targetParent);
+          });
         } catch(error) {showError(error.message||t("Не удалось сохранить изменения."));return;}
       } else if(!await commit(next=>{
         let current;
@@ -644,7 +789,13 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   async function exportBackup() {
     await Promise.allSettled([...pendingWrites]);
     try {
-      const dump=createDump(store.latest());
+      const latest=store.latest();
+      if(nativeBookmarks()) {
+        await browserBookmarks.refresh();
+        if(!browserBookmarks.ready||browserBookmarks.state.truncated)throw Error();
+        latest.browserBookmarks=bookmarkRecords(browserBookmarks.state.roots,[],item=>state.bookmarkIcons?.[item.id]?.legacyId?state.bookmarkIcons[item.id]:decoratedBookmark(item));
+      }
+      const dump=createDump(latest);
       saveDownload(new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}),'argon-dump-'+downloadStamp()+'.json');
       notify(t("Резервная копия подготовлена для скачивания"));
     } catch {
@@ -671,13 +822,25 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     const stats=dumpStats(dump.state),date=new Intl.DateTimeFormat(language() === 'ru' ? 'ru-RU' : 'en-US',{dateStyle:'medium',timeStyle:'short'}).format(new Date(dump.createdAt));
     const rows=[[t("Файл"),filename],[t("Создан"),date],[t("Ярлыки"),stats.sites],[t("Папки"),stats.folders],[t("Загруженные иконки"),stats.icons],[t("Свои поисковики"),stats.engines]];
     openModal(heading(t("Восстановить Argon?"))+'<div class="backup-summary">'+rows.map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>').join('')+'</div>'+
-      '<p class="restore-note">'+t("Текущие ярлыки, папки, свои иконки и настройки страницы будут заменены.")+'</p>'+
+      '<p class="restore-note">'+(nativeBookmarks()?t("Настройки страницы будут заменены. Закладки из копии добавятся к закладкам браузера без удаления существующих."):t("Текущие ярлыки, папки, свои иконки и настройки страницы будут заменены."))+'</p>'+
       '<p class="field-help">'+t("Загруженные изображения встроены в файл JSON.")+' '+t("Активный поисковик браузера выбирается отдельно.")+'</p>'+
       '<p id="backup-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn-secondary" type="button" id="cancel-restore" autofocus>'+t("Отмена")+'</button><button class="btn btn-primary" type="button" id="confirm-restore">'+t("Заменить и восстановить")+'</button></div>','restore');
     $('cancel-restore').addEventListener('click',openDataSettings);
     $('confirm-restore').addEventListener('click',async()=>{
       try {
-        await writeState(() => { state=store.replace(dump.state); });
+        await writeState(async() => {
+          const next=structuredClone(dump.state);
+          if(nativeBookmarks()) {
+            const records=next.browserBookmarks??bookmarkRecords(next.shortcuts);
+            await browserBookmarks.import(records,{restore:!!next.browserBookmarks});
+            const metadata=bookmarkMetadata(records);
+            const locations=new Map(records.filter(record=>record.url).map(record=>[JSON.stringify([record.path,record.name,record.url]),record]));
+            if(next.shortcuts.length)next.bookmarkMigrationBackup=next.shortcuts;
+            next.bookmarkIcons=bookmarkIconsFor(browserBookmarks.state.roots,(item,path)=>locations.get(JSON.stringify([path,item.name,item.url]))??metadata.get(item.url),next.bookmarkMigrationBackup);
+            next.shortcuts=[];next.bookmarksMigrated=true;delete next.browserBookmarks;
+          }
+          state=store.replace(next);
+        });
       } catch {
         backupError(t("Не удалось сохранить резервную копию. Прежние данные остаются на месте."));
         return;
@@ -688,23 +851,37 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   function bookmarkSettingsMarkup() {
     return '<div class="backup-section"><span class="setting-label">'+t("Закладки из другого браузера")+'</span><p class="backup-description">'+t("Добавьте ссылки и папки к вашим ярлыкам.")+'</p><p class="field-help">'+t("HTML, JSON или файл Bookmarks без расширения.")+'</p><button class="btn btn-secondary" id="bookmarks-import" type="button">'+svg('upload')+t("Добавить закладки из файла")+'</button><p class="field-help">'+t("Новые ярлыки получат иконки с сайтов. Ваши ярлыки, свои иконки и настройки сохранятся.")+'</p><input type="file" id="bookmarks-file" hidden><p id="bookmarks-error" class="error" role="alert" hidden></p></div>';
   }
+  function migrationSettingsMarkup() {
+    if(!nativeBookmarks()||!state.bookmarkMigrationBackup?.length)return '';
+    return '<div class="backup-section"><span class="setting-label">'+t("Копия прежних ярлыков")+'</span><p class="backup-description">'+t("Страховочная копия не участвует в рабочем списке. Её можно добавить в закладки вручную.")+'</p><button type="button" class="btn btn-secondary" id="migration-import">'+t("Добавить прежние ярлыки в закладки")+'</button></div>';
+  }
   function bookmarkError(message) {
     const target=$('bookmarks-error');
     if(target){target.textContent=message;target.hidden=false;}else notify(message);
   }
   function openBookmarkImport(parsed,filename) {
-    const preview=mergeBookmarks(store.latest(),parsed,uid);
+    const preview=nativeBookmarks()?previewBookmarkImport(browserBookmarksState.roots,parsed):mergeBookmarks(store.latest(),parsed,uid);
     const rows=[[t("Файл"),filename],[t("Формат"),parsed.format],[t("Новые закладки"),preview.imported],
       [t("Новые папки"),preview.folders],[t("Повторные ссылки"),preview.duplicates],[t("Пропущенные записи"),preview.skipped]];
-    let notes='<p class="restore-note">'+t("Закладки добавятся к вашим ярлыкам. Настройки страницы сохранятся. Повторяющиеся адреса будут пропущены.")+'</p>';
-    if(parsed.records.some(record=>record.path.length>1))notes+='<p class="field-help">'+t("Вложенные папки будут показаны отдельно с путём в названии.")+'</p>';
+    let notes='<p class="restore-note">'+(nativeBookmarks()?t("Закладки добавятся в браузер. Настройки страницы и существующие закладки сохранятся."):t("Закладки добавятся к вашим ярлыкам. Настройки страницы сохранятся. Повторяющиеся адреса будут пропущены."))+'</p>';
+    if(!nativeBookmarks()&&parsed.records.some(record=>record.path.length>1))notes+='<p class="field-help">'+t("Вложенные папки будут показаны отдельно с путём в названии.")+'</p>';
     if(preview.shortened)notes+='<p class="field-help">'+t("Длинные названия будут сокращены: {count}.",{count:preview.shortened})+'</p>';
-    if(!preview.imported)notes+='<p class="field-help">'+t("Все эти закладки уже есть на домашней странице.")+'</p>';
+    if(!preview.imported&&!preview.folders)notes+='<p class="field-help">'+t("Все эти закладки уже есть на домашней странице.")+'</p>';
     openModal(heading(t("Импортировать закладки?"))+'<div class="backup-summary">'+rows.map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></div>').join('')+'</div>'+notes+'<p id="bookmarks-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn-secondary" type="button" id="cancel-bookmarks" autofocus>'+t("Отмена")+'</button><button class="btn btn-primary" type="button" id="confirm-bookmarks"'+(preview.imported?'':' disabled')+'>'+t("Добавить закладки")+'</button></div>','bookmarks');
     $('cancel-bookmarks').addEventListener('click',openDataSettings);
+    if(nativeBookmarks()&&preview.folders)$('confirm-bookmarks').disabled=false;
+    if(nativeBookmarks()&&!browserBookmarksState.canEdit){$('confirm-bookmarks').disabled=true;bookmarkError(t("Изменение закладок запрещено настройками браузера."));}
     $('confirm-bookmarks').addEventListener('click',async()=>{
       try {
-        const result=await writeState(() => {
+        const result=await writeState(async() => {
+          if(nativeBookmarks()) {
+            const current=previewBookmarkImport(browserBookmarks.state.roots,parsed);
+            await browserBookmarks.import(parsed.records);
+            const metadata=bookmarkMetadata(parsed.records);
+            const icons=bookmarkIconsFor(browserBookmarks.state.roots,item=>metadata.get(item.url),state.bookmarkMigrationBackup);
+            if(Object.keys(icons).length)state=store.update(next=>{next.bookmarkIcons={...icons,...next.bookmarkIcons};});
+            return current;
+          }
           const imported=store.importBookmarks(parsed,uid);
           state=imported.state;
           return imported;
@@ -724,7 +901,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       '<button class="btn btn-secondary" id="backup-import" type="button">'+svg('upload')+t("Восстановить из копии")+'</button></div>'+
       '<p class="field-help">'+t("Восстановление заменит текущие данные страницы.")+' '+t("Активный поисковик браузера выбирается отдельно.")+'</p>'+
       '<button class="btn btn-secondary" id="backup-recovery" type="button"'+(damaged?'':' hidden')+'>'+t("Сохранить исходные данные")+'</button><input type="file" id="backup-file" accept=".json,application/json" hidden><p id="backup-error" class="error" role="alert" hidden></p></div>'+
-      bookmarkSettingsMarkup()+'<div class="dialog-actions"><button class="btn btn-secondary" id="data-back" type="button">'+t("Назад к настройкам")+'</button></div>','data');
+      bookmarkSettingsMarkup()+migrationSettingsMarkup()+'<div class="dialog-actions"><button class="btn btn-secondary" id="data-back" type="button">'+t("Назад к настройкам")+'</button></div>','data');
     $('data-back').addEventListener('click',openSettings);
     $('backup-export').addEventListener('click',exportBackup);
     $('backup-recovery').addEventListener('click',()=>{
@@ -733,6 +910,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     });
     $('backup-import').addEventListener('click',()=>$('backup-file').click());
     $('bookmarks-import').addEventListener('click',()=>$('bookmarks-file').click());
+    $('migration-import')?.addEventListener('click',()=>openBookmarkImport({format:'Argon',records:bookmarkRecords(store.latest().bookmarkMigrationBackup??[]),skipped:0},t("Копия прежних ярлыков")));
     $('backup-file').addEventListener('change',readTransfer);
     $('bookmarks-file').addEventListener('change',readTransfer);
   }
@@ -799,7 +977,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   function openSettings() {
     if(moving)cancelMove();
     openModal(heading(t("Настроить страницу"))+'<p class="field-help settings-autosave">'+t("Изменения сохраняются автоматически")+'</p>'+
-      '<button type="button" id="edit-shortcuts" class="setting-row edit-shortcuts"><span><strong>'+(editing()?t("Завершить редактирование"):t("Редактировать ярлыки"))+'</strong><small>'+t("Добавление, изменение, перемещение и удаление ярлыков.")+'</small></span>'+svg('pencil')+'</button>'+
+      '<button type="button" id="edit-shortcuts" class="setting-row edit-shortcuts"><span><strong>'+(editing()?t("Завершить редактирование"):nativeBookmarks()?t("Иконки закладок"):t("Редактировать ярлыки"))+'</strong><small>'+(nativeBookmarks()?t("Выберите закладку на главной, чтобы изменить её иконку."):t("Добавление, изменение, перемещение и удаление ярлыков."))+'</small></span>'+svg('pencil')+'</button>'+
       '<button type="button" id="search-settings" class="setting-row edit-shortcuts"><span><strong>'+t("Поисковая система")+'</strong><small id="settings-engine-name">'+esc(selectedEngine().name)+'</small></span>'+svg('globe')+'</button>'+
       '<span class="setting-label">'+t("Оформление")+'</span><div class="theme-options">'+
       [['light','sun',t("Светлая")],['dark','moon',t("Тёмная")],['amoled','amoled',t("Тёмная AMOLED")],['system','monitor',t("Как в браузере")]].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+
@@ -832,7 +1010,11 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     });
     const scaleInput=$('shortcut-scale');
     let scaleDirty=false;
-    scaleInput.addEventListener('input',()=>{scaleDirty=true;});
+    scaleInput.addEventListener('input',()=>{
+      scaleDirty=true;
+      const value=scaleInput.valueAsNumber;
+      if(Number.isInteger(value)&&value>=50&&value<=200){$('shortcut-scale-error').hidden=true;scaleInput.removeAttribute('aria-invalid');}
+    });
     syncModalState=()=>{
       $('density-select').value=densityValue();
       if(!scaleDirty)scaleInput.value=state.shortcutScale??100;
@@ -891,12 +1073,12 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       // resubmit it. The full page address remains only in the editable draft.
       history.replaceState(history.state,'',location.href.split('#')[0]);
       const draft=shortcutDraftFromHash(request);
-      if(draft)openShortcutDialog(null,null,null,draft);
+      if(draft)void connectBookmarks().then(()=>openShortcutDialog(null,null,null,draft));
     } catch(error) {notify(error.message);}
   }
   // Normal startup is released by the native provider reply, followed by a
   // visual-state acknowledgement. startup.js owns the independent fail-open.
-  void Promise.all([initialTheme,connectSearch(),backgroundReady]).then(()=>{
+  void Promise.all([initialTheme,connectSearch(),connectBookmarks(),backgroundReady]).then(()=>{
     initialThemeReady=true;
     if(!browserSearch||browserSearch.available)finishStartup();
   });

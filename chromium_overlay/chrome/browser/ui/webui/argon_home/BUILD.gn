@@ -3,6 +3,8 @@
 
 source_set("argon_home") {
   sources = [
+    "argon_bookmarks_handler.cc",
+    "argon_bookmarks_handler.h",
     "argon_icon_handler.cc",
     "argon_icon_handler.h",
     "argon_home_ui.cc",
@@ -20,10 +22,16 @@ source_set("argon_home") {
     "//base",
     "//chrome/android:chrome_jni_headers",
     "//chrome/browser:browser_process",
+    "//chrome/browser/bookmarks",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/search_engines",
     "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
+    "//chrome/browser/ui/webui:favicon_source",
     "//net",
+    "//components/bookmarks/browser",
+    "//components/bookmarks/common",
+    "//components/prefs",
+    "//components/favicon_base",
     "//services/network/public/cpp",
     "//services/network/public/mojom",
     "//url",

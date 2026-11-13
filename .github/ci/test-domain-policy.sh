@@ -27,6 +27,7 @@ for arch in arm64 arm; do
     ninja -C "$graph_out" -t query \
       obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o \
+      obj/chrome/browser/ui/webui/argon_home/argon_home/argon_bookmarks_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \
@@ -42,6 +43,7 @@ done
   cd "$src"
   autoninja -C out/Argon-graph-arm -j 4 \
     obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o \
+    obj/chrome/browser/ui/webui/argon_home/argon_home/argon_bookmarks_handler.o \
     obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o \
     obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o \
     obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \

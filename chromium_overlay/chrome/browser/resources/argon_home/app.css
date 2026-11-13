@@ -1,4 +1,7 @@
 .argon-home-starting body{visibility:hidden}
+.bookmark-notice{grid-column:1/-1;font-size:12px;line-height:1.6;color:var(--secondary)}
+.section-row{flex-wrap:wrap;gap:10px}
+.dialog-header{position:sticky;top:0;z-index:4;background:var(--surface);padding-block:8px}
 .browser-search-ready .native-search-box{text-align:start;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text}
 /* Tablet Chromium already renders its omnibox; never show another search field. */
 .native-tablet-search .search-wrap{display:none!important}
