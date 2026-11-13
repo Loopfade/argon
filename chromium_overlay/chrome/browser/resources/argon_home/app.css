@@ -61,6 +61,9 @@ body{isolation:isolate}
 .custom-engine-list{display:flex;flex-direction:column;gap:14px}
 .custom-engine-row{padding:14px;border:1px solid var(--border);border-radius:12px;min-width:0}
 .custom-engine-row strong{font-size:13px}
+.dialog h2,.custom-engine-row strong,.move-toolbar strong{overflow-wrap:anywhere}
+.move-toolbar>div{min-width:0}
+@media(max-width:480px){.move-toolbar{flex-wrap:wrap}.move-toolbar>div{flex-basis:100%}.move-toolbar .btn{flex:1}}
 .custom-engine-row small{display:block;font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin-top:5px}
 .custom-engine-row .dialog-actions{margin-top:12px}
 .custom-engine-row .btn{padding:8px 12px;font-size:11px}

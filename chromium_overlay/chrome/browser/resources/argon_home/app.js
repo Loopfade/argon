@@ -1,6 +1,6 @@
 import {t, language, localizePage} from './i18n.js';
 import {MAX_DUMP_BYTES, HomepageStore, createDump, parseDump,
-  dumpStats, shortcutList, moveShortcut, navigationTarget, mergeBookmarks} from './state.js';
+  dumpStats, shortcutList, moveShortcut, navigationTarget, mergeBookmarks, restoreState} from './state.js';
 import {imageSource, faviconSources, engineIcon} from './icons.js';
 import {MAX_BOOKMARK_BYTES, parseBookmarks} from './bookmarks.js';
 import {connectBrowserSearch} from './browser-search.js';
@@ -23,6 +23,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   const store = new HomepageStore(storage, storageKey);
   let state = store.state;
   let modalKind=null, modalBack=null, currentFolder=null, returnFocus=null, toastTimer, drag=null, touchDrag=null, suppressClick=false, moving=null;
+  let syncModalState=()=>{};
   const editing = () => store.editing;
   const homeTheme = globalThis.argonHomeTheme;
   let browserSearch=null, browserSearchState=null, selectingEngine=false, searchBoundsFrame=0;
@@ -42,12 +43,12 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(!nativeSearch())return pageEngines().find(e=>e.id===state.engine)||builtins[0];
     const engine={...browserSearchState.engine};
     if(!engine.name)engine.name=t("Поиск отключён");
-    if(engine.id==='browser:current') {
-      const matching=state.customEngines.find(item=>{
-        try{return new URL(item.url.replaceAll('{query}','example')).href===new URL(engine.url).href;}catch{return false;}
-      });
-      if(matching)engine.id=matching.id;
-    }
+    // Chromium may classify a custom Google/Bing URL as a built-in provider.
+    // An exact template match must still identify the user's editable entry.
+    const matching=state.customEngines.find(item=>{
+      try{return new URL(item.url.replaceAll('{query}','example')).href===new URL(engine.url).href;}catch{return false;}
+    });
+    if(matching)engine.id=matching.id;
     return engine;
   }
   function engines() {
@@ -151,6 +152,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       store.loadError=null;
       if(moving){try{if(!findItem(moving.id,moving.parent))cancelMove();}catch{cancelMove();}}
       refresh();
+      syncModalState();
     } catch (error) {
       store.loadError=error;
       notify(t("Не удалось прочитать настройки из другой вкладки."));
@@ -289,7 +291,6 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     const engine=selectedEngine();setHtml($('selected-engine-icon'),engineMarkup(engine));$('selected-engine-name').textContent=engine.short||engine.name;
     $('engine-trigger').title=(nativeSearch()?t("Поисковик браузера: "):t("Поисковая система: "))+engine.name;
     setHtml($('engine-menu'),'<div class="popover-title">'+(nativeSearch()?t("Поисковик браузера"):t("Поисковая система"))+'</div>'+(nativeSearch()?'<p class="popover-title">'+t("Используется и для поиска в адресной строке.")+'</p>':'')+engines().map(e=>'<button type="button" class="engine-option'+(e.id===engine.id?' active':'')+'" data-engine="'+esc(e.id)+'" aria-pressed="'+(e.id===engine.id)+'"><span class="engine-icon">'+engineMarkup(e)+'</span><span>'+esc(e.id==='noai'?'DuckDuckGo':e.name)+'</span>'+(e.id==='noai'?t("<span class=\"noai-badge\">БЕЗ ИИ</span>"):'')+(e.id===engine.id?svg('check','check'):'')+'</button>').join('')+'<div class="popover-divider"></div><button type="button" class="engine-option engine-add" id="add-engine">'+svg('plus')+t("Добавить свою</button>"));
-    fallbackImages($('selected-engine-icon'));fallbackImages($('engine-menu'));
     if(state.customEngines.length){const manage=document.createElement('button');manage.type='button';manage.id='manage-engines';manage.className='engine-option';manage.textContent=t("Управлять своими поисковиками");$('engine-menu').append(manage);}
     $('engine-trigger').disabled=selectingEngine;
     if(nativeSearch()&&!browserSearchState.canChange) {
@@ -297,15 +298,19 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       const note=document.createElement('p');note.className='popover-title';
       note.textContent=t("Поисковик задан политикой или расширением.");$('engine-menu').append(note);
     }
+    if($('settings-engine-name'))$('settings-engine-name').textContent=engine.name;
+    if(modalKind==='search-settings')renderSearchOptions();
+    fallbackImages($('selected-engine-icon'));fallbackImages($('engine-menu'));
   }
   function closeEngine() { $('engine-menu').hidden=true;$('engine-trigger').setAttribute('aria-expanded','false'); }
   $('engine-trigger').addEventListener('click',()=>{const open=$('engine-menu').hidden;$('engine-menu').hidden=!open;$('engine-trigger').setAttribute('aria-expanded',String(open));if(open)$('engine-menu').querySelector('button')?.focus();});
   async function selectEngine(engine) {
-    if(engine.id===selectedEngine().id){closeEngine();void focusSearch();return;}
+    if(engine.id===selectedEngine().id){if(modalKind==='search-settings')closeModal();closeEngine();void focusSearch();return;}
     if(!nativeSearch()) {
-      if(await commit(s=>{s.engine=engine.id;})){renderEngine();closeEngine();void focusSearch();}
+      if(await commit(s=>{s.engine=engine.id;})){if(modalKind==='search-settings')closeModal();renderEngine();closeEngine();void focusSearch();}
       return;
     }
+    if(modalKind==='search-settings')closeModal();
     selectingEngine=true;closeEngine();renderEngine();
     try{await browserSearch.select(engine);void focusSearch();}
     catch{notify(t("Не удалось изменить поисковик браузера."));}
@@ -317,6 +322,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   $('search-form').addEventListener('submit',e=>{e.preventDefault();if(nativeSearch()){void focusSearch();return;}try{const target=navigationTarget($('search-input').value,selectedEngine().url);if(target)location.assign(target);else void focusSearch();}catch{notify(t("Проверьте адрес сайта или поисковой системы."));}});
 
   function openModal(content,kind,extra='',back=null) {
+    syncModalState=()=>{};
     cancelIconSearch();cancelIconSearch=()=>{};
     cancelBackgroundRequest();cancelBackgroundRequest=()=>{};
     closeEngine();closeThemeMenu();if(!modalKind)returnFocus=document.activeElement;modalKind=kind;modalBack=back;
@@ -328,6 +334,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     const field=$('modal-root').querySelector('[autofocus]')||$('modal-root').querySelector('button,input,select');field?.focus();
   }
   function closeModal() {
+    syncModalState=()=>{};
     cancelIconSearch();cancelIconSearch=()=>{};
     cancelBackgroundRequest();cancelBackgroundRequest=()=>{};
     const cancelFolderMove=modalKind==='folder'&&moving?.parent===currentFolder;
@@ -377,6 +384,8 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(!editing())return;
     const editId=item?.id,originalParent=parent,original=item?JSON.stringify(item):null;
     let type=item?.type==='folder'?'folder':'site',draftIcon=item?.customIcon||'',draftMode=item?.iconMode||(item?.customIcon?'custom':'favicon');
+    let iconReadTask=null,iconReadVersion=0,iconReadFailed=false;
+    function cancelIconRead() {iconReadVersion++;iconReadTask=null;iconReadFailed=false;}
     const folders=state.shortcuts.filter(s=>s.type==='folder');
     const position=item?shortcutList(state.shortcuts,parent).findIndex(s=>s.id===item.id):null;
     openModal(heading(item?t("Изменить ")+(type==='folder'?t("папку"):t("ярлык")):t("Добавить в избранное"))+'<form id="shortcut-form">'+(!item&&!parent?'<div class="tabs"><button type="button" class="active" data-type="site">'+svg('globe')+t("Сайт</button><button type=\"button\" data-type=\"folder\">")+svg('folder')+t("Папка</button></div>"):'')+t("<label class=\"field\"><span class=\"field-label\">Название</span><input id=\"shortcut-title\" value=\"")+esc(item?.name||'')+t("\" maxlength=\"40\" required autofocus placeholder=\"Название ")+(type==='folder'?t("папки"):t("сайта"))+'"></label><div id="site-fields"'+(type==='folder'?' hidden':'')+t("><label class=\"field\"><span class=\"field-label\">Адрес сайта</span><input id=\"shortcut-url\" value=\"")+esc(item?.url||'')+'" placeholder="example.com" spellcheck="false"'+(type==='site'?' required':'')+t("></label><div class=\"field\"><span class=\"field-label\">Иконка</span><div class=\"icon-choices\"><button type=\"button\" id=\"favicon-choice\" class=\"icon-choice")+(draftMode==='favicon'?' active':'')+'">'+svg('globe')+t("С сайта</button><button type=\"button\" id=\"custom-choice\" class=\"icon-choice")+(draftMode==='custom'?' active':'')+'">'+svg('image')+t("Своя</button><span id=\"icon-preview\" class=\"icon-preview\">")+(item?iconMarkup(item):svg('globe'))+'</span></div><button type="button" id="upload-button" class="upload-zone"'+(draftMode==='custom'?'':' hidden')+'>'+svg('upload')+t("<span>Загрузить изображение</span></button><input type=\"file\" id=\"icon-file\" accept=\"image/png,image/jpeg,image/webp,image/gif,image/svg+xml\" hidden><p id=\"icon-help\" class=\"field-help\">PNG, JPG, WebP, GIF или SVG, до 1 МБ.</p></div>")+(folders.length?t("<label class=\"field\"><span class=\"field-label\">Расположение</span><select id=\"shortcut-folder\"><option value=\"\">Избранное</option>")+folders.map(f=>'<option value="'+esc(f.id)+'"'+(f.id===parent?' selected':'')+'>'+esc(f.name)+'</option>').join('')+'</select></label>':'')+'</div>'+(item?t("<label class=\"field\"><span class=\"field-label\">Позиция</span><select id=\"shortcut-position\">")+shortcutList(state.shortcuts,parent).map((s,i)=>'<option value="'+i+'"'+(i===position?' selected':'')+'>'+(i+1)+'</option>').join('')+'</select></label>':'')+'<p id="form-error" class="error" role="alert" hidden></p><div class="dialog-actions">'+(item?t("<button type=\"button\" class=\"btn btn-delete\" id=\"delete-shortcut\">Удалить</button>"):'')+t("<button type=\"button\" class=\"btn btn-secondary\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">")+(item?t("Сохранить"):t("Добавить"))+'</button></div></form>','shortcut');
@@ -396,7 +405,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     updatePositions(true);
     let previewTimer;
     function preview() { clearTimeout(previewTimer);if($('shortcut-form')!==form)return;const p=$('icon-preview');if(draftMode==='custom')setHtml(p,draftIcon?iconMarkup({customIcon:draftIcon,iconMode:'custom'},true):(item?.icon?svg(item.icon):svg('image')));else{try{setHtml(p,iconMarkup({url:normalizedUrl($('shortcut-url').value.trim()),iconMode:'favicon'},true));}catch{setHtml(p,svg('globe'));}}fallbackImages(p); }
-    function chooseIcon(mode) { iconReadFailed=false;draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';preview();updateIconSelection(); }
+    function chooseIcon(mode) { cancelIconRead();draftMode=mode;$('favicon-choice').classList.toggle('active',mode==='favicon');$('custom-choice').classList.toggle('active',mode==='custom');$('upload-button').hidden=mode!=='custom';$('icon-help').hidden=mode!=='custom';$('form-error').hidden=true;preview();updateIconSelection(); }
     const finder=$('site-icon-finder'), findButton=$('find-site-icons'), results=$('site-icon-results');
     let iconJob=null, foundIcons=[];
     const iconDescription=icon=>icon.vector?'SVG':icon.width+' × '+icon.height;
@@ -445,15 +454,15 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       $('site-icon-selection').textContent=t('Выбрано: {size}. Сохраните ярлык.',{size:iconDescription(icon)});$('form-error').hidden=true;
     });
     $('shortcut-url').addEventListener('input',resetIconSearch);
-    form.querySelectorAll('[data-type]').forEach(button=>button.addEventListener('click',resetIconSearch));
+    form.querySelectorAll('[data-type]').forEach(button=>button.addEventListener('click',()=>{resetIconSearch();cancelIconRead();$('form-error').hidden=true;}));
     $('icon-file').addEventListener('change',resetIconSearch);
     $('icon-help').hidden=draftMode!=='custom';
     $('favicon-choice').addEventListener('click',()=>chooseIcon('favicon'));$('custom-choice').addEventListener('click',()=>chooseIcon('custom'));
     $('shortcut-url').addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(preview,250);});
     $('shortcut-url').addEventListener('change',preview);$('upload-button').addEventListener('click',()=>$('icon-file').click());
-    let iconReadTask=null,iconReadVersion=0,iconReadFailed=false;
     $('icon-file').addEventListener('change',()=>{
-      const file=$('icon-file').files[0],version=++iconReadVersion;if(!file)return;
+      const file=$('icon-file').files[0];$('icon-file').value='';if(!file)return;
+      cancelIconRead();const version=iconReadVersion;
       if(file.size>1024*1024||!/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(file.type)){iconReadFailed=true;showError(t("Выберите изображение подходящего формата размером до 1 МБ."));return;}
       iconReadTask=(async()=>{
         try {
@@ -469,8 +478,8 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       })();
     });
     form.addEventListener('submit',async e=>{
-      e.preventDefault();if(iconReadTask&&!await iconReadTask)return;if($('shortcut-form')!==form)return;
-      if(iconReadFailed){showError(t("Не удалось прочитать изображение. Выберите исправный файл."));return;}
+      e.preventDefault();if(type==='site'&&iconReadTask&&!await iconReadTask)return;if($('shortcut-form')!==form)return;
+      if(type==='site'&&iconReadFailed){showError(t("Не удалось прочитать изображение. Выберите исправный файл."));return;}
       const name=$('shortcut-title').value.trim();if(!name){showError(t("Укажите название."));return;}let url;
       if(type==='site'){try{url=normalizedUrl($('shortcut-url').value.trim());}catch(error){showError(error.message);return;}if(draftMode==='custom'&&!draftIcon&&!item?.icon){showError(t("Загрузите иконку или выберите «С сайта»."));return;}}
       const folderSelect=$('shortcut-folder'),targetParent=type==='site'?(folderSelect?(folderSelect.value||null):parent):null;
@@ -478,7 +487,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       if(!await commit(next=>{
         let current;
         if(editId){const from=shortcutList(next.shortcuts,originalParent),index=from.findIndex(s=>s.id===editId);if(index<0||JSON.stringify(from[index])!==original)throw Error(t("Ярлык изменился в другой вкладке. Откройте его заново."));current=from.splice(index,1)[0];}
-        const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(draftMode==='custom'&&item?.icon&&normalizedUrl(item.url)===url&&!draftIcon?{icon:item.icon}:{})};
+        const result=type==='folder'?{id:editId||uid(),type:'folder',name,children:current?.children||[]}:{id:editId||uid(),name,url,iconMode:draftMode,...(draftMode==='custom'&&draftIcon?{customIcon:draftIcon}:{}),...(draftMode==='custom'&&item?.icon&&!draftIcon?{icon:item.icon}:{})};
         const to=shortcutList(next.shortcuts,targetParent);
         const index=editId?Math.max(0,Math.min(desiredPosition,to.length)):to.length;to.splice(index,0,result);
       },true,'form-error'))return;
@@ -542,12 +551,29 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   document.addEventListener('pointerup',()=>{if(!touchDrag)return;const p=touchDrag;touchDrag=null;clearDrag();if(p.active){suppressClick=true;setTimeout(()=>{suppressClick=false;},0);if(p.target)reorder(p,p.target);}});
   document.addEventListener('pointercancel',()=>{if(touchDrag){touchDrag=null;clearDrag();}});
 
-  function openEngineDialog(item=null,fromManager=false) {
+  function renderSearchOptions() {
+    const options=$('engine-menu').cloneNode(true);
+    options.hidden=false;options.removeAttribute('id');options.className='';
+    options.querySelector('.popover-title')?.remove();
+    options.querySelectorAll('[id]').forEach(node=>{node.id='settings-'+node.id;});
+    $('search-settings-options').replaceChildren(options);fallbackImages(options);
+  }
+  function openSearchSettings() {
+    openModal(heading(t("Поисковая система"))+'<div id="search-settings-options"></div>','search-settings','',openSettings);
+    renderEngine();
+    $('search-settings-options').addEventListener('click',event=>{
+      const button=event.target.closest('button');if(!button||button.disabled)return;
+      if(button.dataset.engine){const engine=engines().find(item=>item.id===button.dataset.engine);if(engine)void selectEngine(engine);}
+      else if(button.id==='settings-add-engine')openEngineDialog(null,false,openSearchSettings);
+      else if(button.id==='settings-manage-engines')openManageEngines(openSearchSettings);
+    });
+  }
+  function openEngineDialog(item=null,fromManager=false,back=null) {
     const original=item?JSON.stringify(item):null;
     openModal(heading(t("Свой поисковик"))+(nativeSearch()?'<p class="field-help">'+t("После добавления этот поисковик будет выбран для браузера.")+'</p>':'')+t("<form id=\"engine-form\"><label class=\"field\"><span class=\"field-label\">Название</span><input id=\"engine-title\" placeholder=\"Например, Brave Search\" maxlength=\"40\" required autofocus></label><label class=\"field\"><span class=\"field-label\">Адрес поиска</span><input id=\"engine-url\" placeholder=\"https://example.com/?q={query}\" required spellcheck=\"false\"><span class=\"field-help\">Вставьте {query} вместо поискового запроса.</span></label><p id=\"form-error\" class=\"error\" role=\"alert\" hidden></p><div class=\"dialog-actions\"><button class=\"btn btn-secondary\" type=\"button\" data-close>Отмена</button><button class=\"btn btn-primary\" type=\"submit\">Добавить и выбрать</button></div></form>"),'engine');
-    returnFocus=$('engine-trigger');
+    returnFocus=browserSearchState?.tablet?$('settings-button'):$('engine-trigger');
     if(item){$('dialog-title').textContent=t("Изменить поисковик");$('engine-title').value=item.name;$('engine-url').value=item.url;$('engine-form').querySelector('button[type=submit]').textContent=t("Сохранить");}
-    if(item||fromManager)modalBack=openManageEngines;
+    modalBack=item||fromManager?()=>openManageEngines(back):back;
     if(item&&nativeSearch())$('engine-form').previousElementSibling.textContent=t("Изменение выбранного поисковика обновит и поиск браузера.");
     $('engine-form').addEventListener('submit',async event=>{
       event.preventDefault();const form=$('engine-form'),name=$('engine-title').value.trim(),template=$('engine-url').value.trim();
@@ -556,41 +582,53 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       const engine={id:item?.id||uid(),name,url},activate=!item||selectedEngine().id===item.id;
       try {
         await writeState(async()=>{
-          const latest=store.latest();checkEngineEdit(latest,item,original,url);
-          if(nativeSearch()&&activate){try{await browserSearch.select(engine);}catch{throw Error(t("Не удалось изменить поисковик браузера."));}}
-          state=store.update(next=>{
+          await saveEngineChange(next=>{
             checkEngineEdit(next,item,original,url);
             if(item)next.customEngines[next.customEngines.findIndex(value=>value.id===item.id)]=engine;else next.customEngines.push(engine);
             if(activate)next.engine=engine.id;
-          });
+          },activate?engine:null);
         });
       } catch(error){if(form.isConnected)showError(error.message||t("Не удалось сохранить изменения."));return;}
-      renderEngine();closeModal();if(item||fromManager)openManageEngines();notify(item?t("Изменения сохранены"):t("Поисковик добавлен"));
+      renderEngine();closeModal();if(item||fromManager)openManageEngines(back);else if(back)back();notify(item?t("Изменения сохранены"):t("Поисковик добавлен"));
     });
   }
   function searchTemplate(value) {
-    let marker='ARGON_QUERY';while(value.includes(marker))marker+='_';
+    let marker='argonqueryplaceholder';while(value.toLowerCase().includes(marker))marker+='x';
     return normalizedUrl(value.replaceAll('{query}',marker)).replaceAll(marker,'{query}');
+  }
+  async function saveEngineChange(change,engine) {
+    const previous=store.latest();
+    // Validate and persist first: quota/validation errors must never change the
+    // browser's provider. The shared lock also covers a rejected native change.
+    state=store.update(change);
+    if(nativeSearch()&&engine) {
+      try{await browserSearch.select(engine);}
+      catch {
+        state=store.state=restoreState(storage,storageKey,previous);
+        renderEngine();
+        throw Error(t("Не удалось изменить поисковик браузера."));
+      }
+    }
   }
   function checkEngineEdit(latest,item,original,url) {
     if(item&&JSON.stringify(latest.customEngines.find(value=>value.id===item.id))!==original)throw Error(t("Поисковик изменился в другой вкладке. Откройте его заново."));
     if([...builtins,...latest.customEngines].some(value=>value.id!==item?.id&&searchTemplate(value.url)===url))throw Error(t("Такой адрес поиска уже есть в списке."));
   }
-  function openManageEngines() {
+  function openManageEngines(back=null) {
     openModal(heading(t("Свои поисковики"))+'<p class="field-help">'+t("Удаление выбранной системы из списка переключит поиск на Google.")+'</p><div class="custom-engine-list">'+state.customEngines.map(engine=>'<article class="custom-engine-row"><div><strong>'+esc(engine.name)+'</strong><small>'+esc(engine.url)+'</small></div><div class="dialog-actions"><button type="button" class="btn btn-secondary" data-edit-engine="'+esc(engine.id)+'">'+t("Изменить")+'</button><button type="button" class="btn btn-delete" data-delete-engine="'+esc(engine.id)+'">'+t("Удалить из списка")+'</button></div></article>').join('')+'</div><p id="engines-error" class="error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="btn btn-secondary" id="new-engine">'+t("Добавить свою")+'</button><button type="button" class="btn btn-primary" data-close>'+t("Готово")+'</button></div>','engines');
-    returnFocus=$('engine-trigger');
-    $('new-engine').addEventListener('click',()=>openEngineDialog(null,true));
-    $('modal-root').querySelectorAll('[data-edit-engine]').forEach(button=>button.addEventListener('click',()=>{const engine=state.customEngines.find(value=>value.id===button.dataset.editEngine);if(engine)openEngineDialog(engine,true);}));
+    returnFocus=browserSearchState?.tablet?$('settings-button'):$('engine-trigger');
+    modalBack=back;
+    syncModalState=()=>{const focused=document.activeElement?.dataset,edit=focused?.editEngine,remove=focused?.deleteEngine;openManageEngines(back);const id=edit||remove;if(id)$('modal-root').querySelector('['+(edit?'data-edit-engine':'data-delete-engine')+'="'+CSS.escape(id)+'"]')?.focus();};
+    $('new-engine').addEventListener('click',()=>openEngineDialog(null,true,back));
+    $('modal-root').querySelectorAll('[data-edit-engine]').forEach(button=>button.addEventListener('click',()=>{const engine=state.customEngines.find(value=>value.id===button.dataset.editEngine);if(engine)openEngineDialog(engine,true,back);}));
     $('modal-root').querySelectorAll('[data-delete-engine]').forEach(button=>button.addEventListener('click',async()=>{
       const id=button.dataset.deleteEngine,original=JSON.stringify(state.customEngines.find(value=>value.id===id)),active=selectedEngine().id===id;
       try {
         await writeState(async()=>{
-          const latest=store.latest();if(JSON.stringify(latest.customEngines.find(value=>value.id===id))!==original)throw Error(t("Поисковик изменился в другой вкладке. Откройте его заново."));
-          if(nativeSearch()&&active){try{await browserSearch.select(builtins[0]);}catch{throw Error(t("Не удалось изменить поисковик браузера."));}}
-          state=store.update(next=>{if(JSON.stringify(next.customEngines.find(value=>value.id===id))!==original)throw Error(t("Поисковик изменился в другой вкладке. Откройте его заново."));next.customEngines=next.customEngines.filter(value=>value.id!==id);if(next.engine===id)next.engine='google';});
+          await saveEngineChange(next=>{if(JSON.stringify(next.customEngines.find(value=>value.id===id))!==original)throw Error(t("Поисковик изменился в другой вкладке. Откройте его заново."));next.customEngines=next.customEngines.filter(value=>value.id!==id);if(next.engine===id)next.engine='google';},active?builtins[0]:null);
         });
       } catch(error){const target=$('engines-error');if(target){target.textContent=error.message||t("Не удалось сохранить изменения.");target.hidden=false;}return;}
-      renderEngine();openManageEngines();
+      renderEngine();openManageEngines(back);
     }));
   }
   function saveDownload(blob,filename) {
@@ -719,6 +757,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       $('background-clear').disabled=!selected;
       $('background-current').textContent=selected?.source==='bing'?selected.credit:selected?t("Своя картинка"):t("Стандартный фон темы");
     }
+    syncModalState=previewBackground;
     async function busy(operation) {
       if(screen.disabled)return;screen.disabled=true;error.hidden=true;status.textContent=t("Загружаем изображение…");
       try{await operation();if(alive())status.textContent='';}
@@ -756,6 +795,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(moving)cancelMove();
     openModal(heading(t("Настроить страницу"))+'<p class="field-help settings-autosave">'+t("Изменения сохраняются автоматически")+'</p>'+
       '<button type="button" id="edit-shortcuts" class="setting-row edit-shortcuts"><span><strong>'+(editing()?t("Завершить редактирование"):t("Редактировать ярлыки"))+'</strong><small>'+t("Добавление, изменение, перемещение и удаление ярлыков.")+'</small></span>'+svg('pencil')+'</button>'+
+      '<button type="button" id="search-settings" class="setting-row edit-shortcuts"><span><strong>'+t("Поисковая система")+'</strong><small id="settings-engine-name">'+esc(selectedEngine().name)+'</small></span>'+svg('globe')+'</button>'+
       '<span class="setting-label">'+t("Оформление")+'</span><div class="theme-options">'+
       [['light','sun',t("Светлая")],['dark','moon',t("Тёмная")],['amoled','amoled',t("Тёмная AMOLED")],['system','monitor',t("Как в браузере")]].map(([theme,icon,name])=>'<button class="theme-card" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(state.theme===theme)+'">'+svg(icon)+name+'</button>').join('')+
       '</div><p id="theme-help" class="field-help"></p>'+
@@ -778,7 +818,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
         if(density==='manual'){s.shortcutScaleMode='manual';s.shortcutScale??=100;}
         else{s.density=density;if(s.shortcutScaleMode)s.shortcutScaleMode='preset';}
       })){
-        $('shortcut-scale').value=state.shortcutScale??100;
+        scaleDirty=false;$('shortcut-scale').value=state.shortcutScale??100;
         $('shortcut-scale-error').hidden=true;$('shortcut-scale').removeAttribute('aria-invalid');
         applyTheme();renderShortcuts();updateDensityHelp();
       } else {
@@ -786,6 +826,15 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       }
     });
     const scaleInput=$('shortcut-scale');
+    let scaleDirty=false;
+    scaleInput.addEventListener('input',()=>{scaleDirty=true;});
+    syncModalState=()=>{
+      $('density-select').value=densityValue();
+      if(!scaleDirty)scaleInput.value=state.shortcutScale??100;
+      $('labels-toggle').setAttribute('aria-checked',String(state.showLabels));
+      $('newtab-toggle').setAttribute('aria-checked',String(state.newTab));
+      updateDensityHelp();
+    };
     const saveShortcutScale=async()=>{
       if(!scaleInput.isConnected||state.shortcutScaleMode!=='manual')return;
       const percent=scaleInput.valueAsNumber,error=$('shortcut-scale-error');
@@ -793,8 +842,8 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
         error.textContent=t("Укажите целое число от 50 до 200.");error.hidden=false;scaleInput.setAttribute('aria-invalid','true');return;
       }
       error.hidden=true;scaleInput.removeAttribute('aria-invalid');
-      if(percent===state.shortcutScale)return;
-      if(await commit(s=>{s.shortcutScale=percent;},false,'shortcut-scale-error',false)){applyTheme();renderShortcuts();updateDensityHelp();}
+      if(percent===state.shortcutScale){scaleDirty=false;return;}
+      if(await commit(s=>{s.shortcutScale=percent;},false,'shortcut-scale-error',false)){scaleDirty=scaleInput.valueAsNumber!==percent;applyTheme();renderShortcuts();updateDensityHelp();}
     };
     scaleInput.addEventListener('change',()=>void saveShortcutScale());
     scaleInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();void saveShortcutScale();}});
@@ -810,6 +859,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
         renderShortcuts();
       }
     });
+    $('search-settings').addEventListener('click',openSearchSettings);
     $('data-settings').addEventListener('click',openDataSettings);
     $('background-settings').addEventListener('click',openBackgroundSettings);
   }

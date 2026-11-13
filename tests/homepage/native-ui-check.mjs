@@ -174,7 +174,22 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await page.locator('#engine-trigger').click();
     await page.locator('#add-engine').click();
     await page.locator('#engine-title').fill('Мой поиск');
-    await page.locator('#engine-url').fill('https://my-search.example/?q={query}');
+    await page.locator('#engine-url').fill('https://www.google.com/search?q={query}&udm=14');
+    const beforeQuota=await state();
+    const selectionCount=await native(()=>window.argonNativeFixture.calls.filter(call=>call[0]==='setArgonSearchEngine').length);
+    await native(()=>{
+      const setItem=Storage.prototype.setItem;
+      Storage.prototype.setItem=function(key,value){
+        if(window.failHomepageWrite&&key==='argon-start-v1')throw new DOMException('Test quota','QuotaExceededError');
+        return setItem.call(this,key,value);
+      };
+      window.failHomepageWrite=true;
+    });
+    await page.locator('#engine-form button[type=submit]').click();await page.locator('#form-error').waitFor();
+    assert.deepEqual(await state(),beforeQuota);
+    assert.equal(await native(()=>window.argonNativeFixture.calls.filter(call=>call[0]==='setArgonSearchEngine').length),selectionCount,
+      'Failed homepage persistence must not change the browser provider');
+    await native(()=>{window.failHomepageWrite=false;});
     await page.locator('#engine-form button[type=submit]').click();
     await page.waitForFunction(()=>window.argonNativeFixture.state.engine.name==='Мой поиск');
     assert.equal(await page.locator('#selected-engine-name').textContent(),'Мой поиск');
@@ -183,6 +198,8 @@ export async function checkNativeSearch(browser, base, errors, out) {
     assert.equal(saved.theme,original.theme);assert.equal(saved.density,original.density);
     assert.deepEqual(saved.shortcuts,original.shortcuts);
     assert.deepEqual(saved.background,original.background);
+    // Chromium classifies alternative Google URLs as Google, not browser:current.
+    await native(()=>{const f=window.argonNativeFixture;f.update({engine:{...f.state.engine,id:'google'}});});
     await page.locator('#engine-trigger').click();await page.locator('#manage-engines').click();
     await page.locator('[data-edit-engine]').click();await page.locator('#engine-title').fill('Новое имя');
     await native(()=>{window.argonNativeFixture.blocked=true;});
@@ -198,6 +215,13 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await page.locator('#engine-trigger').click();assert(await page.locator('#manage-engines').isDisabled());
     await page.keyboard.press('Escape');await native(()=>window.argonNativeFixture.update({canChange:true}));
     await page.locator('#engine-trigger').click();await page.locator('#manage-engines').click();
+    const beforeDelete=await state();
+    const deleteSelectionCount=await native(()=>window.argonNativeFixture.calls.filter(call=>call[0]==='setArgonSearchEngine').length);
+    await native(()=>{window.failHomepageWrite=true;});
+    await page.locator('[data-delete-engine]').click();await page.locator('#engines-error').waitFor();
+    assert.deepEqual(await state(),beforeDelete);
+    assert.equal(await native(()=>window.argonNativeFixture.calls.filter(call=>call[0]==='setArgonSearchEngine').length),deleteSelectionCount);
+    await native(()=>{window.failHomepageWrite=false;});
     await page.locator('[data-delete-engine]').click();await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='google');
     await page.waitForFunction(()=>!document.body.inert);
     assert.equal((await state()).customEngines.length,0);assert.equal((await state()).engine,'google');
@@ -213,6 +237,22 @@ export async function checkNativeSearch(browser, base, errors, out) {
       'Favorites remain on the tablet home page');
     assert(await page.locator('#settings-button').isVisible(),
       'Homepage settings remain visible');
+    await page.locator('#settings-button').click();await page.locator('#search-settings').click();
+    assert(await page.locator('#search-settings-options').isVisible(),
+      'Search providers must remain reachable when the tablet fakebox is hidden');
+    await page.locator('#search-settings-options [data-engine=bing]').click();
+    await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='bing');await restore();
+    await page.locator('#settings-button').click();await page.locator('#search-settings').click();
+    await page.locator('#settings-add-engine').click();
+    await page.locator('#engine-title').fill('Поиск планшета');await page.locator('#engine-url').fill('https://tablet.example/?q={query}');
+    await page.locator('#engine-form button[type=submit]').click();await page.locator('#search-settings-options').waitFor();
+    assert.equal(await page.locator('#selected-engine-name').textContent(),'Поиск планшета');
+    await page.locator('#settings-manage-engines').click();await page.locator('[data-delete-engine]').click();
+    await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='google');
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    assert(await page.locator('#search-settings-options').isVisible());
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     const tabletBounds=await native(()=>window.argonNativeFixture.calls
       .filter(call=>call[0]==='setArgonSearchBoxBounds').length);
     const tabletFocus=await native(()=>window.argonNativeFixture.calls

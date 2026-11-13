@@ -222,6 +222,12 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
       added = selected != nullptr;
     }
     if (!selected) { Reject(args[0]); return; }
+    if (selected != service_->GetDefaultSearchProvider() &&
+        !service_->CanMakeDefault(selected)) {
+      if (added) service_->Remove(selected);
+      Reject(args[0]);
+      return;
+    }
     if (!builtin && !added && selected->prepopulate_id() == 0 &&
         !selected->CreatedByPolicy() &&
         selected->short_name() != base::UTF8ToUTF16(title)) {
@@ -230,11 +236,6 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
                                  pattern);
     }
     if (selected != service_->GetDefaultSearchProvider()) {
-      if (!service_->CanMakeDefault(selected)) {
-        if (added) service_->Remove(selected);
-        Reject(args[0]);
-        return;
-      }
       service_->SetUserSelectedDefaultSearchProvider(selected);
     }
     const auto state = State();
