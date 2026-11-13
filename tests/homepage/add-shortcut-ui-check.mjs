@@ -35,7 +35,7 @@ export async function checkAddShortcut(browser,base,errors,out) {
     assert.deepEqual(await read(page),fixture,'opening a draft must not write to storage');
     assert.equal(await page.locator('#shortcut-title img').count(),0);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    if(out)await page.screenshot({path:resolve(out,'home-add-from-site-320.png'),fullPage:true});
+    if(out)await page.screenshot({path:resolve(out,'home-add-from-site-320.png'),fullPage:true,animations:'disabled'});
     await page.getByRole('button',{name:'Отмена',exact:true}).click();
     assert.deepEqual(await read(page),fixture);
     await page.reload();assert.equal(await page.locator('#shortcut-form').count(),0,'cancelled requests must not return on reload');
@@ -84,7 +84,7 @@ export async function checkAddShortcut(browser,base,errors,out) {
     await page.locator('#shortcut-form').waitFor();
     assert.equal(await page.locator('#dialog-title').textContent(),'Add to Argon home');
     assert(await page.locator('#edit-done').isHidden());
-    if(out)await page.screenshot({path:resolve(out,'home-add-from-site-tablet.png'),fullPage:true});
+    if(out)await page.screenshot({path:resolve(out,'home-add-from-site-tablet.png'),fullPage:true,animations:'disabled'});
   } finally {await english.close();}
   console.log('PASS: add from site, explicit save, cancellation/reload, folders, duplicates, concurrent settings, quota, safe title/URL and localization');
 }
