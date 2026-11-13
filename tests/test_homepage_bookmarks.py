@@ -25,10 +25,12 @@ def compile_bookmark_snapshot(webui_header, snapshot=None):
     program = r'''
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 using std::size_t;
 namespace base {
+std::string NumberToString(long long);
 struct DictValue { template <typename T> void Set(const char*, T&&); };
 struct ListValue { void Append(DictValue); };
 }
@@ -36,6 +38,7 @@ struct GURL { bool SchemeIsHTTPOrHTTPS() const; };
 namespace bookmarks {
 namespace prefs { inline constexpr char kEditBookmarksEnabled[] = "edit_bookmarks"; }
 struct BookmarkNode {
+  long long id() const;
   const std::vector<std::unique_ptr<BookmarkNode>>& children() const;
   bool is_url() const;
   const GURL& url() const;
@@ -61,7 +64,7 @@ class SnapshotHandler : public WebUIMessageHandler {
   bookmarks::BookmarkModel* model_ = nullptr;
   int revision_ = 0;
   const bookmarks::BookmarkNode* Destination() const;
-  base::DictValue Node(const bookmarks::BookmarkNode&, size_t, size_t&, bool&) const;
+  base::DictValue Node(const bookmarks::BookmarkNode&, size_t, size_t&, bool&, size_t) const;
  public:
 ''' + snapshot + '\n};\n'
     with tempfile.TemporaryDirectory() as directory:
@@ -130,7 +133,8 @@ int main() {
         self.assertIn('bookmarks::prefs::kEditBookmarksEnabled', handler)
         self.assertIn('model_->AddObserver(this)', handler)
         self.assertIn('model_->RemoveObserver(this)', handler)
-        self.assertLess(handler.index('// Validate the complete batch'), handler.index('model_->AddFolder'))
+        importer = homepage.method_source(handler, 'void Import(')
+        self.assertLess(importer.index('// Validate the complete batch'), importer.index('model_->AddFolder'))
         self.assertIn('urls.contains(entry.url.spec())', handler)
         build = (homepage.OVERLAY / homepage.UI / 'BUILD.gn').read_text()
         self.assertIn('"argon_bookmarks_handler.cc"', build)

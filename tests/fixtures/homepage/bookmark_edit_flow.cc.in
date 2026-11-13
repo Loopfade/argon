@@ -1,0 +1,206 @@
+// The production mutation methods are inserted unchanged. Platform boundaries
+// use an in-memory model retaining Chromium's insert-before Move semantics.
+#include <cassert>
+#include <charconv>
+#include <cstdint>
+#include <cstdlib>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <variant>
+#include <vector>
+#define FROM_HERE 0
+namespace base {
+struct DictValue;
+struct Value {
+  std::variant<bool,int,std::string,std::shared_ptr<DictValue>> data;
+  Value(bool value):data(value){}
+  Value(int value):data(value){}
+  Value(const char* value):data(std::string(value)){}
+  Value(std::string value):data(std::move(value)){}
+  Value(DictValue value);
+  bool is_string() const {return std::holds_alternative<std::string>(data);}
+  bool is_dict() const {return std::holds_alternative<std::shared_ptr<DictValue>>(data);}
+  const std::string& GetString() const {return std::get<std::string>(data);}
+  const DictValue& GetDict() const {return *std::get<std::shared_ptr<DictValue>>(data);}
+};
+struct DictValue {
+  std::map<std::string,Value> values;
+  template<typename T> void Set(const char* key,T value) {values.insert_or_assign(key,Value(std::move(value)));}
+  const Value* Find(const char* key) const {auto it=values.find(key);return it==values.end()?nullptr:&it->second;}
+  const std::string* FindString(const char* key) const {auto* v=Find(key);return v&&v->is_string()?&v->GetString():nullptr;}
+  const DictValue* FindDict(const char* key) const {auto* v=Find(key);return v&&v->is_dict()?&v->GetDict():nullptr;}
+  std::optional<bool> FindBool(const char* key) const {auto* v=Find(key);if(v&&std::holds_alternative<bool>(v->data))return std::get<bool>(v->data);return {};}
+  std::optional<int> FindInt(const char* key) const {auto* v=Find(key);if(v&&std::holds_alternative<int>(v->data))return std::get<int>(v->data);return {};}
+};
+Value::Value(DictValue value):data(std::make_shared<DictValue>(std::move(value))){}
+using ListValue=std::vector<Value>;
+std::string NumberToString(int64_t value) {return std::to_string(value);}
+bool StringToInt64(const std::string& value,int64_t* output) {
+  auto result=std::from_chars(value.data(),value.data()+value.size(),*output);
+  return result.ec==std::errc{}&&result.ptr==value.data()+value.size();
+}
+std::u16string UTF8ToUTF16(const std::string& value) {return {value.begin(),value.end()};}
+std::string UTF16ToUTF8(const std::u16string& value) {return {value.begin(),value.end()};}
+}
+struct GURL {
+  std::string value;
+  GURL()=default;
+  explicit GURL(std::string input):value(std::move(input)){}
+  bool SchemeIsHTTPOrHTTPS() const {return value.starts_with("https://")||value.starts_with("http://");}
+  bool is_valid() const {return SchemeIsHTTPOrHTTPS()&&value.size()>8&&value.find(' ')==std::string::npos;}
+  const std::string& spec() const {return value;}
+};
+namespace bookmarks {
+namespace prefs {constexpr char kEditBookmarksEnabled[]="edit_bookmarks";}
+namespace metrics {enum class BookmarkEditSource {kUser};}
+struct BookmarkNode {
+  int64_t id_; bool folder_,permanent_=false,managed_=false;
+  std::u16string title_; GURL url_; BookmarkNode* parent_=nullptr;
+  std::vector<std::unique_ptr<BookmarkNode>> children_;
+  BookmarkNode(int64_t id,bool folder,std::string title):id_(id),folder_(folder),title_(base::UTF8ToUTF16(title)){}
+  int64_t id() const {return id_;}
+  bool is_folder() const {return folder_;}
+  bool is_permanent_node() const {return permanent_;}
+  const BookmarkNode* parent() const {return parent_;}
+  const auto& children() const {return children_;}
+  const auto& GetTitle() const {return title_;}
+  const GURL& url() const {return url_;}
+};
+size_t NativeIndex(const BookmarkNode* node) {
+  const auto& list=node->parent()->children();
+  for(size_t i=0;i<list.size();++i)if(list[i].get()==node)return i;
+  std::abort();
+}
+struct BookmarkClient {
+  bool IsNodeManaged(const BookmarkNode* node) {for(auto* p=node;p;p=p->parent())if(p->managed_)return true;return false;}
+};
+struct BookmarkModel {
+  BookmarkNode root{0,true,"Root"}; BookmarkClient client_;
+  BookmarkNode *mobile,*other,*managed,*account=nullptr;
+  bool loaded_=true; int mutations=0,groups=0,group_depth=0; int64_t next=100;
+  BookmarkModel() {
+    mobile=Add(&root,1,true,"Mobile");mobile->permanent_=true;
+    other=Add(&root,2,true,"Other");other->permanent_=true;
+    managed=Add(&root,3,true,"Managed");managed->permanent_=true;managed->managed_=true;
+  }
+  BookmarkNode* Add(BookmarkNode* parent,int64_t id,bool folder,std::string title,std::string url="") {
+    auto node=std::make_unique<BookmarkNode>(id,folder,std::move(title));
+    node->parent_=parent;node->url_=GURL(std::move(url));auto* result=node.get();parent->children_.push_back(std::move(node));return result;
+  }
+  bool loaded() const {return loaded_;}
+  const BookmarkNode* root_node() const {return &root;}
+  const BookmarkNode* mobile_node() const {return mobile;}
+  const BookmarkNode* account_mobile_node() const {return account;}
+  BookmarkClient* client() {return &client_;}
+  void Move(const BookmarkNode* node,const BookmarkNode* parent,size_t index) {
+    assert(node->parent()&&!node->is_permanent_node());
+    for(auto* p=parent;p;p=p->parent())assert(p!=node);
+    auto* from=const_cast<BookmarkNode*>(node->parent());auto* to=const_cast<BookmarkNode*>(parent);
+    assert(index<=to->children_.size());size_t old=NativeIndex(node);
+    if(from==to&&old<index)--index;
+    auto owned=std::move(from->children_[old]);from->children_.erase(from->children_.begin()+old);
+    owned->parent_=to;to->children_.insert(to->children_.begin()+index,std::move(owned));++mutations;
+  }
+  const BookmarkNode* AddFolder(const BookmarkNode* parent,size_t index,const std::u16string& title) {
+    auto* node=Add(const_cast<BookmarkNode*>(parent),next++,true,base::UTF16ToUTF8(title));Move(node,parent,index);return node;
+  }
+  const BookmarkNode* AddURL(const BookmarkNode* parent,size_t index,const std::u16string& title,const GURL& url,
+      const void*,std::optional<int>,std::optional<int>,bool added_by_user) {
+    assert(added_by_user);auto* node=Add(const_cast<BookmarkNode*>(parent),next++,false,base::UTF16ToUTF8(title),url.spec());Move(node,parent,index);return node;
+  }
+  void SetTitle(const BookmarkNode* node,const std::u16string& title,metrics::BookmarkEditSource) {const_cast<BookmarkNode*>(node)->title_=title;++mutations;}
+  void SetURL(const BookmarkNode* node,const GURL& url,metrics::BookmarkEditSource) {const_cast<BookmarkNode*>(node)->url_=url;++mutations;}
+  void Remove(const BookmarkNode* node,metrics::BookmarkEditSource,int) {
+    auto* parent=const_cast<BookmarkNode*>(node->parent());const auto index=NativeIndex(node);
+    assert(!node->is_permanent_node());parent->children_.erase(parent->children_.begin()+index);++mutations;
+  }
+};
+const BookmarkNode* Find(const BookmarkNode* node,int64_t id) {
+  if(node->id()==id)return node;
+  for(const auto& child:node->children())if(auto* found=Find(child.get(),id))return found;
+  return nullptr;
+}
+const BookmarkNode* GetBookmarkNodeByID(const BookmarkModel* model,int64_t id) {return Find(model->root_node(),id);}
+struct ScopedGroupBookmarkActions {
+  BookmarkModel* model;
+  explicit ScopedGroupBookmarkActions(BookmarkModel* value):model(value){++model->groups;++model->group_depth;}
+  ~ScopedGroupBookmarkActions(){--model->group_depth;}
+};
+}
+struct PrefService {bool enabled=true;bool GetBoolean(const char*) const {return enabled;}} prefs;
+struct Profile {
+  static Profile* FromWebUI(void*) {static Profile profile;return &profile;}
+  PrefService* GetPrefs(){return &prefs;}
+};
+class Handler {
+ public:
+  bookmarks::BookmarkModel* model_;bool importing_=false,accepted=false,rejected=false;
+  std::string result_id;
+  explicit Handler(bookmarks::BookmarkModel* model):model_(model){}
+  void* web_ui(){return nullptr;}
+  void AllowJavascript(){}
+  void Changed(){}
+  base::DictValue Snapshot(){return {};}
+  void ResolveJavascriptCallback(const base::Value&,const base::DictValue& value){accepted=true;result_id=*value.FindString("id");}
+  void RejectJavascriptCallback(const base::Value&,const base::Value&){rejected=true;}
+  ARGON_BOOKMARK_METHODS
+  void Run(base::DictValue operation,bool success=true) {
+    accepted=false;rejected=false;const int before=model_->mutations,groups=model_->groups;
+    Edit({base::Value("callback"),base::Value(std::move(operation))});
+    assert(accepted==success&&rejected!=success&&!importing_&&model_->group_depth==0);
+    if(!success){assert(model_->mutations==before);assert(model_->groups==groups);}
+  }
+};
+base::DictValue Operation(const char* action,const bookmarks::BookmarkNode* node=nullptr,
+                         std::string parent="",std::string before="") {
+  base::DictValue operation;operation.Set("action",action);operation.Set("parentId",parent);operation.Set("beforeId",before);
+  if(node){operation.Set("id",base::NumberToString(node->id()));base::DictValue expected;
+    expected.Set("name",base::UTF16ToUTF8(node->GetTitle()));expected.Set("parentId",base::NumberToString(node->parent()->id()));
+    expected.Set("index",static_cast<int>(bookmarks::NativeIndex(node)));if(!node->is_folder())expected.Set("url",node->url().spec());operation.Set("expected",std::move(expected));}
+  return operation;
+}
+void CheckOrder(const bookmarks::BookmarkNode* parent,std::initializer_list<int64_t> ids) {
+  std::vector<int64_t> actual;for(const auto& child:parent->children())actual.push_back(child->id());
+  assert(actual==std::vector<int64_t>(ids));
+}
+int main() {
+  bookmarks::BookmarkModel model;Handler handler(&model);
+  auto* a=model.Add(model.mobile,10,false,"A","https://a.example/");
+  auto* hidden=model.Add(model.mobile,11,false,"Internal","chrome://settings/");
+  auto* b=model.Add(model.mobile,12,false,"B","https://b.example/");
+  auto create=Operation("create",nullptr,"","12");create.Set("name","New");create.Set("url","https://new.example/");
+  handler.Run(create);auto* added=bookmarks::GetBookmarkNodeByID(&model,100);assert(added);CheckOrder(model.mobile,{10,11,100,12});
+  auto folder=Operation("create");folder.Set("name","Folder");folder.Set("folder",true);handler.Run(folder);
+  auto* directory=bookmarks::GetBookmarkNodeByID(&model,101);assert(directory&&directory->is_folder());
+  auto update=Operation("update",b,"","101");update.Set("name","Renamed");update.Set("url","https://changed.example/");
+  handler.Run(update);assert(b->GetTitle()==u"Renamed"&&b->url().spec()=="https://changed.example/");CheckOrder(model.mobile,{10,11,100,12,101});
+  handler.Run(Operation("move",a,"","101"));CheckOrder(model.mobile,{11,100,12,10,101});
+  handler.Run(Operation("move",a,"101"));assert(a->parent()==directory);CheckOrder(directory,{10});
+  auto invalid=Operation("update",b);invalid.Set("name","Must not change");invalid.Set("url","javascript:alert(1)");
+  handler.Run(invalid,false);assert(b->GetTitle()==u"Renamed");
+  auto stale=Operation("move",b);model.SetTitle(b,u"Changed elsewhere",bookmarks::metrics::BookmarkEditSource::kUser);
+  handler.Run(stale,false);assert(b->GetTitle()==u"Changed elsewhere");
+  handler.Run(Operation("move",directory,"101"),false); // No folder cycles.
+  handler.Run(Operation("move",a,"101","10"),false); // Cannot anchor on itself.
+  handler.Run(Operation("remove",model.mobile),false); // Permanent roots are immutable.
+  auto* managed=model.Add(model.managed,30,false,"Policy","https://policy.example/");
+  handler.Run(Operation("remove",managed),false);
+  auto denied=create;denied.Set("parentId","3");handler.Run(denied,false);
+  prefs.enabled=false;handler.Run(create,false);handler.Run(Operation("remove",a),false);prefs.enabled=true;
+  model.loaded_=false;handler.Run(create,false);model.loaded_=true;
+  // Folder deletion retains all children, including bookmarks hidden by the WebUI filter.
+  handler.Run(Operation("move",hidden,"101"));handler.Run(Operation("remove",directory));
+  assert(a->parent()==model.mobile&&hidden->parent()==model.mobile);
+  CheckOrder(model.mobile,{100,12,10,11});assert(!bookmarks::GetBookmarkNodeByID(&model,101));
+  auto* wide=model.Add(model.mobile,INT64_MAX,false,"Wide","https://wide.example/");
+  handler.Run(Operation("move",wide,"2"));assert(wide->parent()==model.other&&handler.result_id=="9223372036854775807");
+  model.account=model.Add(&model.root,4,true,"Account mobile");model.account->permanent_=true;
+  auto account_create=create;account_create.Set("beforeId","");
+  handler.Run(account_create);assert(bookmarks::GetBookmarkNodeByID(&model,102)->parent()==model.account);
+  assert(!handler.Editable(model.mobile)&&handler.CanAdd(model.mobile));
+  std::cout<<"PASS: production bookmark edits, native order, permissions, stale edits and safe folder deletion\n";
+}

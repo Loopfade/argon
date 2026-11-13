@@ -128,6 +128,53 @@ def verify_activation_sources(manager, container, coordinator, adapter):
 
 # Android and browser boundaries only. The adapter itself and its interface are unmodified.
 STUBS = {
+    'org/chromium/chrome/browser/profiles/Profile.java': '''
+package org.chromium.chrome.browser.profiles;
+public class Profile {}
+''',
+    'org/chromium/components/bookmarks/BookmarkId.java': '''
+package org.chromium.components.bookmarks;
+public class BookmarkId {
+    private final long id;
+    private final int type;
+    public BookmarkId(long id, int type) { this.id=id; this.type=type; }
+    public long getId() { return id; }
+    public int getType() { return type; }
+}
+''',
+    'org/chromium/components/bookmarks/BookmarkType.java': '''
+package org.chromium.components.bookmarks;
+public interface BookmarkType { int NORMAL=0; }
+''',
+    'org/chromium/chrome/browser/bookmarks/BookmarkManagerOpener.java': '''
+package org.chromium.chrome.browser.bookmarks;
+import android.app.Activity;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.components.bookmarks.BookmarkId;
+public interface BookmarkManagerOpener {
+    void showBookmarkManager(Activity activity, Tab tab, Profile profile, BookmarkId folderId);
+}
+''',
+    'org/chromium/chrome/browser/bookmarks/BookmarkManagerOpenerImpl.java': '''
+package org.chromium.chrome.browser.bookmarks;
+import android.app.Activity;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.components.bookmarks.BookmarkId;
+public class BookmarkManagerOpenerImpl implements BookmarkManagerOpener {
+    public static int opens;
+    public static Activity activity;
+    public static Tab tab;
+    public static Profile profile;
+    public static BookmarkId folder;
+    public BookmarkManagerOpenerImpl() {}
+    public void showBookmarkManager(Activity activity, Tab tab, Profile profile, BookmarkId folderId) {
+        opens++; BookmarkManagerOpenerImpl.activity=activity; BookmarkManagerOpenerImpl.tab=tab;
+        BookmarkManagerOpenerImpl.profile=profile; folder=folderId;
+    }
+}
+''',
     'org/chromium/chrome/browser/ntp/ArgonHomeStartup.java': '''
 package org.chromium.chrome.browser.ntp;
 import org.chromium.content_public.browser.WebContents;
@@ -265,11 +312,14 @@ package org.chromium.chrome.browser.tab;
 import android.view.View;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
+import org.chromium.chrome.browser.profiles.Profile;
 public class Tab {
     public boolean incognito, error, destroyed, nativePage;
     public GURL url;
     public WebContents contents;
     public View view = new View();
+    public final Profile profile = new Profile();
+    public Profile getProfile() { return profile; }
     public boolean isIncognito() { return incognito; }
     public boolean isShowingErrorPage() { return error; }
     public boolean isDestroyed() { return destroyed; }

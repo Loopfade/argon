@@ -45,6 +45,66 @@ test('loading, editing policy and server rejection never pretend that an import 
   assert.equal(model.revision,2);
 });
 
+test('bookmark manager uses the native launcher for the root and full-width folder IDs',async()=>{
+  const {model,bindings,calls}=setup();
+  const id='9223372036854775807';
+  model.update(snapshot(3,[{id,name:'Папка',type:'folder',children:[]}],{canEdit:false}));
+  bindings.sendWithPromise=async(...args)=>{calls.push(args);return true;};
+  await model.openManager();await model.openManager(id);
+  assert.deepEqual(calls,[['openArgonBookmarkManager',''],['openArgonBookmarkManager',id]]);
+  assert.equal(model.revision,3,'opening the manager must not mutate bookmarks');
+});
+
+test('bookmark manager rejects stale folders and reports unavailable native UI',async()=>{
+  const {model,bindings,calls}=setup();
+  model.update(snapshot(1,[site()]));
+  for(const id of ['missing','7','javascript:alert(1)',null])await assert.rejects(model.openManager(id));
+  assert.equal(calls.length,0);
+  bindings.sendWithPromise=async()=>false;
+  await assert.rejects(model.openManager());
+  bindings.sendWithPromise=async()=>{throw Error('activity detached');};
+  await assert.rejects(model.openManager());
+  model.update(snapshot(2,[],{available:false}));
+  await assert.rejects(model.openManager());
+});
+
+test('native editing keeps one URL store and retains permissions, parents and insertion anchors',async()=>{
+  const {model,bindings,calls}=setup();
+  const a={...site('1'),parentId:'10',index:2,editable:true,canAdd:false};
+  const folder={id:'2',name:'Folder',type:'folder',parentId:'10',index:3,editable:true,canAdd:true,children:[]};
+  const other={id:'20',name:'Other',type:'folder',parentId:'0',index:2,editable:false,canAdd:true,children:[]};
+  model.update(snapshot(1,[a,folder,other],{defaultParentId:'10'}));
+  assert.deepEqual(model.children().map(item=>item.id),['1','2']);
+  assert(model.canAdd('20'));assert(!model.editable(model.find('20')));
+  assert.deepEqual(model.folders('2').map(item=>item.id),['20']);
+  const operation={action:'move',id:'1',parentId:'2',beforeId:'',expected:model.expected(model.find('1'))};
+  const moved={...a,parentId:'2',index:0};
+  bindings.sendWithPromise=async(...args)=>{calls.push(args);return {id:'1',snapshot:snapshot(2,[{...folder,children:[moved]},other],{defaultParentId:'10'})};};
+  assert.equal(await model.edit(operation),'1');
+  assert.deepEqual(calls,[['editArgonBookmarks',operation]]);
+  assert.deepEqual(model.children('2').map(item=>item.id),['1']);
+  assert.deepEqual(model.pathTo('1'),['2','1']);
+});
+
+test('stale edits and managed bookmarks cannot overwrite native data',async()=>{
+  const {model,calls}=setup();
+  const node={...site(),parentId:'1',index:0,editable:true,canAdd:false};
+  model.update(snapshot(1,[node],{defaultParentId:'1'}));
+  const expected=model.expected(model.find('7'));
+  model.update(snapshot(2,[{...node,name:'Changed elsewhere'}],{defaultParentId:'1'}));
+  await assert.rejects(model.edit({action:'update',id:'7',expected}));
+  model.update(snapshot(3,[{...node,editable:false}],{defaultParentId:'1'}));
+  await assert.rejects(model.edit({action:'remove',id:'7',expected:model.expected(model.find('7'))}));
+  assert.equal(calls.length,0);
+});
+
+test('empty native titles keep their real value for concurrency checks',()=>{
+  const {model}=setup();
+  model.update(snapshot(1,[{...site(),name:'',parentId:'1',index:0,editable:true}]));
+  assert.equal(model.find('7').name,'example.com');
+  assert.equal(model.expected(model.find('7')).name,'');
+});
+
 test('migration and import preserve full addresses, folder paths and appearance metadata',async()=>{
   const {model,bindings,calls}=setup();model.update(snapshot(0));
   const old=[{id:'old',type:'folder',name:'Работа',children:[{id:'old-link',name:'Заголовок',url:'https://example.com/page#section',iconMode:'custom',icon:'book'}]},

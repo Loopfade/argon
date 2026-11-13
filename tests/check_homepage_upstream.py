@@ -8,6 +8,8 @@ import tempfile
 
 from upstream_sources import chromium_url, download
 from test_homepage_bookmarks import WEBUI_HANDLER, verify_bookmark_webui_api
+from test_homepage_bookmark_manager import BOOKMARK_MANAGER_APIS, verify_bookmark_manager_api
+from test_homepage_bookmark_edit import BOOKMARK_EDIT_APIS, verify_bookmark_edit_api
 from test_homepage_shortcut import verify_shortcut_sources
 from test_homepage_startup import run_startup_flow
 from test_homepage_native import (
@@ -39,6 +41,10 @@ def main():
 
     verify_bookmark_webui_api(read(WEBUI_HANDLER))
     print('PASS: production bookmark snapshot compiles with the pinned WebUI accessor')
+    verify_bookmark_manager_api({path: read(path) for path in BOOKMARK_MANAGER_APIS})
+    print('PASS: Android bookmark launcher uses the pinned profile and folder API')
+    verify_bookmark_edit_api({path: read(path) for path in BOOKMARK_EDIT_APIS})
+    print('PASS: native bookmark editing uses the pinned user-edit and undo-group APIs')
     delegate = read(DELEGATE_API)
     verify_delegate_api(delegate)
     observer = read('chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java')

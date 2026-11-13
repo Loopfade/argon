@@ -18,6 +18,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_util.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/android/chrome_jni_headers/ArgonHomeBridge_jni.h"
@@ -65,6 +66,8 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
         &ArgonSearchHandler::SetBounds, base::Unretained(this)));
     web_ui()->RegisterMessageCallback("argonHomeReady", base::BindRepeating(
         &ArgonSearchHandler::HomeReady, base::Unretained(this)));
+    web_ui()->RegisterMessageCallback("openArgonBookmarkManager", base::BindRepeating(
+        &ArgonSearchHandler::OpenBookmarkManager, base::Unretained(this)));
   }
 
   void OnSearchBoxAlphaChanged(float alpha, bool focused) {
@@ -278,6 +281,20 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
     // Android's launch cover. Stop() invalidates callbacks from old documents.
     frame->InsertVisualStateCallback(base::BindOnce(
         &ArgonSearchHandler::OnFirstFrameReady, weak_factory_.GetWeakPtr()));
+  }
+
+  void OpenBookmarkManager(const base::ListValue& args) {
+    if (args.size() != 2 || !args[0].is_string()) return;
+    AllowJavascript();
+    int64_t folder_id = -1;
+    bool valid = args[1].is_string();
+    if (valid && !args[1].GetString().empty()) {
+      valid = base::StringToInt64(args[1].GetString(), &folder_id) && folder_id >= 0;
+    }
+    const bool opened = valid && Java_ArgonHomeBridge_openBookmarkManager(
+        base::android::AttachCurrentThread(),
+        web_ui()->GetWebContents()->GetJavaWebContents(), folder_id);
+    ResolveJavascriptCallback(args[0], base::Value(opened));
   }
 
   void OnFirstFrameReady(bool success) {
