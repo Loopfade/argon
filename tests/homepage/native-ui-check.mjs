@@ -17,6 +17,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
     }));
     const original={schemaVersion:2,theme:'amoled',engine:'duck',customEngines:[],
       showLabels:true,newTab:true,density:'compact',
+      background:{source:'custom',image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII='},
       shortcuts:[{id:'kept',name:'Мой сайт',url:'https://kept.example/',icon:'book'}]};
     await context.addInitScript(value=>{
       localStorage.setItem('argon-start-v1',JSON.stringify(value));
@@ -41,6 +42,8 @@ export async function checkNativeSearch(browser, base, errors, out) {
             provider:document.querySelector('#selected-engine-name').textContent,
             theme:document.documentElement.dataset.theme,
             visibility:getComputedStyle(document.body).visibility,
+            background:!document.querySelector('#home-background').hidden,
+            themeIcon:document.querySelector('#theme-trigger-icon').getAttribute('href'),
           });
           if(name==='setArgonSearchBoxBounds'&&f.newBridge){
             f.newBridge=false;
@@ -83,8 +86,8 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await focusCount(1);
     await page.waitForFunction(()=>window.argonNativeFixture.readyFrames.length===1);
     assert.deepEqual(await native(()=>window.argonNativeFixture.readyFrames[0]),
-      {provider:'Google',theme:'amoled',visibility:'visible'},
-      'First native frame acknowledgement must follow provider and theme configuration');
+      {provider:'Google',theme:'amoled',visibility:'visible',background:true,themeIcon:'#i-amoled'},
+      'First native frame acknowledgement must follow provider, theme, image decoding and theme button configuration');
     assert.equal(await page.locator('#search-input').evaluate(node=>node.tagName),'BUTTON');
     assert.equal(await native(()=>window.argonNativeFixture.calls
       .find(call=>call[0]==='focusArgonOmnibox')[1]),'черновик запроса');
@@ -179,6 +182,27 @@ export async function checkNativeSearch(browser, base, errors, out) {
     assert.equal(saved.customEngines.length,1);
     assert.equal(saved.theme,original.theme);assert.equal(saved.density,original.density);
     assert.deepEqual(saved.shortcuts,original.shortcuts);
+    assert.deepEqual(saved.background,original.background);
+    await page.locator('#engine-trigger').click();await page.locator('#manage-engines').click();
+    await page.locator('[data-edit-engine]').click();await page.locator('#engine-title').fill('Новое имя');
+    await native(()=>{window.argonNativeFixture.blocked=true;});
+    await page.locator('#engine-form button[type=submit]').click();await page.locator('#form-error').waitFor();
+    assert.deepEqual(await state(),saved,'a native rejection must retain the homepage engine and draft');
+    assert.equal(await page.locator('#engine-title').inputValue(),'Новое имя');
+    await native(()=>{window.argonNativeFixture.blocked=false;});
+    await page.locator('#engine-form button[type=submit]').click();await page.locator('[data-edit-engine]').waitFor();
+    assert.equal(await page.locator('#selected-engine-name').textContent(),'Новое имя');
+    assert.equal((await state()).customEngines[0].id,saved.customEngines[0].id);
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await native(()=>window.argonNativeFixture.update({canChange:false}));
+    await page.locator('#engine-trigger').click();assert(await page.locator('#manage-engines').isDisabled());
+    await page.keyboard.press('Escape');await native(()=>window.argonNativeFixture.update({canChange:true}));
+    await page.locator('#engine-trigger').click();await page.locator('#manage-engines').click();
+    await page.locator('[data-delete-engine]').click();await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='google');
+    await page.waitForFunction(()=>!document.body.inert);
+    assert.equal((await state()).customEngines.length,0);assert.equal((await state()).engine,'google');
+    assert.equal(await page.locator('#selected-engine-name').textContent(),'Google');
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     // Tablet is identified by native Chromium, not by CSS viewport width.
     await page.setViewportSize({width:1024,height:768});
     await native(()=>window.argonNativeFixture.update({tablet:true}));

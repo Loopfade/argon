@@ -81,6 +81,15 @@ class HomepageTests(unittest.TestCase):
             self.assertEqual((src / homepage.JAVA_BRIDGE).read_text(),
                              (homepage.OVERLAY / homepage.JAVA_BRIDGE).read_text())
 
+    @unittest.skipUnless(shutil.which('g++'), 'C++ compiler is required')
+    def test_generated_resources_compile_as_cpp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'resources.cc'
+            source.write_text(homepage.resource_header(homepage.OVERLAY / homepage.RESOURCES)
+                              + '\nint main() { return kArgonHomeHtml[0] == 0; }\n')
+            subprocess.run(['g++', '-std=c++20', '-pedantic-errors', '-fsyntax-only', str(source)],
+                           check=True, capture_output=True, text=True)
+
     def test_changed_toolbar_or_source_catalog_rejects_the_whole_patch(self):
         for path in (homepage.TOOLBAR_MANAGER, homepage.JAVA_CATALOG, homepage.JNI_CATALOG):
             with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:

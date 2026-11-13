@@ -7,12 +7,14 @@ import {resolve,dirname} from 'node:path';
 import {checkNativeSearch} from './native-ui-check.mjs';
 import {checkSiteIcons} from './site-icons-ui-check.mjs';
 import {checkShortcutScale} from './shortcut-scale-ui-check.mjs';
+import {checkBackgrounds} from './backgrounds-ui-check.mjs';
+import {checkHomepageRegressions} from './regressions-ui-check.mjs';
 
 const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE).href);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
 const out=process.env.ARGON_UI_ARTIFACTS;
 if(out)await mkdir(out,{recursive:true});
-const files={'/startup.js':'startup.js','/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/backgrounds.js':'backgrounds.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
+const files={'/startup.js':'startup.js','/site-icons.js':'site-icons.mjs','/site-icons-production.js':'site-icons.mjs','/backgrounds.js':'backgrounds.mjs','/backgrounds-production.js':'backgrounds.mjs','/':'index.html','/app.css':'app.css','/app.js':'app.js','/state.js':'state.mjs','/icons.js':'icons.mjs','/i18n.js':'i18n.js','/theme.js':'theme.js','/bookmarks.js':'bookmarks.mjs','/browser-search.js':'browser-search.mjs','/browser-search-production.js':'browser-search.mjs'};
 const server=createServer(async(req,res)=>{
   const name=files[req.url?.split('?')[0]];
   if(!name){res.writeHead(404);res.end();return;}
@@ -59,11 +61,11 @@ async function mockPage(){
 }
 const page=await mockPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
-const waitForWrite=(p=page)=>p.waitForFunction(()=>!document.body.inert);
+const waitForWrite=async(p=page)=>{await p.waitForFunction(()=>!document.body.inert);await p.evaluate(()=>navigator.locks.request('argon-start-v1',()=>{}));};
 const readState=async p=>{await waitForWrite(p);return p.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
 const saved=()=>readState(page);
 const formSubmit=async(p=page)=>{await p.locator('#shortcut-form button[type=submit]').click();await waitForWrite(p);};
-async function enableEditing(p=page){await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
+async function enableEditing(p=page){if(await p.locator('#edit-done').isVisible())return;if(!await p.locator('#edit-shortcuts').isVisible())await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
 async function openDataSettings(p=page){await p.locator('#settings-button').click();await p.locator('#data-settings').click();}
 async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
 async function actions(name,p=page){await p.getByRole('button',{name:'Действия с ярлыком '+name,exact:true}).click();}
@@ -373,10 +375,10 @@ try {
   assert(await page.locator('#edit-done').isHidden());
   await page.getByRole('link',{name:'Личный сайт',exact:true}).click({button:'right'});
   assert.equal(await page.getByRole('dialog').count(),0);
-  await page.locator('[data-theme-choice=dark]').click();
+  await page.locator('#theme-trigger').click();await page.locator('#theme-menu [data-theme-choice=dark]').click();
   await waitForWrite();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
-  await page.locator('[data-theme-choice=amoled]').click();
+  await page.locator('#theme-trigger').click();await page.locator('#theme-menu [data-theme-choice=amoled]').click();
   await waitForWrite();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'amoled');
   await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(0, 0, 0)');
@@ -448,6 +450,8 @@ try {
   await page.locator('#search-form button[type=submit]').click();await search;
   await checkSiteIcons(browser,base,errors,out);
   await checkShortcutScale(browser,base,errors,out);
+  await checkHomepageRegressions(browser,base,errors,out);
+  await checkBackgrounds(browser,base,errors,out);
   assert.deepEqual(errors,[]);
   console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');
 } catch(error) {

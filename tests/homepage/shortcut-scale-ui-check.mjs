@@ -14,7 +14,7 @@ export async function checkShortcutScale(browser,base,errors,out) {
         {id:'news',name:'Новости',url:'https://news.example/',iconMode:'custom',icon:'book'}]};
     await page.evaluate(state=>localStorage.setItem('argon-start-v1',JSON.stringify(state)),legacy);
     await page.reload();
-    const wait=()=>page.waitForFunction(()=>!document.body.inert);
+    const wait=async()=>{await page.waitForFunction(()=>!document.body.inert);await page.evaluate(()=>navigator.locks.request('argon-start-v1',()=>{}));};
     const state=async()=>{await wait();return page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
     const settings=()=>page.locator('#settings-button').click();
     const close=()=>page.getByRole('button',{name:'Закрыть',exact:true}).click();

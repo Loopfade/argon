@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
+  <div id="home-background" class="home-background" aria-hidden="true" hidden></div>
   <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
     <!-- APK launcher artwork from res/icon.svg. -->
     <symbol id="i-brand" viewBox="0 0 512 512"><circle cx="256" cy="256" r="208" fill="#1c1c31"/>
@@ -51,11 +52,14 @@
   </defs></svg>
   <header class="header">
     <div class="brand" role="img" aria-label="Argon — новая вкладка"><svg class="brand-icon" aria-hidden="true"><use href="#i-brand"/></svg></div>
-    <div class="appearance" role="group" aria-label="Оформление страницы">
-      <button type="button" data-theme-choice="light" title="Светлая тема" aria-label="Светлая тема" aria-pressed="false"><svg aria-hidden="true"><use href="#i-sun"/></svg></button>
-      <button type="button" data-theme-choice="dark" title="Тёмная тема" aria-label="Тёмная тема" aria-pressed="false"><svg aria-hidden="true"><use href="#i-moon"/></svg></button>
-      <button type="button" data-theme-choice="amoled" title="Тёмная AMOLED" aria-label="Тёмная AMOLED" aria-pressed="false"><svg aria-hidden="true"><use href="#i-amoled"/></svg></button>
-      <button type="button" data-theme-choice="system" title="Как в браузере" aria-label="Тема браузера" aria-pressed="true"><svg aria-hidden="true"><use href="#i-monitor"/></svg></button>
+    <div class="appearance">
+      <button type="button" id="theme-trigger" aria-label="Выбрать тему" aria-expanded="false" aria-controls="theme-menu" aria-haspopup="true"><svg aria-hidden="true"><use id="theme-trigger-icon" href="#i-monitor"/></svg></button>
+      <div id="theme-menu" class="theme-menu" role="group" aria-label="Оформление страницы" hidden>
+        <button class="theme-option" type="button" data-theme-choice="light" aria-pressed="false"><svg aria-hidden="true"><use href="#i-sun"/></svg><span>Светлая</span></button>
+        <button class="theme-option" type="button" data-theme-choice="dark" aria-pressed="false"><svg aria-hidden="true"><use href="#i-moon"/></svg><span>Тёмная</span></button>
+        <button class="theme-option" type="button" data-theme-choice="amoled" aria-pressed="false"><svg aria-hidden="true"><use href="#i-amoled"/></svg><span>Тёмная AMOLED</span></button>
+        <button class="theme-option" type="button" data-theme-choice="system" aria-pressed="true"><svg aria-hidden="true"><use href="#i-monitor"/></svg><span>Как в браузере</span></button>
+      </div>
     </div>
   </header>
   <main class="workspace">
@@ -71,11 +75,11 @@
     <section class="favorites" aria-labelledby="favorites-heading">
       <div class="section-row"><h1 id="favorites-heading" class="section-label">Избранное</h1><button id="edit-done" class="btn btn-secondary" type="button" hidden>Готово</button></div>
       <p id="editing-hint" class="editing-hint" hidden>Нажмите на ярлык, чтобы изменить, переместить или удалить его.</p>
-      <div id="move-toolbar" class="move-toolbar" hidden><div><strong id="move-title"></strong><p id="move-hint">Нажмите новое место или перетащите ярлык. На папку — перенести внутрь.</p></div><button id="move-cancel" class="btn btn-secondary" type="button">Отмена</button></div>
+      <div id="move-toolbar" class="move-toolbar" hidden><div><strong id="move-title"></strong><p id="move-hint">Нажмите новое место или перетащите ярлык. На папку — перенести внутрь.</p></div><button id="move-destination" class="btn btn-secondary" type="button" hidden>Выбрать папку</button><button id="move-cancel" class="btn btn-secondary" type="button">Отмена</button></div>
       <div id="shortcut-grid" class="shortcut-grid"></div>
     </section>
   </main>
-  <footer class="footer"><div class="keyboard-hints" aria-hidden="true"><span><kbd>/</kbd> поиск</span><span><kbd>esc</kbd> закрыть</span></div><button class="settings-button" id="settings-button"><svg aria-hidden="true"><use href="#i-settings"/></svg>Настроить</button></footer>
+  <footer class="footer"><a id="background-credit" class="background-credit" target="_blank" rel="noopener noreferrer" hidden></a><div class="keyboard-hints" aria-hidden="true"><span><kbd>/</kbd> поиск</span><span><kbd>esc</kbd> закрыть</span></div><button class="settings-button" id="settings-button"><svg aria-hidden="true"><use href="#i-settings"/></svg>Настроить</button></footer>
   <div id="modal-root"></div><div id="toast" class="toast" role="status" hidden></div>
   <script type="module" src="app.js"></script>
 </body>

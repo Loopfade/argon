@@ -7,7 +7,7 @@ const image={url:'/th?id=OHR.Landscape_ROW123_1920x1080.jpg&pid=hp',title:'Пе�
 const background={source:'custom',image:'data:image/jpeg;base64,aGVsbG8='};
 
 test('Bing metadata preserves attribution and only accepts Bing image endpoints',()=>{
-  const pictures=parseBingWallpapers({images:[image,image,{...image,url:'https://foreign.example/th?id=OHR.X.jpg'},{...image,url:'javascript:alert(1)'},{...image,url:'/search?q=x'}]});
+  const pictures=parseBingWallpapers({images:[null,42,image,image,{...image,url:'https://foreign.example/th?id=OHR.X.jpg'},{...image,url:'javascript:alert(1)'},{...image,url:'/search?q=x'}]});
   assert.equal(pictures.length,1);
   assert.equal(pictures[0].credit,image.copyright);
   assert.equal(pictures[0].creditUrl,image.copyrightlink);
@@ -26,7 +26,7 @@ test('Bing feed uses the existing bounded homepage transport on explicit request
   assert.equal(new URL(calls[0][1]).pathname,'/HPImageArchive.aspx');
   assert.equal(pictures.length,1);
   const controller=new AbortController();controller.abort();
-  await assert.rejects(loadBingWallpapers({signal:controller.signal,readResource:async()=>({})}),/Aborted/);
+  await assert.rejects(loadBingWallpapers({signal:controller.signal,readResource:async()=>{assert.fail('an aborted chooser must not start a request');}}),/Aborted/);
   await assert.rejects(loadBingWallpapers({readResource:async()=>({url:'https://foreign.example/feed',mime:'application/json',body:btoa('{}')})}));
 });
 

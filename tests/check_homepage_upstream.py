@@ -41,6 +41,11 @@ def main():
     observer = read('chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/TabObserver.java')
     print(run_startup_flow(observer).strip())
     print('PASS: production homepage startup compiles with the complete pinned TabObserver interface')
+    service=' '.join(read('components/search_engines/template_url_service.h').split())
+    if 'void ResetTemplateURL(TemplateURL* url, const std::u16string& title, const std::u16string& keyword, const std::string& search_url);' not in service:
+        raise ValueError('Review the pinned custom search provider edit API')
+    if 'bool CreatedByPolicy() const;' not in read('components/search_engines/template_url.h'):
+        raise ValueError('Review the pinned search provider policy guard')
     verify_url_override_api(read(URL_OVERRIDES))
     verify_shortcut_sources(read)
     toolbar_phone = read(TOOLBAR_PHONE)
