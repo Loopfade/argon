@@ -1,3 +1,4 @@
+import {openPageSettings,openShortcutSettings,openTransferSettings,setShortcutSize} from './settings-navigation.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -134,7 +135,7 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   assert.equal(await page.locator('#dialog-title').textContent(),'Глубоко');
   await page.locator('#browser-folder-back').click();
   assert.equal(await page.locator('#modal-root').innerHTML(),'');
-  await page.locator('#settings-button').click();await page.locator('#edit-shortcuts').click();
+  await page.locator('#edit-bookmarks').click();
   await page.locator('[data-browser-bookmark="1"]').click();
   await page.locator('#native-icon').click();
   assert.equal(await page.locator('#dialog-title').textContent(),'Иконка закладки');
@@ -143,14 +144,14 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   await page.locator('#shortcut-form button[type=submit]').click();await wait();
   assert.equal((await state()).bookmarkIcons['1'].icon,'book','saving a built-in custom icon must not require an uploaded file');
   await page.locator('#edit-done').click();
-  await page.locator('#settings-button').click();
-  await page.locator('#density-select').selectOption('manual');await wait();
+  await openShortcutSettings(page);
+  await setShortcutSize(page,'manual');await wait();
   await page.locator('#shortcut-scale').fill('45');await page.locator('#shortcut-scale').press('Enter');
   assert(await page.locator('#shortcut-scale-error').isVisible());
   await page.locator('#shortcut-scale').fill('50');
   assert(await page.locator('#shortcut-scale-error').isHidden(),'correcting input must clear the obsolete validation error before blur');
   await page.locator('#shortcut-scale').press('Enter');await wait();
-  await page.locator('#data-settings').click();
+  await openTransferSettings(page);
   const download=page.waitForEvent('download');await page.locator('#backup-export').click();
   const bytes=await readFile(await(await download).path()),dump=JSON.parse(bytes);
   assert(dump.state.browserBookmarks.some(record=>record.url==='https://existing.example/'&&record.icon==='book'));
@@ -191,7 +192,7 @@ async function checkLegacyBackupRestores(browser,base,errors) {
    const wait=async()=>{await page.waitForFunction(()=>!document.body.inert);await page.evaluate(()=>navigator.locks.request('argon-start-v1',()=>{}));};
    const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
    const native=()=>page.evaluate(()=>structuredClone(nativeBookmarks.roots));
-   const openData=async()=>{await page.locator('#settings-button').click();await page.locator('#data-settings').click();};
+   const openData=async()=>{await openTransferSettings(page);};
    const upload=async()=>{await page.locator(index?'#bookmarks-file':'#backup-file').setInputFiles({name:filename,mimeType:'application/json',buffer:index?Buffer.concat([Buffer.from('\ufeff'),bytes]):bytes});};
    const shape=items=>items.map(item=>item.children?{name:item.name,type:'folder',children:shape(item.children)}:{name:item.name,url:new URL(item.url).href});
    const expected=shape([existing,...original.state.shortcuts]);
@@ -246,7 +247,7 @@ async function checkBookmarkEdgeCases(page,wait) {
  const open=async id=>{await page.locator('[data-browser-bookmark="'+id+'"]').click();await page.locator('#native-open-folder').click();};
  const save=async()=>{await page.locator('#native-bookmark-form button[type=submit]').click();await wait();};
  await replace([a,hidden,b]);
- await page.locator('#settings-button').click();await page.locator('#edit-shortcuts').click();
+ await page.locator('#edit-bookmarks').click();
  assert.equal(await page.locator('[data-browser-bookmark="11"]').count(),0);
  await edit('10');await save();assert.deepEqual(await order(),['10','11','12'],'unchanged save retains hidden native positions');
  await edit('10');await page.locator('#native-title').fill('Renamed A');await page.locator('#native-url').fill('https://a.example/changed');
@@ -330,9 +331,8 @@ async function checkBookmarkEdgeCases(page,wait) {
 async function checkBookmarkEditing(page,wait,state,out) {
  await page.evaluate(()=>{nativeBookmarks.next=1000;nativeBookmarks.canEdit=true;nativeBookmarks.replace([
   {id:'10',name:'Первый',url:'https://first.example/'},{id:'11',name:'Второй',url:'https://second.example/'}]);});
- await page.locator('#settings-button').click();
- assert((await page.locator('#edit-shortcuts').textContent()).includes('Редактировать закладки'));
- await page.locator('#edit-shortcuts').click();
+ assert.equal(await page.locator('#edit-bookmarks').getAttribute('aria-label'),'Редактировать закладки');
+ await page.locator('#edit-bookmarks').click();
  if(out)await page.screenshot({path:resolve(out,'home-native-editing-320.png'),fullPage:true,animations:'disabled'});
  await page.locator('[data-native-add=""]').click();
  await page.locator('#native-kind').selectOption('folder');

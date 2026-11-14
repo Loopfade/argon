@@ -89,3 +89,38 @@ body{isolation:isolate}
 
 /* The chooser uses measured image sizes. Selection stays in the shortcut draft. */
 .site-icon-results{margin-top:17px}.site-icon-group{font-size:11px;color:var(--muted);margin:15px 0 8px}.site-icon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.site-icon-option{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:104px;padding:13px 5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:11px}.site-icon-option>img{width:36px;height:36px;object-fit:contain}.site-icon-option>small{font-size:11px;color:var(--muted)}.site-icon-option[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}.site-icon-check{display:none;position:absolute;right:5px;top:5px;color:var(--accent-text)}.site-icon-check svg{width:14px;height:14px}.site-icon-option[aria-pressed=true] .site-icon-check{display:block}#site-icon-selection{color:var(--accent-text)}#site-icon-finder button:disabled{opacity:.65}
+
+/* Compact settings hub; each section owns its controls and back navigation. */
+.settings-dialog{padding:20px 22px}
+.settings-header{align-items:center;gap:8px;padding-block:0;margin-bottom:8px}
+.settings-header h2{flex:1;min-width:0;font-size:19px;line-height:1.35;letter-spacing:-.35px}
+.settings-header .icon-button{width:44px;height:44px;flex:0 0 44px;border-radius:12px}
+.settings-header .settings-done,.settings-header .settings-done:hover{background:var(--accent-soft);color:var(--accent-text)}
+.settings-back svg{transform:rotate(180deg)}
+.settings-dialog .settings-autosave{margin:8px 0 14px;font-size:12px;line-height:1.5;color:var(--secondary)}
+.settings-nav-row{width:100%;display:flex;align-items:center;gap:14px;min-height:76px;padding:15px 2px;border-bottom:1px solid var(--border);text-align:start}
+.settings-nav-row:hover{background:var(--bg)}
+.settings-nav-list>.settings-nav-row:last-of-type{border-bottom:0}
+.settings-nav-row>svg{width:22px;height:22px;flex-shrink:0;color:var(--secondary)}
+.settings-row-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;overflow-wrap:anywhere}
+.settings-row-copy strong{font-size:14px;font-weight:500}
+.settings-row-copy small{font-size:12px;line-height:1.45;color:var(--secondary)}
+.settings-nav-row>.settings-row-chevron{width:16px;height:16px;transform:rotate(-90deg)}
+.settings-dialog .engine-option{min-height:52px}
+.settings-theme-options .theme-card{flex-direction:row;min-height:54px;gap:9px;padding:10px 12px;text-align:start;font-size:12px}
+.settings-theme-options .theme-card svg{width:20px;height:20px}
+.settings-controls{margin:0;padding:0;border:0;min-width:0}
+.settings-controls .setting-row{font-size:14px;min-height:66px;padding:9px 0}
+.settings-controls .setting-row>span{flex:1;min-width:0}
+.settings-dialog .setting-label{font-size:12px;font-weight:500}
+.settings-controls input[type=number]{width:88px;min-height:44px;flex-shrink:0;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:16px}
+.shortcut-size-options{display:flex;gap:4px;padding:4px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
+.shortcut-size-options button{flex:1;min-width:0;min-height:44px;padding:7px 4px;border-radius:8px;font-size:12px;color:var(--secondary)}
+.shortcut-size-options button[aria-pressed=true]{background:var(--surface);color:var(--text);box-shadow:0 1px 4px #0001}
+.settings-dialog .size-preview .shortcut-label{font-size:11px}
+.settings-dialog .settings-toggle[aria-checked]{position:relative;width:48px;height:44px;flex:0 0 48px;padding:0;border-radius:8px;background:transparent}
+.settings-toggle::before{content:'';position:absolute;left:4px;top:10px;width:40px;height:24px;border-radius:14px;background:var(--border)}
+.settings-dialog .settings-toggle::after{position:absolute;left:7px;top:13px;width:18px;height:18px;background:var(--secondary)}
+.settings-dialog .settings-toggle[aria-checked=true]::before{background:var(--accent)}
+.settings-dialog .settings-toggle[aria-checked=true]::after{transform:translateX(16px);background:var(--surface)}
+@media(max-width:480px){.settings-dialog{padding:16px 18px}.settings-header h2{font-size:18px}.settings-theme-options .theme-card{padding:10px 9px;gap:7px}}
