@@ -12,7 +12,7 @@
     <string name="argon_certificates_more">Learn more</string>
     <string name="argon_certificates_close">Close</string>
     <string name="argon_certificates_details_title">About the Ministry certificate</string>
-    <string name="argon_certificates_details_description">Argon includes the Russian Ministry of Digital Development root certificate. These settings select the sites for which it is trusted. Certificates from other authorities follow the usual rules.\n\nA domain entry includes its subdomains. IP addresses, wildcards such as *.example.com, and entire zones such as .com cannot be added.\n\nAdding a domain does not bypass other certificate checks. Every domain name in the site certificate must be covered by an allowed rule.\n\nChanges apply to new certificate checks.</string>
+    <string name="argon_certificates_details_description">Argon includes the Russian Ministry of Digital Development root certificate. These settings select the sites for which it is trusted. Certificates from other authorities follow the usual rules.\n\nA domain entry includes its subdomains. IP addresses, wildcards such as *.example.com, and entire zones such as .com cannot be added.\n\nAdding a domain does not bypass other certificate checks. Trust rules apply to the hostname of the HTTPS connection. Other names in a shared certificate do not need separate entries and are not automatically trusted. Connections to IP addresses are not authorized.\n\nChanges apply to new certificate checks.</string>
     <string name="argon_certificates_root_issuer">Issuer</string>
     <string name="argon_certificates_root_validity">Validity period</string>
     <string name="argon_certificates_root_fingerprint">SHA-256 fingerprint</string>

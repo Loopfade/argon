@@ -1,3 +1,4 @@
+import {openShortcutSettings,openTransferSettings,setShortcutSize,closeDialog} from './settings-navigation.mjs';
 /** Exercise the production page with its Trusted Types policy and real DOM events. */
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -12,6 +13,7 @@ import {checkHomepageRegressions} from './regressions-ui-check.mjs';
 import {checkHomepageConsistency} from './consistency-ui-check.mjs';
 import {checkAddShortcut} from './add-shortcut-ui-check.mjs';
 import {checkBrowserBookmarks} from './browser-bookmarks-ui-check.mjs';
+import {checkSettingsNavigation} from './settings-ui-check.mjs';
 
 const {chromium}=await import(pathToFileURL(process.env.ARGON_PLAYWRIGHT_MODULE).href);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../chromium_overlay/chrome/browser/resources/argon_home');
@@ -68,8 +70,8 @@ const waitForWrite=async(p=page)=>{await p.waitForFunction(()=>!document.body.in
 const readState=async p=>{await waitForWrite(p);return p.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
 const saved=()=>readState(page);
 const formSubmit=async(p=page)=>{await p.locator('#shortcut-form button[type=submit]').click();await waitForWrite(p);};
-async function enableEditing(p=page){if(await p.locator('#edit-done').isVisible())return;if(!await p.locator('#edit-shortcuts').isVisible())await p.locator('#settings-button').click();await p.locator('#edit-shortcuts').click();assert(await p.locator('#edit-done').isVisible());}
-async function openDataSettings(p=page){await p.locator('#settings-button').click();await p.locator('#data-settings').click();}
+async function enableEditing(p=page){if(await p.locator('#edit-done').isVisible())return;if(await p.locator('[data-settings-done]').count())await closeDialog(p);await p.locator('#edit-bookmarks').click();assert(await p.locator('#edit-done').isVisible());}
+async function openDataSettings(p=page){await openTransferSettings(p);}
 async function editFirst(p){await p.locator('[data-item]').first().click();await p.locator('#shortcut-edit').click();}
 async function actions(name,p=page){await p.getByRole('button',{name:'Действия с ярлыком '+name,exact:true}).click();}
 async function add(name,url,type='site',deferFrame=false){
@@ -113,7 +115,7 @@ try {
       });
     });
     await first.waitForFunction(()=>window.lockReady===true);
-    await second.locator('#settings-button').click();
+    await openShortcutSettings(second);
     await second.locator('#newtab-toggle').click();
     await second.waitForFunction(()=>document.body.inert);
     assert.equal(await second.evaluate(()=>localStorage.getItem('argon-start-v1')),null);
@@ -169,6 +171,7 @@ try {
   } finally {
     await concurrentContext.close();
   }
+  await checkSettingsNavigation(browser,base,errors,out);
   await checkNativeSearch(browser,base,errors,out);
   for(const locale of ['en-US','de-DE']) {
     const english=await browser.newContext({locale,acceptDownloads:true});
@@ -178,8 +181,8 @@ try {
     await p.getByRole('button',{name:'Customize',exact:true}).waitFor();
     assert.equal(await p.locator('html').getAttribute('lang'),'en');
     assert.equal(await p.locator('#search-input').getAttribute('placeholder'),'Search or enter address');
-    await p.locator('#settings-button').click();
-    await p.getByRole('button',{name:'Edit shortcuts',exact:false}).click();
+    await p.getByRole('button',{name:'Edit shortcuts',exact:true}).click();
+    assert(await p.getByRole('button',{name:'Finish editing',exact:true}).isVisible());
     await p.getByRole('button',{name:'Add site or folder',exact:true}).click();
     await p.getByLabel('Name',{exact:true}).fill('Избранное');
     await p.getByLabel('Site address',{exact:true}).fill('example.com');
@@ -188,7 +191,7 @@ try {
     assert.equal(await p.locator('[data-item] .shortcut-label').first().textContent(),'Избранное');
     await p.locator('#edit-done').click();
     await openDataSettings(p);
-    assert(await p.getByRole('button',{name:'Save backup',exact:false}).isVisible());
+    assert(await p.getByRole('button',{name:'Save Argon backup',exact:false}).isVisible());
     const download=p.waitForEvent('download');
     await p.locator('#backup-export').click();
     assert((await download).suggestedFilename().startsWith('argon-dump-'));
@@ -322,7 +325,7 @@ try {
   // Closing while a preview is debounced must not touch the next dialog.
   await iconPage.locator('#shortcut-url').fill('primary-icon.example');
   await iconPage.getByRole('button',{name:'Отмена',exact:true}).click();
-  await iconPage.locator('#settings-button').click();
+  await openShortcutSettings(iconPage);
   await iconPage.waitForTimeout(300);
   assert(await iconPage.locator('#density-select').isVisible());
   await iconPage.evaluate(()=>localStorage.clear());
@@ -394,7 +397,7 @@ try {
   const googleIcon=await page.locator('[data-engine=google] img').getAttribute('src');
   assert.equal(await page.locator('#selected-engine-icon img').getAttribute('src'),googleIcon);
   await page.locator('#engine-trigger').click();await page.locator('[data-engine=noai]').click();
-  await page.locator('#settings-button').click();await page.locator('#density-select').selectOption('compact');
+  await openShortcutSettings(page);await setShortcutSize(page,'compact');
   // The opening animation scales the entire dialog. Measure settled geometry,
   // otherwise getBoundingClientRect() reports a transient, smaller sample.
   await page.locator('.dialog').evaluate(async dialog=>{await Promise.all(dialog.getAnimations().map(animation=>animation.finished));});
@@ -402,7 +405,7 @@ try {
     await page.setViewportSize({width,height:850});
     const sizes={};
     for(const size of ['comfortable','compact']){
-      await page.locator('#density-select').selectOption(size);
+      await setShortcutSize(page,size);
       await waitForWrite();
       assert((await page.locator('#density-help').textContent()).startsWith(size==='compact'?'Мелкие':'Крупные'));
       sizes[size]=await page.evaluate(()=>{
@@ -424,8 +427,8 @@ try {
   await page.locator('#labels-toggle').click();
   await waitForWrite();
   assert(await page.locator('#size-preview .shortcut-label').first().isVisible());
-  await page.locator('#data-settings').click();
-  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Сохранить копию',exact:true}).click();
+  await openTransferSettings(page);
+  const downloadPromise=page.waitForEvent('download');await page.locator('#backup-export').click();
   const dump=JSON.parse(await readFile(await(await downloadPromise).path(),'utf8'));
   assert.equal(dump.state.engine,'noai');assert.equal(dump.state.density,'compact');assert.equal(dump.state.shortcuts.length,3);
   await page.locator('#backup-file').setInputFiles({name:'argon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(dump))});
@@ -439,7 +442,7 @@ try {
   await page.evaluate(()=>{window.argonOriginalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('Storage full','QuotaExceededError');};});
   await formSubmit();assert(await page.locator('#form-error').isVisible());assert.equal((await saved()).shortcuts.length,3);
   await page.evaluate(()=>{Storage.prototype.setItem=window.argonOriginalSetItem;delete window.argonOriginalSetItem;});
-  await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+  await closeDialog(page);
   for(const width of [320,375,768]){
     await page.setViewportSize({width,height:820});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'horizontal page overflow at '+width);
@@ -459,7 +462,7 @@ try {
   await checkBrowserBookmarks(browser,base,errors,out);
   await checkBackgrounds(browser,base,errors,out);
   assert.deepEqual(errors,[]);
-  console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, settings-only editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');
+  console.log('PASS: production homepage under Trusted Types; bookmark HTML/JSON import, preview, cancellation, duplicates, quota, icons, fallback, live size preview, explicit editing, tap/drag moves, folders, rename, undo, persistence, themes, dump, narrow screens and search');
 } catch(error) {
   const active=context.pages().find(p=>p.url().startsWith(base))||page;
   console.error(JSON.stringify({pageErrors:errors,iconRequests,allImageRequests,imageFailures,browserErrors:browserErrors.slice(-20),preview:await active.evaluate(async()=>({markup:document.querySelector('#icon-preview')?.outerHTML,address:document.querySelector('#shortcut-url')?.value,protocol:location.protocol,sources:(await import('./icons.js')).faviconSources('https://primary-icon.example/private/path',location.protocol)})).catch(()=>null)}));

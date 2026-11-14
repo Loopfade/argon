@@ -1,3 +1,4 @@
+import {openShortcutSettings,closeDialog} from './settings-navigation.mjs';
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 
@@ -43,13 +44,13 @@ export async function checkAddShortcut(browser,base,errors,out) {
     await open(address);
     await page.locator('#shortcut-folder').selectOption('folder');
     // An unrelated change from another home tab must survive the explicit save.
-    await home.locator('#settings-button').click();await home.locator('#labels-toggle').click();await wait(home);
+    await openShortcutSettings(home);await home.locator('#labels-toggle').click();await wait(home);
     await page.waitForFunction(()=>document.querySelector('#shortcut-title')?.value==='Страница');
     await submit();await page.locator('#shortcut-form').waitFor({state:'hidden'});
     assert(await page.locator('#edit-done').isHidden());
     assert.equal((await read(page)).showLabels,false);
     assert.equal((await read(page)).shortcuts[0].children[0].url,address);
-    await home.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await closeDialog(home);
     await home.locator('[data-item=folder]').click();
     await home.locator('a[data-item]').waitFor();
     assert.equal(await home.locator('a[data-item]').getAttribute('href'),address,'another home tab must receive the saved shortcut');

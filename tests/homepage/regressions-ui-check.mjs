@@ -1,3 +1,4 @@
+import {openPageSettings,openShortcutSettings,openTransferSettings,setShortcutSize,closeDialog} from './settings-navigation.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -10,8 +11,8 @@ export async function checkHomepageRegressions(browser,base,errors,out) {
   const contexts=[];
   const wait=async page=>{await page.waitForFunction(()=>!document.body.inert);await page.evaluate(()=>navigator.locks.request('argon-start-v1',()=>{}));};
   const state=async page=>{await wait(page);return page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
-  const close=page=>page.getByRole('button',{name:'Закрыть',exact:true}).click();
-  const editing=async page=>{await page.locator('#settings-button').click();await page.locator('#edit-shortcuts').click();};
+  const close=page=>closeDialog(page);
+  const editing=async page=>{await page.locator('#edit-bookmarks').click();};
   const actions=(page,id)=>page.locator('[data-item="'+id+'"]').click();
   const folder=async(page,id)=>{await actions(page,id);await page.locator('#open-folder').click();};
   async function environment() {
@@ -73,26 +74,26 @@ export async function checkHomepageRegressions(browser,base,errors,out) {
       if(out)await page.screenshot({path:resolve(out,'home-folder-actions.png'),fullPage:true,animations:'disabled'});
     }
     {
-      const {page}=await environment();await page.locator('#settings-button').click();await page.locator('#density-select').selectOption('manual');await wait(page);
+      const {page}=await environment();await openShortcutSettings(page);await setShortcutSize(page,'manual');await wait(page);
       await page.locator('#shortcut-scale').fill('175');await page.getByRole('button',{name:'Готово',exact:true}).click();await wait(page);
       assert.equal(await page.locator('#density-select').count(),0,'Done must close on its first click after typing');
       assert.equal((await state(page)).shortcutScale,175);
-      await page.locator('#settings-button').click();await page.locator('#shortcut-scale').fill('150');
-      await page.locator('#data-settings').click();assert(await page.locator('#backup-export').isVisible(),'blur save must not consume another action');
+      await openShortcutSettings(page);await page.locator('#shortcut-scale').fill('150');
+      await openTransferSettings(page);assert(await page.locator('#backup-export').isVisible(),'blur save must not consume another action');
       const download=page.waitForEvent('download');await page.locator('#backup-export').click();
       const backup=JSON.parse(await readFile(await(await download).path(),'utf8'));assert.equal(backup.state.shortcutScale,150);
     }
     {
       const {page}=await environment();const broken=JSON.stringify(fixture).slice(0,-3);
       await page.evaluate(value=>localStorage.setItem('argon-start-v1',value),broken);await page.reload();
-      await page.locator('#settings-button').click();await page.locator('#data-settings').click();
+      await openTransferSettings(page);
       assert(await page.locator('#backup-export').isDisabled());assert(await page.locator('#backup-recovery').isVisible());
       const download=page.waitForEvent('download');await page.locator('#backup-recovery').click();
       assert.equal(await readFile(await(await download).path(),'utf8'),broken);
       assert.equal(await page.evaluate(()=>localStorage.getItem('argon-start-v1')),broken);
       await page.locator('#backup-file').setInputFiles({name:'valid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'argon-start',version:1,createdAt:'2026-11-13T00:00:00Z',state:fixture}))});
       await page.locator('#confirm-restore').click();await wait(page);assert.deepEqual(await state(page),fixture);
-      await page.locator('#settings-button').click();await page.locator('#data-settings').click();assert(await page.locator('#backup-export').isEnabled());
+      await openTransferSettings(page);assert(await page.locator('#backup-export').isEnabled());
     }
     {
       const {page}=await environment();

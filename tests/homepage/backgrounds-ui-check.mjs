@@ -1,3 +1,4 @@
+import {openBackgroundSettings,openTransferSettings,closeDialog} from './settings-navigation.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -36,9 +37,8 @@ export async function checkBackgrounds(browser,base,errors,out) {
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
     const wait=async()=>{await page.waitForFunction(()=>!document.body.inert);await page.evaluate(()=>navigator.locks.request('argon-start-v1',()=>{}));};
     const state=async()=>{await wait();return page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));};
-    const settings=()=>page.locator('#settings-button').click();
-    const background=async()=>{await settings();await page.locator('#background-settings').click();};
-    const close=()=>page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    const background=()=>openBackgroundSettings(page);
+    const close=()=>closeDialog(page);
     const settle=()=>page.waitForFunction(()=>document.querySelector('#background-controls')?.disabled===false);
     const applied=()=>page.waitForFunction(()=>document.body.classList.contains('has-background')&&!document.querySelector('#home-background').hidden);
     await page.goto(base);
@@ -82,12 +82,12 @@ export async function checkBackgrounds(browser,base,errors,out) {
     const download=await imageDownload,bytes=await readFile(await download.path());
     assert.equal(download.suggestedFilename(),'bing-20261113.jpg');assert.equal(bytes[0],0xff);assert.equal(bytes[1],0xd8);
     assert.deepEqual(await state(),chosen,'downloading a wallpaper must not change homepage settings');
-    await page.locator('#background-back').click();await page.locator('#data-settings').click();
+    await page.locator('#background-back').click();await openTransferSettings(page);
     const backupDownload=page.waitForEvent('download');await page.locator('#backup-export').click();
     const backup=await readFile(await(await backupDownload).path());assert.deepEqual(JSON.parse(backup).state,chosen);
     await close();await background();await page.locator('#background-clear').click();await wait();
     assert.equal((await state()).background,undefined);assert(await page.locator('#home-background').isHidden());
-    await page.locator('#background-back').click();await page.locator('#data-settings').click();
+    await page.locator('#background-back').click();await openTransferSettings(page);
     await page.locator('#backup-file').setInputFiles({name:'with-background.json',mimeType:'application/json',buffer:backup});
     await page.locator('#confirm-restore').click();await wait();await applied();assert.deepEqual(await state(),chosen);
     await page.reload();await applied();assert.deepEqual(await state(),chosen);
@@ -97,13 +97,13 @@ export async function checkBackgrounds(browser,base,errors,out) {
     await page.locator('#background-bing').click();await page.waitForFunction(()=>typeof window.argonBackgroundFixture.release==='function');
     await page.locator('#background-back').click();await page.evaluate(()=>window.argonBackgroundFixture.release());
     await page.waitForFunction(()=>window.argonBackgroundFixture.finished===1);
-    assert(await page.locator('#density-select').isVisible());assert.deepEqual(await state(),chosen);
+    assert(await page.locator('.settings-theme-options').isVisible());assert.deepEqual(await state(),chosen);
     await page.locator('#background-settings').click();await page.locator('#background-bing').click();await settle();
     await page.evaluate(()=>{window.argonBackgroundFixture.hold='image';window.argonBackgroundFixture.release=null;});
     await page.locator('[data-bing-set="0"]').click();await page.waitForFunction(()=>typeof window.argonBackgroundFixture.release==='function');
     await page.locator('#background-back').click();await page.evaluate(()=>window.argonBackgroundFixture.release());
     await page.waitForFunction(()=>window.argonBackgroundFixture.finished===3);assert.deepEqual(await state(),chosen);
-    await page.locator('#data-settings').click();
+    await openTransferSettings(page);
     const legacy={...original};delete legacy.shortcutScale;delete legacy.shortcutScaleMode;
     await page.locator('#backup-file').setInputFiles({name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'argon-start',version:1,createdAt:'2026-11-01T00:00:00Z',state:legacy}))});
     await page.locator('#confirm-restore').click();await wait();assert.deepEqual(await state(),legacy);

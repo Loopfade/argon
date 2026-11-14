@@ -8,7 +8,7 @@ function fixture(value=initialState()) {
 }
 const site=(id)=>({id,name:id,url:'https://'+id+'.example/'});
 
-test('settings-only editing prevents layout changes outside the session; accepted edits survive reload',()=>{
+test('explicit editing prevents layout changes outside the session; accepted edits survive reload',()=>{
   const {storage}=fixture(),page=new HomepageStore(storage,'home');
   assert.equal(page.editing,false);
   assert.throws(()=>page.update(s=>s.shortcuts.push(site('one')),{shortcuts:true}),/редактирование/);
