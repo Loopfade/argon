@@ -156,6 +156,64 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   assert(imports>0);
   console.log('PASS: native bookmarks, homepage creation/editing, touch-friendly ordering, drag, folders, safe deletion, migration and backup');
  } finally {await context.close();}
+ await checkLegacyBackupRestores(browser,base,errors);
+}
+
+async function checkLegacyBackupRestores(browser,base,errors) {
+ for(const [index,filename]of ['argon-2026-10-28.json','argon-2026-11-13-before-native.json'].entries()){
+  const bytes=await readFile(new URL('../fixtures/homepage/backups/'+filename,import.meta.url));
+  const original=JSON.parse(bytes);
+  const context=await browser.newContext({viewport:{width:320,height:850},locale:'ru-RU',acceptDownloads:true});
+  try {
+   await context.route('https://**/*',route=>route.abort());
+   await context.route(base+'browser-bookmarks.js',route=>route.fulfill({contentType:'text/javascript',body:nativeMock}));
+   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
+   await page.goto(base);await page.waitForFunction(()=>JSON.parse(localStorage.getItem('argon-start-v1')??'null')?.bookmarksMigrated);
+   const existing={id:'900',name:'Existing native bookmark',url:'https://existing.example/'};
+   await page.evaluate(item=>{nativeBookmarks.next=1000;nativeBookmarks.replace([item]);},existing);
+   const wait=async()=>{await page.waitForFunction(()=>!document.body.inert);await page.evaluate(()=>navigator.locks.request('argon-start-v1',()=>{}));};
+   const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('argon-start-v1')));
+   const native=()=>page.evaluate(()=>structuredClone(nativeBookmarks.roots));
+   const openData=async()=>{await page.locator('#settings-button').click();await page.locator('#data-settings').click();};
+   const upload=async()=>{await page.locator(index?'#bookmarks-file':'#backup-file').setInputFiles({name:filename,mimeType:'application/json',buffer:index?Buffer.concat([Buffer.from('\ufeff'),bytes]):bytes});};
+   const shape=items=>items.map(item=>item.children?{name:item.name,type:'folder',children:shape(item.children)}:{name:item.name,url:new URL(item.url).href});
+   const expected=shape([existing,...original.state.shortcuts]);
+   await openData();const before=await state();await upload();
+   assert((await page.locator('.restore-note').textContent()).includes('без удаления существующих'));
+   await page.locator('#cancel-restore').click();assert.deepEqual(await state(),before);assert.deepEqual(await native(),[existing]);
+   await upload();await page.locator('#confirm-restore').click();await wait();
+   await page.waitForFunction(()=>document.querySelector('#modal-root').children.length===0);
+   assert.deepEqual(shape(await native()),expected,filename+': native restoration preserves both copies of an address and empty folders');
+   let current=await state();assert.deepEqual(current.shortcuts,[]);assert.equal(current.bookmarksMigrated,true);
+   assert.deepEqual(current.bookmarkMigrationBackup,original.state.shortcuts);
+   for(const key of ['theme','engine','customEngines','density','showLabels','newTab','shortcutScale','shortcutScaleMode','background'])assert.deepEqual(current[key],original.state[key],key);
+   const all=items=>items.flatMap(item=>[item,...(item.children?all(item.children):[])]);
+   const items=all(await native());
+   const uploaded=items.find(item=>item.name==='Общий сайт в работе'),preset=items.find(item=>item.name==='Общий сайт в личном');
+   assert.notEqual(uploaded.id,'old-image');
+   const appearance=current.bookmarkIcons[uploaded.id];
+   const storedImage=appearance.customIcon??current.bookmarkMigrationBackup.flatMap(item=>item.children??[item]).find(item=>item.id===appearance.legacyId)?.customIcon;
+   assert.equal(storedImage,original.state.shortcuts[1].children[0].customIcon);
+   assert.equal(current.bookmarkIcons[preset.id].icon,'music');
+   await openData();const download=page.waitForEvent('download');await page.locator('#backup-export').click();
+   const exported=JSON.parse(await readFile(await(await download).path(),'utf8'));
+   assert.equal(exported.state.browserBookmarks.filter(record=>record.url==='https://shared.example/page?q=one#part').length,2);
+   assert(exported.state.browserBookmarks.some(record=>record.folder&&record.name==='Пустая папка'));
+   await upload();await page.locator('#confirm-restore').click();await wait();
+   assert.deepEqual(shape(await native()),expected,'restoring the same old file twice does not multiply bookmarks');
+   await page.reload();await page.getByRole('link',{name:'Existing native bookmark',exact:true}).waitFor();
+   assert.deepEqual(shape(await native()),expected);assert.equal(await page.evaluate(()=>nativeBookmarks.imports.length),0,'reload must not re-import the archived old shortcuts');
+   current=await state();const nativeBefore=await native();
+   await openData();const damaged=structuredClone(original);damaged.state.shortcuts[1].children[0].url='javascript:alert(1)';
+   await page.locator('#backup-file').setInputFiles({name:'damaged.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(damaged))});
+   await page.locator('#backup-error').waitFor({state:'visible'});assert.equal(await page.locator('#confirm-restore').count(),0);
+   assert.deepEqual(await state(),current);assert.deepEqual(await native(),nativeBefore);
+   await page.evaluate(()=>{nativeBookmarks.canEdit=false;nativeBookmarks.replace(nativeBookmarks.roots);});
+   await upload();await page.locator('#confirm-restore').click();await wait();
+   await page.locator('#backup-error').waitFor({state:'visible'});assert.deepEqual(await state(),current);assert.deepEqual(await native(),nativeBefore);
+   console.log('PASS: historical backup '+filename+', native folders, alias URLs, icons, preferences, cancel, repeat, re-export, reload and rejection');
+  } finally {await context.close();}
+ }
 }
 
 async function checkBookmarkEdgeCases(page,wait) {

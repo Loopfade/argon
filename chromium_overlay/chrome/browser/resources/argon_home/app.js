@@ -948,7 +948,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
           const next=structuredClone(dump.state);
           if(nativeBookmarks()) {
             const records=next.browserBookmarks??bookmarkRecords(next.shortcuts);
-            await browserBookmarks.import(records,{restore:!!next.browserBookmarks});
+            await browserBookmarks.import(records,{restore:true});
             const metadata=bookmarkMetadata(records);
             const locations=new Map(records.filter(record=>record.url).map(record=>[JSON.stringify([record.path,record.name,record.url]),record]));
             if(next.shortcuts.length)next.bookmarkMigrationBackup=next.shortcuts;
