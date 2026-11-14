@@ -1,6 +1,10 @@
 .argon-home-starting body{visibility:hidden}
 .bookmark-notice{grid-column:1/-1;font-size:12px;line-height:1.6;color:var(--secondary)}
-#browser-bookmarks-manager{min-height:44px;padding:8px 10px;color:var(--accent-text);background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.bookmark-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-left:auto}
+.bookmark-action{width:44px;height:44px;flex:0 0 44px;padding:0;display:grid;place-items:center;border-radius:12px;color:var(--secondary)}
+.bookmark-action svg{width:21px;height:21px}
+.bookmark-action:hover{background:var(--tile);color:var(--text)}
+.bookmark-action-done,.bookmark-action-done:hover{background:var(--accent-soft);color:var(--accent-text)}
 .section-row{flex-wrap:wrap;gap:10px}
 .dialog-header{position:sticky;top:0;z-index:4;background:var(--surface);padding-block:8px}
 .browser-search-ready .native-search-box{text-align:start;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text}

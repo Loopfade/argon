@@ -5,7 +5,9 @@ export function language(value = globalThis.document?.documentElement?.lang ?? '
 }
 
 const english = {
-  "Добавляйте сайты звёздочкой или через «Настроить → Редактировать закладки».": "Add sites with the browser star or via Customize → Edit bookmarks.",
+  "Добавляйте сайты звёздочкой или через карандаш рядом с «Избранное».": "Add sites with the browser star or the pencil next to Favorites.",
+  "Действия с закладками": "Bookmark actions",
+  "Все закладки": "All bookmarks",
   "Показать ещё": "Show more",
   "Нажмите на закладку, чтобы изменить, переместить или удалить её.": "Select a bookmark to edit, move or delete it.",
   "Нажмите новое место, перетащите закладку или выберите папку.": "Tap a new position, drag the bookmark or choose a folder.",

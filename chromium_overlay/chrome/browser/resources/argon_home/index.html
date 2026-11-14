@@ -33,6 +33,7 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L20 8a2.1 2.1 0 0 0-5-4L4 15Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-bookmarks" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h13v18H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm-3 15a3 3 0 0 1 3-3h13"/><path d="M9 3v8l3-2 3 2V3"/></g></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h7m5 0h4M4 17h3m5 0h8"/><circle cx="13.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></g></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10H3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.7" ry="8.5"/><path d="M4 9h16M4 15h16"/></g></symbol>
@@ -74,7 +75,14 @@
       <div id="engine-menu" class="popover" hidden></div>
     </div>
     <section class="favorites" aria-labelledby="favorites-heading">
-      <div class="section-row"><h1 id="favorites-heading" class="section-label">Избранное</h1><button id="edit-done" class="btn btn-secondary" type="button" hidden>Готово</button></div>
+      <div class="section-row">
+        <h1 id="favorites-heading" class="section-label">Избранное</h1>
+        <div class="bookmark-actions" role="group" aria-label="Действия с закладками">
+          <button id="browser-bookmarks-manager" class="bookmark-action" type="button" aria-label="Все закладки" title="Все закладки" hidden><svg aria-hidden="true"><use href="#i-bookmarks"/></svg></button>
+          <button id="edit-bookmarks" class="bookmark-action" type="button" aria-label="Редактировать закладки" title="Редактировать закладки"><svg aria-hidden="true"><use href="#i-pencil"/></svg></button>
+          <button id="edit-done" class="bookmark-action bookmark-action-done" type="button" aria-label="Завершить редактирование" title="Готово" hidden><svg aria-hidden="true"><use href="#i-check"/></svg></button>
+        </div>
+      </div>
       <p id="editing-hint" class="editing-hint" hidden>Нажмите на ярлык, чтобы изменить, переместить или удалить его.</p>
       <div id="move-toolbar" class="move-toolbar" hidden><div><strong id="move-title"></strong><p id="move-hint">Нажмите новое место или перетащите ярлык. На папку — перенести внутрь.</p></div><button id="move-destination" class="btn btn-secondary" type="button" hidden>Выбрать папку</button><button id="move-cancel" class="btn btn-secondary" type="button">Отмена</button></div>
       <div id="shortcut-grid" class="shortcut-grid"></div>

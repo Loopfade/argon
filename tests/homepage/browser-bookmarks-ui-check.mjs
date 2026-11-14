@@ -87,6 +87,23 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   assert.equal(await page.getByRole('link',{name:'Штатная закладка',exact:true}).count(),1,'existing native title wins over a duplicate shortcut');
   assert(await page.locator('#browser-bookmarks-manager').isVisible());
   assert.equal(await page.locator('#browser-bookmarks-manager').getAttribute('href'),null);
+  assert.equal(await page.locator('#browser-bookmarks-manager').getAttribute('aria-label'),'Все закладки');
+  assert.equal((await page.locator('#browser-bookmarks-manager').textContent()).trim(),'');
+  const toolbarState=await state(),pencil=await page.locator('#edit-bookmarks').boundingBox();
+  for(const id of ['browser-bookmarks-manager','edit-bookmarks']) {
+    const bounds=await page.locator('#'+id).boundingBox();
+    assert(bounds.width>=44&&bounds.height>=44,'compact icons must retain touch targets');
+  }
+  await page.locator('#edit-bookmarks').click();
+  assert(await page.locator('#edit-bookmarks').isHidden());
+  assert(await page.locator('#edit-done').isVisible());
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'edit-done');
+  const check=await page.locator('#edit-done').boundingBox();
+  assert.equal(check.x,pencil.x);assert.equal(check.y,pencil.y,'check must replace the pencil without moving');
+  assert(await page.locator('#browser-bookmarks-manager').isVisible());
+  await page.locator('#edit-done').click();
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'edit-bookmarks');
+  assert.deepEqual(await state(),toolbarState,'entering and leaving edit mode must not write bookmarks');
   assert(await page.locator('#bookmark-add-hint').isVisible());
   const homeUrl=page.url();
   await page.locator('#browser-bookmarks-manager').click();

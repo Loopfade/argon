@@ -237,6 +237,11 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     let movingItem;try{movingItem=moving&&findItem(moving.id,moving.parent);}catch{}
     if(moving&&(!movingItem||(nativeBookmarks()&&!browserBookmarks.editable(movingItem))))moving=null;
     document.body.classList.toggle('editing',editing());
+    $('browser-bookmarks-manager').hidden=!nativeBookmarks();
+    $('edit-bookmarks').hidden=editing();
+    const editLabel=nativeBookmarks()?(browserBookmarksState.canEdit?t("Редактировать закладки"):t("Иконки закладок")):t("Редактировать ярлыки");
+    $('edit-bookmarks').setAttribute('aria-label',editLabel);
+    $('edit-bookmarks').title=editLabel;
     $('edit-done').hidden=!editing();
     $('editing-hint').hidden=!editing()||!!moving;
     $('move-toolbar').hidden=!moving;
@@ -251,7 +256,9 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(!enabled)$('toast').hidden=true;
     updateEditing();renderShortcuts();
   }
-  $('edit-done').addEventListener('click',()=>setEditing(false));
+  $('edit-bookmarks').addEventListener('click',()=>{setEditing(true);$('edit-done').focus();});
+  $('edit-done').addEventListener('click',()=>{setEditing(false);$('edit-bookmarks').focus();});
+  $('browser-bookmarks-manager').addEventListener('click',()=>void openBookmarkManager());
   $('move-cancel').addEventListener('click',cancelMove);
   $('move-destination').addEventListener('click',openMoveDestination);
   const validIcon = value => typeof value==='string' && /^(data:image\/(png|jpeg|webp|gif|svg\+xml);base64,|https?:\/\/)/i.test(value);
@@ -321,7 +328,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   function renderBrowserBookmarks() {
     const ready=browserBookmarksState.ready;
     const roots=browserBookmarksState.roots;
-    const hint=browserBookmarksState.canEdit?t("Добавляйте сайты звёздочкой или через «Настроить → Редактировать закладки»."):t("Изменение закладок запрещено настройками браузера.");
+    const hint=browserBookmarksState.canEdit?t("Добавляйте сайты звёздочкой или через карандаш рядом с «Избранное»."):t("Изменение закладок запрещено настройками браузера.");
     let content=ready?roots.slice(0,bookmarkLimit('')).map(browserBookmarkMarkup).join(''):'<p class="folder-empty">'+t("Загрузка закладок…")+'</p>';
     if(ready&&!roots.length&&(!editing()||!browserBookmarks.canAdd()))content='<div class="empty-favorites"><span class="empty-favorites-icon">'+svg('book')+'</span><span>'+t("Нет закладок")+'</span><small>'+hint+'</small></div>';
     if(ready)content+=nativeAddMarkup();
@@ -331,9 +338,6 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     if(!state.bookmarksMigrated&&state.shortcuts.length)content+='<p class="bookmark-notice">'+t("Старые ярлыки сохранены. Они появятся в закладках после переноса.")+'</p>'+state.shortcuts.map(item=>shortcutMarkup(item)).join('');
     setHtml($('shortcut-grid'),content);
     fallbackImages($('shortcut-grid'));
-    let manage=$('browser-bookmarks-manager');
-    if(!manage){manage=document.createElement('button');manage.type='button';manage.id='browser-bookmarks-manager';manage.className='text-button';manage.addEventListener('click',()=>void openBookmarkManager());$('favorites-heading').parentElement.append(manage);}
-    manage.textContent=t("Управлять закладками");
     if(modalKind==='browser-folder')renderBrowserFolder();
   }
   async function openBookmarkManager(folderId='') {

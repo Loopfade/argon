@@ -178,8 +178,8 @@ try {
     await p.getByRole('button',{name:'Customize',exact:true}).waitFor();
     assert.equal(await p.locator('html').getAttribute('lang'),'en');
     assert.equal(await p.locator('#search-input').getAttribute('placeholder'),'Search or enter address');
-    await p.locator('#settings-button').click();
-    await p.getByRole('button',{name:'Edit shortcuts',exact:false}).click();
+    await p.getByRole('button',{name:'Edit shortcuts',exact:true}).click();
+    assert(await p.getByRole('button',{name:'Finish editing',exact:true}).isVisible());
     await p.getByRole('button',{name:'Add site or folder',exact:true}).click();
     await p.getByLabel('Name',{exact:true}).fill('Избранное');
     await p.getByLabel('Site address',{exact:true}).fill('example.com');
