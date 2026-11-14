@@ -428,7 +428,7 @@ try {
   await waitForWrite();
   assert(await page.locator('#size-preview .shortcut-label').first().isVisible());
   await openTransferSettings(page);
-  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Сохранить копию Argon',exact:true}).click();
+  const downloadPromise=page.waitForEvent('download');await page.locator('#backup-export').click();
   const dump=JSON.parse(await readFile(await(await downloadPromise).path(),'utf8'));
   assert.equal(dump.state.engine,'noai');assert.equal(dump.state.density,'compact');assert.equal(dump.state.shortcuts.length,3);
   await page.locator('#backup-file').setInputFiles({name:'argon.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(dump))});
