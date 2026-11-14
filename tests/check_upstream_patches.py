@@ -44,8 +44,8 @@ from test_exit_renderer import verify_renderer_gate
 from test_exit_navigation import verify_navigation_gate
 from test_exit_android_api import SETTINGS_API, verify_exit_android_api
 from test_exit_sad_tab import verify_sad_tab_source
-from test_user_agent_runtime import run_runtime_flow
-from test_user_agent_renderer import verify_native_state, verify_renderer_update
+from test_user_agent_runtime import run_settings_flow
+from test_user_agent_renderer import verify_native_state, verify_client_hints
 from external_navigation_flow import verify_upstream as verify_external_navigation
 from upstream_sources import chromium_url, download
 from generate_scoped_ca_fixtures import verify_upstream as verify_scoped_ca_fixture
@@ -622,27 +622,12 @@ def main():
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
-        if "ArgonUserAgentController.java" in (src / user_agent.ANDROID_GN).read_text():
-            raise ValueError("The live UA controller must not enter the startup base module")
-        if '"//content/common:mojo_bindings"' in (src / user_agent.ANDROID_NATIVE_GN).read_text():
-            raise ValueError("Android must not depend directly on private Content Mojo bindings")
-        if "UpdateArgonUserAgent(" not in (src / user_agent.RENDER_PROCESS_HOST_HEADER).read_text():
-            raise ValueError("Missing public RenderProcessHost UA update API")
-        if "GetRendererInterface()->UpdateUserAgent(" not in (
-                src / user_agent.RENDER_PROCESS_HOST_IMPL).read_text():
-            raise ValueError("Missing Content-internal UA Mojo bridge")
-        if "renderer->UpdateArgonUserAgent(" not in (src / user_agent.DESKTOP_UA).read_text():
-            raise ValueError("Android must use the public RenderProcessHost UA update API")
-        native_ua = (src / user_agent.DESKTOP_UA).read_text()
-        if '#include "third_party/jni_zero/jni_zero.h"' not in native_ua:
-            raise ValueError("Missing JNI Zero Runnable API header in ContentUtils")
-        if native_ua.count("jni_zero::RunRunnable(") != 2:
-            raise ValueError("Both UA completion paths must call JNI Zero RunRunnable")
-        if "RunRunnableAndroid" in native_ua:
-            raise ValueError("Obsolete Chromium Runnable helper is not available")
-        print(run_runtime_flow((src / user_agent.CONTENT_JAVA).read_text()).strip())
-        print(verify_renderer_update((src / user_agent.RENDER_THREAD).read_text()))
+        print(run_settings_flow().strip())
         print(verify_native_state((src / user_agent.UA_UTILS).read_text()))
+        print(verify_client_hints(
+            (src / user_agent.CLIENT_HINTS).read_text(),
+            (src / user_agent.FRAME_FETCH).read_text(),
+            (src / user_agent.RENDER_PROCESS_HOST_IMPL).read_text()))
         baseline_locales = (src / background.LOCALES).read_text()
         background.apply(src)
         verify_sad_tab_source((src / 'chrome/android/java/src/org/chromium/chrome/browser/tab/TabWebContentsObserver.java').read_text())

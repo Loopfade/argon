@@ -1,171 +1,160 @@
-"""Compile the renderer UA update while retaining initialized security state."""
+"""Compile production UA parsing and UA-CH gates; the process state is immutable."""
 from pathlib import Path
 import re
-import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'scripts'))
+import apply_user_agent as patch
 
-def verify_renderer_update(source):
-    match = re.search(r"void RenderThreadImpl::UpdateUserAgent\([\s\S]*?\n}\n", source)
-    if not match:
-        raise ValueError("Missing production renderer UA update")
-    program = r'''
-#include <cassert>
-#include <functional>
-#include <string>
-#include <utility>
-#include <vector>
-namespace blink { struct UserAgentMetadata { bool mobile; }; }
-struct WebString {
-  std::string value;
-  static WebString FromUtf8(const std::string& value) { return {value}; }
-};
-struct RendererClient {
-  std::string notified;
-  void DidSetUserAgent(const std::string& value) { notified=value; }
-};
-struct Client {
-  RendererClient renderer_client;
-  RendererClient* renderer() { return &renderer_client; }
-} client;
-Client* GetContentClient() { return &client; }
-struct RenderThreadImpl {
-  struct UpdateUserAgentCallback {
-    std::function<void()> function;
-    template<typename F> UpdateUserAgentCallback(F f) : function(std::move(f)) {}
-    void Run() { function(); }
-  };
-  WebString user_agent_={"old"};
-  blink::UserAgentMetadata user_agent_metadata_={false};
-  std::vector<std::string> cors_exempt_header_list_={"do-not-reset"};
-  int cpu_performance_tier_=7;
-  bool origin_trials_initialized=true;
-  void UpdateUserAgent(const std::string&, const blink::UserAgentMetadata&,
-                       UpdateUserAgentCallback);
-};
-'''
-    program += match[0]
-    program += r'''
-int main() {
-  RenderThreadImpl renderer;
-  int replies=0;
-  renderer.UpdateUserAgent("new mobile UA", {true}, [&] {
-    ++replies;
-    assert(renderer.user_agent_.value=="new mobile UA");
-    assert(renderer.user_agent_metadata_.mobile);
-  });
-  assert(replies==1);
-  assert(client.renderer_client.notified=="new mobile UA");
-  assert(renderer.cors_exempt_header_list_==std::vector<std::string>{"do-not-reset"});
-  assert(renderer.cpu_performance_tier_==7 && renderer.origin_trials_initialized);
-  renderer.UpdateUserAgent("second UA", {false}, [&] { ++replies; });
-  assert(replies==2 && renderer.user_agent_.value=="second UA");
-  assert(!renderer.user_agent_metadata_.mobile);
-}
-'''
-    with tempfile.TemporaryDirectory(prefix="argon-ua-renderer-") as directory:
-        root = Path(directory)
-        path = root / "flow.cc"
-        path.write_text(program)
-        result = subprocess.run(["c++", "-std=c++20", "-Wall", "-Wextra", "-Werror", str(path),
-                                 "-o", str(root / "flow")], capture_output=True, text=True)
+
+def compile_and_run(program):
+    with tempfile.TemporaryDirectory(prefix='argon-ua-native-') as directory:
+        root=Path(directory)
+        source=root/'flow.cc'
+        source.write_text(program)
+        result=subprocess.run(['c++','-std=c++20','-Wall','-Wextra','-Werror',str(source),'-o',str(root/'flow')],capture_output=True,text=True)
         if result.returncode:
-            raise ValueError(result.stdout + result.stderr)
-        subprocess.run([str(root / "flow")], check=True)
-    return "PASS: production UA cache update, acknowledgement and preserved renderer security state"
+            raise ValueError(result.stdout+result.stderr)
+        subprocess.run([str(root/'flow')],check=True)
 
 
-class UserAgentRendererTests(unittest.TestCase):
-    def test_native_pair_updates_without_rewriting_startup_arguments(self):
-        script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
-        self.assertIn("PASS:", verify_native_state(script))
-
-    def test_chrome_ua_update_uses_public_content_api(self):
-        script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
-        self.assertNotIn('"//content/common:mojo_bindings",', script)
-        self.assertIn("renderer->UpdateArgonUserAgent(", script)
-        self.assertIn("GetRendererInterface()->UpdateUserAgent(", script)
-        self.assertIn('content/common/renderer.mojom.h', script)
-        self.assertIn("RENDER_PROCESS_HOST_HEADER", script)
-        self.assertIn("RENDER_PROCESS_HOST_IMPL", script)
-
-    def test_android_runnable_callback_matches_pinned_jni_zero_api(self):
-        script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
-        # This generated native code is compiled by the Android ARM CI job.
-        self.assertIn('#include "third_party/jni_zero/jni_zero.h"', script)
-        self.assertEqual(script.count("jni_zero::RunRunnable("), 2)
-        self.assertNotIn("base::android::RunRunnableAndroid", script)
-
-    def test_update_keeps_security_initialization_out_of_the_runtime_handler(self):
-        script = (Path(__file__).resolve().parents[1] / "scripts/apply_user_agent.py").read_text()
-        match = re.search(r"void RenderThreadImpl::UpdateUserAgent\([\s\S]*?\n}\n", script)
-        self.assertIsNotNone(match)
-        self.assertIn("PASS:", verify_renderer_update(match[0]))
-
-
-def verify_native_state(source):
-    match = re.search(r"namespace \{\nstruct ArgonUserAgentState[\s\S]*?"
-                      r"bool SetArgonUserAgentOverrides\([\s\S]*?\n}\n", source)
-    if not match:
-        raise ValueError("Missing native UA state")
-    program = r'''
+PRELUDE=r'''
 #include <cassert>
-#include <mutex>
+#include <map>
 #include <optional>
 #include <string>
-#include <thread>
-#define GUARDED_BY(x)
 namespace base {
-struct Lock { std::mutex mutex; void lock(){mutex.lock();} void unlock(){mutex.unlock();} };
-using AutoLock=std::lock_guard<Lock>;
-template<typename T> struct NoDestructor { T value; T& operator*(){return value;} };
 struct CommandLine {
-  static CommandLine* ForCurrentProcess() { static CommandLine value; return &value; }
-  std::string GetSwitchValueASCII(const std::string& key) {
-    return key=="argon-user-agent" ? "mobile/start" : "desktop/start";
+  std::map<std::string,std::string> values;
+  static CommandLine* ForCurrentProcess() { static CommandLine c; return &c; }
+  std::string GetSwitchValueASCII(const std::string& key) const {
+    auto it=values.find(key);return it==values.end() ? "" : it->second;
   }
+  bool HasSwitch(const std::string& key) const { return values.contains(key); }
 };
 }
 namespace net { struct HttpUtil {
   static bool IsValidHeaderValue(const std::string& value) {
-    return value.find('\r')==std::string::npos && value.find('\n')==std::string::npos;
+    return value.find_first_of(std::string("\r\n\0",3))==std::string::npos;
   }
 }; }
 '''
-    program += match[0]
-    program += r'''
+
+
+def verify_native_state(source):
+    match=re.search(r'std::optional<std::string> GetArgonUserAgentOverride\(bool desktop\) \{[\s\S]*?\n}\n',source)
+    if not match:
+        raise ValueError('Missing production startup UA override')
+    compile_and_run(PRELUDE+match[0]+r'''
 int main() {
-  assert(GetArgonUserAgentOverride(false)=="mobile/start");
-  assert(GetArgonUserAgentOverride(true)=="desktop/start");
-  assert(SetArgonUserAgentOverrides("mobile/new","desktop/new"));
-  assert(GetArgonUserAgentOverride(false)=="mobile/new");
-  assert(GetArgonUserAgentOverride(true)=="desktop/new");
-  assert(!SetArgonUserAgentOverrides("bad\r\nheader","desktop/bad"));
-  assert(!SetArgonUserAgentOverrides("mobile/bad",""));
-  assert(GetArgonUserAgentOverride(false)=="mobile/new");
-  std::thread writer([] {
-    for(int i=0;i<10000;i++)
-      assert(SetArgonUserAgentOverrides("mobile/"+std::to_string(i),"desktop/"+std::to_string(i)));
-  });
-  for(int i=0;i<10000;i++) {
-    assert(GetArgonUserAgentOverride(false)->starts_with("mobile/"));
-    assert(GetArgonUserAgentOverride(true)->starts_with("desktop/"));
-  }
-  writer.join();
-  assert(GetArgonUserAgentOverride(false)=="mobile/9999");
-  assert(GetArgonUserAgentOverride(true)=="desktop/9999");
-  assert(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("argon-user-agent")=="mobile/start");
+  auto& args=base::CommandLine::ForCurrentProcess()->values;
+  // Absence of overrides preserves native UA and metadata for both layouts.
+  assert(!GetArgonUserAgentOverride(false) && !GetArgonUserAgentOverride(true));
+  args["argon-user-agent"]="Firefox Mobile";
+  args["argon-user-agent-desktop"]="Firefox Desktop";
+  assert(GetArgonUserAgentOverride(false)=="Firefox Mobile");
+  assert(GetArgonUserAgentOverride(true)=="Firefox Desktop");
+  args["argon-user-agent"]="Custom/1.0";
+  args["argon-user-agent-desktop"]="Custom/1.0";
+  assert(GetArgonUserAgentOverride(false)==GetArgonUserAgentOverride(true));
+  args["argon-user-agent"]="bad\r\nInjected: value";
+  assert(!GetArgonUserAgentOverride(false));
+  args["argon-user-agent"]="";
+  assert(!GetArgonUserAgentOverride(false));
 }
-'''
-    with tempfile.TemporaryDirectory(prefix="argon-ua-state-") as directory:
-        root = Path(directory)
-        path = root / "state.cc"
-        path.write_text(program)
-        result = subprocess.run(["c++", "-std=c++20", "-pthread", "-Wall", "-Wextra", "-Werror",
-                                 str(path), "-o", str(root / "state")], text=True, capture_output=True)
-        if result.returncode:
-            raise ValueError(result.stdout + result.stderr)
-        subprocess.run([str(root / "state")], check=True)
-    return "PASS: locked native UA pair, invalid headers and unchanged startup arguments"
+''')
+    return 'PASS: native UA defaults, mobile/desktop counterparts, custom UA and invalid headers'
+
+
+def verify_client_hints(navigation, frame, host):
+    nav=re.search(r'  disable_due_to_custom_ua \|=\s*base::CommandLine::ForCurrentProcess\(\)->HasSwitch\(\s*"argon-user-agent-hide-client-hints"\);',navigation)
+    renderer=re.search(r'  std::optional<UserAgentMetadata> ua = GetUserAgentMetadata\(\);\s*if \(base::CommandLine::ForCurrentProcess\(\)->HasSwitch\(\s*"argon-user-agent-hide-client-hints"\)\) \{\s*ua.reset\(\);\s*}',frame)
+    if not nav or not renderer:
+        raise ValueError('Missing navigation or subresource UA-CH gate')
+    if not re.search(r'"argon-user-agent-hide-client-hints",[\s\\n\'"+]*.*embedder_support::kUseMobileUserAgent',host):
+        raise ValueError('The browser must forward the UA-CH flag to every renderer')
+    compile_and_run(PRELUDE+'''
+struct UserAgentMetadata { std::string platform="Android"; };
+std::optional<UserAgentMetadata> GetUserAgentMetadata() { return UserAgentMetadata(); }
+bool NavigationSendsUAHints(bool disable_due_to_custom_ua) {
+'''+nav[0]+'''
+  return !disable_due_to_custom_ua;
+}
+std::optional<UserAgentMetadata> SubresourceUAHints() {
+'''+renderer[0]+'''
+  return ua;
+}
+int main() {
+  auto& args=base::CommandLine::ForCurrentProcess()->values;
+  assert(NavigationSendsUAHints(false));
+  assert(!NavigationSendsUAHints(true));
+  assert(SubresourceUAHints()->platform=="Android");
+  args["argon-user-agent-hide-client-hints"]="";
+  assert(!NavigationSendsUAHints(false));
+  assert(!NavigationSendsUAHints(true));
+  assert(!SubresourceUAHints());
+}
+''')
+    return 'PASS: native UA-CH defaults and suppression for navigation and subresources'
+
+
+def patched_fixture():
+    sources = {
+        patch.ANDROID_GN: f'      "{patch.BASE}/ApplicationInitHook.java",',
+        patch.STARTUP: '            PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);',
+        patch.PRIVACY_HOOKS: '        SettingsUtils.addPreferencesFromResource(prefFragment, R.xml.privacy_preferences_ext);',
+        patch.UA_HEADER: 'std::optional<std::string> GetUserAgentFromCommandLine();',
+        patch.UA_UTILS: 'std::string GetUserAgent() {\n}\nblink::UserAgentMetadata GetUserAgentMetadata(bool only_low_entropy_ch) {\n}',
+        patch.DESKTOP_UA: '  constexpr char kLinuxInfoStr[]',
+        patch.TITANIUM_CHROME_JAVA_SOURCES: '  "java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderHooks.java",',
+        patch.TITANIUM_CHROME_RESOURCES: '  "java/res/xml/privacy_preferences_ext.xml",',
+        patch.TITANIUM_PRIVACY_PREFERENCES: '<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">\n'
+            '    <org.chromium.components.browser_ui.settings.ChromeBasePreference\n'
+            '        android:key="argon_certificates" />\n</PreferenceScreen>',
+        patch.TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS: '            indexData.removeEntryForKey(fragmentName, "preload_pages");',
+        patch.RENDER_PROCESS_HOST_IMPL: '      embedder_support::kUseMobileUserAgent,',
+        patch.CLIENT_HINTS: '  if (!disable_due_to_custom_ua) {\n}',
+        patch.FRAME_FETCH: '#include "base/feature_list.h"\n  std::optional<UserAgentMetadata> ua = GetUserAgentMetadata();',
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        root=Path(directory)
+        for path,content in sources.items():
+            target=root/path
+            target.parent.mkdir(parents=True,exist_ok=True)
+            target.write_text(content)
+        patch.apply(root)
+        result={p:(root/p).read_text() for p in sources}
+        patch.apply(root)
+        assert result=={p:(root/p).read_text() for p in sources}, 'UA patch must be idempotent'
+        return result
+
+
+class UserAgentNativeTests(unittest.TestCase):
+    def test_native_startup_values(self):
+        self.assertIn('PASS:',verify_native_state((ROOT/'scripts/apply_user_agent.py').read_text()))
+
+    def test_native_client_hints(self):
+        sources=patched_fixture()
+        self.assertIn('PASS:',verify_client_hints(sources[patch.CLIENT_HINTS],sources[patch.FRAME_FETCH],sources[patch.RENDER_PROCESS_HOST_IMPL]))
+
+    def test_no_live_mutation_or_site_preference_rewrite(self):
+        script=(ROOT/'scripts/apply_user_agent.py').read_text()
+        self.assertNotIn('UpdateArgonUserAgent(',script)
+        self.assertNotIn('BarrierClosure(',script)
+        self.assertFalse(any(p.name=='TabImpl.java' for p in patch.INPUT_PATHS))
+        self.assertFalse((ROOT/'chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java').exists())
+
+    def test_reject_stale_prepared_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for path in patch.INPUT_PATHS:
+                target=root/path
+                target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_text('')
+            (root/patch.UA_UTILS).write_text('bool SetArgonUserAgentOverrides();')
+            with self.assertRaisesRegex(ValueError,'fresh pinned Chromium'):
+                patch.apply(root)
