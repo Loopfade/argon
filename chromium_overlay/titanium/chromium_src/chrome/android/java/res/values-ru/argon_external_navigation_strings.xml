@@ -2,6 +2,7 @@
 <resources>
     <string name="argon_external_title">Открытие ссылок в приложениях</string>
     <string name="argon_external_menu_summary">Выберите, каким сайтам разрешено открывать внешние приложения</string>
+    <string name="argon_external_search_keywords">ссылки, приложения, внешние приложения, открытие ссылок</string>
     <string name="argon_external_mode">Режим открытия</string>
     <string name="argon_external_allow">Разрешать</string>
     <string name="argon_external_allow_list">Только для сайтов из списка</string>

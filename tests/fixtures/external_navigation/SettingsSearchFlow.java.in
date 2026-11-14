@@ -1,0 +1,115 @@
+// Pinned Chromium XML traversal, query normalization and matching are inserted unchanged.
+// The adapters resolve Android attributes from the real patched XML and localized resources.
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
+import java.util.*;
+import java.util.regex.Pattern;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.*;
+
+public class SettingsSearchFlow {
+  /* PARSER_CONSTANTS */
+  private static final String TEXT_MESSAGE_PREFERENCE_CLASS =
+      "org.chromium.components.browser_ui.settings.TextMessagePreference";
+  /* SEARCH_CONSTANTS */
+  private final Map<String, Entry> mEntries = new LinkedHashMap<>();
+
+  static class Bundle extends HashMap<String,String> {
+    void putString(String key,String value) { put(key,value); }
+    String getString(String key) { return get(key); }
+  }
+  static class XmlPullParser { static final int END_DOCUMENT=1, START_TAG=2; }
+  static class XmlPullParserException extends Exception {}
+  interface AttributeSet {}
+  static class XmlResourceParser implements AttributeSet {
+    final List<Element> elements=new ArrayList<>(); int index;
+    XmlResourceParser(String path) throws IOException {
+      try {
+        var factory=DocumentBuilderFactory.newInstance();factory.setNamespaceAware(true);
+        visit(factory.newDocumentBuilder().parse(new File(path)).getDocumentElement());
+      } catch(Exception error) { throw new IOException(error); }
+    }
+    void visit(Element element) {
+      elements.add(element);
+      for(Node child=element.getFirstChild();child!=null;child=child.getNextSibling())
+        if(child instanceof Element next)visit(next);
+    }
+    int getEventType() { return index<elements.size()?XmlPullParser.START_TAG:XmlPullParser.END_DOCUMENT; }
+    String getName() { return index<elements.size()?elements.get(index).getTagName():null; }
+    int next() { ++index;return getEventType(); }
+    void close() {}
+  }
+  static class Xml { static AttributeSet asAttributeSet(XmlResourceParser parser) { return parser; } }
+  static class R { static class styleable {
+    static final int[] Settings={0,1,2,3,4};
+    static final int Settings_android_title=0,Settings_android_key=1,Settings_android_summary=2,
+        Settings_android_fragment=3,Settings_keywords=4;
+  } }
+  static class TypedArray {
+    final Element element;final Properties strings;
+    TypedArray(Element value,Properties resources) { element=value;strings=resources; }
+    String getString(int attribute) {
+      String name=new String[]{"title","key","summary","fragment","keywords"}[attribute];
+      String namespace=attribute==4?"http://schemas.android.com/apk/res-auto":"http://schemas.android.com/apk/res/android";
+      String value=element.getAttributeNS(namespace,name);
+      if(value.isEmpty())return null;
+      return value.startsWith("@string/")?strings.getProperty(value.substring(8),value.substring(8)):value;
+    }
+    void recycle() {}
+  }
+  static class Resources {
+    final String path;Resources(String value) { path=value; }
+    XmlResourceParser getXml(int unused) throws IOException { return new XmlResourceParser(path); }
+  }
+  static class Context {
+    final Resources resources;final Properties strings=new Properties();
+    Context(String xml,String catalog) throws IOException {
+      resources=new Resources(xml);
+      try(var input=new InputStreamReader(new FileInputStream(catalog),StandardCharsets.UTF_8)) { strings.load(input); }
+    }
+    Resources getResources() { return resources; }
+    TypedArray obtainStyledAttributes(AttributeSet attrs,int[] unused) {
+      var parser=(XmlResourceParser)attrs;return new TypedArray(parser.elements.get(parser.index),strings);
+    }
+  }
+  static class TextUtils {
+    static boolean isEmpty(String value) { return value==null||value.isEmpty(); }
+    static boolean equals(String a,String b) { return Objects.equals(a,b); }
+  }
+  static class Entry {
+    final String key,title,summary,fragment,header,parentFragment,mTitleNormalized,mSummaryNormalized;
+    final String[] keywords;final boolean isSearchable=true;
+    Entry(Bundle metadata) {
+      key=metadata.getString(METADATA_KEY);title=metadata.getString(METADATA_TITLE);
+      summary=metadata.getString(METADATA_SUMMARY);fragment=metadata.getString(METADATA_FRAGMENT);
+      header=metadata.getString(METADATA_HEADER);
+      parentFragment="org.chromium.chrome.browser.privacy.settings.PrivacySettings";
+      mTitleNormalized=normalizeString(title);mSummaryNormalized=normalizeString(summary);
+      String words=metadata.getString(METADATA_KEYWORDS);
+      keywords=words==null?null:normalizeString(words).split("\\s*,\\s*");
+    }
+  }
+  /* PRODUCTION_METHODS */
+
+  public static void main(String[] args) throws Exception {
+    var context=new Context(args[0],args[1]);
+    var index=new SettingsSearchFlow();
+    for(var metadata:parsePreferences(context,1)) {
+      String key=metadata.getString(METADATA_KEY);
+      if(key!=null) {
+        if(index.mEntries.put(key,new Entry(metadata))!=null)throw new AssertionError("Duplicate key "+key);
+      }
+    }
+    for(int i=2;i<args.length;i++) {
+      var results=index.search(args[i]).getItems();
+      var matches=results.stream().filter(entry->entry.key.equals("argon_external_navigation")).toList();
+      if(matches.size()!=1)throw new AssertionError("Not found: "+args[i]);
+      var entry=matches.get(0);
+      if(!entry.header.equals(context.strings.getProperty("security_section_title")))throw new AssertionError(entry.header);
+      if(!entry.fragment.equals("org.chromium.chrome.browser.externalnav.ArgonExternalNavigationSettings"))throw new AssertionError(entry.fragment);
+      if(!entry.parentFragment.equals("org.chromium.chrome.browser.privacy.settings.PrivacySettings"))throw new AssertionError(entry.parentFragment);
+    }
+    System.out.println("PASS: localized settings queries find the Security entry and its destination");
+  }
+}

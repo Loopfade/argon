@@ -2,6 +2,7 @@
 <resources>
     <string name="argon_external_title">Open links in apps</string>
     <string name="argon_external_menu_summary">Control which sites can open external apps</string>
+    <string name="argon_external_search_keywords">links, apps, external apps, open links</string>
     <string name="argon_external_mode">Opening mode</string>
     <string name="argon_external_allow">Allow</string>
     <string name="argon_external_allow_list">Only for listed sites</string>

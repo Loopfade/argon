@@ -9,11 +9,36 @@ DELEGATE = COMPONENT / "ExternalNavigationDelegate.java"
 HANDLER = COMPONENT / "ExternalNavigationHandler.java"
 CHROME_DELEGATE = Path("chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java")
 MAIN_PREFERENCES = Path("chrome/android/java/res/xml/main_preferences.xml")
+PRIVACY_PREFERENCES = Path("chrome/android/java/res/xml/privacy_preferences.xml")
 JAVA_SOURCES = Path("titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni")
 RESOURCES = Path("titanium/chromium_src/chrome/android/chrome_app_java_resources_ext_sources.gni")
-INPUT_PATHS = (DELEGATE, HANDLER, CHROME_DELEGATE, MAIN_PREFERENCES, JAVA_SOURCES, RESOURCES)
+INPUT_PATHS = (DELEGATE, HANDLER, CHROME_DELEGATE, MAIN_PREFERENCES, PRIVACY_PREFERENCES,
+               JAVA_SOURCES, RESOURCES)
 CUSTOM_TAB = Path("chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java")
-API_PATHS = (COMPONENT / "ExternalNavigationParams.java", CUSTOM_TAB)
+PRIVACY_SETTINGS = Path("chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java")
+SEARCH_PACKAGE = Path("components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/search")
+PREFERENCE_PARSER = SEARCH_PACKAGE / "PreferenceParser.java"
+SEARCH_INDEX = SEARCH_PACKAGE / "SettingsIndexData.java"
+SEARCH_REGISTRY = Path("chrome/android/java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java")
+API_PATHS = (COMPONENT / "ExternalNavigationParams.java", CUSTOM_TAB, PRIVACY_SETTINGS,
+             PREFERENCE_PARSER, SEARCH_INDEX, SEARCH_REGISTRY)
+
+LEGACY_MENU_ENTRY = '''    <org.chromium.components.browser_ui.settings.ChromeBasePreference
+        android:key="argon_external_navigation"
+        android:order="25"
+        android:title="@string/argon_external_title"
+        android:summary="@string/argon_external_menu_summary"
+        android:fragment="org.chromium.chrome.browser.externalnav.ArgonExternalNavigationSettings" />
+'''
+SECURITY_SECTION = '''    <org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory
+        android:key="security_section"
+      android:title="@string/security_section_title" />'''
+SECURITY_MENU_ENTRY = '''    <org.chromium.components.browser_ui.settings.ChromeBasePreference
+        android:key="argon_external_navigation"
+        android:title="@string/argon_external_title"
+        android:summary="@string/argon_external_menu_summary"
+        app:keywords="@string/argon_external_search_keywords"
+        android:fragment="org.chromium.chrome.browser.externalnav.ArgonExternalNavigationSettings" />'''
 
 USER_GUARD = '''        // ARGON: apply the user's destination-site policy before any dispatch or fallback.
         if (mDelegate.shouldBlockExternalNavigationForUser(params.getUrl(), targetIntent)) {
@@ -117,13 +142,17 @@ def patch_chrome_delegate(text):
 def patch_menu(text):
     anchor = ('    <org.chromium.components.browser_ui.settings.ChromeBasePreference\n'
               '        android:fragment="org.chromium.chrome.browser.homepage.settings.HomepageSettings"')
-    return replace_once(text, anchor, '''    <org.chromium.components.browser_ui.settings.ChromeBasePreference
-        android:key="argon_external_navigation"
-        android:order="25"
-        android:title="@string/argon_external_title"
-        android:summary="@string/argon_external_menu_summary"
-        android:fragment="org.chromium.chrome.browser.externalnav.ArgonExternalNavigationSettings" />
-''' + anchor)
+    if text.count(anchor) != 1:
+        raise ValueError("External navigation main preferences anchor changed")
+    if 'android:key="argon_external_navigation"' in text:
+        if text.count(LEGACY_MENU_ENTRY) != 1:
+            raise ValueError("Review the previous external navigation menu entry")
+        text = text.replace(LEGACY_MENU_ENTRY, "")
+    return text
+
+
+def patch_privacy_menu(text):
+    return replace_once(text, SECURITY_SECTION, SECURITY_SECTION + "\n" + SECURITY_MENU_ENTRY)
 
 
 def patch_java_sources(text):
@@ -141,7 +170,7 @@ def patch_resources(text):
 
 
 TRANSFORMS = dict(zip(INPUT_PATHS, (patch_delegate, patch_handler, patch_chrome_delegate,
-                                  patch_menu, patch_java_sources, patch_resources)))
+                                  patch_menu, patch_privacy_menu, patch_java_sources, patch_resources)))
 
 
 def apply(src):

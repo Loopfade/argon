@@ -15,9 +15,12 @@ import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.chrome.browser.bookmarks.BookmarkManagerOpenerImpl;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.url_constants.UrlOverrideUtils;
+import org.chromium.components.bookmarks.BookmarkId;
+import org.chromium.components.bookmarks.BookmarkType;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.content_public.browser.RenderCoordinates;
@@ -71,6 +74,20 @@ public final class ArgonHomeBridge {
     private boolean isActive(ChromeTabbedActivity activity) {
         Tab tab = activity.getActivityTab();
         return tab != null && tab.getWebContents() == mContents;
+    }
+
+    /** Use the same phone Activity / tablet tab launcher as Chromium's bookmarks menu. */
+    @CalledByNative
+    private static boolean openBookmarkManager(WebContents contents, long folderId) {
+        var activity = activity(contents);
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()
+                || folderId < -1) return false;
+        Tab tab = activity.getActivityTab();
+        if (tab == null || tab.isDestroyed() || tab.isIncognito()
+                || tab.getWebContents() != contents || !isHomeUrl(tab.getUrl())) return false;
+        BookmarkId folder = folderId < 0 ? null : new BookmarkId(folderId, BookmarkType.NORMAL);
+        new BookmarkManagerOpenerImpl().showBookmarkManager(activity, tab, tab.getProfile(), folder);
+        return true;
     }
 
     @CalledByNative
