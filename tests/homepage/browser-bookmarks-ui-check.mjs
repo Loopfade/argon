@@ -206,11 +206,11 @@ async function checkLegacyBackupRestores(browser,base,errors) {
    current=await state();const nativeBefore=await native();
    await openData();const damaged=structuredClone(original);damaged.state.shortcuts[1].children[0].url='javascript:alert(1)';
    await page.locator('#backup-file').setInputFiles({name:'damaged.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(damaged))});
-   assert(await page.locator('#backup-error').isVisible());assert.equal(await page.locator('#confirm-restore').count(),0);
+   await page.locator('#backup-error').waitFor({state:'visible'});assert.equal(await page.locator('#confirm-restore').count(),0);
    assert.deepEqual(await state(),current);assert.deepEqual(await native(),nativeBefore);
    await page.evaluate(()=>{nativeBookmarks.canEdit=false;nativeBookmarks.replace(nativeBookmarks.roots);});
    await upload();await page.locator('#confirm-restore').click();await wait();
-   assert(await page.locator('#backup-error').isVisible());assert.deepEqual(await state(),current);assert.deepEqual(await native(),nativeBefore);
+   await page.locator('#backup-error').waitFor({state:'visible'});assert.deepEqual(await state(),current);assert.deepEqual(await native(),nativeBefore);
    console.log('PASS: historical backup '+filename+', native folders, alias URLs, icons, preferences, cancel, repeat, re-export, reload and rejection');
   } finally {await context.close();}
  }
