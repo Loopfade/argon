@@ -168,6 +168,35 @@ void CheckOrder(const bookmarks::BookmarkNode* parent,std::initializer_list<int6
   assert(actual==std::vector<int64_t>(ids));
 }
 int main() {
+  {
+    bookmarks::BookmarkModel model;Handler handler(&model);
+    auto* a=model.Add(model.mobile,10,false,"A","https://a.example/");
+    model.Add(model.mobile,11,false,"Hidden","chrome://settings/");
+    model.Add(model.mobile,12,false,"B","https://b.example/");
+    auto save=Operation("update",a,"1","12");
+    save.Set("name","Renamed");save.Set("url","https://changed.example/");
+    save.Set("preservePosition",true);handler.Run(save);
+    CheckOrder(model.mobile,{10,11,12});assert(a->GetTitle()==u"Renamed");
+    auto unchanged=Operation("update",a,"1","12");
+    unchanged.Set("name","Renamed");unchanged.Set("url","https://changed.example/");
+    unchanged.Set("preservePosition",true);handler.Run(unchanged);CheckOrder(model.mobile,{10,11,12});
+    auto wrong_parent=unchanged;wrong_parent.Set("parentId","2");handler.Run(wrong_parent,false);
+    auto move=Operation("move",a,"1","12");move.Set("preservePosition",true);
+    const int mutations=model.mutations;handler.Run(move);assert(model.mutations==mutations);
+    auto* folder=model.Add(model.mobile,20,true,"Folder");
+    auto* inner=model.Add(folder,21,true,"Inner");
+    auto* last=model.Add(inner,22,false,"Last","https://last.example/");
+    model.Add(inner,23,false,"Hidden tail","chrome://version/");
+    auto tail=Operation("update",last,"21","");tail.Set("name","Last renamed");
+    tail.Set("url","https://last.example/");tail.Set("preservePosition",true);
+    handler.Run(tail);CheckOrder(inner,{22,23});
+    auto rename_folder=Operation("update",folder,"1","");rename_folder.Set("folder",true);
+    rename_folder.Set("name","Folder renamed");rename_folder.Set("preservePosition",true);
+    handler.Run(rename_folder);CheckOrder(model.mobile,{10,11,12,20});
+    handler.Run(Operation("move",folder,"21"),false);
+    handler.Run(Operation("move",inner,"2"));CheckOrder(model.other,{21});
+    handler.Run(Operation("remove",inner));CheckOrder(model.other,{22,23});
+  }
   bookmarks::BookmarkModel model;Handler handler(&model);
   auto* a=model.Add(model.mobile,10,false,"A","https://a.example/");
   auto* hidden=model.Add(model.mobile,11,false,"Internal","chrome://settings/");

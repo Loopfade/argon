@@ -208,10 +208,13 @@ class ArgonBookmarksHandler final : public content::WebUIMessageHandler,
     if (!create && (!Editable(node) || !ExpectedMatches(operation, node))) { fail(); return; }
     const auto* parent = remove ? node->parent() : ReadNode(operation, "parentId", true);
     if (!CanAdd(parent)) { fail(); return; }
+    const bool preserve_position = !create && !remove &&
+        operation.FindBool("preservePosition").value_or(false);
+    if (preserve_position && parent != node->parent()) { fail(); return; }
     // All validation precedes the first mutation. Native Move uses an insertion
     // anchor, so hidden/non-web bookmarks retain their order too.
     size_t index = parent->children().size();
-    if (!remove) {
+    if (!remove && !preserve_position) {
       const auto* before_id = operation.FindString("beforeId");
       if (!before_id) { fail(); return; }
       if (!before_id->empty()) {
@@ -262,7 +265,7 @@ class ArgonBookmarksHandler final : public content::WebUIMessageHandler,
           model_->SetTitle(node, title, source);
           if (!folder) model_->SetURL(node, url, source);
         }
-        model_->Move(node, parent, index);
+        if (!preserve_position) model_->Move(node, parent, index);
       }
     }
     importing_ = false;

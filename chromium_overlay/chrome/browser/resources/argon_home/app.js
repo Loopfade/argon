@@ -409,10 +409,12 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       position.value=index>=0?(siblings[index]?.id??''):'';
     }
     positions(true);parent.addEventListener('change',()=>positions());
+    const initialParent=parent.value,initialPosition=position.value;
     $('native-kind')?.addEventListener('change',()=>{const folder=$('native-kind').value==='folder';$('native-url-field').hidden=folder;$('native-url').required=!folder;});
     form.addEventListener('submit',async event=>{
       event.preventDefault();
       const operation={action:moveOnly?'move':item?'update':'create',parentId:parent.value||defaultParent,beforeId:position.value,...(item?{id:item.id,expected}:{})};
+      if(item&&parent.value===initialParent&&position.value===initialPosition)operation.preservePosition=true;
       if(!moveOnly){
         operation.name=$('native-title').value.trim();operation.folder=item?folder:$('native-kind').value==='folder';
         if(!operation.name){const field=$('native-edit-error');field.textContent=t("Укажите название.");field.hidden=false;return;}
@@ -467,7 +469,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
         else browserBookmarks=await connectBrowserBookmarks(value=>{
           const activating=!nativeBookmarks()&&value.available;
           browserBookmarksState=value;
-          if(activating){moving=null;setEditing(false);}else renderShortcuts();
+          if(activating){moving=null;setEditing(false);}else {updateEditing();renderShortcuts();}
           if(value.ready&&browserBookmarks)void migrateBookmarks();
         });
         await migrateBookmarks();
@@ -550,7 +552,8 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     syncModalState=()=>{};
     cancelIconSearch();cancelIconSearch=()=>{};
     cancelBackgroundRequest();cancelBackgroundRequest=()=>{};
-    const cancelFolderMove=modalKind==='folder'&&moving?.parent===currentFolder;
+    const cancelFolderMove=(modalKind==='folder'&&moving?.parent===currentFolder)||
+      (modalKind==='browser-folder'&&moving?.parent===browserFolderPath.at(-1));
     if(cancelFolderMove){moving=null;touchDrag=null;clearDrag();}
     const focus=returnFocus;modalKind=null;modalBack=null;currentFolder=null;returnFocus=null;setHtml($('modal-root'),'');
     document.querySelectorAll('body>.header,body>.workspace,body>.footer').forEach(el=>{el.inert=false;});
@@ -784,7 +787,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
         const item=browserBookmarks.find(source.id),onto=browserBookmarks.find(target.id);
         if(!item||!onto)throw Error(t("Избранное изменилось. Повторите перенос."));
         let parentId=onto.parentId,beforeId=onto.id;
-        if(onto.type==='folder'&&item.type!=='folder'){parentId=onto.id;beforeId='';}
+        if(onto.type==='folder'){parentId=onto.id;beforeId='';}
         else {
           if(item.parentId!==onto.parentId)throw Error(t("Выберите папку в настройках ярлыка."));
           const siblings=browserBookmarks.children(parentId);

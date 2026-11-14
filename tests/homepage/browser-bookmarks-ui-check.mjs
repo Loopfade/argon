@@ -10,26 +10,35 @@ export async function connectBrowserBookmarks(onState) {
  const backend=window.nativeBookmarks={revision:0,canEdit:true,fail:false,next:100,
    roots:[{id:'1',name:'Штатная закладка',url:'https://existing.example/'}],imports:[],
    publish(){sessionStorage.setItem('native-bookmarks-fixture',JSON.stringify({roots:this.roots,next:this.next,revision:this.revision,canEdit:this.canEdit}));listeners.get('argon-bookmarks-changed')?.(this.snapshot());},
-   snapshot(){const nodes=(items,parentId='0')=>items.map((item,index)=>({...item,parentId,index,editable:item.editable!==false,canAdd:item.type==='folder'&&item.canAdd!==false,...(item.children?{children:nodes(item.children,item.id)}:{})}));return structuredClone({available:true,ready:true,canEdit:this.canEdit,revision:this.revision,roots:nodes(this.roots),defaultParentId:'0',truncated:false});},
+   snapshot(){const nodes=(items,parentId='0')=>items.map((item,index)=>({...item,parentId,index,editable:item.editable!==false,canAdd:item.type==='folder'&&item.canAdd!==false,...(item.children?{children:nodes(item.children,item.id)}:{})})).filter(item=>item.type==='folder'||/^https?:/.test(item.url));return structuredClone({available:true,ready:true,canEdit:this.canEdit,revision:this.revision,roots:nodes(this.roots),defaultParentId:'0',truncated:false});},
    replace(roots){this.roots=structuredClone(roots);this.revision++;this.publish();},
    all(items=this.roots){return items.flatMap(item=>[item,...(item.children?this.all(item.children):[])]);},
-   locate(id,items=this.roots){for(let index=0;index<items.length;index++){const item=items[index];if(item.id===id)return {item,index,items};if(item.children){const found=this.locate(id,item.children);if(found)return found;}}},
+   locate(id,items=this.roots,parentId='0'){for(let index=0;index<items.length;index++){const item=items[index];if(item.id===id)return {item,index,items,parentId};if(item.children){const found=this.locate(id,item.children,item.id);if(found)return found;}}},
    edit(operation){
     if(!this.canEdit||this.fail)throw Error('native write failure');
     const source=operation.id&&this.locate(operation.id);
     if(operation.action!=='create'&&(!source||source.item.editable===false))throw Error('not editable');
+    if(source){const expected={name:source.item.name,parentId:source.parentId,index:source.index,...(source.item.type==='folder'?{}:{url:source.item.url})};if(JSON.stringify(expected)!==JSON.stringify(operation.expected))throw Error('stale source');}
     const parent=operation.parentId&&operation.parentId!=='0'?this.locate(operation.parentId)?.item:null;
+    if(operation.action!=='remove'&&operation.parentId&&operation.parentId!=='0'&&!parent)throw Error('missing parent');
+    if(parent&&parent.type!=='folder')throw Error('not a folder');
     const target=parent?parent.children:this.roots;
     if(parent&&parent.canAdd===false)throw Error('not writable');
     let item=source?.item;
+    if(item?.type==='folder'&&parent){const contains=folder=>folder.id===parent.id||(folder.children??[]).some(child=>child.type==='folder'&&contains(child));if(contains(item))throw Error('folder cycle');}
+    if(operation.preservePosition&&source?.items!==target)throw Error('changed parent');
+    if(operation.action!=='remove'&&!operation.preservePosition&&operation.beforeId&&(!target.some(entry=>entry.id===operation.beforeId)||operation.beforeId===item?.id))throw Error('missing anchor');
     if(operation.action==='create')item={id:String(this.next++),name:operation.name,...(operation.folder?{type:'folder',children:[]}:{url:operation.url})};
     if(operation.action==='remove')source.items.splice(source.index,1,...(item.children??[]));
     else {
      if(operation.action==='update'){item.name=operation.name;if(!operation.folder)item.url=operation.url;}
-     if(source)source.items.splice(source.index,1);
-     const index=operation.beforeId?target.findIndex(entry=>entry.id===operation.beforeId):target.length;
-     if(index<0)throw Error('missing anchor');target.splice(index,0,item);
+     if(!operation.preservePosition){
+      if(source)source.items.splice(source.index,1);
+      const index=operation.beforeId?target.findIndex(entry=>entry.id===operation.beforeId):target.length;
+      target.splice(index,0,item);
+     }
     }
+    this.lastOperation=structuredClone(operation);
     this.revision++;this.publish();return {id:item.id,snapshot:this.snapshot()};
    },
    add(records,mode){
@@ -138,6 +147,7 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   const remapped=await page.evaluate(()=>nativeBookmarks.all().find(item=>item.url==='https://existing.example/').id);
   assert.notEqual(remapped,'1');assert.equal((await state()).bookmarkIcons[remapped].icon,'book','portable restore remaps custom icons by URL to new native IDs');
   await checkBookmarkEditing(page,wait,state,out);
+  await checkBookmarkEdgeCases(page,wait);
   await page.evaluate(()=>nativeBookmarks.replace([]));
   await page.getByText('Нет закладок',{exact:true}).waitFor();
   await page.reload();await page.getByText('Нет закладок',{exact:true}).waitFor();
@@ -146,6 +156,100 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   assert(imports>0);
   console.log('PASS: native bookmarks, homepage creation/editing, touch-friendly ordering, drag, folders, safe deletion, migration and backup');
  } finally {await context.close();}
+}
+
+async function checkBookmarkEdgeCases(page,wait) {
+ const a={id:'10',name:'A',url:'https://a.example/'};
+ const hidden={id:'11',name:'Hidden',url:'chrome://settings/'};
+ const b={id:'12',name:'B',url:'https://b.example/'};
+ const folderA={id:'20',name:'Folder A',type:'folder',children:[]};
+ const folderB={id:'21',name:'Folder B',type:'folder',children:[]};
+ const replace=roots=>page.evaluate(roots=>{nativeBookmarks.fail=false;nativeBookmarks.canEdit=true;nativeBookmarks.replace(roots);},roots);
+ const order=()=>page.evaluate(()=>nativeBookmarks.roots.map(item=>item.id));
+ const edit=async id=>{await page.locator('[data-browser-bookmark="'+id+'"]').click();await page.locator('#native-edit').click();};
+ const move=async id=>{await page.locator('[data-browser-bookmark="'+id+'"]').click();await page.locator('#native-move').click();};
+ const open=async id=>{await page.locator('[data-browser-bookmark="'+id+'"]').click();await page.locator('#native-open-folder').click();};
+ const save=async()=>{await page.locator('#native-bookmark-form button[type=submit]').click();await wait();};
+ await replace([a,hidden,b]);
+ await page.locator('#settings-button').click();await page.locator('#edit-shortcuts').click();
+ assert.equal(await page.locator('[data-browser-bookmark="11"]').count(),0);
+ await edit('10');await save();assert.deepEqual(await order(),['10','11','12'],'unchanged save retains hidden native positions');
+ await edit('10');await page.locator('#native-title').fill('Renamed A');await page.locator('#native-url').fill('https://a.example/changed');
+ await save();assert.deepEqual(await order(),['10','11','12'],'content-only edits never relocate bookmarks');
+ assert.equal(await page.evaluate(()=>nativeBookmarks.lastOperation.preservePosition),true);
+ await edit('10');await page.locator('#native-position').selectOption('');await save();
+ assert.deepEqual(await order(),['11','12','10'],'an explicit position change still moves the bookmark');
+
+ await replace([a,hidden]);await edit('10');await page.locator('#native-title').fill('Unsaved');
+ await page.keyboard.press('Escape');assert.deepEqual(await order(),['10','11']);
+ assert.equal(await page.evaluate(()=>nativeBookmarks.locate('10').item.name),'A');
+ await edit('10');await page.locator('#native-title').fill('Retained draft');
+ await page.locator('#native-url').fill('javascript:alert(1)');await save();assert(await page.locator('#native-edit-error').isVisible());
+ await page.locator('#native-url').fill('https://a.example/');await page.evaluate(()=>nativeBookmarks.fail=true);
+ await save();assert(await page.locator('#native-edit-error').isVisible());
+ assert.equal(await page.locator('#native-title').inputValue(),'Retained draft');
+ assert.deepEqual(await order(),['10','11']);
+ await page.evaluate(()=>nativeBookmarks.fail=false);await save();assert.deepEqual(await order(),['10','11'],'hidden tail remains after a successful retry');
+
+ await replace([folderA,hidden,b]);await edit('20');await page.locator('#native-title').fill('Renamed folder');await save();
+ assert.deepEqual(await order(),['20','11','12'],'renaming a folder retains hidden sibling order');
+ await replace([{...folderA,children:[a,hidden]}]);await open('20');await edit('10');await save();
+ assert.deepEqual(await page.evaluate(()=>nativeBookmarks.locate('20').item.children.map(item=>item.id)),['10','11']);
+ await page.locator('#browser-folder-back').click();
+
+ await replace([folderA,folderB]);await move('20');
+ await page.locator('[data-browser-bookmark="20"]').dragTo(page.locator('[data-browser-bookmark="21"]'));await wait();
+ assert.deepEqual(await order(),['21']);
+ assert.deepEqual(await page.evaluate(()=>nativeBookmarks.locate('21').item.children.map(item=>item.id)),['20'],'folder drag nests it inside the target');
+ await open('21');await move('20');await page.locator('#native-move-cancel').click();
+ assert(await page.locator('#browser-folder-edit').isVisible());
+ await move('20');await page.locator('#browser-folder-back').click();
+ assert(await page.locator('#move-toolbar').isHidden(),'leaving the source folder cancels its pending move');
+ assert.equal(await page.locator('[draggable="true"]').count(),0);
+ await open('21');await move('20');await page.locator('#native-move-target').click();
+ await page.locator('#native-parent').selectOption('');await save();
+ assert.deepEqual(await order(),['21','20'],'the destination picker moves nested folders back to favorites');
+ await move('20');await page.locator('[data-browser-bookmark="21"]').click();await wait();
+ assert.deepEqual(await order(),['21']);
+ assert.equal(await page.evaluate(()=>nativeBookmarks.locate('20').parentId),'21','tap-to-move nests folders too');
+ await move('21');await page.locator('#move-destination').click();
+ assert.equal(await page.locator('#native-parent option[value="20"]').count(),0,'descendants are excluded from folder destinations');
+ await page.keyboard.press('Escape');assert(await page.locator('#move-toolbar').isHidden());
+
+ await replace([folderA,folderB]);await move('20');
+ const from=await page.locator('[data-browser-bookmark="20"]').boundingBox(),to=await page.locator('[data-browser-bookmark="21"]').boundingBox();
+ const cdp=await page.context().newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x+from.width/2,y:from.y+from.height/2}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:to.x+to.width/2,y:to.y+to.height/2}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await wait();await cdp.detach();
+ assert.deepEqual(await order(),['21']);assert.equal(await page.evaluate(()=>nativeBookmarks.locate('20').parentId),'21','touch dragging nests folders');
+
+ await replace([a,folderA]);await move('10');
+ await page.evaluate(()=>{nativeBookmarks.canEdit=false;nativeBookmarks.replace(nativeBookmarks.roots);});
+ assert(await page.locator('#move-toolbar').isHidden(),'a policy change clears the active move');
+ assert.equal(await page.locator('[draggable="true"]').count(),0);
+ await replace([a,folderA]);await move('10');await replace([folderA]);
+ assert(await page.locator('#move-toolbar').isHidden(),'external deletion clears the active move');
+ await replace([a,folderA]);await edit('10');await page.locator('#native-parent').selectOption('20');await replace([a]);
+ await save();assert(await page.locator('#native-edit-error').isVisible(),'a removed destination cannot redirect the edit to favorites');
+ await page.keyboard.press('Escape');
+
+ await replace([{...folderA,children:[a,{...folderB,children:[b]},hidden]}]);
+ await page.locator('[data-browser-bookmark="20"]').click();await page.locator('#native-delete').click();
+ await page.locator('.dialog-actions [data-close]').click();assert.deepEqual(await order(),['20'],'canceling deletion keeps the folder');
+ await page.locator('[data-browser-bookmark="20"]').click();await page.locator('#native-delete').click();
+ await page.locator('#native-confirm-delete').click();await wait();
+ assert.deepEqual(await order(),['10','21','11'],'deleting a folder retains nested folders and hidden children');
+ assert.equal(await page.evaluate(()=>nativeBookmarks.locate('12').parentId),'21');
+
+ const many=Array.from({length:205},(_,index)=>({id:String(10000+index),name:'Site '+index,url:'https://many.example/'+index}));
+ await replace(many);assert.equal(await page.locator('#shortcut-grid [data-browser-bookmark]').count(),200);
+ await page.locator('[data-native-add=""]').click();await page.locator('#native-title').fill('Visible new bookmark');await page.locator('#native-url').fill('https://new.example/');await save();
+ assert.equal(await page.getByRole('button',{name:'Visible new bookmark',exact:true}).count(),1,'creation expands the visible range to include the saved bookmark');
+ await replace([{id:'30',name:'Many',type:'folder',children:many}]);await open('30');
+ assert.equal(await page.locator('#browser-folder-grid [data-browser-bookmark]').count(),200);
+ await page.locator('[data-native-more="30"]').click();assert.equal(await page.locator('#browser-folder-grid [data-browser-bookmark]').count(),205);
+ await page.locator('#browser-folder-back').click();await page.locator('#edit-done').click();
 }
 
 async function checkBookmarkEditing(page,wait,state,out) {
