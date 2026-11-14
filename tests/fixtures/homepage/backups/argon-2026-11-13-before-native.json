@@ -1,0 +1,82 @@
+{
+  "app": "argon-start",
+  "version": 1,
+  "createdAt": "2026-11-13T06:45:00.000Z",
+  "state": {
+    "schemaVersion": 2,
+    "theme": "amoled",
+    "engine": "my-search",
+    "customEngines": [
+      {
+        "id": "my-search",
+        "name": "Мой поиск",
+        "url": "https://search.example/?q={query}&lang=ru"
+      }
+    ],
+    "showLabels": true,
+    "newTab": true,
+    "density": "comfortable",
+    "shortcutScale": 145,
+    "shortcutScaleMode": "manual",
+    "background": {
+      "source": "custom",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+    },
+    "shortcuts": [
+      {
+        "id": "old-news",
+        "name": "Новости",
+        "url": "https://news.example/?a=1&b=2#news",
+        "iconMode": "favicon"
+      },
+      {
+        "id": "old-work",
+        "name": "Работа",
+        "type": "folder",
+        "children": [
+          {
+            "id": "old-image",
+            "name": "Общий сайт в работе",
+            "url": "https://shared.example/page?q=one#part",
+            "iconMode": "custom",
+            "customIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+          },
+          {
+            "id": "old-docs",
+            "name": "Документы",
+            "url": "https://docs.example/",
+            "iconMode": "custom",
+            "icon": "book"
+          }
+        ]
+      },
+      {
+        "id": "old-personal",
+        "name": "Личное",
+        "type": "folder",
+        "children": [
+          {
+            "id": "old-alias",
+            "name": "Общий сайт в личном",
+            "url": "https://shared.example/page?q=one#part",
+            "iconMode": "custom",
+            "icon": "music"
+          }
+        ]
+      },
+      {
+        "id": "old-empty",
+        "name": "Пустая папка",
+        "type": "folder",
+        "children": []
+      },
+      {
+        "id": "youtube",
+        "name": "YouTube",
+        "url": "https://youtube.com",
+        "iconMode": "favicon",
+        "icon": "youtube"
+      }
+    ]
+  }
+}
