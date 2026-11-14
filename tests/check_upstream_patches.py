@@ -48,6 +48,7 @@ from test_user_agent_runtime import run_runtime_flow
 from test_user_agent_renderer import verify_native_state, verify_renderer_update
 from external_navigation_flow import verify_upstream as verify_external_navigation
 from upstream_sources import chromium_url, download
+from generate_scoped_ca_fixtures import verify_upstream as verify_scoped_ca_fixture
 
 SEARCHBOX_PATH = Path("components/omnibox/browser/searchbox_utils.cc")
 LOCALE_CONSUMER = Path("components/strings/BUILD.gn")
@@ -74,7 +75,7 @@ CONTEXT_MENU = Path("chrome/android/java/src/org/chromium/chrome/browser/context
 WEB_CONTENTS_ANDROID = Path("content/browser/web_contents/web_contents_android.cc")
 RENDER_FRAME_HOST = Path("content/browser/renderer_host/render_frame_host_impl.cc")
 BASE_PATHS = (modulemap.GENERATOR, modulemap.CONFIG,
-              patch.PROFILE, patch.VERIFIER, patch.GN,
+              patch.PROFILE, patch.VERIFIER, patch.SPDY_SESSION, patch.GN,
               patch.CHROME_NET_GN, patch.CHROME_ANDROID_GN,
               patch.MAIN_PREFERENCES, patch.ABOUT_PREFERENCES, patch.ABOUT_SETTINGS,
               patch.OMNIBOX_GN, SEARCHBOX_PATH, LOCALE_CONSUMER,
@@ -580,6 +581,7 @@ def main():
                  "titanium-tree": "https://api.github.com/repos/jqssun/android-titanium-browser/git/trees/"
                  + lock["titanium_commit"]})
     values = fetch_sources(urls)
+    verify_scoped_ca_fixture(values[str(patch.VERIFIER)])
     verify_pins(lock, values["chrome/VERSION"], values["DEPS"],
                 json.loads(values["titanium-tree"]))
 

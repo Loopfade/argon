@@ -20,6 +20,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = Path("chrome/browser/net/profile_network_context_service.cc")
 VERIFIER = Path("net/cert/cert_verify_proc_builtin.cc")
+SPDY_SESSION = Path("net/spdy/spdy_session.cc")
 GN = Path("net/BUILD.gn")
 CHROME_NET_GN = Path("chrome/browser/net/BUILD.gn")
 CHROME_ANDROID_GN = Path("chrome/android/BUILD.gn")
@@ -89,24 +90,45 @@ PROFILE_PREF_OBSERVER_BLOCK = """
   }
   // END ARGON_RU_CA_DOMAIN_PREF_OBSERVER
 #endif"""
-VERIFIER_ANCHOR = "    CheckExtraConstraints(path->certs, &path->errors);"
+VERIFIER_ANCHOR = """    const std::shared_ptr<const bssl::ParsedCertificate> root_cert =
+        certs.back();"""
 VERIFIER_BLOCK = """
-    // BEGIN TITANIUM_RU_DNS_AND_IP_CONSTRAINTS
+    // BEGIN ARGON_RU_HOSTNAME_CONSTRAINTS
 #if BUILDFLAG(IS_ANDROID)
-    bssl::Span<const std::string> titanium_permitted_dns_names;
-    for (const auto& cert_with_constraints : *additional_constraints_) {
-      if (cert_with_constraints.certificate &&
-          IsTitaniumRussianRoot(*cert_with_constraints.certificate)) {
-        titanium_permitted_dns_names =
-            bssl::Span<const std::string>(
-                cert_with_constraints.permitted_dns_names);
-        break;
+    if (IsTitaniumRussianRoot(*root_cert)) {
+      bssl::Span<const std::string> titanium_permitted_dns_names;
+      for (const auto& cert_with_constraints : *additional_constraints_) {
+        if (cert_with_constraints.certificate &&
+            IsTitaniumRussianRoot(*cert_with_constraints.certificate)) {
+          titanium_permitted_dns_names =
+              bssl::Span<const std::string>(
+                  cert_with_constraints.permitted_dns_names);
+          break;
+        }
       }
+      CheckTitaniumRussianRootConstraints(
+          certs, errors, hostname_, titanium_permitted_dns_names);
+      // The generic check below constrains every SAN. For this pinned root,
+      // profile rules instead authorize the hostname of this connection.
+      return;
     }
-    CheckTitaniumRussianRootConstraints(
-        path->certs, &path->errors, titanium_permitted_dns_names);
 #endif
-    // END TITANIUM_RU_DNS_AND_IP_CONSTRAINTS"""
+    // END ARGON_RU_HOSTNAME_CONSTRAINTS"""
+SPDY_ANCHOR = """  if (IsCertStatusError(ssl_info.cert_status))
+    return false;"""
+SPDY_BLOCK = """
+#if BUILDFLAG(IS_ANDROID)
+  // BEGIN ARGON_RU_HOSTNAME_POOLING
+  // QUIC also calls this method. A different hostname must get its own
+  // certificate verification against the current profile's trust rules.
+  const auto& argon_chain = ssl_info.cert->cert_buffers();
+  if (!argon_chain.empty() &&
+      !CanPoolTitaniumRussianRootConnection(
+          argon_chain.back().get(), old_hostname, new_hostname)) {
+    return false;
+  }
+  // END ARGON_RU_HOSTNAME_POOLING
+#endif"""
 
 
 def load_root() -> bytes:
@@ -191,12 +213,25 @@ def patch_profile(text: str) -> str:
 
 
 def patch_verifier(text: str) -> str:
-    if "TITANIUM_RU_DNS_AND_IP_CONSTRAINTS" in text and text.count(VERIFIER_BLOCK) != 1:
+    if ("TITANIUM_RU_DNS_AND_IP_CONSTRAINTS" in text or
+            ("ARGON_RU_HOSTNAME_CONSTRAINTS" in text and text.count(VERIFIER_BLOCK) != 1)):
         raise ValueError("Incomplete or modified verifier patch")
     include = '#include "net/cert/time_conversions.h"'
     text = replace_once(text, include,
                         include + '\n#include "net/cert/titanium_ru_constraints.h"')
     return replace_once(text, VERIFIER_ANCHOR, VERIFIER_ANCHOR + VERIFIER_BLOCK)
+
+
+def patch_spdy_session(text: str) -> str:
+    if "ARGON_RU_HOSTNAME_POOLING" in text and text.count(SPDY_BLOCK) != 1:
+        raise ValueError("Incomplete or modified hostname pooling patch")
+    include = '#include "net/cert/cert_verify_result.h"'
+    text = replace_once(text, include,
+                        include + '\n#include "build/build_config.h"'
+                        '\n#if BUILDFLAG(IS_ANDROID)'
+                        '\n#include "net/cert/titanium_ru_constraints.h"'
+                        '\n#endif')
+    return replace_once(text, SPDY_ANCHOR, SPDY_ANCHOR + SPDY_BLOCK)
 
 
 def patch_gn(text: str) -> str:
@@ -600,6 +635,7 @@ def apply(src: Path, product_name: bool = True) -> None:
         ).read_text("ascii"),
         src / PROFILE: patch_profile((src / PROFILE).read_text()),
         src / VERIFIER: patch_verifier((src / VERIFIER).read_text()),
+        src / SPDY_SESSION: patch_spdy_session((src / SPDY_SESSION).read_text()),
         src / GN: patch_gn((src / GN).read_text()),
         src / CHROME_NET_GN: patch_chrome_net_gn(
             (src / CHROME_NET_GN).read_text()
