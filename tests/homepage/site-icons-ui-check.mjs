@@ -48,7 +48,7 @@ export async function checkSiteIcons(browser, base, errors, out) {
     const requests=[];page.on('request',request=>requests.push(request.url()));
     await page.goto(base);
     const edit=async()=>{
-      await page.locator('#settings-button').click();await page.locator('#edit-shortcuts').click();
+      await page.locator('#edit-bookmarks').click();
       await page.locator('[data-add]').click();
       await page.locator('#shortcut-title').fill('Выбранная иконка');
       await page.locator('#shortcut-url').fill('https://chooser.example/page');
@@ -88,7 +88,7 @@ export async function checkSiteIcons(browser, base, errors, out) {
       return parseDump(JSON.stringify(createDump(state))).state.shortcuts[0].customIcon;
     });
     assert.equal(restored,chosen.customIcon,'Chosen icon must survive reload and backup');
-    await page.locator('#settings-button').click();await page.locator('#edit-shortcuts').click();
+    await page.locator('#edit-bookmarks').click();
     await page.locator('[data-add]').click();await page.locator('#shortcut-url').fill('https://old.example/');
     await page.evaluate(()=>{window.argonIconFixture.hold=true;});
     await page.locator('#find-site-icons').click();

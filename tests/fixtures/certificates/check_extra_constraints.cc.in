@@ -1,0 +1,53 @@
+  void CheckExtraConstraints(const bssl::ParsedCertificateList& certs,
+                             bssl::CertPathErrors* errors) {
+    const std::shared_ptr<const bssl::ParsedCertificate> root_cert =
+        certs.back();
+    // An assumption being made is that there will be at most a few (2-3) certs
+    // in here; if there are more and this ends up being a drag on performance
+    // it may be worth making additional_constraints_ into a map storing certs
+    // by hash.
+    for (const auto& cert_with_constraints : *additional_constraints_) {
+      if (!x509_util::CryptoBufferEqual(
+              root_cert->cert_buffer(),
+              cert_with_constraints.certificate->cert_buffer())) {
+        continue;
+      }
+      // Found the cert, check constraints
+      if (cert_with_constraints.permitted_dns_names.empty() &&
+          cert_with_constraints.permitted_cidrs.empty()) {
+        // No constraints to check.
+        return;
+      }
+
+      bssl::GeneralNames permitted_names;
+
+      if (!cert_with_constraints.permitted_dns_names.empty()) {
+        for (const auto& dns_name : cert_with_constraints.permitted_dns_names) {
+          permitted_names.dns_names.push_back(dns_name);
+        }
+        permitted_names.present_name_types |=
+            bssl::GeneralNameTypes::GENERAL_NAME_DNS_NAME;
+      }
+
+      if (!cert_with_constraints.permitted_cidrs.empty()) {
+        for (const auto& cidr : cert_with_constraints.permitted_cidrs) {
+          permitted_names.ip_address_ranges.emplace_back(cidr.ip.bytes(),
+                                                         cidr.mask.bytes());
+        }
+        permitted_names.present_name_types |=
+            bssl::GeneralNameTypes::GENERAL_NAME_IP_ADDRESS;
+      }
+
+      std::unique_ptr<bssl::NameConstraints> nc =
+          bssl::NameConstraints::CreateFromPermittedSubtrees(
+              std::move(permitted_names));
+
+      const std::shared_ptr<const bssl::ParsedCertificate>& leaf_cert =
+          certs[0];
+
+      nc->IsPermittedCert(leaf_cert->normalized_subject(),
+                          leaf_cert->subject_alt_names(),
+                          errors->GetErrorsForCert(0));
+      return;
+    }
+  }

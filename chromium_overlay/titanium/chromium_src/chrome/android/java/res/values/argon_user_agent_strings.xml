@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="argon_user_agent_title">User-Agent</string>
-    <string name="argon_user_agent_summary">%1$s. Applies immediately, without restarting the browser.</string>
-    <string name="argon_user_agent_search_summary">Change the user agent reported to websites</string>
-    <string name="argon_user_agent_chrome_mobile">Chrome (mobile)</string>
-    <string name="argon_user_agent_chrome_desktop">Chrome (desktop)</string>
-    <string name="argon_user_agent_firefox_mobile">Firefox (mobile)</string>
-    <string name="argon_user_agent_firefox_desktop">Firefox (desktop)</string>
-    <string name="argon_user_agent_yandex_mobile">Yandex Browser (mobile)</string>
-    <string name="argon_user_agent_yandex_desktop">Yandex Browser (desktop)</string>
+    <string name="argon_user_agent_summary">Active: %1$s.</string>
+    <string name="argon_user_agent_pending">Active: %1$s. Saved: %2$s. Restart the browser to apply the change.</string>
+    <string name="argon_user_agent_search_summary">Change the User-Agent reported to websites</string>
+    <string name="argon_user_agent_default">Default (Chrome)</string>
+    <string name="argon_user_agent_firefox">Firefox</string>
+    <string name="argon_user_agent_yandex">Yandex Browser</string>
     <string name="argon_user_agent_custom">Custom User-Agent</string>
+    <string name="argon_user_agent_help">Choose a User-Agent for website compatibility. Desktop site is controlled separately in the menu and site settings; your site exceptions are preserved. A custom string is used in both modes. Changing the User-Agent does not change the browser engine or make the browser anonymous.</string>
     <string name="argon_user_agent_invalid">Enter a User-Agent of up to 1024 printable ASCII characters.</string>
+    <string name="argon_user_agent_restart">Apply User-Agent</string>
+    <string name="argon_user_agent_restart_message">The change applies after restarting the browser. Until then, all pages keep the current User-Agent. Save any text you have entered on websites before restarting.</string>
+    <string name="argon_user_agent_restart_now">Restart</string>
+    <string name="argon_user_agent_later">Later</string>
+    <string name="argon_user_agent_undo">Undo change</string>
+    <string name="argon_user_agent_save_failed">Could not save the setting. The browser was not restarted. Try again.</string>
+    <string name="argon_user_agent_custom_pending">A new custom User-Agent is saved. The previous string stays active until the browser restarts.</string>
 </resources>

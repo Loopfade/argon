@@ -335,7 +335,7 @@ export class HomepageStore {
   }
 
   update(change, {shortcuts = false} = {}) {
-    if (shortcuts && !this.editing) throw new Error(t("Включите редактирование ярлыков в настройках."));
+    if (shortcuts && !this.editing) throw new Error(t("Включите редактирование карандашом рядом с «Избранное»."));
     // Read the latest whole state before writing, preserving another tab's edits.
     const next = structuredClone(this.latest());
     change(next);

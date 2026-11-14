@@ -8,16 +8,19 @@ import android.content.Context;
 import android.text.InputType;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleEventObserver;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.base.ArgonUserAgent;
-import org.chromium.chrome.browser.base.ArgonUserAgentController;
 import org.chromium.chrome.browser.base.ArgonUserAgent.Preset;
+import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
 
 @NullMarked
 final class ArgonUserAgentPreference {
@@ -27,34 +30,77 @@ final class ArgonUserAgentPreference {
         Preference preference = fragment.findPreference("argon_user_agent");
         if (preference == null) return;
 
-        ArgonUserAgentController.initialize();
-        updateSummary(preference);
+        Preference restart = fragment.findPreference("argon_user_agent_restart");
+        if (restart == null) return;
+        updateSummary(preference, restart);
+        fragment.getLifecycle().addObserver((LifecycleEventObserver) (source, event) -> {
+            if (event == Lifecycle.Event.ON_RESUME) updateSummary(preference, restart);
+        });
+        restart.setOnPreferenceClickListener(pref -> {
+            showRestart(preference, restart);
+            return true;
+        });
         preference.setOnPreferenceClickListener(
                 pref -> {
-                    showPresets(pref);
+                    showPresets(pref, restart);
                     return true;
                 });
     }
 
     private static int label(Preset preset) {
         return switch (preset) {
-            case CHROME_MOBILE -> R.string.argon_user_agent_chrome_mobile;
-            case CHROME_DESKTOP -> R.string.argon_user_agent_chrome_desktop;
-            case FIREFOX_MOBILE -> R.string.argon_user_agent_firefox_mobile;
-            case FIREFOX_DESKTOP -> R.string.argon_user_agent_firefox_desktop;
-            case YANDEX_MOBILE -> R.string.argon_user_agent_yandex_mobile;
-            case YANDEX_DESKTOP -> R.string.argon_user_agent_yandex_desktop;
+            case DEFAULT -> R.string.argon_user_agent_default;
+            case FIREFOX -> R.string.argon_user_agent_firefox;
+            case YANDEX -> R.string.argon_user_agent_yandex;
             case CUSTOM -> R.string.argon_user_agent_custom;
         };
     }
 
-    private static void updateSummary(Preference preference) {
+    private static void updateSummary(Preference preference, Preference restart) {
         Context context = preference.getContext();
         String selected = context.getString(label(ArgonUserAgent.getPreset()));
-        preference.setSummary(context.getString(R.string.argon_user_agent_summary, selected));
+        String active = context.getString(label(ArgonUserAgent.getActivePreset()));
+        boolean pending = ArgonUserAgent.hasPendingChange();
+        if (pending && ArgonUserAgent.getActivePreset() == Preset.CUSTOM
+                && ArgonUserAgent.getPreset() == Preset.CUSTOM) {
+            preference.setSummary(context.getString(R.string.argon_user_agent_custom_pending));
+        } else {
+            preference.setSummary(pending
+                    ? context.getString(R.string.argon_user_agent_pending, active, selected)
+                    : context.getString(R.string.argon_user_agent_summary, active));
+        }
+        restart.setVisible(pending);
     }
 
-    private static void showPresets(Preference preference) {
+    private static void saved(Preference preference, Preference restart) {
+        updateSummary(preference, restart);
+        if (ArgonUserAgent.hasPendingChange()) showRestart(preference, restart);
+    }
+
+    private static void showRestart(Preference preference, Preference restart) {
+        if (!ArgonUserAgent.hasPendingChange()) return;
+        Context context = preference.getContext();
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.argon_user_agent_restart)
+                .setMessage(R.string.argon_user_agent_restart_message)
+                .setPositiveButton(R.string.argon_user_agent_restart_now, (dialog, which) -> {
+                    if (!ArgonUserAgent.hasPendingChange()) return;
+                    if (ArgonUserAgent.flushForRestart()) {
+                        ApplicationLifetime.terminate(true);
+                    } else {
+                        Toast.makeText(context, R.string.argon_user_agent_save_failed,
+                                Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(R.string.argon_user_agent_later, null)
+                .setNeutralButton(R.string.argon_user_agent_undo, (dialog, which) -> {
+                    ArgonUserAgent.discardPendingChange();
+                    updateSummary(preference, restart);
+                })
+                .show();
+    }
+
+    private static void showPresets(Preference preference, Preference restart) {
         Context context = preference.getContext();
         Preset[] presets = Preset.values();
         CharSequence[] choices = new CharSequence[presets.length];
@@ -70,17 +116,17 @@ final class ArgonUserAgentPreference {
                             dialog.dismiss();
                             Preset preset = presets[which];
                             if (preset == Preset.CUSTOM) {
-                                editCustom(preference);
+                                editCustom(preference, restart);
                             } else {
                                 ArgonUserAgent.save(preset, "");
-                                updateSummary(preference);
+                                saved(preference, restart);
                             }
                         })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
-    private static void editCustom(Preference preference) {
+    private static void editCustom(Preference preference, Preference restart) {
         Context context = preference.getContext();
         EditText input = new EditText(context);
         input.setSingleLine();
@@ -110,8 +156,8 @@ final class ArgonUserAgentPreference {
                                 return;
                             }
                             ArgonUserAgent.save(Preset.CUSTOM, value);
-                            updateSummary(preference);
                             dialog.dismiss();
+                            saved(preference, restart);
                         });
     }
 }

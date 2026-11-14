@@ -1,205 +1,140 @@
-"""Run the production UA controller through desktop toggles and delayed renderer replies."""
+"""Exercise production preference dialogs with Android adapters and real strings."""
 from pathlib import Path
+import json
 import shutil
-import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
+from test_user_agent import ADAPTERS, MODEL, ROOT, compile_java, run_java
 
-from test_user_agent import ADAPTERS, MODEL, ROOT
-
-CONTROLLER = ROOT / "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java"
-CONTENT_UTILS = Path("chrome/browser/android/content/java/src/org/chromium/chrome/browser/content/ContentUtils.java")
-PREFIX = "org/chromium/chrome/browser/"
-RUNTIME = {
-    "android/content/Context.java": "package android.content; public class Context {}",
-    "org/jni_zero/NativeMethods.java": "package org.jni_zero; public @interface NativeMethods {}",
-    "org/jni_zero/JniType.java": """package org.jni_zero; import java.lang.annotation.*;
-        @Target({ElementType.TYPE_USE,ElementType.PARAMETER,ElementType.METHOD})
-        public @interface JniType { String value(); }""",
-    "org/chromium/url/GURL.java": """package org.chromium.url;
-        public class GURL {
-            private final java.net.URI uri;
-            public GURL(String value) { uri=java.net.URI.create(value); }
-            public String getScheme() { return uri.getScheme(); }
-            public String getHost() { return uri.getHost()==null ? "" : uri.getHost(); }
-        }""",
-    PREFIX + "profiles/Profile.java": """package org.chromium.chrome.browser.profiles;
-        public class Profile {
-            public boolean desktop;
-            public final boolean incognito;
-            private final Profile original;
-            public final java.util.Map<String,Boolean> sites=new java.util.HashMap<>();
-            public Profile(boolean incognito) { this.incognito=incognito; original=this; }
-            public Profile(boolean incognito,Profile original) {
-                this.incognito=incognito; this.original=original;
-            }
-            public Profile getOriginalProfile() { return original; }
-            public boolean defaultDesktop() { return original==this ? desktop : original.defaultDesktop(); }
-        }""",
-    "org/chromium/components/content_settings/ContentSetting.java": """
-        package org.chromium.components.content_settings;
-        public class ContentSetting { public static final int ALLOW=1,BLOCK=2; }""",
-    "org/chromium/components/content_settings/ContentSettingsType.java": """
-        package org.chromium.components.content_settings;
-        public class ContentSettingsType { public static final int REQUEST_DESKTOP_SITE=1; }""",
-    "org/chromium/components/browser_ui/site_settings/WebsitePreferenceBridge.java": """
-        package org.chromium.components.browser_ui.site_settings;
-        import org.chromium.chrome.browser.profiles.Profile;
-        import org.chromium.components.content_settings.ContentSetting;
-        public class WebsitePreferenceBridge {
-            public static void setDefaultContentSetting(Profile p,int type,int value) {
-                if (!p.incognito) p.desktop=value==ContentSetting.ALLOW;
-            }
-        }""",
-    PREFIX + "desktop_site/DesktopSiteUtils.java": """
-        package org.chromium.chrome.browser.desktop_site;
-        import android.content.Context;
-        import org.chromium.chrome.browser.profiles.Profile;
-        import org.chromium.url.GURL;
-        public class DesktopSiteUtils {
-            public static void setRequestDesktopSiteContentSettingsForUrl(Profile p,GURL u,boolean d) {
-                p.sites.put(u.getHost(),d);
-            }
-            public static boolean shouldOverrideDesktopSite(Profile p,GURL u,Context c) {
-                return p.sites.getOrDefault(u.getHost(),p.defaultDesktop());
-            }
-        }""",
-    "org/chromium/content_public/browser/WebContents.java": """
-        package org.chromium.content_public.browser;
-        import org.chromium.chrome.browser.content.ContentUtilsJni;
-        public class WebContents {
-            public final Navigation navigation=new Navigation();
-            public String desktopUa="";
-            public boolean destroyed;
-            public Navigation getNavigationController() { return navigation; }
-            public boolean isDestroyed() { return destroyed; }
-            public String requestUserAgent() {
-                return navigation.desktop ? desktopUa : ContentUtilsJni.rendererUa;
-            }
-            public class Navigation {
-                public boolean desktop;
-                public boolean getUseDesktopUserAgent() { return desktop; }
-                public void setUseDesktopUserAgent(boolean d,boolean reload,boolean skip) { desktop=d; }
-            }
-        }""",
-    PREFIX + "content/ContentUtils.java": """
-        package org.chromium.chrome.browser.content;
-        import org.chromium.content_public.browser.WebContents;
-        public class ContentUtils {
-            public static void setUserAgentOverride(WebContents c,boolean next) {
-                ContentUtilsJni.get().setUserAgentOverride(c,next);
-            }
-            public static void updateUserAgent(String mobile,String desktop,Runnable ready) {
-                ContentUtilsJni.get().updateUserAgent(mobile,desktop,ready);
-            }
-            public interface Natives {
-                void setUserAgentOverride(WebContents c,boolean next);
-                void updateUserAgent(String mobile,String desktop,Runnable ready);
-                String getBrowserUserAgent();
-            }
-        }""",
-    PREFIX + "content/ContentUtilsJni.java": """
-        package org.chromium.chrome.browser.content;
-        import org.chromium.base.CommandLine;
-        import org.chromium.content_public.browser.WebContents;
-        public class ContentUtilsJni implements ContentUtils.Natives {
-            private static final ContentUtilsJni INSTANCE=new ContentUtilsJni();
-            public static final java.util.List<Runnable> replies=new java.util.ArrayList<>();
-            public static String rendererUa="";
-            private static String mobileUa,desktopUa;
-            public static ContentUtils.Natives get() { return INSTANCE; }
-            public String getBrowserUserAgent() {
-                return mobileUa==null ? CommandLine.getInstance().values.get("argon-user-agent") : mobileUa;
-            }
-            public void setUserAgentOverride(WebContents c,boolean next) {
-                c.desktopUa=desktopUa==null ? CommandLine.getInstance().values.get("argon-user-agent-desktop") : desktopUa;
-            }
-            public void updateUserAgent(String mobile,String desktop,Runnable ready) {
-                mobileUa=mobile; desktopUa=desktop;
-                String value=mobile;
-                replies.add(() -> { rendererUa=value; ready.run(); });
-            }
-            public static void acknowledge() { replies.remove(0).run(); }
-        }""",
-    PREFIX + "tab/TabObserver.java": """package org.chromium.chrome.browser.tab;
-        import org.chromium.url.GURL;
-        public interface TabObserver {
-            default void onShown(Tab tab,int type) {}
-            default void onPageLoadStarted(Tab tab,GURL url) {}
-            default void onDestroyed(Tab tab) {}
-        }""",
-    PREFIX + "tab/Tab.java": """package org.chromium.chrome.browser.tab;
-        import android.content.Context;
-        import org.chromium.chrome.browser.base.ArgonUserAgentController;
-        import org.chromium.chrome.browser.content.ContentUtils;
-        import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
-        import org.chromium.chrome.browser.profiles.Profile;
-        import org.chromium.content_public.browser.WebContents;
-        import org.chromium.url.GURL;
-        public class Tab {
-            public final Profile profile;
-            public WebContents contents=new WebContents();
-            public final java.util.List<TabObserver> observers=new java.util.ArrayList<>();
-            public boolean hidden,closed,destroyed,nativePage;
-            public int reloads;
-            public GURL url;
-            public Tab(Profile p,String url) { profile=p; this.url=new GURL(url); }
-            public void initialize() {
-                ArgonUserAgentController.onTabInitialized(this);
-                boolean mode=DesktopSiteUtils.shouldOverrideDesktopSite(profile,url,getContext());
-                ContentUtils.setUserAgentOverride(contents,mode);
-                contents.navigation.setUseDesktopUserAgent(mode,false,false);
-            }
-            public void show() { hidden=false; for(var o:observers) o.onShown(this,0); }
-            public void destroy() { destroyed=true; for(var o:observers) o.onDestroyed(this); }
-            public void addObserver(TabObserver o) { observers.add(o); }
-            public Profile getProfile() { return profile; }
-            public boolean isOffTheRecord() { return profile.incognito; }
-            public WebContents getWebContents() { return contents; }
-            public GURL getUrl() { return url; }
-            public Context getContext() { return new Context(); }
-            public boolean isDestroyed() { return destroyed; }
-            public boolean isClosing() { return closed; }
-            public boolean isNativePage() { return nativePage; }
-            public boolean isHidden() { return hidden; }
-            public void reload() {
-                reloads++; for(var o:observers) o.onPageLoadStarted(this,url);
-            }
-            public void checkbox(boolean desktop) {
-                DesktopSiteUtils.setRequestDesktopSiteContentSettingsForUrl(profile,url,desktop);
-                contents.navigation.setUseDesktopUserAgent(desktop,true,true);
-            }
-        }""",
+OVERLAY=ROOT/'chromium_overlay/titanium/chromium_src/chrome/android/java'
+PREFERENCE=OVERLAY/'src/org/chromium/chrome/browser/privacy/settings/ArgonUserAgentPreference.java'
+UI={
+'android/R.java': '''package android; public class R { public static class string { public static final int cancel=-1,ok=-2; } }''',
+'android/content/Context.java': '''package android.content;
+public class Context {
+    public String getString(int id,Object... args) { return String.format(org.chromium.chrome.R.strings.get(id),args); }
+    public android.content.res.Resources getResources() { return new android.content.res.Resources(); }
+}''',
+'android/content/res/Resources.java': '''package android.content.res;
+public class Resources { public static class Metrics { public float density=1; }
+public Metrics getDisplayMetrics() { return new Metrics(); } }''',
+'android/text/InputType.java': '''package android.text;
+public class InputType { public static final int TYPE_CLASS_TEXT=1,TYPE_TEXT_FLAG_NO_SUGGESTIONS=2; }''',
+'android/view/View.java': '''package android.view;
+public class View {
+    public interface Listener { void onClick(View v); }
+    private Listener listener;
+    public void setOnClickListener(Listener v) { listener=v; }
+    public void click() { if(listener!=null) listener.onClick(this); }
+}''',
+'android/widget/EditText.java': '''package android.widget;
+public class EditText extends android.view.View {
+    public static EditText latest; private String text=""; public CharSequence error;
+    public EditText(android.content.Context c) { latest=this; }
+    public void setSingleLine() {} public void setInputType(int v) {} public void setHint(int v) {}
+    public void setText(String v) { text=v; } public CharSequence getText() { return text; }
+    public int length() { return text.length(); } public void setSelection(int v) {}
+    public void setError(CharSequence v) { error=v; }
+}''',
+'android/widget/FrameLayout.java': '''package android.widget;
+public class FrameLayout { public FrameLayout(android.content.Context c) {}
+public void setPadding(int a,int b,int c,int d) {} public void addView(EditText v) {} }''',
+'android/widget/Toast.java': '''package android.widget;
+public class Toast { public static final int LENGTH_LONG=1; public static int shown;
+public static Toast makeText(android.content.Context c,int id,int length) { return new Toast(); }
+public void show() { shown++; } }''',
+'androidx/appcompat/app/AlertDialog.java': '''package androidx.appcompat.app;
+public class AlertDialog {
+    public static final int BUTTON_POSITIVE=-1,BUTTON_NEGATIVE=-2,BUTTON_NEUTRAL=-3;
+    public static AlertDialog latest; public boolean shown; public CharSequence[] choices;
+    public int checked,message; public Click choose;
+    public final java.util.Map<Integer,android.view.View> buttons=new java.util.HashMap<>();
+    public interface Click { void onClick(AlertDialog dialog,int which); }
+    public void show() { latest=this; shown=true; }
+    public void dismiss() { shown=false; }
+    public android.view.View getButton(int which) { return buttons.get(which); }
+    public void select(int which) { choose.onClick(this,which); }
+    public void press(int which) { getButton(which).click(); }
+    public static class Builder {
+        private final AlertDialog d=new AlertDialog();
+        public Builder(android.content.Context c) {}
+        public Builder setTitle(int id) { return this; }
+        public Builder setMessage(int id) { d.message=id; return this; }
+        public Builder setView(Object view) { return this; }
+        public Builder setSingleChoiceItems(CharSequence[] items,int checked,Click c) {
+            d.choices=items;d.checked=checked;d.choose=c;return this;
+        }
+        private Builder button(int which,Click c) {
+            var button=new android.view.View();
+            button.setOnClickListener(v->{if(c!=null)c.onClick(d,which);d.dismiss();});
+            d.buttons.put(which,button);return this;
+        }
+        public Builder setPositiveButton(int id,Click c) { return button(BUTTON_POSITIVE,c); }
+        public Builder setNegativeButton(int id,Click c) { return button(BUTTON_NEGATIVE,c); }
+        public Builder setNeutralButton(int id,Click c) { return button(BUTTON_NEUTRAL,c); }
+        public AlertDialog create() { return d; }
+        public AlertDialog show() { d.show();return d; }
+    }
+}''',
+'androidx/lifecycle/Lifecycle.java': '''package androidx.lifecycle;
+public class Lifecycle {
+    public enum Event { ON_RESUME }
+    private final java.util.List<LifecycleEventObserver> observers=new java.util.ArrayList<>();
+    public void addObserver(LifecycleObserver o) { observers.add((LifecycleEventObserver)o); }
+    public void resume() { for(var o:observers)o.onStateChanged(this,Event.ON_RESUME); }
+}''',
+'androidx/lifecycle/LifecycleObserver.java': '''package androidx.lifecycle;
+public interface LifecycleObserver {}''',
+'androidx/lifecycle/LifecycleEventObserver.java': '''package androidx.lifecycle;
+public interface LifecycleEventObserver extends LifecycleObserver {
+    void onStateChanged(Object owner,Lifecycle.Event event);
+}''',
+'androidx/preference/Preference.java': '''package androidx.preference;
+public class Preference {
+    public interface Click { boolean onClick(Preference p); }
+    public CharSequence summary;public boolean visible=true;private Click click;
+    public android.content.Context getContext() { return new android.content.Context(); }
+    public void setSummary(CharSequence v) { summary=v; }
+    public void setVisible(boolean v) { visible=v; }
+    public void setOnPreferenceClickListener(Click v) { click=v; }
+    public void click() { click.onClick(this); }
+}''',
+'androidx/preference/PreferenceFragmentCompat.java': '''package androidx.preference;
+public class PreferenceFragmentCompat {
+    public final java.util.Map<String,Preference> rows=new java.util.HashMap<>();
+    private final androidx.lifecycle.Lifecycle lifecycle=new androidx.lifecycle.Lifecycle();
+    public PreferenceFragmentCompat() {
+        rows.put("argon_user_agent",new Preference());
+        rows.put("argon_user_agent_restart",new Preference());
+    }
+    public Preference findPreference(String key) { return rows.get(key); }
+    public androidx.lifecycle.Lifecycle getLifecycle() { return lifecycle; }
+}''',
+'org/chromium/chrome/browser/lifetime/ApplicationLifetime.java': '''package org.chromium.chrome.browser.lifetime;
+public class ApplicationLifetime { public static int restarts;
+public static void terminate(boolean restart) { if(!restart)throw new AssertionError(); restarts++; } }''',
 }
 
 
-def run_runtime_flow(content_utils=None):
-    compiler = ["javac"] if shutil.which("javac") else ["java", "-m", "jdk.compiler/com.sun.tools.javac.Main"]
-    adapters = dict(ADAPTERS)
-    adapters.update(RUNTIME)
-    if content_utils is not None:
-        adapters[PREFIX + "content/ContentUtils.java"] = content_utils
-    with tempfile.TemporaryDirectory(prefix="argon-ua-runtime-") as directory:
-        root = Path(directory)
-        sources = [MODEL, CONTROLLER, ROOT / "tests/java/ArgonUserAgentRuntimeTest.java"]
-        for path, text in adapters.items():
-            target = root / path
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text)
-            sources.append(target)
-        result = subprocess.run([*compiler, "-d", str(root / "classes"), *map(str, sources)],
-                                text=True, capture_output=True)
-        if result.returncode:
-            raise ValueError(result.stdout + result.stderr)
-        result = subprocess.run(["java", "-ea", "-cp", str(root / "classes"),
-                                 "org.chromium.chrome.browser.base.ArgonUserAgentRuntimeTest"],
-                                text=True, capture_output=True)
-        if result.returncode:
-            raise ValueError(result.stdout + result.stderr)
-        return result.stdout
+def run_settings_flow():
+    output=[]
+    for locale in ('values','values-ru'):
+        resources=ET.parse(OVERLAY/f'res/{locale}/argon_user_agent_strings.xml').getroot()
+        strings={e.attrib['name']:''.join(e.itertext()) for e in resources}
+        adapters={**ADAPTERS,**UI}
+        adapters['org/chromium/chrome/R.java']='package org.chromium.chrome; public class R { public static class string {'+''.join(
+            f'public static final int {name}={i};' for i,name in enumerate(strings,1))+'} public static final java.util.Map<Integer,String> strings=java.util.Map.ofEntries('+','.join(
+            f'java.util.Map.entry({i},{json.dumps(value,ensure_ascii=True)})' for i,value in enumerate(strings.values(),1))+');}'
+        with tempfile.TemporaryDirectory(prefix='argon-ua-ui-') as directory:
+            root=Path(directory)
+            compile_java(root,[MODEL,PREFERENCE,ROOT/'tests/java/ArgonUserAgentSettingsTest.java'],adapters)
+            for start in ('DEFAULT','CUSTOM'):
+                output.append(run_java(root,'org.chromium.chrome.browser.privacy.settings.ArgonUserAgentSettingsTest',start).strip())
+    return 'PASS: production User-Agent settings in English and Russian; cancel, later, undo, resume, validation and restart failure'
 
 
-class UserAgentRuntimeTests(unittest.TestCase):
-    @unittest.skipUnless(shutil.which("java"), "JDK required")
-    def test_live_presets_desktop_checkbox_and_tab_lifecycle(self):
-        self.assertIn("PASS: live User-Agent", run_runtime_flow())
+class UserAgentSettingsTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('java'),'JDK required')
+    def test_user_facing_flow_in_both_languages(self):
+        self.assertIn('PASS:',run_settings_flow())

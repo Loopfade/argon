@@ -6,8 +6,10 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
+#include <openssl/pool.h>
 #include <openssl/span.h>
 
 #include "net/cert/titanium_ru_root.h"
@@ -18,10 +20,25 @@
 
 namespace net {
 
-inline bool IsTitaniumRussianRoot(const bssl::ParsedCertificate& certificate) {
-  return certificate.der_cert() ==
+inline bool IsTitaniumRussianRoot(const CRYPTO_BUFFER* certificate) {
+  return certificate &&
+         bssl::der::Input(CRYPTO_BUFFER_data(certificate),
+                          CRYPTO_BUFFER_len(certificate)) ==
          bssl::der::Input(kTitaniumRussianRootDer,
                           sizeof(kTitaniumRussianRootDer));
+}
+
+inline bool IsTitaniumRussianRoot(const bssl::ParsedCertificate& certificate) {
+  return IsTitaniumRussianRoot(certificate.cert_buffer());
+}
+
+// HTTP/2 and HTTP/3 pooling does not run certificate verification for the new
+// hostname. Require a separate handshake for this host-scoped trust anchor.
+inline bool CanPoolTitaniumRussianRootConnection(
+    const CRYPTO_BUFFER* verified_root,
+    std::string_view old_hostname,
+    std::string_view new_hostname) {
+  return old_hostname == new_hostname || !IsTitaniumRussianRoot(verified_root);
 }
 
 inline std::unique_ptr<bssl::NameConstraints>
@@ -41,27 +58,26 @@ CreateTitaniumRussianRootConstraints(
 
 // Called for each candidate path before Chromium accepts it. This also applies
 // if the same pinned root was independently installed in Android's trust store.
-// Ordinary roots and Chromium's remaining certificate checks are untouched.
+// The rule scopes trust to the requested hostname, not every SAN in a shared
+// certificate. Chromium still verifies that this hostname matches the leaf,
+// and checks signatures, validity, revocation and certificate name constraints.
 inline void CheckTitaniumRussianRootConstraints(
     const bssl::ParsedCertificateList& certificates,
     bssl::CertPathErrors* errors,
+    std::string_view hostname,
     bssl::Span<const std::string> permitted_dns_names) {
   if (certificates.empty() || !IsTitaniumRussianRoot(*certificates.back())) {
     return;
   }
   // Empty means disabled, including when the exact root is installed in the
-  // Android trust store. Reject the path even if the leaf has no DNS/IP SANs.
-  if (permitted_dns_names.empty()) {
+  // Android trust store. DNS rules never authorize an IP-literal connection.
+  if (permitted_dns_names.empty() || hostname.empty() ||
+      hostname.find_first_of("*:") != std::string_view::npos ||
+      !CreateTitaniumRussianRootConstraints(permitted_dns_names)
+           ->IsPermittedDNSName(hostname)) {
     errors->GetErrorsForCert(0)->AddError(
         bssl::cert_errors::kNotPermittedByNameConstraints);
-    return;
   }
-  auto constraints =
-      CreateTitaniumRussianRootConstraints(permitted_dns_names);
-  const auto& leaf = certificates.front();
-  constraints->IsPermittedCert(leaf->normalized_subject(),
-                               leaf->subject_alt_names(),
-                               errors->GetErrorsForCert(0));
 }
 
 }  // namespace net

@@ -1,3 +1,4 @@
+import {openPageSettings,closeDialog} from './settings-navigation.mjs';
 /** Production UI and connector with a transport fixture; no Android toolbar is simulated. */
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -137,8 +138,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
       .filter(call=>call[0]==='setArgonSearchBoxBounds').length))>boundsBefore,
       'Restored document must resend unchanged geometry to a new adapter');
 
-    await page.locator('#settings-button').click();
-    await page.locator('#edit-shortcuts').click();
+    await page.locator('#edit-bookmarks').click();
     await page.locator('[data-item="kept"]').click();
     await page.locator('#shortcut-edit').click();
     await page.locator('#shortcut-title').fill('Несохранённое название');
@@ -210,7 +210,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await page.locator('#engine-form button[type=submit]').click();await page.locator('[data-edit-engine]').waitFor();
     assert.equal(await page.locator('#selected-engine-name').textContent(),'Новое имя');
     assert.equal((await state()).customEngines[0].id,saved.customEngines[0].id);
-    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await closeDialog(page);
     await native(()=>window.argonNativeFixture.update({canChange:false}));
     await page.locator('#engine-trigger').click();assert(await page.locator('#manage-engines').isDisabled());
     await page.keyboard.press('Escape');await native(()=>window.argonNativeFixture.update({canChange:true}));
@@ -226,7 +226,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
     await page.waitForFunction(()=>!document.body.inert);
     assert.equal((await state()).customEngines.length,0);assert.equal((await state()).engine,'google');
     assert.equal(await page.locator('#selected-engine-name').textContent(),'Google');
-    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await closeDialog(page);
     // Tablet is identified by native Chromium, not by CSS viewport width.
     await page.setViewportSize({width:1024,height:768});
     await native(()=>window.argonNativeFixture.update({tablet:true}));
@@ -237,7 +237,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
       'Favorites remain on the tablet home page');
     assert(await page.locator('#settings-button').isVisible(),
       'Homepage settings remain visible');
-    await page.locator('#settings-button').click();await page.locator('#search-settings').click();
+    await openPageSettings(page);await page.locator('#search-settings').click();
     assert(await page.locator('#search-settings-options').isVisible(),
       'Search providers must remain reachable when the tablet fakebox is hidden');
     await native(()=>window.argonNativeFixture.update({canChange:false}));
@@ -246,17 +246,17 @@ export async function checkNativeSearch(browser, base, errors, out) {
     if(out)await page.screenshot({path:resolve(out,'home-search-settings-tablet.png'),fullPage:true,animations:'disabled'});
     await page.locator('#search-settings-options [data-engine=bing]').click();
     await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='bing');await restore();
-    await page.locator('#settings-button').click();await page.locator('#search-settings').click();
+    await openPageSettings(page);await page.locator('#search-settings').click();
     await page.locator('#settings-add-engine').click();
     await page.locator('#engine-title').fill('Поиск планшета');await page.locator('#engine-url').fill('https://tablet.example/?q={query}');
     await page.locator('#engine-form button[type=submit]').click();await page.locator('#search-settings-options').waitFor();
     assert.equal(await page.locator('#selected-engine-name').textContent(),'Поиск планшета');
     await page.locator('#settings-manage-engines').click();await page.locator('[data-delete-engine]').click();
     await page.waitForFunction(()=>window.argonNativeFixture.state.engine.id==='google');
-    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await closeDialog(page);
     assert(await page.locator('#search-settings-options').isVisible());
-    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
-    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
+    await page.locator('#search-back').click();
+    await closeDialog(page);
     const tabletBounds=await native(()=>window.argonNativeFixture.calls
       .filter(call=>call[0]==='setArgonSearchBoxBounds').length);
     const tabletFocus=await native(()=>window.argonNativeFixture.calls

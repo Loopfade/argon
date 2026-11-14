@@ -11,8 +11,19 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/third_party/boringssl")
 file(CREATE_LINK "${BORINGSSL_SOURCE_DIR}"
      "${CMAKE_CURRENT_BINARY_DIR}/include/third_party/boringssl/src" SYMBOLIC)
 add_executable(scoped_ca_test scoped_ca_test.cc)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/generate_scoped_ca_fixtures.py"
+          "${CMAKE_CURRENT_BINARY_DIR}/generated"
+  COMMAND_ERROR_IS_FATAL ANY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/generate_scoped_ca_fixtures.py"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/apply_scoped_ca.py"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/certificates/check_extra_constraints.cc.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/certificates/multi-san.pem")
 target_include_directories(scoped_ca_test PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../chromium_overlay"
+  "${CMAKE_CURRENT_BINARY_DIR}/generated"
   "${CMAKE_CURRENT_BINARY_DIR}/include")
 target_link_libraries(scoped_ca_test PRIVATE pki crypto)
 enable_testing()

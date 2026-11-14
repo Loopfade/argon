@@ -27,6 +27,7 @@ class PatchTests(unittest.TestCase):
         for transform, source in [
             (patch.patch_profile, self.profile()),
             (patch.patch_verifier, '#include "net/cert/time_conversions.h"\n' + patch.VERIFIER_ANCHOR),
+            (patch.patch_spdy_session, '#include "net/cert/cert_verify_result.h"\n' + patch.SPDY_ANCHOR),
             (
                 patch.patch_gn,
                 '    "cert/cert_verify_proc_builtin.h",\n'
@@ -172,15 +173,24 @@ class PatchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             patch.patch_profile(bad)
 
-    def test_modified_ip_guard_cannot_be_accepted_as_already_patched(self):
+    def test_modified_hostname_guard_cannot_be_accepted_as_already_patched(self):
         source = '#include "net/cert/time_conversions.h"\n' + patch.VERIFIER_ANCHOR
         bad = patch.patch_verifier(source).replace(
-            '    CheckTitaniumRussianRootConstraints(\n'
-            '        path->certs, &path->errors, titanium_permitted_dns_names);',
+            '      CheckTitaniumRussianRootConstraints(\n'
+            '          certs, errors, hostname_, titanium_permitted_dns_names);',
             '',
         )
         with self.assertRaises(ValueError):
             patch.patch_verifier(bad)
+
+    def test_modified_pooling_guard_cannot_be_accepted_as_already_patched(self):
+        source = '#include "net/cert/cert_verify_result.h"\n' + patch.SPDY_ANCHOR
+        bad = patch.patch_spdy_session(source).replace(
+            "!CanPoolTitaniumRussianRootConnection(",
+            "CanPoolTitaniumRussianRootConnection(",
+        )
+        with self.assertRaises(ValueError):
+            patch.patch_spdy_session(bad)
 
     def test_m154_extension_install_dialog_patch_is_retired_and_guarded(self):
         script = (ROOT / "patch.sh").read_text()
