@@ -26,7 +26,7 @@ import org.chromium.components.url_formatter.SchemeDisplay;
 import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.url.GURL;
 
-/** Settings > Open links in apps. The allow list starts empty. */
+/** Settings > Privacy and security > Security > Open links in apps. The allow list starts empty. */
 @NullMarked
 public final class ArgonExternalNavigationSettings extends ChromeBaseSettingsFragment {
     private final SettableMonotonicObservableSupplier<String> mTitle = ObservableSuppliers.createMonotonic();

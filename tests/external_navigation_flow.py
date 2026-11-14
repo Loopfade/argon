@@ -186,6 +186,7 @@ def run_flow(guard, fallback_guard, market_guard):
 
 def verify_upstream(src):
     import apply_external_navigation as patch
+    from external_navigation_search import verify_search
     handler = (src / patch.HANDLER).read_text()
     for block in (patch.USER_GUARD, patch.FALLBACK_GUARD, patch.MARKET_GUARD):
         if handler.count(block) != 1:
@@ -204,6 +205,7 @@ def verify_upstream(src):
         raise ValueError("Review the custom tab override of the user policy")
     fallback = handler.index(patch.FALLBACK_GUARD)
     market = handler.index(patch.MARKET_GUARD)
-    return run_flow(handler[guard:guard + len(patch.USER_GUARD)],
+    navigation = run_flow(handler[guard:guard + len(patch.USER_GUARD)],
                     handler[fallback:fallback + len(patch.FALLBACK_GUARD)],
                     handler[market:market + len(patch.MARKET_GUARD)])
+    return navigation + '\n' + verify_search(src)

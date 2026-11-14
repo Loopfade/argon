@@ -152,7 +152,7 @@ export async function checkBrowserBookmarks(browser,base,errors,out) {
   await page.getByText('Нет закладок',{exact:true}).waitFor();
   await page.reload();await page.getByText('Нет закладок',{exact:true}).waitFor();
   assert.equal((await state()).shortcuts.length,0);
-  if(out)await page.screenshot({path:resolve(out,'home-native-bookmarks-320.png'),fullPage:true});
+  if(out)await page.screenshot({path:resolve(out,'home-native-bookmarks-320.png'),fullPage:true,animations:'disabled'});
   assert(imports>0);
   console.log('PASS: native bookmarks, homepage creation/editing, touch-friendly ordering, drag, folders, safe deletion, migration and backup');
  } finally {await context.close();}
@@ -258,11 +258,11 @@ async function checkBookmarkEditing(page,wait,state,out) {
  await page.locator('#settings-button').click();
  assert((await page.locator('#edit-shortcuts').textContent()).includes('Редактировать закладки'));
  await page.locator('#edit-shortcuts').click();
- if(out)await page.screenshot({path:resolve(out,'home-native-editing-320.png'),fullPage:true});
+ if(out)await page.screenshot({path:resolve(out,'home-native-editing-320.png'),fullPage:true,animations:'disabled'});
  await page.locator('[data-native-add=""]').click();
  await page.locator('#native-kind').selectOption('folder');
  await page.locator('#native-title').fill('Рабочая папка');
- if(out)await page.screenshot({path:resolve(out,'home-native-add-320.png'),fullPage:true});
+ if(out)await page.screenshot({path:resolve(out,'home-native-add-320.png'),fullPage:true,animations:'disabled'});
  await page.locator('#native-bookmark-form button[type=submit]').click();await wait();
  const folder=await page.evaluate(()=>nativeBookmarks.roots.find(item=>item.name==='Рабочая папка').id);
  await page.locator('[data-browser-bookmark="'+folder+'"]').click();await page.locator('#native-open-folder').click();
