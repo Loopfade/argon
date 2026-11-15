@@ -3,7 +3,8 @@
 import re
 import xml.etree.ElementTree as ET
 
-ANDROID = "{http://schemas.android.com/apk/res/android}"
+ANDROID_URI = "http://schemas.android.com/apk/res/android"
+ANDROID = "{" + ANDROID_URI + "}"
 WEB_SCHEMES = {"http", "https", "about", "content", "file", "package"}
 
 
@@ -26,14 +27,21 @@ def manifest_from_dump(text):
                 root = node
             stack.append((indent, node))
             continue
-        attribute = re.match(r"^\s*A: ([\w.:-]+)(?:\(0x[0-9a-fA-F]+\))?=(.*)$", line)
+        attribute = re.match(r"^\s*A: ([^\s=()]+)(?:\(0x[0-9a-fA-F]+\))?=(.*)$", line)
         if not attribute:
             continue
         if not stack:
             raise ValueError("Manifest attribute without an element")
         name, value = attribute.groups()
-        if name.startswith("android:"):
+        # Current aapt2's XmlPrinter writes namespace URIs, not the declared
+        # prefix. Keep the older android: spelling supported as well.
+        if name.startswith(ANDROID_URI + ":"):
+            name = ANDROID + name[len(ANDROID_URI) + 1:]
+        elif name.startswith("android:"):
             name = ANDROID + name.split(":", 1)[1]
+        # Raw is a diagnostic annotation, never the authoritative value. A
+        # compiled integer must not be replaced by a different Raw string.
+        value = re.sub(r'\s+\(Raw: "(?:\\.|[^"\\])*"\)\s*$', "", value).strip()
         quoted = re.match(r'^"((?:\\.|[^"\\])*)"', value)
         integer = re.fullmatch(r"\(type 0x(?:10|11|12)\)0x([0-9a-fA-F]+)", value.strip())
         if quoted:
@@ -64,7 +72,7 @@ def verify_manifest(text, identity, production_id):
         raise ValueError("Expected exactly one manifest application")
     version = root.get(ANDROID + "versionCode", "")
     if not version.isdecimal() or int(version) < 1:
-        raise ValueError("Missing or invalid versionCode")
+        raise ValueError(f"Missing or invalid versionCode: {version!r}")
     if "version_code" in identity and int(version) != identity["version_code"]:
         raise ValueError("APK versionCode does not match the test build plan")
 

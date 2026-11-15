@@ -143,6 +143,47 @@ class CacheReplacementTests(unittest.TestCase):
         newer = self.entry(1, key=cache.cache_prefix({**old_lock, "chromium_version": "154.0.8037.126"}, "arm64") + "-run-2")
         self.assertEqual(cache.old_version_caches([newer], prefix, "arm64", self.ref), [])
 
+    def test_validation_cleanup_retires_old_versions_only_in_its_own_scope(self):
+        prefix = "argon-ccache-validation-v2-157.0.8103.38-" + "a" * 64
+        new = self.entry(20, key=prefix + "-new")
+        old = [self.entry(1, key=prefix + "-old"),
+               self.entry(2, key="argon-ccache-validation-v1-" + "b" * 64 + "-legacy"),
+               self.entry(3, key="argon-ccache-validation-v2-156.0.1.1-" + "b" * 64 + "-old-version"),
+               self.entry(4, key="argon-ccache-validation-v2-157.0.8103.38-" + "b" * 64 + "-old-config",
+                          version="old-archive-format")]
+        kept = [self.entry(21, key=prefix + "-later-run"),
+                self.entry(5, key="argon-ccache-validation-v2-158.0.1.1-" + "b" * 64 + "-newer-version"),
+                self.entry(6, key=prefix + "-other-ref", ref="refs/heads/main"),
+                self.entry(7, key="argon-ccache-v3-arm-156.0.1.1-native"),
+                self.entry(8, key="argon-ccache-validation-v3-157.0.8103.38-" + "b" * 64 + "-future-schema")]
+        self.assertEqual(cache.obsolete_validation_caches([new, *old, *kept], new["key"],
+                                                          prefix, self.ref), old)
+
+    def test_validation_cleanup_requires_exact_nonempty_replacement(self):
+        prefix = "argon-ccache-validation-v2-157.0.8103.38-" + "a" * 64
+        old, new = self.entry(1, key=prefix + "-old"), self.entry(2, key=prefix + "-new")
+        for entries in ([old], [old, {**new, "size_in_bytes": 0}],
+                        [old, {**new, "ref": "refs/heads/main"}]):
+            with self.subTest(entries=entries):
+                self.assertIsNone(cache.obsolete_validation_caches(entries, new["key"], prefix, self.ref))
+        with self.assertRaises(ValueError):
+            cache.obsolete_validation_caches([old, new], new["key"], "argon-ccache-v3-arm", self.ref)
+
+    def test_validation_cli_verifies_main_snapshot_before_deleting_legacy_keys(self):
+        prefix = "argon-ccache-validation-v2-157.0.8103.38-" + "a" * 64
+        entries = [self.entry(1, key="argon-ccache-validation-v1-" + "b" * 64 + "-old",
+                              ref="refs/heads/main"),
+                   self.entry(2, key=prefix + "-new", ref="refs/heads/main")]
+        with patch.dict(os.environ, {"CCACHE_CACHE_PREFIX": prefix, "GITHUB_REF": "refs/heads/main",
+                                     "GITHUB_REPOSITORY": "Loopfade/argon"}), \
+             patch.object(sys, "argv", ["prune", "--validation", entries[1]["key"]]), \
+             patch.object(cache.subprocess, "check_output", return_value=json.dumps([
+                 {"actions_caches": entries[:1]}, {"actions_caches": entries[1:]}])) as inventory, \
+             patch.object(cache.subprocess, "run") as delete:
+            cache.main()
+        self.assertIn("ref=refs/heads/main", inventory.call_args.args[0])
+        delete.assert_called_once_with(["gh", "cache", "delete", "1", "--repo", "Loopfade/argon"], check=True)
+
 
 class PreparedImageTests(unittest.TestCase):
     def compare(self, before, after):
@@ -154,7 +195,7 @@ class PreparedImageTests(unittest.TestCase):
                 for name, content in fixture.items():
                     path = root / name
                     path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_text(content)
+                    path.write_text(json.dumps({"pin": content}) if name == "build-lock.json" else content)
             with patch.object(prepared, "PREPARED_INPUTS", ("build-lock.json", "extensions")), \
                  patch.object(sys, "argv", ["check", "--prepared", str(roots[0]),
                                              "--checkout", str(roots[1])]):

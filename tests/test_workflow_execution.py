@@ -189,7 +189,7 @@ class WorkflowExecutionTests(unittest.TestCase):
             ("Полная сборка Argon (Релизная)", ".github/workflows/build-all.yml", True),
             ("Full Argon build (release)", ".github/workflows/build-all.yml", True),
             ("Renamed build run", ".github/workflows/build-all.yml", True),
-            ("Argon Test", ".github/workflows/build-test-main.yml", False),
+            ("Argon Test", ".github/workflows/build-test-branch.yml", False),
             ("Build Argon", ".github/workflows/untrusted.yml", False),
             ("Build Argon (full pipeline)", ".github/workflows/untrusted.yml", False),
             ("Полная сборка Argon (Релизная)", ".github/workflows/untrusted.yml", False),

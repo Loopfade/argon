@@ -1,5 +1,7 @@
 """Keep the standalone test APK separate without changing release identities."""
 import json
+import io
+from contextlib import redirect_stdout
 import os
 from pathlib import Path
 import re
@@ -61,14 +63,18 @@ class AppIdentityTests(unittest.TestCase):
             test_build_targets.ApkArchitectureTests.write_apk(apk, ["arm64-v8a"])
             argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", str(root / "sdk"),
                     "--jdk", str(root / "jdk"), "--mode", "release", "--arch", "arm64"]
+            diagnostics = io.StringIO()
             with patch.object(sign_and_verify, "ROOT", root), patch.object(sys, "argv", argv), \
                  patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}), \
                  patch.object(sign_and_verify, "run", return_value=subprocess.CompletedProcess(
                      [], 0, stdout=manifest_dump("app.titaniumru.browser"))), \
                  patch.object(sign_and_verify, "write_release_key") as key, \
+                 redirect_stdout(diagnostics), \
                  self.assertRaisesRegex(ValueError, "application ID"):
                 sign_and_verify.main()
             key.assert_not_called()
+            self.assertIn("aapt2 manifest rejected before signing", diagnostics.getvalue())
+            self.assertIn("http://schemas.android.com/apk/res/android:versionCode", diagnostics.getvalue())
 
     def test_both_architectures_configure_and_restore_the_original_name(self):
         resource_text = ('<resources><string name="app_name" translatable="false">Argon</string>'
@@ -130,12 +136,12 @@ class AppIdentityTests(unittest.TestCase):
                     continue
                 callers.append(path.name)
                 selected = re.findall(r"(?m)^      standalone_test: (.+)$", job)
-                if path.name == "build-test-main.yml":
+                if path.name == "build-test-branch.yml":
                     self.assertEqual(selected, ["true"], path.name)
                     self.assertEqual(re.findall(r"(?m)^      signing: (.+)$", job), ["release"])
                 else:
                     self.assertIn(selected, ([], ["false"]), path.name)
-        self.assertCountEqual(callers, ["build-all.yml", "build-test-main.yml"])
+        self.assertCountEqual(callers, ["build-all.yml", "build-test-branch.yml"])
         reusable = (workflows / "build-unified-arch.yml").read_text()
         self.assertIn("      standalone_test:\n        type: boolean\n        default: false\n", reusable)
         self.assertIn("  ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}\n", reusable)

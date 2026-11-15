@@ -33,7 +33,7 @@ class BuildStageTests(unittest.TestCase):
         self.assertRegex(result.stderr, r"Ran [1-9]\d* tests")
         self.assertNotIn("skipped", result.stderr)
 
-    def run_build(self, mode, compiler_status=0):
+    def run_build(self, mode, compiler_status=0, unit_tests=None):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             for name in ("build.sh", "common.sh", "scripts/prepare_chromium.sh"):
@@ -81,6 +81,8 @@ touch "$2/apks/ChromePublic.apk"''')
             env.pop("CCACHE_DIR", None)
             # Fresh-checkout fixtures must not inherit the Docker reuse flag.
             env.pop("ARGON_PREPATCHED_SOURCES", None)
+            if unit_tests is not None:
+                env["ARGON_RUN_UNIT_TESTS"] = unit_tests
             if mode == "checkpoint":
                 env["CCACHE_DIR"] = str(root / "cache")
             result = subprocess.run(["bash", root / "build.sh", "arm64"], env=env,
@@ -98,6 +100,20 @@ touch "$2/apks/ChromePublic.apk"''')
         self.assertTrue(any("-m unittest discover" in line for line in stages))
         self.assertIsNone(compiler)
         self.assertFalse(any("sign_and_verify.py" in line for line in stages))
+
+    def test_pr_preparation_can_omit_duplicate_unit_tests_but_keeps_policy_and_gn(self):
+        result, stages, compiler = self.run_build("prepare", unit_tests="0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(any("-m unittest discover" in line for line in stages))
+        self.assertTrue(any(line.startswith("ctest:") for line in stages))
+        self.assertTrue(any(line.startswith("gn:gen ") for line in stages))
+        self.assertIsNone(compiler)
+
+    def test_invalid_unit_test_selection_stops_preparation(self):
+        result, stages, compiler = self.run_build("prepare", unit_tests="invalid")
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertFalse(any(line.startswith("gn:") for line in stages))
+        self.assertIsNone(compiler)
 
     def test_checkpoint_explicitly_compiles_java_jni_and_apk(self):
         result, stages, compiler = self.run_build("checkpoint")

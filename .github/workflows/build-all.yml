@@ -118,6 +118,7 @@ jobs:
 
   cleanup:
     name: Сохранить текущий образ после завершения всех сборок
+    continue-on-error: true
     needs: [plan, image, build, publish]
     if: always() && !cancelled() && needs.image.result == 'success'
     runs-on: ubuntu-24.04

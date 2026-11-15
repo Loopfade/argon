@@ -6,7 +6,7 @@ from apk_identity_fixture import manifest_dump
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from apk_identity import ANDROID, manifest_from_dump, verify_manifest
+from apk_identity import ANDROID, ANDROID_URI, manifest_from_dump, verify_manifest
 
 
 class ApkIdentityTests(unittest.TestCase):
@@ -66,8 +66,39 @@ class ApkIdentityTests(unittest.TestCase):
                 verify_manifest(text, self.identity, self.production)
 
     def test_parser_reads_sdk_typed_integer_and_fails_on_missing_manifest(self):
-        root = manifest_from_dump(manifest_dump())
+        root = manifest_from_dump(manifest_dump(legacy=True))
         self.assertEqual(root.get(ANDROID + "versionCode"), "1000000001")
         for text in ("", "E: application", "E: manifest\nE: manifest"):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 manifest_from_dump(text)
+
+    def test_sdk_uri_attributes_and_legacy_prefix_have_the_same_identity(self):
+        modern = verify_manifest(manifest_dump(), self.identity, self.production)
+        legacy = verify_manifest(manifest_dump(legacy=True), self.identity, self.production)
+        self.assertEqual(modern, legacy)
+        self.assertEqual(modern["version_code"], 1000000001)
+        self.assertTrue(modern["declares_firebase_messaging_service"])
+
+    def test_compiled_integer_with_raw_annotation_uses_the_compiled_value(self):
+        for value in ('1000000001 (Raw: "1000000001")',
+                      '0x3b9aca01 (Raw: "1000000001")',
+                      '(type 0x10)0x3b9aca01 (Raw: "1000000001")'):
+            text = manifest_dump().replace(
+                f'{ANDROID_URI}:versionCode(0x0101021b)=1000000001',
+                f'{ANDROID_URI}:versionCode(0x0101021b)={value}')
+            with self.subTest(value=value):
+                self.assertEqual(verify_manifest(text, self.identity, self.production)["version_code"],
+                                 1000000001)
+        text = manifest_dump().replace(
+            f'{ANDROID_URI}:versionCode(0x0101021b)=1000000001',
+            f'{ANDROID_URI}:versionCode(0x0101021b)=2 (Raw: "1000000001")')
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            verify_manifest(text, self.identity, self.production)
+
+    def test_missing_zero_and_wrong_namespace_version_codes_still_fail(self):
+        source = manifest_dump()
+        for text in (source.replace(f'    A: {ANDROID_URI}:versionCode(0x0101021b)=1000000001\n', ''),
+                     source.replace('versionCode(0x0101021b)=1000000001', 'versionCode(0x0101021b)=0'),
+                     source.replace(f'{ANDROID_URI}:versionCode', 'http://other.example:versionCode')):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, "versionCode"):
+                verify_manifest(text, self.identity, self.production)
