@@ -35,6 +35,12 @@ def manifest_dump(package="app.titaniumru.browser.test", version_code=1000000001
             A: android:name(0x01010003)="com.google.firebase.MESSAGING_EVENT"
           E: category (line=15)
             A: android:name(0x01010003)="{package}"
+      E: activity (line=919)
+        A: android:name(0x01010003)="androidx.core.pip.contentpip.ContentPipInternalActivity"
+        A: android:exported(0x01010010)=(type 0x12)0x0
+        A: android:taskAffinity(0x01010012)="{package}.androidx.core.pip.contentpip.isolated"
+        A: android:excludeFromRecents(0x01010017)=(type 0x12)0xffffffff
+        A: android:supportsPictureInPicture(0x010104f7)=(type 0x12)0xffffffff
 '''
     if legacy:
         return text

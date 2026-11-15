@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -86,8 +87,11 @@ class AppIdentityTests(unittest.TestCase):
                 resource.parent.mkdir(parents=True)
                 resource.write_text(resource_text)
                 manifest = src / build_identity.MANIFEST
-                manifest.write_text('<manifest>' + build_identity.ORIGINAL_PACKAGE
-                                    + build_identity.GOOGLE_CHROME_SCHEME + '</manifest>')
+                manifest_text = ('<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
+                                 'xmlns:tools="http://schemas.android.com/tools">'
+                                 + build_identity.ORIGINAL_PACKAGE + '<application>'
+                                 + build_identity.GOOGLE_CHROME_SCHEME + '\n    </application></manifest>')
+                manifest.write_text(manifest_text)
                 output = src / "out/args.gn"
                 with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}):
                     build_identity.configure(src, output, arch, True, "test")
@@ -97,6 +101,15 @@ class AppIdentityTests(unittest.TestCase):
                     self.assertIn('cc_wrapper = "ccache"', output.read_text())
                     self.assertNotIn('android:scheme="googlechrome"', manifest.read_text())
                     self.assertNotIn('<original-package', manifest.read_text())
+                    rendered = ET.fromstring(manifest.read_text().replace(
+                        '{{ manifest_package }}', 'app.titaniumru.browser.test'))
+                    activity = rendered.find('application/activity')
+                    android = '{http://schemas.android.com/apk/res/android}'
+                    self.assertEqual(activity.get(android + 'name'), build_identity.CONTENT_PIP_ACTIVITY)
+                    self.assertEqual(activity.get(android + 'taskAffinity'),
+                                     'app.titaniumru.browser.test.androidx.core.pip.contentpip.isolated')
+                    self.assertEqual(activity.get('{http://schemas.android.com/tools}replace'),
+                                     'android:taskAffinity')
                     self.assertEqual(resource.read_text(), resource_text.replace(
                         '>Argon</string>', '>Argon Test</string>', 1))
                     for path in (resource, output, manifest):
@@ -108,6 +121,7 @@ class AppIdentityTests(unittest.TestCase):
                 self.assertEqual(resource.read_text(), resource_text)
                 self.assertIn(build_identity.GOOGLE_CHROME_SCHEME, manifest.read_text())
                 self.assertIn(build_identity.ORIGINAL_PACKAGE, manifest.read_text())
+                self.assertEqual(manifest.read_text(), manifest_text)
                 self.assertEqual(output.read_text(), configure_build.render_gn_args(arch))
 
     def test_unknown_branding_fails_without_changing_generated_arguments(self):
