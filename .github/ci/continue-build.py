@@ -10,8 +10,7 @@ from urllib.parse import quote
 
 WORKFLOW = ".github/workflows/build.yml"
 FULL_WORKFLOW = ".github/workflows/build-all.yml"
-FULL_WORKFLOWS = (FULL_WORKFLOW, ".github/workflows/build-all-no-publish.yml",
-                  ".github/workflows/build-test-main.yml")
+FULL_WORKFLOWS = (FULL_WORKFLOW, ".github/workflows/build-test-main.yml")
 CONTROLLER_WORKFLOW = ".github/workflows/continue-build.yml"
 BUILD_JOBS = {
     f"Собрать и проверить {arch} / Собрать, подписать и проверить APK ({arch})": arch

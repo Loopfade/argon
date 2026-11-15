@@ -32,16 +32,6 @@ class WorkflowLocalizationTests(unittest.TestCase):
         subscriptions = re.search(r"(?m)^    workflows: \[(.+)\]$", updater)[1]
         self.assertIn("'" + name + "'", subscriptions)
 
-    def test_manual_signing_labels_preserve_internal_signing_modes(self):
-        for filename in ("build-all-no-publish.yml",):
-            text = (ROOT / ".github/workflows" / filename).read_text()
-            with self.subTest(workflow=filename):
-                self.assertIn("options: [Релизная, Тестовая]", text)
-                self.assertIn("default: Релизная", text)
-                conversion = "${{ inputs.signing == 'Релизная' && 'release' || 'test' }}"
-                self.assertIn("SIGNING_MODE: " + conversion, text)
-                self.assertIn("      signing: " + conversion, text)
-
     def test_release_and_branch_test_use_one_release_key_with_separate_app_variants(self):
         workflows = ROOT / ".github/workflows"
         production = (workflows / "build-all.yml").read_text()

@@ -122,7 +122,6 @@ class AppIdentityTests(unittest.TestCase):
         # Keep build.sh's container tests stdlib-only, like the other workflow
         # wiring checks. Job boundaries and these fields use fixed YAML indents.
         workflows = ROOT / ".github/workflows"
-        expression = "${{ inputs.signing == 'Тестовая' }}"
         callers = []
         for path in workflows.glob("*.yml"):
             jobs = path.read_text().split("\njobs:\n", 1)[1]
@@ -131,19 +130,12 @@ class AppIdentityTests(unittest.TestCase):
                     continue
                 callers.append(path.name)
                 selected = re.findall(r"(?m)^      standalone_test: (.+)$", job)
-                if path.name == "build-all-no-publish.yml":
-                    self.assertEqual(selected, [expression], path.name)
-                elif path.name == "build-test-main.yml":
+                if path.name == "build-test-main.yml":
                     self.assertEqual(selected, ["true"], path.name)
                     self.assertEqual(re.findall(r"(?m)^      signing: (.+)$", job), ["release"])
                 else:
                     self.assertIn(selected, ([], ["false"]), path.name)
-        self.assertIn("build-all-no-publish.yml", callers)
-        self.assertIn("build-all.yml", callers)
-        self.assertIn("build-test-main.yml", callers)
-        artifacts = (workflows / "build-all-no-publish.yml").read_text()
-        self.assertRegex(artifacts, r"(?m)^  ARGON_STANDALONE_TEST: " + re.escape(expression) + r"$")
-        self.assertNotRegex(artifacts.split("\njobs:\n", 1)[1], r"(?m)^  publish:")
+        self.assertCountEqual(callers, ["build-all.yml", "build-test-main.yml"])
         reusable = (workflows / "build-unified-arch.yml").read_text()
         self.assertIn("      standalone_test:\n        type: boolean\n        default: false\n", reusable)
         self.assertIn("  ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}\n", reusable)

@@ -318,13 +318,12 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
                     with self.assertRaisesRegex(ValueError, "package or application label"):
                         pipeline.verify_artifact(*args)
 
-    def test_both_manual_workflows_reuse_only_after_payload_verification(self):
+    def test_release_workflow_reuses_only_after_payload_verification(self):
         payload = self.root / "verified-payload"
         payload.mkdir()
         (payload / "verified.apk").write_bytes(b"verified APK")
         repository = "Loopfade/argon"
-        for workflow in (".github/workflows/build-all.yml",
-                         ".github/workflows/build-all-no-publish.yml"):
+        for workflow in (".github/workflows/build-all.yml",):
             source = {"path": workflow, "event": "workflow_dispatch", "head_sha": self.sha,
                       "head_branch": "main", "repository": {"full_name": repository},
                       "head_repository": {"full_name": repository}}

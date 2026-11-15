@@ -172,7 +172,7 @@ class ContinuationTests(unittest.TestCase):
 
     def test_full_pipeline_continues_only_its_original_manual_main_run(self):
         for workflow in (".github/workflows/build-all.yml",
-                         ".github/workflows/build-all-no-publish.yml"):
+                         ".github/workflows/build-test-main.yml"):
             with self.subTest(workflow=workflow):
                 self.run.update(path=workflow, event="workflow_dispatch",
                                 head_branch="main", pull_requests=[])
