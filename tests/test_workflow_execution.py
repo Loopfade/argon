@@ -86,6 +86,7 @@ def workflow_step(filename, step_id):
     workflow = (ROOT / ".github/workflows" / filename).read_text()
     blocks = re.split(r"(?m)^      - ", workflow)[1:]
     block, = [block for block in blocks if f"\n        id: {step_id}\n" in block]
+    block = re.split(r"(?m)^  [\w-]+:\n", block, maxsplit=1)[0]
     script = textwrap.dedent(block.split("        run: |\n", 1)[1])
     # Materialize read-only process substitutions for environments without
     # /dev/fd. The shell validation and all GitHub operations stay unchanged.
@@ -339,6 +340,13 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "dashboard-data.json").read_text(), original)
         self.assertFalse(any("--method" in call for call in self.calls()))
+
+    def test_dashboard_push_requests_main_deploy_without_writing_main(self):
+        result = self.execute("deploy-dashboard.yml", "dispatch")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [["api", "--method", "POST",
+                                        "repos/fixture/argon/actions/workflows/deploy-dashboard.yml/dispatches",
+                                        "-f", "ref=main"]])
 
 
 if __name__ == "__main__":
