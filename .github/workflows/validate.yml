@@ -4,10 +4,20 @@ on:
     branches: [main]
     # Required checks must report for every PR, including dashboard-only edits.
     types: [opened, synchronize, reopened, ready_for_review, closed]
+  # Seed the shared main cache only when its version/configuration may change.
+  push:
+    branches: [main]
+    paths:
+      - build-lock.json
+      - args.gn
+      - scripts/configure_build.py
+      - .github/ci/validation-scope.py
+      - .github/workflows/validate.yml
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: validate-${{ github.head_ref || github.ref_name }}
+  group: validate-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   cleanup:
@@ -128,7 +138,7 @@ jobs:
           ctest --test-dir .build/policy-tests --output-on-failure
   domain-policy:
     name: Проверить графы Android и доменную политику
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
     permissions:
       actions: write
       contents: read
@@ -150,12 +160,6 @@ jobs:
       - name: Подтвердить отсутствие изменений компилируемых исходников
         if: steps.changes.outputs.domain != 'true'
         run: echo 'Документация и служебные workflow не требуют Android-компиляции.'
-      - name: Освободить место на временном исполнителе GitHub
-        if: steps.changes.outputs.domain == 'true' && runner.environment == 'github-hosted'
-        run: |
-          test "$RUNNER_ENVIRONMENT" = github-hosted
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
-          df -h .
       - name: Подготовить каталог кеша проверочной компиляции
         if: steps.changes.outputs.domain == 'true'
         run: mkdir -p "$RUNNER_TEMP/argon-validation-ccache"
@@ -168,12 +172,34 @@ jobs:
           key: ${{ steps.changes.outputs.cache-prefix }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ steps.changes.outputs.cache-prefix }}-
-      - name: Настроить Docker Buildx для определения digest образа
+            ${{ steps.changes.outputs.legacy-cache-prefix }}-
+          lookup-only: ${{ github.event_name != 'pull_request' }}
+      - name: Выбрать проверку PR или заполнение отсутствующего кеша main
+        id: cache_plan
         if: steps.changes.outputs.domain == 'true'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MATCHED_CACHE_KEY: ${{ steps.compiler_cache.outputs.cache-matched-key }}
+          CACHE_PREFIX: ${{ steps.changes.outputs.cache-prefix }}
+        run: |
+          if [[ "$EVENT_NAME" == pull_request || "$MATCHED_CACHE_KEY" != "$CACHE_PREFIX-"* ]]; then
+            echo 'compile=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'compile=false' >> "$GITHUB_OUTPUT"
+            echo "Совместимый кеш main уже существует: $MATCHED_CACHE_KEY"
+          fi
+      - name: Освободить место на временном исполнителе GitHub
+        if: steps.cache_plan.outputs.compile == 'true' && runner.environment == 'github-hosted'
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
+          df -h .
+      - name: Настроить Docker Buildx для определения digest образа
+        if: steps.cache_plan.outputs.compile == 'true'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Использовать совместимый подготовленный образ Chromium
         id: prepared
-        if: steps.changes.outputs.domain == 'true'
+        if: steps.cache_plan.outputs.compile == 'true'
         env:
           GHCR_TOKEN: ${{ github.token }}
         run: |
@@ -184,7 +210,7 @@ jobs:
           python3 .github/ci/full-build.py probe-image --image "ghcr.io/$owner/argon-build:branch-main"
       - name: Подготовить исходники и проверить доменную политику в BuildKit
         id: cold
-        if: steps.changes.outputs.domain == 'true' && steps.prepared.outputs.exists != 'true'
+        if: steps.cache_plan.outputs.compile == 'true' && steps.prepared.outputs.exists != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -202,7 +228,7 @@ jobs:
           sbom: false
       - name: Собрать и выполнить тесты доменной политики Chromium
         id: warm
-        if: steps.prepared.outputs.exists == 'true'
+        if: steps.cache_plan.outputs.compile == 'true' && steps.prepared.outputs.exists == 'true'
         env:
           PREPARED_IMAGE: ${{ steps.prepared.outputs.image }}
         run: |
@@ -237,12 +263,12 @@ jobs:
         with:
           path: ${{ runner.temp }}/argon-validation-ccache
           key: ${{ steps.compiler_cache.outputs.cache-primary-key }}
-      - name: Удалить предыдущие снимки после подтверждения нового кеша
-        if: steps.save_cache.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
+      - name: Удалить старые версии и снимки после подтверждения нового кеша
+        if: (steps.save_cache.outcome == 'success' || steps.cache_plan.outputs.compile == 'false') && (github.ref == 'refs/heads/main' || github.event.pull_request.head.repo.full_name == github.repository)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           CCACHE_CACHE_PREFIX: ${{ steps.changes.outputs.cache-prefix }}
-          CURRENT_CACHE_KEY: ${{ steps.compiler_cache.outputs.cache-primary-key }}
-        run: python3 .github/ci/prune-compiler-cache.py "$CURRENT_CACHE_KEY"
+          CURRENT_CACHE_KEY: ${{ steps.save_cache.outcome == 'success' && steps.compiler_cache.outputs.cache-primary-key || steps.compiler_cache.outputs.cache-matched-key }}
+        run: python3 .github/ci/prune-compiler-cache.py --validation "$CURRENT_CACHE_KEY"
 

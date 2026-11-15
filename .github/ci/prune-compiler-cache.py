@@ -51,6 +51,36 @@ def obsolete_caches(caches, replacement_key, prefix, ref):
             and entry["created_at"] < replacement["created_at"]]
 
 
+def obsolete_validation_caches(caches, replacement_key, prefix, ref):
+    """Retire old validation toolchains only after a nonempty replacement exists."""
+    current = re.fullmatch(r"argon-ccache-validation-v2-([0-9]+(?:\.[0-9]+){3})-[0-9a-f]{64}", prefix)
+    if not current:
+        raise ValueError("Invalid versioned validation-cache prefix")
+    replacement = next((entry for entry in caches
+                        if entry["ref"] == ref and entry["key"] == replacement_key
+                        and replacement_key.startswith(prefix + "-")
+                        and entry["size_in_bytes"] > 0), None)
+    if replacement is None:
+        return None
+    current_version = tuple(map(int, current[1].split(".")))
+    family = re.compile(r"^argon-ccache-validation-v([0-9]+)-"
+                        r"(?:([0-9]+(?:\.[0-9]+){3})-)?[0-9a-f]{64}-")
+    obsolete = []
+    for entry in caches:
+        match = family.match(entry["key"])
+        if (entry["ref"] != ref or entry["key"] == replacement_key or not match
+                or int(match[1]) > 2 or entry["created_at"] >= replacement["created_at"]):
+            continue
+        if match[2]:
+            # An older, delayed run must preserve a newer Chromium version.
+            if tuple(map(int, match[2].split("."))) > current_version:
+                continue
+        elif match[1] != "1":
+            continue
+        obsolete.append(entry)
+    return obsolete
+
+
 def other_toolchain_caches(caches, prefix, arch, ref):
     """A branch test selects main's active toolchain, including rollbacks."""
     family = re.compile(rf"^argon-ccache-v[0-9]+-{re.escape(arch)}-")
@@ -65,6 +95,7 @@ def main():
     parser.add_argument("--prefix-for", choices=("arm64", "arm"))
     parser.add_argument("--remove-old-versions", choices=("arm64", "arm"))
     parser.add_argument("--replace-toolchain", choices=("arm64", "arm"))
+    parser.add_argument("--validation", action="store_true")
     args = parser.parse_args()
     if args.prefix_for:
         print(cache_prefix(json.loads(Path("build-lock.json").read_text()), args.prefix_for))
@@ -90,6 +121,8 @@ def main():
                 if args.replace_toolchain else
                 old_version_caches(caches, prefix, args.remove_old_versions, ref)
                 if args.remove_old_versions else
+                obsolete_validation_caches(caches, args.replacement_key, prefix, ref)
+                if args.validation else
                 obsolete_caches(caches, args.replacement_key, prefix, ref))
     if obsolete is None:
         if os.environ.get("GITHUB_OUTPUT"):

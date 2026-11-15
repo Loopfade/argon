@@ -56,24 +56,42 @@ def changed_paths(root, base, head):
 
 def cache_prefix(root):
     lock = json.loads((root / "build-lock.json").read_text())
+    version = lock["chromium_version"]
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", version):
+        raise ValueError("Invalid pinned Chromium version")
     digest = hashlib.sha256()
     for key in ("chromium_commit", "depot_tools_commit", "boringssl_commit", "vanadium_commit"):
         digest.update(key.encode() + b"\0" + lock[key].encode() + b"\0")
     for name in ("args.gn", "scripts/configure_build.py"):
         digest.update(name.encode() + b"\0" + (root / name).read_bytes())
-    return "argon-ccache-validation-v1-" + digest.hexdigest()
+    return f"argon-ccache-validation-v2-{version}-{digest.hexdigest()}"
+
+
+def select_checks(root, event, ref, base="", head=""):
+    if event in ("push", "workflow_dispatch") and ref == "refs/heads/main":
+        # A trusted main run only seeds the shared compiler cache. It must not
+        # repeat the required source/UI/integration checks already run in PR.
+        return {"full": False, "domain": True}
+    if event != "pull_request":
+        raise ValueError("Cache warmup must run on main")
+    paths = changed_paths(root, base, head)
+    if paths is None:
+        print("::notice::Родители merge-коммита отличаются от события PR; выполняются все проверки.")
+        return {"full": True, "domain": True}
+    return classify(paths)
 
 
 def main():
-    paths = changed_paths(ROOT, os.environ["PR_BASE_SHA"], os.environ["PR_HEAD_SHA"])
-    selected = {"full": True, "domain": True} if paths is None else classify(paths)
-    if paths is None:
-        print("::notice::Родители merge-коммита отличаются от события PR; выполняются все проверки.")
+    selected = select_checks(ROOT, os.environ["GITHUB_EVENT_NAME"], os.environ["GITHUB_REF"],
+                             os.environ.get("PR_BASE_SHA", ""), os.environ.get("PR_HEAD_SHA", ""))
+    prefix = cache_prefix(ROOT)
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         for key, value in selected.items():
             output.write(f"{key}={str(value).lower()}\n")
-        output.write(f"cache-prefix={cache_prefix(ROOT)}\n")
-    print("Проверки PR: " + json.dumps(selected, ensure_ascii=False))
+        output.write(f"cache-prefix={prefix}\n")
+        # Restore compatible v1 PR snapshots during the key-format migration.
+        output.write(f"legacy-cache-prefix=argon-ccache-validation-v1-{prefix.rsplit('-', 1)[1]}\n")
+    print("Выбранные проверки: " + json.dumps(selected, ensure_ascii=False))
 
 
 if __name__ == "__main__":

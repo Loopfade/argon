@@ -20,26 +20,42 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("'.github/workflows/deploy-dashboard.yml'", deploy)
         self.assertIn("include-hidden-files: true", deploy)
 
-    def test_required_checks_run_for_every_main_pr_without_post_merge_push(self):
+    def test_required_checks_run_for_every_pr_and_main_only_seeds_its_cache(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
         trigger = validation.split("\npermissions:", 1)[0].split("\non:\n", 1)[1]
-        self.assertEqual(re.findall(r"(?m)^  ([\w-]+):", trigger), ["pull_request"])
+        self.assertEqual(re.findall(r"(?m)^  ([\w-]+):", trigger),
+                         ["pull_request", "push", "workflow_dispatch"])
         self.assertIn("branches: [main]", trigger)
-        self.assertNotRegex(trigger, r"(?m)^    paths(?:-ignore)?:")
+        pr_trigger = trigger.split("  push:\n", 1)[0]
+        self.assertNotRegex(pr_trigger, r"(?m)^    paths(?:-ignore)?:")
         self.assertIn("synchronize", trigger)
         for job in ("validate", "domain-policy"):
             body = re.split(r"(?m)^  [\w-]+:", validation.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
             self.assertIn("github.event_name == 'pull_request' && github.event.action != 'closed'", body)
+            if job == "validate":
+                self.assertNotIn("github.event_name == 'push'", body)
+            else:
+                self.assertIn("github.ref == 'refs/heads/main'", body)
+                self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", body)
+                self.assertIn("steps.cache_plan.outputs.compile == 'true'", body)
+                self.assertIn('prune-compiler-cache.py --validation "$CURRENT_CACHE_KEY"', body)
+
+        # Every input that changes the shared key must trigger its producer.
+        push_trigger = trigger.split("  push:\n", 1)[1].split("  workflow_dispatch:", 1)[0]
+        for path in ("build-lock.json", "args.gn", "scripts/configure_build.py",
+                     ".github/ci/validation-scope.py", ".github/workflows/validate.yml"):
+            self.assertIn(f"      - {path}\n", push_trigger)
 
     def test_cleanup_runner_is_only_for_closed_pr(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
+        cleanup = validation.split("\n  cleanup:\n", 1)[1].split("\n  validate:\n", 1)[0]
         self.assertIn(
             "if: github.event_name == 'pull_request' && "
             "github.event.action == 'closed' && "
             "github.event.pull_request.base.ref == 'main'",
-            validation,
+            cleanup,
         )
-        self.assertNotIn("github.event_name == 'push' ||", validation)
+        self.assertNotIn("github.event_name == 'push'", cleanup)
 
     def test_pages_reads_service_data_without_changing_protected_main(self):
         deploy = (ROOT / ".github/workflows/deploy-dashboard.yml").read_text()

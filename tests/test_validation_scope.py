@@ -1,9 +1,11 @@
 """Exercise check selection against real merge commits, including renames."""
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("validation_scope", ROOT / ".github/ci/validation-scope.py")
@@ -59,6 +61,45 @@ class ValidationScopeTests(unittest.TestCase):
     def test_invalid_event_commits_cannot_produce_a_skip(self):
         with self.assertRaises(ValueError):
             scope.changed_paths(ROOT, "not-a-commit", "b" * 40)
+
+    def test_only_trusted_main_events_can_seed_shared_cache_without_pr_checks(self):
+        with patch.object(scope, "changed_paths") as changed:
+            for event in ("push", "workflow_dispatch"):
+                self.assertEqual(scope.select_checks(ROOT, event, "refs/heads/main"),
+                                 {"full": False, "domain": True})
+                with self.assertRaises(ValueError):
+                    scope.select_checks(ROOT, event, "refs/heads/topic")
+            for event in ("pull_request_target", "workflow_run"):
+                with self.assertRaises(ValueError):
+                    scope.select_checks(ROOT, event, "refs/heads/main")
+            changed.assert_not_called()
+
+    def test_cache_key_tracks_compiler_inputs_but_survives_argon_release_bumps(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name in ("build-lock.json", "args.gn", "scripts/configure_build.py"):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((ROOT / name).read_bytes())
+            path = root / "build-lock.json"
+            lock = json.loads(path.read_text())
+            prefix = scope.cache_prefix(root)
+            self.assertRegex(prefix, rf"^argon-ccache-validation-v2-{lock['chromium_version']}-[0-9a-f]{{64}}$")
+            for key in ("argon_revision", "chromium_version", "chromium_commit", "depot_tools_commit",
+                        "boringssl_commit", "vanadium_commit"):
+                updated = {**lock, key: {"argon_revision": lock["argon_revision"] + 1,
+                                         "chromium_version": "158.0.1.1"}.get(key, "b" * 40)}
+                path.write_text(json.dumps(updated))
+                self.assertEqual(scope.cache_prefix(root) == prefix, key == "argon_revision", key)
+            path.write_text(json.dumps(lock))
+            for name in ("args.gn", "scripts/configure_build.py"):
+                target = root / name
+                target.write_bytes((ROOT / name).read_bytes() + b"\n# changed compiler configuration\n")
+                self.assertNotEqual(scope.cache_prefix(root), prefix)
+                target.write_bytes((ROOT / name).read_bytes())
+            path.write_text(json.dumps({**lock, "chromium_version": "bad-version"}))
+            with self.assertRaises(ValueError):
+                scope.cache_prefix(root)
 
 
 if __name__ == "__main__":
