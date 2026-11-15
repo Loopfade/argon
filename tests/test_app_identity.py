@@ -81,7 +81,7 @@ class AppIdentityTests(unittest.TestCase):
             self.assertEqual(output.read_text(), "previous args")
             self.assertIn("Unexpected", resource.read_text())
 
-    def test_only_the_artifacts_workflow_opts_in_for_test_signing(self):
+    def test_only_explicit_test_workflows_select_the_standalone_identity(self):
         # Keep build.sh's container tests stdlib-only, like the other workflow
         # wiring checks. Job boundaries and these fields use fixed YAML indents.
         workflows = ROOT / ".github/workflows"
@@ -96,10 +96,14 @@ class AppIdentityTests(unittest.TestCase):
                 selected = re.findall(r"(?m)^      standalone_test: (.+)$", job)
                 if path.name == "build-all-no-publish.yml":
                     self.assertEqual(selected, [expression], path.name)
+                elif path.name == "build-test-main.yml":
+                    self.assertEqual(selected, ["true"], path.name)
+                    self.assertEqual(re.findall(r"(?m)^      signing: (.+)$", job), ["test"])
                 else:
                     self.assertIn(selected, ([], ["false"]), path.name)
         self.assertIn("build-all-no-publish.yml", callers)
         self.assertIn("build-all.yml", callers)
+        self.assertIn("build-test-main.yml", callers)
         artifacts = (workflows / "build-all-no-publish.yml").read_text()
         self.assertRegex(artifacts, r"(?m)^  ARGON_STANDALONE_TEST: " + re.escape(expression) + r"$")
         self.assertNotRegex(artifacts.split("\njobs:\n", 1)[1], r"(?m)^  publish:")

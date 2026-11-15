@@ -14,7 +14,8 @@ class PreparedImageCleanupTests(unittest.TestCase):
 
     def test_completed_full_cycle_can_exclude_itself_but_preserves_other_consumers(self):
         for workflow in (".github/workflows/build-all.yml",
-                         ".github/workflows/build-all-no-publish.yml"):
+                         ".github/workflows/build-all-no-publish.yml",
+                         ".github/workflows/build-test-main.yml"):
             with self.subTest(workflow=workflow):
                 runs = [{"id": 100, "status": "in_progress", "path": workflow}]
                 def pages(path):

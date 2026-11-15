@@ -29,6 +29,38 @@ class CacheReplacementTests(unittest.TestCase):
     prefix = "argon-ccache-v2-arm64"
     ref = "refs/heads/experimental/ca-domain-allowlist"
 
+    def test_branch_test_selects_exact_toolchain_in_main_and_preserves_its_progress(self):
+        lock = {"chromium_version": "157.0.8103.38", "chromium_commit": "a" * 40}
+        prefix = cache.cache_prefix(lock, "arm64")
+        current = self.entry(1, key=prefix + "-previous-test", ref="refs/heads/main")
+        stale = [
+            self.entry(2, key=cache.cache_prefix({**lock, "chromium_version": "156.0.1.1"}, "arm64") + "-run", ref="refs/heads/main"),
+            self.entry(3, key=cache.cache_prefix({**lock, "chromium_version": "158.0.1.1"}, "arm64") + "-run", ref="refs/heads/main"),
+            self.entry(4, key=cache.cache_prefix({**lock, "chromium_commit": "b" * 40}, "arm64") + "-run", ref="refs/heads/main"),
+        ]
+        unrelated = [self.entry(5, key=prefix + "-branch"),
+                     self.entry(6, key=cache.cache_prefix(lock, "arm") + "-run", ref="refs/heads/main"),
+                     self.entry(7, key="other-cache", ref="refs/heads/main")]
+        self.assertEqual(cache.other_toolchain_caches([current, *stale, *unrelated], prefix,
+                                                     "arm64", "refs/heads/main"), stale)
+
+    def test_toolchain_replacement_deletes_in_main_before_restore(self):
+        lock = json.loads((ROOT / "build-lock.json").read_text())
+        prefix = cache.cache_prefix(lock, "arm64")
+        entries = [self.entry(1, key=prefix + "-kept", ref="refs/heads/main"),
+                   self.entry(2, key="argon-ccache-v3-arm64-older", ref="refs/heads/main"),
+                   self.entry(3, key="argon-ccache-v3-arm-older", ref="refs/heads/main"),
+                   self.entry(4, key="argon-ccache-v3-arm64-older")]
+        with patch.dict(os.environ, {"CCACHE_CACHE_PREFIX": prefix, "GITHUB_REF": "refs/heads/main",
+                                     "GITHUB_REPOSITORY": "Loopfade/argon"}), \
+             patch.object(sys, "argv", ["prune", "--replace-toolchain", "arm64"]), \
+             patch.object(cache.subprocess, "check_output", return_value=json.dumps([
+                 {"actions_caches": entries}])) as inventory, \
+             patch.object(cache.subprocess, "run") as delete:
+            cache.main()
+        self.assertIn("ref=refs/heads/main", inventory.call_args.args[0])
+        delete.assert_called_once_with(["gh", "cache", "delete", "2", "--repo", "Loopfade/argon"], check=True)
+
     def entry(self, id, **overrides):
         return {"id": id, "key": f"{self.prefix}-{id}", "ref": self.ref,
                 "version": "compatible", "size_in_bytes": 4000,

@@ -51,22 +51,34 @@ def obsolete_caches(caches, replacement_key, prefix, ref):
             and entry["created_at"] < replacement["created_at"]]
 
 
+def other_toolchain_caches(caches, prefix, arch, ref):
+    """A branch test selects main's active toolchain, including rollbacks."""
+    family = re.compile(rf"^argon-ccache-v[0-9]+-{re.escape(arch)}-")
+    return [entry for entry in caches
+            if entry["ref"] == ref and family.match(entry["key"])
+            and not entry["key"].startswith(prefix + "-")]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("replacement_key", nargs="?")
     parser.add_argument("--prefix-for", choices=("arm64", "arm"))
     parser.add_argument("--remove-old-versions", choices=("arm64", "arm"))
+    parser.add_argument("--replace-toolchain", choices=("arm64", "arm"))
     args = parser.parse_args()
     if args.prefix_for:
         print(cache_prefix(json.loads(Path("build-lock.json").read_text()), args.prefix_for))
         return
     prefix = os.environ["CCACHE_CACHE_PREFIX"]
-    if args.remove_old_versions and prefix != cache_prefix(
-            json.loads(Path("build-lock.json").read_text()), args.remove_old_versions):
+    cleanup_arch = args.remove_old_versions or args.replace_toolchain
+    if cleanup_arch and prefix != cache_prefix(
+            json.loads(Path("build-lock.json").read_text()), cleanup_arch):
         raise SystemExit("Current compiler-cache prefix does not match the pinned version")
     ref = os.environ["GITHUB_REF"]
+    if args.replace_toolchain and ref != "refs/heads/main":
+        raise SystemExit("Toolchain replacement must update the main cache scope")
     repository = os.environ["GITHUB_REPOSITORY"]
-    if not args.remove_old_versions and (not args.replacement_key or not args.replacement_key.startswith(prefix + "-")):
+    if not cleanup_arch and (not args.replacement_key or not args.replacement_key.startswith(prefix + "-")):
         raise SystemExit("Replacement key does not match this compiler-cache prefix")
     result = subprocess.check_output([
         "gh", "api", "--method", "GET", f"repos/{repository}/actions/caches",
@@ -74,7 +86,9 @@ def main():
         "--paginate", "--slurp",
     ], text=True)
     caches = [entry for page in json.loads(result) for entry in page["actions_caches"]]
-    obsolete = (old_version_caches(caches, prefix, args.remove_old_versions, ref)
+    obsolete = (other_toolchain_caches(caches, prefix, args.replace_toolchain, ref)
+                if args.replace_toolchain else
+                old_version_caches(caches, prefix, args.remove_old_versions, ref)
                 if args.remove_old_versions else
                 obsolete_caches(caches, args.replacement_key, prefix, ref))
     if obsolete is None:

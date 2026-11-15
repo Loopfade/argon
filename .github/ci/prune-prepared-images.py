@@ -26,6 +26,7 @@ def consumers_active(repository, exclude_run=None):
     # digest after its workflow file has been deleted from main.
     result = pages(f"repos/{repository}/actions/runs?per_page=100")
     consumers = {".github/workflows/build-all.yml", ".github/workflows/build-all-no-publish.yml",
+                 ".github/workflows/build-test-main.yml",
                  ".github/workflows/validate.yml",
                  ".github/workflows/build.yml"}
     runs = [run for page in result for run in page["workflow_runs"]

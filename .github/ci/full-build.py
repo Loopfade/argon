@@ -200,10 +200,12 @@ def reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
     return None
 
 
-def plan(mode):
+def plan(mode, *, source_sha=None, reuse=True):
     if os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise ValueError("Run the full pipeline from main; other refs must not replace its prepared image")
-    sha = os.environ["GITHUB_SHA"]
+    if source_sha is not None and (mode != "test" or not re.fullmatch(r"[0-9a-f]{40}", source_sha)):
+        raise ValueError("A source SHA override requires a pinned test build")
+    sha = source_sha or os.environ["GITHUB_SHA"]
     identity = application_identity(json.loads((ROOT / "build-lock.json").read_text()), mode)
     standalone_test = identity["variant"] == "standalone-test"
     jdk = Path(os.environ["JAVA_HOME"])
@@ -215,7 +217,7 @@ def plan(mode):
     for arch in ("arm64", "arm"):
         fingerprint = artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test)
         name = f"Argon-{arch}-{sha}-{fingerprint}"
-        reused = reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
+        reused = reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk) if reuse else None
         outputs[f"reuse_{arch}"] = bool(reused)
         outputs[f"fingerprint_{arch}"] = fingerprint
         if not reused:

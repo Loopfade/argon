@@ -1,0 +1,96 @@
+name: Исполнитель тестовой сборки с кешем main
+run-name: Argon Test — исходный запуск №${{ inputs.source_run }}
+
+# GitHub scopes Actions cache writes to the run's ref. The entry workflow runs
+# on a temporary branch; this service runs on main and checks out its exact SHA.
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: 'Номер запуска «Тестовая сборка Argon из временной ветки»'
+        type: string
+        required: true
+      runner:
+        description: 'Исполнитель Linux x64: не менее 100 ГиБ свободного места'
+        type: string
+        default: ubuntu-24.04
+        required: true
+      auto_continue:
+        description: 'Продолжать после тайм-аута с накопленным кешем main'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+  packages: read
+  pull-requests: read
+
+# Serialize with the existing main pipelines: every attempt starts from their
+# latest saved ccache and adds its own entries before the next build restores it.
+concurrency:
+  group: argon-full-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
+env:
+  ARGON_STANDALONE_TEST: 'true'
+
+jobs:
+  plan:
+    name: Проверить исходную ветку и закрепить коммит
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      build: ${{ steps.plan.outputs.build }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      certificate: ${{ steps.plan.outputs.certificate }}
+    steps:
+      - name: Отклонить служебный запуск вне main
+        run: test "$GITHUB_REF" = refs/heads/main
+      - name: Получить проверку исходного запуска из main
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Проверить источник и получить точный SHA временной ветки
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_SOURCE_RUN: ${{ inputs.source_run }}
+        run: python3 .github/ci/branch-test.py source
+      - name: Получить закреплённый коммит временной ветки
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          submodules: true
+          persist-credentials: false
+      - name: Проверить входные данные и составить тестовый план
+        id: plan
+        env:
+          BUILD_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          python3 scripts/preflight.py --inputs-only --arch arm64
+          python3 scripts/preflight.py --inputs-only --arch arm
+          python3 .github/ci/branch-test.py plan
+
+  build:
+    name: Собрать и проверить ${{ matrix.arch }}
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/build-unified-arch.yml
+    with:
+      arch: ${{ matrix.arch }}
+      fingerprint: ${{ matrix.fingerprint }}
+      certificate: ${{ needs.plan.outputs.certificate }}
+      source_sha: ${{ needs.plan.outputs.sha }}
+      local_image: true
+      image: ''
+      runner: ${{ inputs.runner }}
+      signing: test
+      standalone_test: true
+      auto_continue: ${{ inputs.auto_continue }}
+    # No release signing secrets are passed to this reusable workflow.
