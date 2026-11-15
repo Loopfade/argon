@@ -5,9 +5,8 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
-import types
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from test_ci_cache import ci_module
 from test_full_build import pipeline
@@ -128,35 +127,6 @@ class BranchTestTests(unittest.TestCase):
              self.assertRaisesRegex(ValueError, "test build"):
             pipeline.plan("release", source_sha=self.sha)
 
-    def image_modules(self):
-        return [types.SimpleNamespace(image_fingerprint=lambda: "expected", IMAGE_LABEL="io.argon.prepared-inputs"),
-                types.SimpleNamespace(resolve=lambda *args, **kwargs: "ghcr.io/loopfade/argon-build@sha256:" + "c" * 64)]
-
-    def test_matching_main_image_needs_no_build_or_push(self):
-        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main"}), \
-             patch.object(branch, "module", side_effect=self.image_modules()), \
-             patch.object(branch.subprocess, "check_output", side_effect=[self.sha,
-                 json.dumps({"config": {"Labels": {"io.argon.prepared-inputs": "expected"}}})]), \
-             patch.object(branch.subprocess, "run") as build:
-            branch.prepare_image()
-        build.assert_not_called()
-        self.assertIn("ghcr.io/loopfade/argon-build@sha256:", (self.root / "output").read_text())
-
-    def test_changed_overlay_builds_local_image_using_main_layers_without_registry_write(self):
-        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main"}), \
-             patch.object(branch, "module", side_effect=self.image_modules()), \
-             patch.object(branch.subprocess, "check_output", side_effect=[self.sha,
-                 json.dumps({"config": {"Labels": {"io.argon.prepared-inputs": "old"}}}),
-                 "sha256:" + "d" * 64]), patch.object(branch.subprocess, "run") as commands:
-            branch.prepare_image()
-        argv = commands.call_args_list[0].args[0]
-        self.assertIn("--load", argv)
-        self.assertIn("type=registry,ref=ghcr.io/loopfade/argon-build:branch-main", argv)
-        self.assertIn("ARGON_REVISION=" + self.sha, argv)
-        self.assertNotIn("--push", argv)
-        self.assertNotIn("--cache-to", argv)
-        self.assertIn("local@sha256:", (self.root / "output").read_text())
-
     def test_new_workflow_has_no_release_key_or_publisher_and_uses_main_cache(self):
         entry = (ROOT / branch.ENTRY).read_text()
         worker = (ROOT / branch.WORKER).read_text()
@@ -165,15 +135,72 @@ class BranchTestTests(unittest.TestCase):
         self.assertIn("      signing: test", worker)
         self.assertIn("      standalone_test: true", worker)
         self.assertIn("      source_sha: ${{ needs.plan.outputs.sha }}", worker)
-        self.assertIn("      local_image: true", worker)
         self.assertIn("  group: argon-full-${{ github.ref }}", worker)
         self.assertIn("  queue: max", worker)
         self.assertNotIn("publish-release", worker)
-        self.assertNotIn("build-chromium-image", worker)
+        self.assertIn("uses: ./.github/workflows/build-chromium-image.yml", worker)
         shared = (ROOT / ".github/workflows/build-unified-arch.yml").read_text()
         self.assertIn("ref: ${{ inputs.source_sha || github.sha }}", shared)
         self.assertIn('--replace-toolchain "$TARGET_ARCH"', shared)
         self.assertIn("export GITHUB_SHA=\"$SOURCE_SHA\"", shared)
+
+    def test_worker_prepares_one_shared_image_and_pins_it_for_both_architectures(self):
+        text = (ROOT / branch.WORKER).read_text()
+        image = text.split("\n  image:\n", 1)[1].split("\n  build:\n", 1)[0]
+        build = text.split("\n  build:\n", 1)[1].split("\n  cleanup:\n", 1)[0]
+        cleanup = text.split("\n  cleanup:\n", 1)[1]
+        self.assertIn("uses: ./.github/workflows/build-chromium-image.yml", image)
+        self.assertIn("source_sha: ${{ needs.plan.outputs.sha }}", image)
+        self.assertNotIn("matrix:", image)
+        self.assertIn("needs: [plan, image]", build)
+        self.assertIn("matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}", build)
+        self.assertIn("image: ${{ needs.image.outputs.image }}", build)
+        self.assertNotIn("local_image", text)
+        self.assertIn("packages: write", text)
+        self.assertIn("needs.image.result == 'success'", cleanup)
+        self.assertIn("prune-prepared-images.py --ignore-current-consumer", cleanup)
+
+    def test_shared_image_checks_out_branch_sha_and_exports_main_buildkit_cache(self):
+        image = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
+        self.assertIn("if: github.ref == 'refs/heads/main'", image)
+        self.assertIn("ref: ${{ inputs.source_sha || github.sha }}", image)
+        self.assertIn("org.opencontainers.image.revision=${{ inputs.source_sha || github.sha }}", image)
+        self.assertIn("ARGON_REVISION=${{ inputs.source_sha || github.sha }}", image)
+        self.assertIn('echo "tag=${image}:branch-main"', image)
+        self.assertIn("push: true", image)
+        self.assertIn("cache-from: type=registry,ref=${{ steps.image.outputs.tag }}", image)
+        self.assertIn("cache-to: type=inline", image)
+        self.assertIn("if: steps.existing.outputs.exists != 'true'", image)
+
+    def test_resolved_digest_reuses_matching_image_or_requires_successful_publication(self):
+        import textwrap
+        text = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
+        step = text.split("        id: resolved\n", 1)[1].split("\n      - name:", 1)[0]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        old = "ghcr.io/loopfade/argon-build@sha256:" + "c" * 64
+        new_digest = "sha256:" + "d" * 64
+        for existing, built, expected in ((old, "", old), ("", new_digest,
+                 "ghcr.io/loopfade/argon-build@" + new_digest), ("", "", None), ("", "invalid", None)):
+            with self.subTest(existing=existing, built=built):
+                output = self.root / "image-output"
+                output.write_text("")
+                env = {**os.environ, "EXISTING_IMAGE": existing, "BUILT_DIGEST": built,
+                       "PREPARED_TAG": "ghcr.io/loopfade/argon-build:branch-main",
+                       "GITHUB_OUTPUT": str(output)}
+                result = subprocess.run(["bash", "-euo", "pipefail", "-c", script],
+                                        env=env, capture_output=True, text=True)
+                if expected:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(output.read_text(), f"image={expected}\n")
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(output.read_text(), "")
+
+    def test_merge_sha_does_not_invalidate_an_image_with_identical_inputs(self):
+        with patch.dict(os.environ, {"GITHUB_SHA": self.sha, "GITHUB_REF": "refs/heads/topic/ua"}):
+            branch_fingerprint = pipeline.image_fingerprint()
+        with patch.dict(os.environ, {"GITHUB_SHA": self.main_sha, "GITHUB_REF": "refs/heads/main"}):
+            self.assertEqual(branch_fingerprint, pipeline.image_fingerprint())
 
     def test_provenance_shell_passes_branch_sha_into_the_signing_container(self):
         import sys
@@ -192,7 +219,7 @@ Path(os.environ["CAPTURE_DOCKER"]).write_text(json.dumps({"sha":os.environ["GITH
         env = {**os.environ, **self.env, "PATH": str(binary.parent) + os.pathsep + os.environ["PATH"],
                "SOURCE_SHA": self.sha, "GITHUB_SHA": self.main_sha, "CAPTURE_DOCKER": str(captured),
                "BUILD_CONTAINER_NAME": "argon-build", "BUILD_FINGERPRINT": "planned",
-               "BUILD_CERTIFICATE": "temporary-test-key", "PREPARED_IMAGE": "local@sha256:example"}
+               "BUILD_CERTIFICATE": "temporary-test-key", "PREPARED_IMAGE": "ghcr.io/loopfade/argon-build@sha256:" + "c" * 64}
         result = subprocess.run(["bash", "-euo", "pipefail", "-c", script], env=env,
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

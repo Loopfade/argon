@@ -135,57 +135,13 @@ def plan():
     pipeline.plan("test", source_sha=sha, reuse=False)
 
 
-def prepare_image():
-    sha = check_checkout()
-    if os.environ.get("SIGNING_MODE") != "test":
-        raise ValueError("Branch image preparation requires test signing")
-    pipeline = module("branch_image_pipeline", ".github/ci/full-build.py")
-    resolver = module("branch_image_resolver", ".github/ci/resolve-prepared-image.py")
-    owner = os.environ["GITHUB_REPOSITORY_OWNER"].lower()
-    if not re.fullmatch(r"[a-z0-9-]+", owner):
-        raise ValueError("Invalid registry owner")
-    tag = f"ghcr.io/{owner}/argon-build:branch-main"
-    fingerprint = pipeline.image_fingerprint()
-    resolved = None
-    try:
-        resolved = resolver.resolve(tag, capture_errors=True)
-    except subprocess.CalledProcessError as error:
-        if not any(marker in str(error.stderr).lower()
-                   for marker in ("not found", "manifest unknown", "name unknown")):
-            raise
-    if resolved:
-        config = json.loads(subprocess.check_output([
-            "docker", "buildx", "imagetools", "inspect", resolved,
-            "--format", "{{json .Image}}"], text=True))
-        if config.get("config", {}).get("Labels", {}).get(pipeline.IMAGE_LABEL) == fingerprint:
-            emit(image=resolved, provenance_image=resolved)
-            return
-    # Import main's BuildKit layers, then apply this branch's overlay locally.
-    # No branch tag, image or build cache is pushed to the registry.
-    local = f"argon-test-{os.environ['GITHUB_RUN_ID']}-{os.environ['TARGET_ARCH']}:prepared"
-    subprocess.run([
-        "docker", "buildx", "build", "--load", "--tag", local,
-        "--file", "docker/chromium/Dockerfile", "--provenance=false", "--sbom=false",
-        "--cache-from", f"type=registry,ref={tag}",
-        "--label", f"{pipeline.IMAGE_LABEL}={fingerprint}",
-        "--build-arg", f"ARGON_REVISION={sha}", "."], cwd=ROOT, check=True)
-    digest = subprocess.check_output(["docker", "image", "inspect", local,
-                                      "--format", "{{.Id}}"], text=True).strip()
-    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
-        raise ValueError("Invalid local image ID")
-    emit(image=local, provenance_image="local@" + digest)
-    # The loaded image is now independent of BuildKit's build cache. Release
-    # that duplicate source layer before Android compilation needs the space.
-    subprocess.run(["docker", "buildx", "prune", "--all", "--force"], check=True)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("dispatch", "source", "plan", "prepare-image"))
+    parser.add_argument("action", choices=("dispatch", "source", "plan"))
     args = parser.parse_args()
     try:
-        {"dispatch": dispatch, "source": source, "plan": plan,
-         "prepare-image": prepare_image}[args.action]()
+        {"dispatch": dispatch, "source": source, "plan": plan}[args.action]()
     except (ValueError, KeyError, subprocess.CalledProcessError) as error:
         print(f"::error::{error}", file=sys.stderr)
         sys.exit(1)

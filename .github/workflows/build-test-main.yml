@@ -23,7 +23,7 @@ on:
 permissions:
   contents: read
   actions: write
-  packages: read
+  packages: write
   pull-requests: read
 
 # Serialize with the existing main pipelines: every attempt starts from their
@@ -74,9 +74,17 @@ jobs:
           python3 scripts/preflight.py --inputs-only --arch arm
           python3 .github/ci/branch-test.py plan
 
+  image:
+    name: Подготовить общий Docker-образ main из коммита ветки
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    uses: ./.github/workflows/build-chromium-image.yml
+    with:
+      source_sha: ${{ needs.plan.outputs.sha }}
+
   build:
     name: Собрать и проверить ${{ matrix.arch }}
-    needs: plan
+    needs: [plan, image]
     if: needs.plan.outputs.build == 'true'
     strategy:
       fail-fast: false
@@ -87,10 +95,34 @@ jobs:
       fingerprint: ${{ matrix.fingerprint }}
       certificate: ${{ needs.plan.outputs.certificate }}
       source_sha: ${{ needs.plan.outputs.sha }}
-      local_image: true
-      image: ''
+      image: ${{ needs.image.outputs.image }}
       runner: ${{ inputs.runner }}
       signing: test
       standalone_test: true
       auto_continue: ${{ inputs.auto_continue }}
     # No release signing secrets are passed to this reusable workflow.
+
+  cleanup:
+    name: Сохранить текущий образ после завершения всех сборок
+    needs: [plan, image, build]
+    if: always() && !cancelled() && needs.image.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Удалить устаревшие образы после завершения остальных запусков
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: argon-build
+          KEEP_TAG: branch-main
+        run: python3 .github/ci/prune-prepared-images.py --ignore-current-consumer

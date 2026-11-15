@@ -12,9 +12,6 @@ on:
       source_sha:
         type: string
         default: ''
-      local_image:
-        type: boolean
-        default: false
       runner:
         type: string
         required: true
@@ -66,14 +63,13 @@ jobs:
     timeout-minutes: 360
     steps:
       - name: Проверить режим сборки временной ветки
-        if: inputs.source_sha != '' || inputs.local_image
+        if: inputs.source_sha != ''
         env:
           TEST_SIGNING: ${{ inputs.signing }}
-          LOCAL_IMAGE: ${{ inputs.local_image }}
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$TEST_SIGNING" == test && "$ARGON_STANDALONE_TEST" == true && "$LOCAL_IMAGE" == true ]]
+          [[ "$TEST_SIGNING" == test && "$ARGON_STANDALONE_TEST" == true ]]
           [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
       - name: Записать лимит времени и подготовить рабочий кеш и снимки
         run: |
@@ -98,29 +94,15 @@ jobs:
           df -h .
       - name: Настроить Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Подготовить локальный образ с патчами временной ветки
-        id: branch_image
-        if: inputs.local_image
-        env:
-          GHCR_TOKEN: ${{ github.token }}
-          SIGNING_MODE: test
-        run: |
-          echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-          python3 .github/ci/branch-test.py prepare-image
       - name: Запустить подготовленный образ, выбранный для сборки
         env:
           GHCR_TOKEN: ${{ github.token }}
-          PREPARED_IMAGE: ${{ steps.branch_image.outputs.image || inputs.image }}
-          LOCAL_IMAGE: ${{ inputs.local_image }}
+          PREPARED_IMAGE: ${{ inputs.image }}
         run: |
           set -euo pipefail
-          if [[ "$LOCAL_IMAGE" == true && "$PREPARED_IMAGE" == "argon-test-$GITHUB_RUN_ID-$TARGET_ARCH:prepared" ]]; then
-            docker image inspect "$PREPARED_IMAGE" >/dev/null
-          else
-            [[ "$PREPARED_IMAGE" =~ ^ghcr\.io/[a-z0-9_.-]+/argon-build@sha256:[a-f0-9]{64}$ ]]
-            echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
-            python3 .github/ci/pull-prepared-image.py "$PREPARED_IMAGE"
-          fi
+          [[ "$PREPARED_IMAGE" =~ ^ghcr\.io/[a-z0-9_.-]+/argon-build@sha256:[a-f0-9]{64}$ ]]
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+          python3 .github/ci/pull-prepared-image.py "$PREPARED_IMAGE"
           mkdir -p "$CCACHE_DIR" "$CCACHE_LIVE_DIR"
           ln -s /opt/argon/chromium chromium
           ln -s /opt/argon/depot_tools depot_tools
@@ -223,7 +205,7 @@ jobs:
         env:
           BUILD_FINGERPRINT: ${{ inputs.fingerprint }}
           BUILD_CERTIFICATE: ${{ inputs.certificate }}
-          PREPARED_IMAGE: ${{ steps.branch_image.outputs.provenance_image || inputs.image }}
+          PREPARED_IMAGE: ${{ inputs.image }}
           SIGNING_MODE: ${{ inputs.signing }}
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
