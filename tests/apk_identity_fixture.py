@@ -1,6 +1,6 @@
-"""Representative aapt2 xmltree output; identifiers follow pinned Chromium."""
-def manifest_dump(package="app.titaniumru.browser.test", version_code=1000000001):
-    return f'''N: android=http://schemas.android.com/apk/res/android (line=1)
+"""aapt2 XmlPrinter's URI attributes; identifiers follow pinned Chromium."""
+def manifest_dump(package="app.titaniumru.browser.test", version_code=1000000001, *, legacy=False):
+    text = f'''N: android=http://schemas.android.com/apk/res/android (line=1)
   E: manifest (line=1)
     A: package="{package}" (Raw: "{package}")
     A: android:versionCode(0x0101021b)=(type 0x10)0x{version_code:x}
@@ -36,3 +36,11 @@ def manifest_dump(package="app.titaniumru.browser.test", version_code=1000000001
           E: category (line=15)
             A: android:name(0x01010003)="{package}"
 '''
+    if legacy:
+        return text
+    # tools/aapt2/Debug.cpp prints namespace_uri + ':' + attribute name;
+    # ResourceValues.cpp prints TYPE_INT_DEC as a decimal integer.
+    return (text.replace("android:", "http://schemas.android.com/apk/res/android:")
+            .replace(f"(type 0x10)0x{version_code:x}", str(version_code))
+            .replace("(type 0x11)0x2", "0x00000002")
+            .replace("(type 0x12)0x0", "false"))

@@ -138,7 +138,15 @@ def main():
         # Validate the compiled/merged package before opening the release key.
         manifest = run([build_tools / "aapt2", "dump", "xmltree", "--file", "AndroidManifest.xml", args.apk],
                        capture_output=True, text=True).stdout
-        verify_manifest(manifest, identity, lock["application_id"])
+        try:
+            verify_manifest(manifest, identity, lock["application_id"])
+        except ValueError:
+            # Preserve the SDK's actual output when validation fails. Without
+            # it a parser error is indistinguishable from an invalid APK.
+            print("::group::aapt2 manifest rejected before signing", flush=True)
+            print(manifest, flush=True)
+            print("::endgroup::", flush=True)
+            raise
     artifacts = ROOT / "artifacts" / abi
     artifacts.mkdir(parents=True, exist_ok=True)
     name = apk_filename(lock, args.mode, identity, abi)
