@@ -20,6 +20,18 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("'.github/workflows/deploy-dashboard.yml'", deploy)
         self.assertIn("include-hidden-files: true", deploy)
 
+    def test_dashboard_refreshes_month_history_during_builds_and_without_new_releases(self):
+        workflows = ROOT / ".github/workflows"
+        updater = (workflows / "update-dashboard.yml").read_text()
+        subscriptions = re.search(r"(?m)^    workflows: \[(.+)\]$", updater)[1]
+        for filename in ("build-all.yml", "build-test-branch.yml", "validate.yml"):
+            name = (workflows / filename).read_text().splitlines()[0].removeprefix("name: ")
+            self.assertIn("'" + name + "'", subscriptions)
+        self.assertIn("types: [requested, in_progress, completed]", updater)
+        self.assertIn("cron: '*/15 * * * *'", updater)
+        self.assertNotIn("'Обновление данных панели Argon'", subscriptions)
+        self.assertNotIn("'Публикация панели Argon'", subscriptions)
+
     def test_required_checks_run_for_every_pr_and_main_only_seeds_its_cache(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
         trigger = validation.split("\npermissions:", 1)[0].split("\non:\n", 1)[1]

@@ -7,8 +7,10 @@ on:
       - '.github/workflows/update-dashboard.yml'
       - '.github/ci/update-dashboard.py'
   workflow_run:
-    workflows: [Build Argon, 'Сборка Argon (полный цикл)']
-    types: [completed]
+    workflows: [Build Argon, 'Сборка Argon (полный цикл)', 'Сборка Argon test из PR (без публикации)', 'Исполнитель тестовой сборки с кешем main', 'Проверка Argon и правил доверия сертификатам']
+    types: [requested, in_progress, completed]
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +26,7 @@ jobs:
     name: Обновить данные панели GitHub Pages
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

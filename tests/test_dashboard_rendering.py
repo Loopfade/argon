@@ -40,8 +40,8 @@ class DashboardRenderingTests(unittest.TestCase):
         self.assertEqual(data["jobDuration"], 9 * 3600_000)
         self.assertEqual(data["legacyDuration"], 3 * 3600_000)
         self.assertEqual(data["warm"]["success"], 2)
-        self.assertIn("Attempt 1 · FAILED", data["architecture"])
-        self.assertIn("Attempt 2 · SUCCESS", data["architecture"])
+        self.assertIn("Попытка 1 · ОШИБКА", data["architecture"])
+        self.assertIn("Попытка 2 · УСПЕШНО", data["architecture"])
         self.assertEqual(data["timeline"].count('class="bar '), 2)
         self.assertIn('left:75.00%', data["timeline"])
 
@@ -107,6 +107,57 @@ class DashboardRenderingTests(unittest.TestCase):
             self.assertEqual(data["restore"], 60000)
             self.assertEqual(data["checkpoints"]["success"], 5)
             self.assertEqual(data["checkpoints"]["total"], 5)
-            self.assertIn("Checkpoints", data["architecture"])
-            self.assertNotIn("Waiting", data["architecture"])
+            self.assertIn("Снимки кеша", data["architecture"])
+            self.assertNotIn("Ожидает", data["architecture"])
             self.assertEqual(data["timeline"].count('class="bar '), len(jobs))
+
+
+    def execute_view(self, code):
+        script = (ROOT / "index.html").read_text().split("<script>", 1)[1].split("</script>", 1)[0]
+        script = script[:script.index('  $("refresh").addEventListener')]
+        setup = """
+          const elements={};
+          document.getElementById=id => elements[id] ||= {innerHTML:"",textContent:"",hidden:false,
+            querySelectorAll:()=>[],setAttribute:()=>{},classList:{add:()=>{},remove:()=>{}}};
+        """
+        result = subprocess.run(["node", "-e", "global.document={getElementById:()=>({})};" + script + setup + code + "})();"],
+                                capture_output=True, text=True, check=True)
+        return json.loads(result.stdout)
+
+    def test_month_view_filters_and_untrusted_titles_are_escaped(self):
+        data = self.execute_view("""
+          const run={id:42,run_number:42,status:"completed",conclusion:"failure",run_attempt:1,
+            created_at:"2026-11-15T10:00:00Z",first_started_at:"2026-11-15T10:00:00Z",
+            completed_at:"2026-11-15T11:00:00Z",duration_ms:3600000,runner_ms:7200000};
+          model={repository:"fixture/argon",builds:[{kind:"test",run,pr_number:7,jobs:[],artifacts:[]}],
+            selectedRunId:42,days:[{date:"2026-11-15",builds:1,test:1,release:0,legacy:0,failed:1}],
+            releases:[],open_prs:[{number:7,title:'<img src=x onerror=alert(1)>',html_url:'javascript:alert(1)',test_runs:[]}],
+            unreleased:{pr_count:0},window:{start:"2026-10-17",end:"2026-11-15"}};
+          renderModel();
+          const all=filteredBuilds().length;filters.kind="release";const release=filteredBuilds().length;
+          filters.kind="test";const test=filteredBuilds().length;
+          process.stdout.write(JSON.stringify({all,release,test,history:elements.history.innerHTML,
+            prs:elements['open-prs'].innerHTML,calendar:elements['month-grid'].innerHTML,
+            link:link('https://github.com/fixture/argon','Открыть')}));
+        """)
+        self.assertEqual((data["all"],data["release"],data["test"]),(1,0,1))
+        self.assertIn("Тестовая",data["history"])
+        self.assertIn("ОШИБКА",data["history"])
+        self.assertIn("&lt;img",data["prs"])
+        self.assertNotIn('href="javascript:',data["prs"])
+        self.assertNotIn("<img",data["prs"])
+        self.assertIn('data-day="2026-11-15"',data["calendar"])
+        self.assertIn('href="https://github.com',data["link"])
+
+    def test_active_duration_advances_after_last_snapshot_and_empty_month_is_valid(self):
+        data = self.execute_view("""
+          Date.now=()=>Date.parse("2026-11-15T12:00:00Z");
+          const duration=durationMs({status:"in_progress",first_started_at:"2026-11-15T10:00:00Z",
+            updated_at:"2026-11-15T10:10:00Z",duration_ms:600000});
+          model={repository:"fixture/argon",builds:[],days:[],releases:[],open_prs:[],unreleased:{}};
+          renderModel();
+          process.stdout.write(JSON.stringify({duration,empty:elements.history.innerHTML,hidden:elements['detail-panel'].hidden}));
+        """)
+        self.assertEqual(data["duration"],7200000)
+        self.assertIn("пока нет",data["empty"])
+        self.assertTrue(data["hidden"])
