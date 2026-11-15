@@ -88,7 +88,8 @@ class DashboardSnapshotTests(unittest.TestCase):
         snapshot = {"generated_at": "now", "builds": [{"run": {"id": 42}}]}
         existing = {**snapshot, "generated_at": "yesterday"}
         current = {"sha": "blob", "content": base64.b64encode(json.dumps(existing).encode()).decode()}
-        with patch.object(dashboard, "api", return_value=current) as api:
+        with patch.object(dashboard, "snapshot_branch", return_value=True), \
+             patch.object(dashboard, "api", return_value=current) as api:
             dashboard.publish("fixture/argon", snapshot)
         self.assertEqual(api.call_count, 1)
         changed = copy.deepcopy(snapshot)
@@ -96,15 +97,36 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertFalse(dashboard.same_payload(snapshot, changed))
 
     def test_changed_payload_commits_before_deploying(self):
-        with patch.object(dashboard, "api", return_value={"sha": "blob"}) as api:
+        with patch.object(dashboard, "snapshot_branch", return_value=True), \
+             patch.object(dashboard, "api", return_value={"sha": "blob"}) as api:
             dashboard.publish("fixture/argon", {"builds": []})
         self.assertEqual([call.args[1] for call in api.call_args_list[1:]], ["PUT", "POST"])
         self.assertEqual(api.call_args_list[1].args[2]["sha"], "blob")
+        self.assertEqual(api.call_args_list[1].args[2]["branch"], dashboard.DATA_BRANCH)
 
     def test_large_snapshot_uses_raw_content_and_still_skips_timestamp_only_write(self):
         snapshot = {"generated_at": "today", "builds": []}
         current = {"sha": "blob", "encoding": "none", "content": ""}
-        with patch.object(dashboard, "api", side_effect=[current, {**snapshot, "generated_at": "yesterday"}]) as api:
+        with patch.object(dashboard, "snapshot_branch", return_value=True), \
+             patch.object(dashboard, "api", side_effect=[current, {**snapshot, "generated_at": "yesterday"}]) as api:
             dashboard.publish("fixture/argon", snapshot)
         self.assertEqual(api.call_count, 2)
         self.assertEqual(api.call_args_list[1].kwargs, {"raw": True})
+
+    def test_first_snapshot_creates_data_branch_and_never_writes_main(self):
+        responses = [[], {"object": {"sha": "a" * 40}}, {}, {"sha": "blob"}, {}, {}]
+        with patch.object(dashboard, "api", side_effect=responses) as api:
+            dashboard.publish("fixture/argon", {"builds": []})
+        creation = api.call_args_list[2]
+        self.assertEqual(creation.args[1:], ("POST", {
+            "ref": "refs/heads/argon-dashboard-data", "sha": "a" * 40}))
+        write = api.call_args_list[4]
+        self.assertEqual(write.args[1], "PUT")
+        self.assertEqual(write.args[2]["branch"], "argon-dashboard-data")
+        self.assertEqual(api.call_args_list[5].args[2], {"ref": "main"})
+
+    def test_similar_branch_does_not_replace_exact_snapshot_branch(self):
+        with patch.object(dashboard, "api", return_value=[{
+                "ref": "refs/heads/argon-dashboard-data-old"}]) as api:
+            self.assertFalse(dashboard.snapshot_branch("fixture/argon"))
+        self.assertEqual(api.call_count, 1)

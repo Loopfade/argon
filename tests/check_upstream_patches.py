@@ -46,6 +46,11 @@ from test_exit_android_api import SETTINGS_API, verify_exit_android_api
 from test_exit_sad_tab import verify_sad_tab_source
 from test_user_agent_runtime import run_settings_flow
 from test_user_agent_renderer import verify_native_state, verify_client_hints
+from user_agent_navigation_flow import (
+    CONTROLLER_PATH as UA_NAVIGATION_IMPL,
+    verify_upstream as verify_user_agent_navigation,
+)
+from app_identity_upstream import INPUT_PATHS as IDENTITY_PATHS, verify_upstream as verify_app_identity
 from external_navigation_flow import verify_upstream as verify_external_navigation
 from upstream_sources import chromium_url, download
 from generate_scoped_ca_fixtures import verify_upstream as verify_scoped_ca_fixture
@@ -108,11 +113,13 @@ BASE_PATHS += (SETTINGS_API,)
 BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in (UA_NAVIGATION_IMPL,) if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in homepage.INPUT_PATHS if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in (*external_navigation.INPUT_PATHS, *external_navigation.API_PATHS)
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 LINKER_HEADER = Path("base/android/linker/linker_jni.h")
 BASE_PATHS += (LINKER_HEADER,)
+BASE_PATHS += tuple(path for path in IDENTITY_PATHS if path not in BASE_PATHS)
 EXTENSION_PATHS = (
     user_agent.PRIVACY_HOOKS,
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
@@ -612,6 +619,7 @@ def main():
         # Validate the dialog after Vanadium patches, matching build.sh ordering:
         # Chromium checkout -> Vanadium patches -> Argon patch.sh.
         verify_extension_install_dialog((src / DIALOG_PATH).read_text())
+        print(verify_app_identity(src))
         verify_devtools_version_gate(src, lock["chromium_version"])
         verify_background_media_observer_api(src)
         apply_and_verify_linker_reservation(src)
@@ -622,6 +630,9 @@ def main():
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
+        print(verify_user_agent_navigation(
+            (src / user_agent.NAVIGATION_CONTROLLER).read_text(),
+            (src / UA_NAVIGATION_IMPL).read_text()))
         print(run_settings_flow().strip())
         print(verify_native_state((src / user_agent.UA_UTILS).read_text()))
         print(verify_client_hints(

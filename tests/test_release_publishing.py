@@ -106,6 +106,20 @@ class ReleasePublishingTests(unittest.TestCase):
             self.assertEqual(selected["apk"], apk)
             self.assertEqual(selected["metadata"], payload / "build-info.json")
 
+    def test_release_signed_standalone_test_cannot_be_published_as_production(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            apk = root / "Argon-Test-157.0.8103.38-release-arm64-v8a.apk"
+            apk.write_bytes(b"test apk")
+            Path(f"{apk}.sha256").write_text("checksum\n")
+            for name in release_policy.RELEASE_LICENSES:
+                (root / name).write_text("license\n")
+            (root / "build-info.json").write_text(json.dumps({
+                "signing_mode": "release", "inputs": {"application_id": "app.titaniumru.browser"},
+                "application_identity": {"variant": "standalone-test", "application_id": "app.titaniumru.browser.test"}}))
+            with self.assertRaisesRegex(ValueError, "standalone test APK"):
+                release_policy.locate_release_artifact(root)
+
     def test_duplicate_release_apks_are_rejected_across_nested_directories(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -238,7 +252,10 @@ class ReleasePublishingTests(unittest.TestCase):
         build = (ROOT / ".github/workflows/build-all.yml").read_text()
         self.assertIn("needs.build.result == 'success'", build)
         self.assertIn("workflow_dispatch:", build)
-        self.assertIn("inputs.signing == 'Релизная'", build)
+        self.assertNotIn("inputs.signing", build)
+        self.assertIn("SIGNING_MODE: release", build)
+        self.assertIn("      signing: release", build)
+        self.assertIn("github.ref == 'refs/heads/main'", build)
         self.assertIn("uses: ./.github/workflows/publish-release.yml", build)
         self.assertIn("run_id: ${{ github.run_id }}", build)
         self.assertIn("source_sha: ${{ github.sha }}", build)

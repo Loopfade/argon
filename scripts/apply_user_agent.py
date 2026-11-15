@@ -22,6 +22,7 @@ UA_UTILS = Path("components/embedder_support/user_agent_utils.cc")
 UA_HEADER = UA_UTILS.with_suffix(".h")
 DESKTOP_UA = Path("chrome/browser/android/content/content_utils.cc")
 RENDER_PROCESS_HOST_IMPL = Path("content/browser/renderer_host/render_process_host_impl.cc")
+NAVIGATION_CONTROLLER = Path("content/browser/renderer_host/navigation_controller_android.cc")
 
 CLIENT_HINTS = Path("content/browser/client_hints/client_hints.cc")
 FRAME_FETCH = Path("third_party/blink/renderer/core/loader/frame_fetch_context.cc")
@@ -30,8 +31,41 @@ INPUT_PATHS = (
     ANDROID_GN, STARTUP, PRIVACY_HOOKS, UA_UTILS, UA_HEADER, DESKTOP_UA,
     TITANIUM_CHROME_JAVA_SOURCES, TITANIUM_CHROME_RESOURCES,
     TITANIUM_PRIVACY_PREFERENCES, TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
-    RENDER_PROCESS_HOST_IMPL, CLIENT_HINTS, FRAME_FETCH,
+    RENDER_PROCESS_HOST_IMPL, CLIENT_HINTS, FRAME_FETCH, NAVIGATION_CONTROLLER,
 )
+
+
+def patch_navigation_controller(source: str) -> str:
+    anchor = '#include "content/browser/renderer_host/navigation_request.h"'
+    source = replace_once(source, anchor, anchor + '\n'
+                          '#include "content/browser/renderer_host/page_impl.h"\n'
+                          '#include "content/browser/renderer_host/render_frame_host_impl.h"')
+    source = replace_once(source, """\
+  if (GetUseDesktopUserAgent(env) == enabled) {
+    return;
+  }
+""", """\
+  // A newer selection supersedes any UA change queued during navigation.
+  // Evaluate the no-op condition when that selection is actually applied.
+  weak_factory_.InvalidateWeakPtrs();
+""")
+    source = replace_once(source, "  // Set the flag in the NavigationEntry.", """\
+  // The entry records the requested mode before its reload commits. A cancelled
+  // reload (or a previous call with reload_on_state_change=false) can leave the
+  // current document using a different UA. In that case a repeated request must
+  // reload, even though the entry already contains the requested flag.
+  if (entry->GetIsOverridingUserAgent() == enabled &&
+      (!reload_on_state_change || entry->IsInitialEntry() ||
+       navigation_controller_->frame_tree()
+               .root()
+               ->current_frame_host()
+               ->GetPage()
+               .is_overriding_user_agent() == enabled)) {
+    return;
+  }
+
+  // Set the flag in the NavigationEntry.""")
+    return source
 
 
 def apply(src: Path) -> None:
@@ -72,10 +106,6 @@ def apply(src: Path) -> None:
         android:key="argon_user_agent_restart"
         android:persistent="false"
         android:title="@string/argon_user_agent_restart" />
-    <org.chromium.components.browser_ui.settings.ChromeBasePreference
-        android:key="argon_user_agent_help"
-        android:selectable="false"
-        android:summary="@string/argon_user_agent_help" />
 """ + anchor)
     anchor = "        SettingsUtils.addPreferencesFromResource(prefFragment, R.xml.privacy_preferences_ext);"
     replace(PRIVACY_HOOKS, anchor, anchor + "\n        ArgonUserAgentPreference.bind(prefFragment);")
@@ -154,6 +184,8 @@ std::optional<std::string> GetArgonUserAgentOverride(bool desktop) {
     ua.reset();
   }
 """)
+
+    sources[NAVIGATION_CONTROLLER] = patch_navigation_controller(sources[NAVIGATION_CONTROLLER])
 
     for path, content in sources.items():
         (src / path).write_text(content)

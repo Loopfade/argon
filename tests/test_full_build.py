@@ -14,6 +14,7 @@ import textwrap
 import unittest
 from unittest.mock import patch
 import zipfile
+from apk_identity_fixture import manifest_dump
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("full_build", ROOT / ".github/ci/full-build.py")
@@ -180,10 +181,11 @@ class FullBuildTests(unittest.TestCase):
         self.assertIn("Argon Test", (self.root / "summary").read_text())
         self.assertIn("app.titaniumru.browser.test", (self.root / "summary").read_text())
 
-    def fixture_artifact(self, arch="arm64", mode="release"):
+    def fixture_artifact(self, arch="arm64", mode="release", standalone_test=False):
         lock = json.loads((ROOT / "build-lock.json").read_text())
         abi = pipeline.TARGET_ABIS[arch]
-        self.apk = self.root / f"Argon-{lock['chromium_version']}-{mode}-{abi}.apk"
+        identity = pipeline.application_identity(lock, mode, standalone_test=standalone_test)
+        self.apk = self.root / pipeline.apk_filename(lock, mode, identity, abi)
         with zipfile.ZipFile(self.apk, "w") as zipped:
             zipped.writestr(f"lib/{abi}/libchrome.so", b"native library")
         digest = hashlib.sha256(self.apk.read_bytes()).hexdigest()
@@ -274,7 +276,7 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
                                         cwd=self.root, env=env, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(json.loads(captured.read_text()), {"sha": self.sha, "args": [
-                    "exec", "--env", "GITHUB_SHA", "--env", "ARGON_STANDALONE_TEST", "argon-build", "python3",
+                    "exec", "--env", "GITHUB_SHA", "--env", "ARGON_STANDALONE_TEST", "--env", "ARGON_TEST_VERSION_CODE", "argon-build", "python3",
                     "/workspace/.github/ci/full-build.py", "record", "--arch", arch,
                     "--mode", "release", "--fingerprint", "planned-fingerprint",
                     "--certificate", "planned-certificate", "--image", "planned-image"]})
@@ -294,7 +296,7 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
             align.assert_called_once()
 
     def test_reused_standalone_test_checks_actual_package_and_label(self):
-        lock = self.fixture_artifact(mode="test")
+        lock = self.fixture_artifact(mode="test", standalone_test=True)
         self.metadata["application_identity"] = pipeline.application_identity(
             lock, "test", standalone_test=True)
         self.metadata_path.write_text(json.dumps(self.metadata))
@@ -306,7 +308,7 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
                  patch.object(pipeline, "signing_tools", return_value=Path("/tools")), \
                  patch.object(pipeline, "command", side_effect=[
                      f"Signer #1 certificate SHA-256 digest: {self.certificate}\n",
-                     f"package: name='{package}'\napplication-label:'{label}'\n"]), \
+                     f"package: name='{package}'\napplication-label:'{label}'\n", manifest_dump()]), \
                  patch.object(pipeline.subprocess, "run"):
                 args = (self.root, self.sha, "arm64", "test", "expected",
                         "temporary-test-key", Path("/sdk"), Path("/jdk"))
@@ -316,13 +318,12 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
                     with self.assertRaisesRegex(ValueError, "package or application label"):
                         pipeline.verify_artifact(*args)
 
-    def test_both_manual_workflows_reuse_only_after_payload_verification(self):
+    def test_release_workflow_reuses_only_after_payload_verification(self):
         payload = self.root / "verified-payload"
         payload.mkdir()
         (payload / "verified.apk").write_bytes(b"verified APK")
         repository = "Loopfade/argon"
-        for workflow in (".github/workflows/build-all.yml",
-                         ".github/workflows/build-all-no-publish.yml"):
+        for workflow in (".github/workflows/build-all.yml",):
             source = {"path": workflow, "event": "workflow_dispatch", "head_sha": self.sha,
                       "head_branch": "main", "repository": {"full_name": repository},
                       "head_repository": {"full_name": repository}}

@@ -2,6 +2,11 @@ name: Подготовка образа Chromium
 
 on:
   workflow_call:
+    inputs:
+      source_sha:
+        description: Точный коммит исходников; по умолчанию коммит запуска main
+        type: string
+        default: ''
     outputs:
       image:
         description: Неизменяемый digest образа для всех архитектур и повторных попыток
@@ -26,9 +31,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
+      - name: Проверить закреплённый коммит временной ветки
+        if: inputs.source_sha != ''
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: '[[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]'
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
           submodules: true
           persist-credentials: false
 
@@ -87,13 +98,13 @@ jobs:
           labels: |
             io.argon.prepared-inputs=${{ steps.existing.outputs.fingerprint }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ inputs.source_sha || github.sha }}
             org.opencontainers.image.version=${{ steps.image.outputs.version }}
             org.opencontainers.image.description=${{ steps.image.outputs.description }}
           annotations: |
             org.opencontainers.image.description=${{ steps.image.outputs.description }}
           build-args: |
-            ARGON_REVISION=${{ github.sha }}
+            ARGON_REVISION=${{ inputs.source_sha || github.sha }}
           # A single-platform image without attestations is one GHCR package
           # version, so retention can safely delete every superseded version.
           provenance: false
@@ -132,6 +143,7 @@ jobs:
             echo '## Подготовленный образ Chromium'
             echo
             echo '- Образ: `${{ steps.image.outputs.tag }}`'
+            echo '- Коммит исходников: `${{ inputs.source_sha || github.sha }}`'
             echo '- Chromium: `${{ steps.image.outputs.version }}`'
             echo '- Digest образа: `${{ steps.resolved.outputs.image }}`'
             echo '- Использованы совпадающие входные данные: ${{ steps.existing.outputs.exists == 'true' && 'да' || 'нет' }}'

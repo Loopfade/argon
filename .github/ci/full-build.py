@@ -18,13 +18,13 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from configure_build import TARGET_ABIS
-from build_identity import application_identity
+from build_identity import application_identity, apk_filename
+from apk_identity import verify_manifest
 from release_policy import RELEASE_LICENSES
 from sign_and_verify import check_release_key, signing_tools, verify_apk_abi, write_release_key
 
 IMAGE_LABEL = "io.argon.prepared-inputs"
 WORKFLOW = ".github/workflows/build-all.yml"
-WORKFLOWS = (WORKFLOW, ".github/workflows/build-all-no-publish.yml")
 
 
 def command(argv, **kwargs):
@@ -72,13 +72,16 @@ def image_fingerprint(root=ROOT):
     return digest_inputs(files)
 
 
-def artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test=False):
+def artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test=False,
+                         version_code=None):
     build = {
         "schema": 1, "source_commit": sha, "arch": arch, "mode": mode,
         "certificate": certificate, "prepared_inputs": prepared,
     }
     if standalone_test:
         build["application_variant"] = "standalone-test"
+        if version_code is not None:
+            build["version_code"] = version_code
     return digest_inputs({"build": json.dumps(build, sort_keys=True).encode()})
 
 
@@ -124,7 +127,7 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
             or metadata.get("application_identity", standard_identity) != identity):
         raise ValueError("APK provenance does not match this build")
     directory = metadata_path.parent
-    name = f"Argon-{lock['chromium_version']}-{mode}-{abi}.apk"
+    name = apk_filename(lock, mode, identity, abi)
     apk = directory / name
     if list(root.rglob("*.apk")) != [apk]:
         raise ValueError("Unexpected APK payload")
@@ -148,6 +151,10 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
     if (not re.search(r"^package: name='" + re.escape(identity["application_id"]) + "'", badging, re.M)
             or f"application-label:'{identity['application_label']}'" not in badging):
         raise ValueError("APK package or application label mismatch")
+    if identity["variant"] == "standalone-test":
+        manifest = command([tools / "aapt2", "dump", "xmltree", "--file", "AndroidManifest.xml", apk], text=True)
+        report = verify_manifest(manifest, identity, lock["application_id"])
+        (directory / "manifest-identity.json").write_text(json.dumps(report, indent=2) + "\n")
     verify_apk_abi(apk, abi)
     for license_name in RELEASE_LICENSES:
         if not (directory / license_name).is_file():
@@ -182,7 +189,7 @@ def reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
         if not run_id:
             continue
         run = api(f"actions/runs/{run_id}")
-        if (run.get("path") not in WORKFLOWS or run.get("event") != "workflow_dispatch"
+        if (run.get("path") != WORKFLOW or run.get("event") != "workflow_dispatch"
                 or run.get("head_sha") != sha or run.get("head_branch") != "main"
                 or run.get("repository", {}).get("full_name") != os.environ["GITHUB_REPOSITORY"]
                 or run.get("head_repository", {}).get("full_name") != os.environ["GITHUB_REPOSITORY"]):
@@ -200,12 +207,14 @@ def reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
     return None
 
 
-def plan(mode):
+def plan(mode, *, source_sha=None, reuse=True):
     if os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise ValueError("Run the full pipeline from main; other refs must not replace its prepared image")
-    sha = os.environ["GITHUB_SHA"]
     identity = application_identity(json.loads((ROOT / "build-lock.json").read_text()), mode)
     standalone_test = identity["variant"] == "standalone-test"
+    if source_sha is not None and (not standalone_test or not re.fullmatch(r"[0-9a-f]{40}", source_sha)):
+        raise ValueError("A source SHA override requires a pinned standalone test build")
+    sha = source_sha or os.environ["GITHUB_SHA"]
     jdk = Path(os.environ["JAVA_HOME"])
     sdk = Path(os.environ.get("ANDROID_HOME") or os.environ["ANDROID_SDK_ROOT"])
     certificate = release_certificate(jdk, os.environ) if mode == "release" else "temporary-test-key"
@@ -213,9 +222,10 @@ def plan(mode):
     builds, decisions = [], []
     outputs = {"prepared_inputs": prepared, "certificate": certificate}
     for arch in ("arm64", "arm"):
-        fingerprint = artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test)
+        fingerprint = artifact_fingerprint(sha, arch, mode, certificate, prepared, standalone_test,
+                                          identity.get("version_code"))
         name = f"Argon-{arch}-{sha}-{fingerprint}"
-        reused = reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk)
+        reused = reusable_artifact(name, sha, arch, mode, fingerprint, certificate, sdk, jdk) if reuse else None
         outputs[f"reuse_{arch}"] = bool(reused)
         outputs[f"fingerprint_{arch}"] = fingerprint
         if not reused:
@@ -262,7 +272,8 @@ def record(arch, mode, fingerprint, certificate, image):
     if mode == "release" and signer != certificate:
         raise ValueError("Built APK uses a different release certificate")
     expected = artifact_fingerprint(os.environ["GITHUB_SHA"], arch, mode, certificate,
-                                   image_fingerprint(), identity["variant"] == "standalone-test")
+                                   image_fingerprint(), identity["variant"] == "standalone-test",
+                                   identity.get("version_code"))
     if expected != fingerprint or data["source_commit"] != os.environ["GITHUB_SHA"]:
         raise ValueError("Build fingerprint changed after planning")
     data["pipeline"] = {"fingerprint": fingerprint, "prepared_inputs": image_fingerprint(),

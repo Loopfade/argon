@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = "154.0.8037.57"
 
 GH_FIXTURE = '''#!/usr/bin/env python3
-import hashlib, json, os
+import base64, hashlib, json, os
 from pathlib import Path
 import sys
 
@@ -41,7 +41,13 @@ elif args[0] == "api":
     if os.environ.get("FAIL_INVENTORY") and os.environ["FAIL_INVENTORY"] in url:
         raise SystemExit("Fixture GitHub inventory request failed")
     if "/git/ref/heads/main" in url:
-        print(os.environ["RELEASE_TARGET"])
+        if "--jq" in args:
+            print(os.environ["RELEASE_TARGET"])
+        else:
+            print(json.dumps({"object": {"sha": os.environ["RELEASE_TARGET"]}}))
+    elif "/git/matching-refs/heads/argon-dashboard-data" in url:
+        print("[]" if os.environ.get("DASHBOARD_NO_BRANCH") else
+              '[{"ref":"refs/heads/argon-dashboard-data"}]')
     elif "/releases/tags/" in url:
         print(json.dumps(release))
     elif "/releases?" in url:
@@ -67,7 +73,8 @@ elif args[0] == "api":
                           "head_branch":os.environ.get("FIXTURE_RUN_BRANCH", "main"),
                           "repository":{"full_name":os.environ.get("FIXTURE_RUN_REPOSITORY", os.environ["GH_REPO"])}}))
     elif "/contents/dashboard-data.json" in url:
-        print('{"sha":"existing-snapshot-sha"}')
+        print(json.dumps({"sha":"existing-snapshot-sha", "content":base64.b64encode(
+            b'{"generated_at":"published","builds":[]}').decode()}))
     else:
         raise SystemExit("Unexpected fixture URL: " + url)
 else:
@@ -182,7 +189,7 @@ class WorkflowExecutionTests(unittest.TestCase):
             ("Полная сборка Argon (Релизная)", ".github/workflows/build-all.yml", True),
             ("Full Argon build (release)", ".github/workflows/build-all.yml", True),
             ("Renamed build run", ".github/workflows/build-all.yml", True),
-            ("Full Argon build without APK publishing (release)", ".github/workflows/build-all-no-publish.yml", False),
+            ("Argon Test", ".github/workflows/build-test-main.yml", False),
             ("Build Argon", ".github/workflows/untrusted.yml", False),
             ("Build Argon (full pipeline)", ".github/workflows/untrusted.yml", False),
             ("Полная сборка Argon (Релизная)", ".github/workflows/untrusted.yml", False),
@@ -315,6 +322,23 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         writes = [call for call in self.calls() if "--method" in call]
         self.assertEqual([call[call.index("--method") + 1] for call in writes], ["PUT", "POST"])
+
+    def test_pages_reads_data_branch_snapshot_without_writes(self):
+        result = self.execute("deploy-dashboard.yml", "snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        snapshot = json.loads((self.root / "dashboard-data.json").read_text())
+        self.assertEqual(snapshot["generated_at"], "published")
+        self.assertTrue(any("?ref=argon-dashboard-data" in part for call in self.calls() for part in call))
+        self.assertFalse(any("--method" in call for call in self.calls()))
+
+    def test_pages_uses_checkout_snapshot_before_first_data_branch_update(self):
+        self.env["DASHBOARD_NO_BRANCH"] = "1"
+        original = '{"generated_at":"checkout"}\n'
+        (self.root / "dashboard-data.json").write_text(original)
+        result = self.execute("deploy-dashboard.yml", "snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "dashboard-data.json").read_text(), original)
+        self.assertFalse(any("--method" in call for call in self.calls()))
 
 
 if __name__ == "__main__":

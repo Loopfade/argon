@@ -54,6 +54,8 @@ RELEASE_PAYLOAD_FILES = {
     "scripts/prepare_chromium.sh",
     "scripts/image_source_inputs.py",
     "scripts/sign_and_verify.py",
+    "scripts/build_identity.py",
+    "scripts/apk_identity.py",
 }
 RELEASE_PAYLOAD_PREFIXES = (
     "licenses/",
@@ -209,6 +211,13 @@ def locate_release_artifact(
             continue
         if not path.is_file():
             raise ValueError(f"missing required release artifact: {path}")
+    metadata = json.loads(selected["metadata"].read_text())
+    identity = metadata.get("application_identity")
+    if identity is not None:
+        production_id = metadata.get("inputs", {}).get("application_id")
+        if (not isinstance(identity, dict) or identity.get("variant") != "standard" or not production_id
+                or identity.get("application_id") != production_id):
+            raise ValueError("standalone test APK must not be published as a production release")
     return selected
 
 

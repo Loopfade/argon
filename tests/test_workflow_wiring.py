@@ -1,5 +1,6 @@
 """Regression checks for cross-workflow orchestration."""
 from pathlib import Path
+import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,16 +20,16 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("'.github/workflows/deploy-dashboard.yml'", deploy)
         self.assertIn("include-hidden-files: true", deploy)
 
-    def test_dashboard_only_changes_are_ignored_by_validation(self):
+    def test_required_checks_run_for_every_main_pr_without_post_merge_push(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
-        for path in (
-            ".github/workflows/update-dashboard.yml",
-            ".github/workflows/deploy-dashboard.yml",
-            "index.html",
-            "dashboard-data.json",
-            ".nojekyll",
-        ):
-            self.assertGreaterEqual(validation.count(path), 2)
+        trigger = validation.split("\npermissions:", 1)[0].split("\non:\n", 1)[1]
+        self.assertEqual(re.findall(r"(?m)^  ([\w-]+):", trigger), ["pull_request"])
+        self.assertIn("branches: [main]", trigger)
+        self.assertNotRegex(trigger, r"(?m)^    paths(?:-ignore)?:")
+        self.assertIn("synchronize", trigger)
+        for job in ("validate", "domain-policy"):
+            body = re.split(r"(?m)^  [\w-]+:", validation.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
+            self.assertIn("github.event_name == 'pull_request' && github.event.action != 'closed'", body)
 
     def test_cleanup_runner_is_only_for_closed_pr(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
@@ -39,6 +40,10 @@ class WorkflowWiringTests(unittest.TestCase):
             validation,
         )
         self.assertNotIn("github.event_name == 'push' ||", validation)
+
+    def test_pages_reads_service_data_without_changing_protected_main(self):
+        deploy = (ROOT / ".github/workflows/deploy-dashboard.yml").read_text()
+        self.assertIn("python3 .github/ci/update-dashboard.py --read-published", deploy)
 
     def test_domain_validator_tests_are_built_and_executed_in_ci(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()

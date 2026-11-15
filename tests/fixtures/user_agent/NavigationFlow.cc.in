@@ -1,0 +1,278 @@
+// Host adapters for the production Chromium methods inserted below.
+// JNI, task scheduling and navigation transport are simulated; the entry
+// mutation, retry guard, original-URL selection and pending-entry discard are
+// the real production functions. This is not an Android or network test.
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#define EXPECT(condition) \
+  do { if (!(condition)) throw std::runtime_error(#condition); } while (false)
+#define CHECK(condition) EXPECT(condition)
+#define SCOPED_CRASH_KEY_BOOL(...)
+#define FROM_HERE 0
+using JNIEnv = void;
+
+namespace base {
+template <class T> struct WeakPtr {
+  T* owner;
+  std::weak_ptr<int> lifetime;
+};
+template <class T> struct WeakPtrFactory {
+  T* owner;
+  std::shared_ptr<int> lifetime = std::make_shared<int>(0);
+  explicit WeakPtrFactory(T* value) : owner(value) {}
+  WeakPtr<T> GetWeakPtr() { return {owner, lifetime}; }
+  void InvalidateWeakPtrs() { lifetime = std::make_shared<int>(0); }
+};
+template <class F, class T, class... Args>
+auto BindOnce(F method, WeakPtr<T> weak, Args... args) {
+  return [=]() {
+    if (!weak.lifetime.expired()) std::invoke(method, weak.owner, args...);
+  };
+}
+}  // namespace base
+
+namespace ui { constexpr int PAGE_TRANSITION_RELOAD = 8; }
+enum class ReloadType { NORMAL };
+struct GURL {
+  std::string value = "https://example.test/page";
+  bool is_valid() const { return !value.empty(); }
+  bool operator==(const GURL&) const = default;
+};
+struct NavigationController {
+  struct LoadURLParams {
+    GURL url;
+    bool should_replace_current_entry = false;
+    int transition_type = 0;
+    explicit LoadURLParams(const GURL& value) : url(value) {}
+  };
+};
+struct NavigationEntry {
+  bool overriding = false;
+  bool initial = false;
+  bool post = false;
+  GURL url;
+  GURL original;
+  bool GetIsOverridingUserAgent() const { return overriding; }
+  void SetIsOverridingUserAgent(bool value) { overriding = value; }
+  bool IsInitialEntry() const { return initial; }
+  const GURL& GetURL() const { return url; }
+  const GURL& GetOriginalRequestURL() const { return original; }
+  bool GetHasPostData() const { return post; }
+  int GetUniqueID() const { return 1; }
+};
+struct PendingEntry {
+  NavigationEntry* pointer = nullptr;
+  bool owned = false;
+  explicit operator bool() const { return pointer != nullptr; }
+  NavigationEntry* operator->() const { return pointer; }
+  void ClearAndDelete() {
+    EXPECT(owned);
+    delete pointer;
+    pointer = nullptr;
+    owned = false;
+  }
+  PendingEntry& operator=(std::nullptr_t) {
+    pointer = nullptr;
+    owned = false;
+    return *this;
+  }
+};
+struct Preferences {
+  int updates = 0;
+  void UpdateOverridingUserAgent() { ++updates; }
+};
+struct Page {
+  bool overriding = false;
+  bool is_overriding_user_agent() const { return overriding; }
+};
+struct RenderFrameHost {
+  Page page;
+  Page& GetPage() { return page; }
+};
+struct FrameTreeNode {
+  RenderFrameHost host;
+  RenderFrameHost* current_frame_host() { return &host; }
+};
+struct FrameTree {
+  FrameTreeNode node;
+  FrameTreeNode* root() { return &node; }
+  bool IsBeingDestroyed() const { return false; }
+};
+struct NavigationControllerImpl {
+  NavigationEntry entry;
+  Preferences prefs;
+  bool has_entry = true;
+  int reload_requests = 0;
+  int original_url_requests = 0;
+  PendingEntry pending_entry_;
+  int pending_entry_index_ = -1;
+  int failed_pending_entry_id_ = 0;
+  bool in_navigate_to_pending_entry_ = false;
+  FrameTree tree_;
+  FrameTree* frame_tree_ = &tree_;
+  std::vector<int> pending_entry_refs_;
+  NavigationEntry* GetLastCommittedEntry() { return has_entry ? &entry : nullptr; }
+  bool in_navigate_to_pending_entry() { return in_navigate_to_pending_entry_; }
+  FrameTree& frame_tree() { return tree_; }
+  Preferences* delegate() { return &prefs; }
+  bool PageMode() const { return tree_.node.host.page.overriding; }
+  void LoadOriginalRequestURL();
+  void DiscardPendingEntry(bool);
+  void Reload(ReloadType, bool check_for_repost) {
+    EXPECT(check_for_repost);
+    DiscardPendingEntry(false);
+    ++reload_requests;
+    pending_entry_.pointer = &entry;
+    pending_entry_index_ = 0;
+  }
+  void LoadURLWithParams(const NavigationController::LoadURLParams& params) {
+    EXPECT(params.should_replace_current_entry);
+    EXPECT(params.transition_type == ui::PAGE_TRANSITION_RELOAD);
+    EXPECT(params.url == entry.original);
+    DiscardPendingEntry(false);
+    ++original_url_requests;
+    pending_entry_.pointer = new NavigationEntry(entry);
+    pending_entry_.owned = true;
+    pending_entry_index_ = -1;
+  }
+  int Requests() const { return reload_requests + original_url_requests; }
+  void Commit() {
+    EXPECT(pending_entry_);
+    tree_.node.host.page.overriding = pending_entry_->overriding;
+    entry.overriding = PageMode();
+    entry.initial = false;
+    DiscardPendingEntry(false);
+  }
+  void Cancel() { DiscardPendingEntry(false); }
+};
+struct TaskRunner {
+  std::vector<std::function<void()>> tasks;
+  void PostTask(int, std::function<void()> task) { tasks.push_back(std::move(task)); }
+  void Drain() {
+    auto pending = std::move(tasks);
+    tasks.clear();
+    for (auto& task : pending) task();
+  }
+} runner;
+TaskRunner* GetUIThreadTaskRunner(std::initializer_list<int>) { return &runner; }
+class NavigationControllerAndroid {
+ public:
+  NavigationControllerImpl* navigation_controller_;
+  base::WeakPtrFactory<NavigationControllerAndroid> weak_factory_{this};
+  explicit NavigationControllerAndroid(NavigationControllerImpl* value)
+      : navigation_controller_(value) {}
+  bool GetUseDesktopUserAgent(JNIEnv*);
+  void SetUseDesktopUserAgent(JNIEnv*, bool, bool, bool);
+  void SetUseDesktopUserAgentInternal(bool, bool, bool);
+};
+
+@CONTROLLER_METHODS@
+@ANDROID_METHODS@
+
+void Cycles() {
+  NavigationControllerImpl controller;
+  NavigationControllerAndroid android(&controller);
+  for (bool desktop : {true, false, true, false}) {
+    android.SetUseDesktopUserAgent(nullptr, desktop, true, true);
+    controller.Commit();
+    EXPECT(controller.PageMode() == desktop);
+    EXPECT(android.GetUseDesktopUserAgent(nullptr) == desktop);
+    const int before = controller.Requests();
+    android.SetUseDesktopUserAgent(nullptr, desktop, true, true);
+    EXPECT(controller.Requests() == before);
+  }
+  EXPECT(controller.Requests() == 4);
+}
+
+void Retry(bool cancel, int url_kind) {
+  NavigationControllerImpl controller;
+  NavigationControllerAndroid android(&controller);
+  if (url_kind != 0) controller.entry.original.value = "https://example.test/start";
+  if (url_kind == 2) controller.entry.post = true;
+  if (url_kind == 3) controller.entry.original.value.clear();
+  for (bool desktop : {true, false, true, false}) {
+    // Either cancel the switch's load, or first set the mode without a reload.
+    android.SetUseDesktopUserAgent(nullptr, desktop, cancel, true);
+    EXPECT(controller.entry.overriding == desktop);
+    EXPECT(controller.PageMode() != desktop);
+    if (cancel) controller.Cancel();
+    const int before = controller.Requests();
+    android.SetUseDesktopUserAgent(nullptr, desktop, true, true);
+    EXPECT(controller.Requests() == before + 1);
+    controller.Commit();
+    EXPECT(controller.PageMode() == desktop);
+  }
+  EXPECT((controller.original_url_requests > 0) == (url_kind == 1));
+}
+
+void Deferred(bool synchronous_latest) {
+  for (bool initial : {false, true}) {
+    NavigationControllerImpl controller;
+    controller.entry.overriding = initial;
+    controller.tree_.node.host.page.overriding = initial;
+    NavigationControllerAndroid android(&controller);
+    controller.in_navigate_to_pending_entry_ = true;
+    android.SetUseDesktopUserAgent(nullptr, !initial, true, true);
+    EXPECT(controller.Requests() == 0);
+    if (synchronous_latest) controller.in_navigate_to_pending_entry_ = false;
+    android.SetUseDesktopUserAgent(nullptr, initial, true, true);
+    controller.in_navigate_to_pending_entry_ = false;
+    runner.Drain();
+    EXPECT(controller.entry.overriding == initial);
+    EXPECT(controller.Requests() == 0);
+
+    // A deferred selection must still run if it has not been superseded.
+    controller.in_navigate_to_pending_entry_ = true;
+    android.SetUseDesktopUserAgent(nullptr, !initial, true, true);
+    controller.in_navigate_to_pending_entry_ = false;
+    runner.Drain();
+    EXPECT(controller.Requests() == 1);
+    controller.Commit();
+    EXPECT(controller.PageMode() != initial);
+  }
+}
+
+void Guards() {
+  NavigationControllerImpl controller;
+  NavigationControllerAndroid android(&controller);
+  controller.has_entry = false;
+  android.SetUseDesktopUserAgent(nullptr, true, true, true);
+  EXPECT(controller.Requests() == 0);
+  controller.has_entry = true;
+  controller.entry.initial = true;
+  android.SetUseDesktopUserAgent(nullptr, true, true, true);
+  EXPECT(controller.Requests() == 0 && !controller.entry.overriding);
+  android.SetUseDesktopUserAgent(nullptr, true, true, false);
+  controller.Commit();
+  EXPECT(controller.PageMode());
+  android.SetUseDesktopUserAgent(nullptr, false, false, true);
+  EXPECT(controller.Requests() == 1 && controller.PageMode());
+  android.SetUseDesktopUserAgent(nullptr, false, false, true);
+  EXPECT(controller.Requests() == 1);
+}
+
+int main(int argc, char** argv) {
+  try {
+    EXPECT(argc == 2);
+    const std::string scenario = argv[1];
+    if (scenario == "cycles") Cycles();
+    else if (scenario == "guards") Guards();
+    else if (scenario == "deferred") Deferred(false);
+    else if (scenario == "superseded") Deferred(true);
+    else if (scenario == "retry") {
+      for (int url_kind : {0, 1, 2, 3}) Retry(true, url_kind);
+    } else if (scenario == "no_reload") {
+      for (int url_kind : {0, 1, 2, 3}) Retry(false, url_kind);
+    } else throw std::runtime_error("Unknown scenario");
+    std::cout << "PASS: " << scenario << '\n';
+  } catch (const std::exception& error) {
+    std::cerr << error.what() << '\n';
+    return 1;
+  }
+}

@@ -9,6 +9,9 @@ on:
       image:
         type: string
         required: true
+      source_sha:
+        type: string
+        default: ''
       runner:
         type: string
         required: true
@@ -18,6 +21,9 @@ on:
       standalone_test:
         type: boolean
         default: false
+      test_version_code:
+        type: string
+        default: ''
       fingerprint:
         type: string
         required: true
@@ -51,6 +57,8 @@ env:
   AUTO_CONTINUE_MAX: 10
   TARGET_ARCH: ${{ inputs.arch }}
   ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}
+  BUILD_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+  ARGON_TEST_VERSION_CODE: ${{ inputs.test_version_code }}
 
 jobs:
   build:
@@ -58,6 +66,15 @@ jobs:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 360
     steps:
+      - name: Проверить режим сборки временной ветки
+        if: inputs.source_sha != ''
+        env:
+          TEST_SIGNING: ${{ inputs.signing }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$TEST_SIGNING" == release && "$ARGON_STANDALONE_TEST" == true ]]
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
       - name: Записать лимит времени и подготовить рабочий кеш и снимки
         run: |
           echo "BUILD_JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
@@ -66,6 +83,7 @@ jobs:
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
           submodules: true
           persist-credentials: false
       - name: Выбрать кеш для версии Chromium и архитектуры
@@ -114,10 +132,15 @@ jobs:
             --sdk /opt/argon/chromium/src/third_party/android_sdk/public \
             --jdk /opt/argon/chromium/src/third_party/jdk/current
       - name: Удалить кеши старых версий Chromium
-        continue-on-error: true
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 .github/ci/prune-compiler-cache.py --remove-old-versions "$TARGET_ARCH"
+        run: |
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            python3 .github/ci/prune-compiler-cache.py --replace-toolchain "$TARGET_ARCH"
+          else
+            python3 .github/ci/prune-compiler-cache.py --remove-old-versions "$TARGET_ARCH"
+          fi
       - name: Восстановить кеш компиляции
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -187,10 +210,12 @@ jobs:
           BUILD_CERTIFICATE: ${{ inputs.certificate }}
           PREPARED_IMAGE: ${{ inputs.image }}
           SIGNING_MODE: ${{ inputs.signing }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           # Signing created these files as the container user; record provenance
           # there too, with the exact source SHA from this workflow run.
-          docker exec --env GITHUB_SHA --env ARGON_STANDALONE_TEST "$BUILD_CONTAINER_NAME" \
+          if [[ -n "${SOURCE_SHA:-}" ]]; then export GITHUB_SHA="$SOURCE_SHA"; fi
+          docker exec --env GITHUB_SHA --env ARGON_STANDALONE_TEST --env ARGON_TEST_VERSION_CODE "$BUILD_CONTAINER_NAME" \
             python3 /workspace/.github/ci/full-build.py record --arch "$TARGET_ARCH" --mode "$SIGNING_MODE" \
             --fingerprint "$BUILD_FINGERPRINT" --certificate "$BUILD_CERTIFICATE" --image "$PREPARED_IMAGE"
       - name: Показать статистику кеша и остановить компиляцию
@@ -222,7 +247,7 @@ jobs:
         if: steps.build.outcome == 'success' && steps.provenance.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Argon-${{ inputs.arch }}-${{ github.sha }}-${{ inputs.fingerprint }}
+          name: Argon-${{ inputs.arch }}-${{ inputs.source_sha || github.sha }}-${{ inputs.fingerprint }}
           path: artifacts/
           if-no-files-found: error
           overwrite: true

@@ -1,0 +1,87 @@
+// Copyright 2013 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+
+/*
+ * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved.
+ *     (http://www.torchmobile.com/)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1.  Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ * 2.  Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
+ *     its contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+// Verbatim methods from Chromium a733b5afbb3ba618844ff8876b89ad1a774b2f18.
+void NavigationControllerImpl::LoadOriginalRequestURL() {
+  // If the original request URL is not valid, matches the current URL, or
+  // involves POST data, then simply reload. The POST check avoids issues with
+  // sending data to the wrong page.
+  const GURL& last_committed_url = GetLastCommittedEntry()->GetURL();
+  const GURL& original_request_url =
+      GetLastCommittedEntry()->GetOriginalRequestURL();
+  if (!original_request_url.is_valid() ||
+      original_request_url == last_committed_url ||
+      GetLastCommittedEntry()->GetHasPostData()) {
+    Reload(ReloadType::NORMAL, true);
+    return;
+  }
+
+  // Otherwise, attempt to load the original request URL without any of the
+  // other data from the current NavigationEntry, replacing the current entry.
+  // Loading the original URL is useful in cases such as modifying the user
+  // agent.
+  std::unique_ptr<NavigationController::LoadURLParams> load_params =
+      std::make_unique<NavigationController::LoadURLParams>(
+          original_request_url);
+  load_params->should_replace_current_entry = true;
+  load_params->transition_type = ui::PAGE_TRANSITION_RELOAD;
+  LoadURLWithParams(*load_params.get());
+}
+
+void NavigationControllerImpl::DiscardPendingEntry(bool was_failure) {
+  // It is not safe to call DiscardPendingEntry while NavigateToEntry is in
+  // progress, since this will cause a use-after-free.  (We only allow this
+  // when the tab is being destroyed for shutdown, since it won't return to
+  // NavigateToEntry in that case.)  http://crbug.com/347742.
+  CHECK(!in_navigate_to_pending_entry_ || frame_tree_->IsBeingDestroyed());
+
+  if (was_failure && pending_entry_) {
+    failed_pending_entry_id_ = pending_entry_->GetUniqueID();
+  } else {
+    failed_pending_entry_id_ = 0;
+  }
+
+  if (pending_entry_) {
+    if (pending_entry_index_ == -1) {
+      pending_entry_.ClearAndDelete();
+    }
+    pending_entry_index_ = -1;
+    pending_entry_ = nullptr;
+  }
+
+  // Ensure any refs to the current pending entry are ignored if they get
+  // deleted, by clearing the set of known refs. All future pending entries will
+  // only be affected by new refs.
+  pending_entry_refs_.clear();
+}

@@ -1,0 +1,44 @@
+name: Тестовая сборка Argon из временной ветки
+run-name: Тестовая сборка ветки ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Исполнитель Linux x64: не менее 100 ГиБ свободного места'
+        type: string
+        default: ubuntu-24.04
+        required: true
+      auto_continue:
+        description: 'Продолжать тот же коммит после тайм-аута с кешем main'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    name: Передать коммит ветки исполнителю с кешем main
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Отклонить запуск из main или тега
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [[ "$REF_TYPE" != branch || "$GITHUB_REF" == refs/heads/main ]]; then
+            echo '::error::Выберите временную ветку. Этот workflow не собирает main или теги.'
+            exit 1
+          fi
+      - name: Получить исходники выбранной ветки
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Запустить тестовую сборку точного коммита с общим кешем
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_RUNNER: ${{ inputs.runner }}
+          TEST_AUTO_CONTINUE: ${{ inputs.auto_continue }}
+        run: python3 .github/ci/branch-test.py dispatch

@@ -19,6 +19,7 @@ RUN_FIELDS = (
 )
 JOB_FIELDS = ("id", "name", "status", "conclusion", "html_url", "started_at", "completed_at")
 STEP_FIELDS = ("name", "status", "conclusion", "number", "started_at", "completed_at")
+DATA_BRANCH = "argon-dashboard-data"
 
 
 def api(path, method=None, payload=None, paginate=False, raw=False):
@@ -146,32 +147,60 @@ def build_snapshot(repository, event, trigger):
             "release": builds[0]["release"] if builds else None}
 
 
-def publish(repository, snapshot):
+def snapshot_branch(repository, *, create=False):
+    ref = f"refs/heads/{DATA_BRANCH}"
+    refs = api(f"repos/{repository}/git/matching-refs/heads/{DATA_BRANCH}")
+    if any(item["ref"] == ref for item in refs):
+        return True
+    if not create:
+        return False
+    main = api(f"repos/{repository}/git/ref/heads/main")
+    api(f"repos/{repository}/git/refs", "POST", {"ref": ref, "sha": main["object"]["sha"]})
+    return True
+
+
+def saved_snapshot(repository):
     path = f"repos/{repository}/contents/dashboard-data.json"
-    # The committed snapshot exists. API/decoding errors must stop publication.
-    current = api(path + "?ref=main")
+    # API/decoding errors must stop publication; never overwrite unknown data.
+    current = api(path + f"?ref={DATA_BRANCH}")
     existing = None
     # Retry histories can exceed the Contents API's 1 MB inline-content limit.
     if current.get("encoding") == "none":
-        existing = api(path + "?ref=main", raw=True)
+        existing = api(path + f"?ref={DATA_BRANCH}", raw=True)
     elif current.get("content"):
         existing = json.loads(base64.b64decode(current["content"]))
+    return current, existing
+
+
+def publish(repository, snapshot):
+    snapshot_branch(repository, create=True)
+    current, existing = saved_snapshot(repository)
     if same_payload(existing, snapshot):
-        print("В main уже находятся те же данные панели; обновление не требуется.")
+        print("В служебной ветке уже находятся те же данные панели; обновление не требуется.")
         return
-    payload = {"message": "Обновить данные панели Argon", "branch": "main",
+    payload = {"message": "Обновить данные панели Argon", "branch": DATA_BRANCH,
                "content": base64.b64encode((json.dumps(snapshot, indent=2) + "\n").encode()).decode(),
                "sha": current["sha"]}
-    api(path, "PUT", payload)
+    api(f"repos/{repository}/contents/dashboard-data.json", "PUT", payload)
     api(f"repos/{repository}/actions/workflows/deploy-dashboard.yml/dispatches", "POST", {"ref": "main"})
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--publish", action="store_true")
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--publish", action="store_true")
+    action.add_argument("--read-published", action="store_true")
     args = parser.parse_args()
     repository = os.environ["GH_REPO"]
     target = Path("dashboard-data.json")
+    if args.read_published:
+        if snapshot_branch(repository):
+            _, snapshot = saved_snapshot(repository)
+            if not isinstance(snapshot, dict):
+                raise ValueError("Invalid published dashboard snapshot")
+            target.write_text(json.dumps(snapshot, indent=2) + "\n")
+        # Before the first update, use the snapshot already checked out in main.
+        return
     if args.publish:
         publish(repository, json.loads(target.read_text()))
         return

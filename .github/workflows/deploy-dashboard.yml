@@ -36,6 +36,14 @@ jobs:
       - name: Настроить GitHub Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
+      - name: Получить данные панели из служебной ветки
+        id: snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 .github/ci/update-dashboard.py --read-published
+
       - name: Подготовить сайт панели
         shell: bash
         run: |

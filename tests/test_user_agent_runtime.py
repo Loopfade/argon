@@ -10,7 +10,9 @@ from test_user_agent import ADAPTERS, MODEL, ROOT, compile_java, run_java
 OVERLAY=ROOT/'chromium_overlay/titanium/chromium_src/chrome/android/java'
 PREFERENCE=OVERLAY/'src/org/chromium/chrome/browser/privacy/settings/ArgonUserAgentPreference.java'
 UI={
-'android/R.java': '''package android; public class R { public static class string { public static final int cancel=-1,ok=-2; } }''',
+'android/R.java': '''package android; public class R {
+public static class string { public static final int cancel=-1,ok=-2; }
+public static class style { public static final int TextAppearance_Material_Small=1; } }''',
 'android/content/Context.java': '''package android.content;
 public class Context {
     public String getString(int id,Object... args) { return String.format(org.chromium.chrome.R.strings.get(id),args); }
@@ -40,6 +42,19 @@ public class EditText extends android.view.View {
 'android/widget/FrameLayout.java': '''package android.widget;
 public class FrameLayout { public FrameLayout(android.content.Context c) {}
 public void setPadding(int a,int b,int c,int d) {} public void addView(EditText v) {} }''',
+'android/widget/TextView.java': '''package android.widget;
+public class TextView extends android.view.View {
+    public int text; public TextView(android.content.Context c) {}
+    public void setTextAppearance(int id) {} public void setText(int id) { text=id; }
+    public void setPadding(int a,int b,int c,int d) {}
+}''',
+'android/widget/ListView.java': '''package android.widget;
+public class ListView {
+    public TextView footer; public boolean footerSelectable;
+    public void addFooterView(TextView view,Object data,boolean selectable) {
+        footer=view;footerSelectable=selectable;
+    }
+}''',
 'android/widget/Toast.java': '''package android.widget;
 public class Toast { public static final int LENGTH_LONG=1; public static int shown;
 public static Toast makeText(android.content.Context c,int id,int length) { return new Toast(); }
@@ -49,10 +64,12 @@ public class AlertDialog {
     public static final int BUTTON_POSITIVE=-1,BUTTON_NEGATIVE=-2,BUTTON_NEUTRAL=-3;
     public static AlertDialog latest; public boolean shown; public CharSequence[] choices;
     public int checked,message; public Click choose;
+    private final android.widget.ListView list=new android.widget.ListView();
     public final java.util.Map<Integer,android.view.View> buttons=new java.util.HashMap<>();
     public interface Click { void onClick(AlertDialog dialog,int which); }
     public void show() { latest=this; shown=true; }
     public void dismiss() { shown=false; }
+    public android.widget.ListView getListView() { return list; }
     public android.view.View getButton(int which) { return buttons.get(which); }
     public void select(int which) { choose.onClick(this,which); }
     public void press(int which) { getButton(which).click(); }

@@ -64,7 +64,7 @@ class DashboardRenderingTests(unittest.TestCase):
                     "started_at": f"2026-10-28T00:{start}:00Z",
                     "completed_at": f"2026-10-28T00:{end}:00Z"}
 
-        for filename in ("build-all.yml", "build-all-no-publish.yml"):
+        for filename in ("build-all.yml",):
             jobs = []
             for index, arch in enumerate(("arm64", "arm")):
                 name = job_name(filename, "build").replace("${{ matrix.arch }}", arch)

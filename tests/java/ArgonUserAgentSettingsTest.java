@@ -22,9 +22,15 @@ public class ArgonUserAgentSettingsTest {
         var selection=fragment.findPreference("argon_user_agent");
         var restart=fragment.findPreference("argon_user_agent_restart");
         assert !restart.visible && !ArgonUserAgent.hasPendingChange();
+        assert selection.summary.equals(selection.getContext().getString(
+                active==Preset.DEFAULT ? R.string.argon_user_agent_default
+                                       : R.string.argon_user_agent_custom));
 
         selection.click();
         assert AlertDialog.latest.choices.length==4 && AlertDialog.latest.checked==active.ordinal();
+        assert AlertDialog.latest.message==0; // A message would hide the radio list.
+        assert AlertDialog.latest.getListView().footer.text==R.string.argon_user_agent_help;
+        assert !AlertDialog.latest.getListView().footerSelectable;
         AlertDialog.latest.press(AlertDialog.BUTTON_NEGATIVE);
         assert !ArgonUserAgent.hasPendingChange();
         selection.click();
