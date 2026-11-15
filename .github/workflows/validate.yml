@@ -1,21 +1,9 @@
 name: Проверка Argon и правил доверия сертификатам
 on:
-  push:
-    paths-ignore:
-      - '.github/workflows/update-dashboard.yml'
-      - '.github/workflows/deploy-dashboard.yml'
-      - 'index.html'
-      - 'dashboard-data.json'
-      - '.nojekyll'
   pull_request:
-    types: [opened, synchronize, reopened, closed]
-    paths-ignore:
-      - '.github/workflows/update-dashboard.yml'
-      - '.github/workflows/deploy-dashboard.yml'
-      - 'index.html'
-      - 'dashboard-data.json'
-      - '.nojekyll'
-  workflow_dispatch:
+    branches: [main]
+    # Required checks must report for every PR, including dashboard-only edits.
+    types: [opened, synchronize, reopened, ready_for_review, closed]
 permissions:
   contents: read
 concurrency:
@@ -55,7 +43,7 @@ jobs:
           done
   validate:
     name: Проверить исходники, патчи и поведение Argon
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     permissions:
       contents: read
     runs-on: ubuntu-24.04
@@ -120,7 +108,7 @@ jobs:
           ctest --test-dir .build/policy-tests --output-on-failure
   domain-policy:
     name: Проверить графы Android и доменную политику
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     permissions:
       contents: read
       packages: read

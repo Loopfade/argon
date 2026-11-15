@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           python3 .github/ci/update-dashboard.py
 
-      - name: Сохранить данные панели в main
+      - name: Сохранить данные панели в служебной ветке
         id: publish
         if: steps.snapshot.outputs.updated == 'true'
         env:
