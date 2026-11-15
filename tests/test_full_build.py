@@ -102,6 +102,21 @@ class FullBuildTests(unittest.TestCase):
         bundler.write_text(bundler.read_text() + "\n# Changed bundler input\n")
         self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
 
+    def test_release_number_and_validation_tests_do_not_invalidate_prepared_sources(self):
+        checkout = self.checkout()
+        before = pipeline.image_fingerprint(checkout)
+        path = checkout / "build-lock.json"
+        lock = json.loads(path.read_text())
+        lock["argon_revision"] += 1
+        path.write_text(json.dumps(lock))
+        for name in ("tests/scoped_ca_test.cc", "tests/CMakeLists.txt", "scripts/preflight.py"):
+            with (checkout / name).open("a") as stream:
+                stream.write("\n# validation changed\n")
+        self.assertEqual(before, pipeline.image_fingerprint(checkout))
+        lock["chromium_commit"] = "b" * 40
+        path.write_text(json.dumps(lock))
+        self.assertNotEqual(before, pipeline.image_fingerprint(checkout))
+
     def test_deletion_overlay_preserves_the_cached_source_toolchain_stage(self):
         checkout = self.checkout()
         before = source_stage_inputs(checkout)

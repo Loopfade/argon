@@ -24,22 +24,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
           set -euo pipefail
 
-          gh api --paginate "repos/$GH_REPO/actions/caches?per_page=100" \
-            --jq '.actions_caches[] | [.id, .ref] | @tsv' |
-          while read -r cache_id ref; do
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          gh api --paginate "repos/$GH_REPO/actions/caches?ref=refs/pull/$PR_NUMBER/merge&per_page=100" \
+            --jq '.actions_caches[].id' |
+          while read -r cache_id; do
             [[ "$cache_id" =~ ^[0-9]+$ ]] || continue
-            [[ "$ref" =~ ^refs/pull/([0-9]+)/merge$ ]] || continue
-
-            pr_number="${BASH_REMATCH[1]}"
-            state=$(gh api "repos/$GH_REPO/pulls/$pr_number" --jq '.state')
-            if [[ "$state" == closed ]]; then
-              echo "Удаление кеша $cache_id закрытого запроса №$pr_number ($ref)"
-              gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id" >/dev/null
-            fi
+            echo "Удаление кеша $cache_id закрытого запроса №$PR_NUMBER"
+            gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id" >/dev/null
           done
   validate:
     name: Проверить исходники, патчи и поведение Argon
@@ -52,9 +48,25 @@ jobs:
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Выбрать проверки по полному diff запроса на слияние
+        id: changes
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/ci/validation-scope.py
+      - name: Подтвердить проверку изменений документации
+        if: steps.changes.outputs.full != 'true'
+        run: echo 'Изменена только документация; проверки исходников не требуются.'
+      - name: Получить закреплённый подмодуль для проверки исходников
+        if: steps.changes.outputs.full == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
           submodules: true
           persist-credentials: false
       - name: Проверить патчи и закреплённые входные данные
+        if: steps.changes.outputs.full == 'true'
         run: |
           for arch in arm64 arm; do
             python3 scripts/preflight.py --inputs-only --arch "$arch"
@@ -66,20 +78,23 @@ jobs:
           bash -n scripts/prepare_chromium.sh
           for script in .github/ci/*.sh; do bash -n "$script"; done
       - name: Настроить Node.js
+        if: steps.changes.outputs.domain == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
       - name: Проверить настройки домашней страницы и обмен сохранёнными данными
+        if: steps.changes.outputs.domain == 'true'
         run: node --test tests/homepage/*.test.mjs
       - name: Проверить взаимодействия с домашней страницей в Chromium
+        if: steps.changes.outputs.domain == 'true'
         env:
           ARGON_UI_ARTIFACTS: ${{ runner.temp }}/argon-homepage-screenshots
         run: |
           npm install --prefix "$RUNNER_TEMP/argon-homepage-ui" --no-save --ignore-scripts playwright@1.56.1
-          "$RUNNER_TEMP/argon-homepage-ui/node_modules/.bin/playwright" install --with-deps chromium
+          "$RUNNER_TEMP/argon-homepage-ui/node_modules/.bin/playwright" install --with-deps --only-shell chromium
           ARGON_PLAYWRIGHT_MODULE="$RUNNER_TEMP/argon-homepage-ui/node_modules/playwright/index.mjs" node tests/homepage/ui-check.mjs
       - name: Загрузить снимки домашней страницы
-        if: always()
+        if: always() && steps.changes.outputs.domain == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: homepage-ui-${{ github.sha }}
@@ -87,14 +102,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Проверить патч домашней страницы на закреплённом Chromium
+        if: steps.changes.outputs.domain == 'true'
         run: python3 tests/check_homepage_upstream.py
       - name: Проверить патчи сертификатов и JNI на закреплённых исходниках
+        if: steps.changes.outputs.domain == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tests/check_upstream_patches.py
       - name: Проверить фоновое воспроизведение от ввода домена до правил медиасессии
+        if: steps.changes.outputs.domain == 'true'
         run: python3 tests/check_background_playback_flow.py
       - name: Получить закреплённую версию BoringSSL
+        if: steps.changes.outputs.domain == 'true'
         run: |
           revision=$(python3 -c 'import json; print(json.load(open("build-lock.json"))["boringssl_commit"])')
           git init .build/boringssl
@@ -102,6 +121,7 @@ jobs:
           git -C .build/boringssl fetch --depth=1 origin "$revision"
           git -C .build/boringssl checkout --detach "$revision"
       - name: Проверить рабочие ограничения DNS и IP
+        if: steps.changes.outputs.domain == 'true'
         run: |
           cmake -S tests -B .build/policy-tests -DBORINGSSL_SOURCE_DIR="$PWD/.build/boringssl" -DCMAKE_BUILD_TYPE=Release
           cmake --build .build/policy-tests --target scoped_ca_test -j 4
@@ -110,6 +130,7 @@ jobs:
     name: Проверить графы Android и доменную политику
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
     permissions:
+      actions: write
       contents: read
       packages: read
     runs-on: ubuntu-24.04
@@ -118,17 +139,41 @@ jobs:
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          fetch-depth: 2
           persist-credentials: false
+      - name: Выбрать проверки по полному diff запроса на слияние
+        id: changes
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/ci/validation-scope.py
+      - name: Подтвердить отсутствие изменений компилируемых исходников
+        if: steps.changes.outputs.domain != 'true'
+        run: echo 'Документация и служебные workflow не требуют Android-компиляции.'
       - name: Освободить место на временном исполнителе GitHub
-        if: runner.environment == 'github-hosted'
+        if: steps.changes.outputs.domain == 'true' && runner.environment == 'github-hosted'
         run: |
           test "$RUNNER_ENVIRONMENT" = github-hosted
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /opt/swift
           df -h .
+      - name: Подготовить каталог кеша проверочной компиляции
+        if: steps.changes.outputs.domain == 'true'
+        run: mkdir -p "$RUNNER_TEMP/argon-validation-ccache"
+      - name: Восстановить кеш проверочной компиляции
+        id: compiler_cache
+        if: steps.changes.outputs.domain == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/argon-validation-ccache
+          key: ${{ steps.changes.outputs.cache-prefix }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ steps.changes.outputs.cache-prefix }}-
       - name: Настроить Docker Buildx для определения digest образа
+        if: steps.changes.outputs.domain == 'true'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Использовать совместимый подготовленный образ Chromium
         id: prepared
+        if: steps.changes.outputs.domain == 'true'
         env:
           GHCR_TOKEN: ${{ github.token }}
         run: |
@@ -138,18 +183,25 @@ jobs:
           echo "cache=ghcr.io/$owner/argon-build:branch-main" >> "$GITHUB_OUTPUT"
           python3 .github/ci/full-build.py probe-image --image "ghcr.io/$owner/argon-build:branch-main"
       - name: Подготовить исходники и проверить доменную политику в BuildKit
-        if: steps.prepared.outputs.exists != 'true'
+        id: cold
+        if: steps.changes.outputs.domain == 'true' && steps.prepared.outputs.exists != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: docker/chromium/Dockerfile
-          target: domain-policy-tests
+          target: domain-policy-cache
+          build-contexts: |
+            validation_cache=${{ runner.temp }}/argon-validation-ccache
+          build-args: |
+            ARGON_RUN_UNIT_TESTS=0
+          outputs: type=local,dest=${{ runner.temp }}/argon-validation-ccache-next
           load: false
           push: false
           cache-from: type=registry,ref=${{ steps.prepared.outputs.cache }}
           provenance: false
           sbom: false
       - name: Собрать и выполнить тесты доменной политики Chromium
+        id: warm
         if: steps.prepared.outputs.exists == 'true'
         env:
           PREPARED_IMAGE: ${{ steps.prepared.outputs.image }}
@@ -158,8 +210,39 @@ jobs:
           image="${PREPARED_IMAGE:?Missing compatible prepared image}"
           python3 .github/ci/pull-prepared-image.py "$image"
           docker run --rm --user 0 --volume "$GITHUB_WORKSPACE:/workspace:ro" \
+            --volume "$RUNNER_TEMP/argon-validation-ccache:/ccache" \
+            --env CCACHE_DIR=/ccache --env CCACHE_MAXSIZE=1G \
             "$image" bash -c '
               git config --global --add safe.directory "*"
               bash /workspace/.github/ci/test-domain-policy.sh /opt/argon/chromium/src /opt/argon/depot_tools
             '
+      - name: Подготовить проверенный кеш к сохранению
+        id: snapshot
+        if: steps.cold.outcome == 'success' || steps.warm.outcome == 'success'
+        run: |
+          cache="$RUNNER_TEMP/argon-validation-ccache"
+          next="$RUNNER_TEMP/argon-validation-ccache-next"
+          if [[ -d "$next" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "$cache" "$next"
+            rm -rf "$cache"
+            mv "$next" "$cache"
+          else
+            sudo chown -R "$(id -u):$(id -g)" "$cache"
+          fi
+      - name: Сохранить кеш проверочной компиляции
+        id: save_cache
+        if: steps.snapshot.outcome == 'success'
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/argon-validation-ccache
+          key: ${{ steps.compiler_cache.outputs.cache-primary-key }}
+      - name: Удалить предыдущие снимки после подтверждения нового кеша
+        if: steps.save_cache.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CCACHE_CACHE_PREFIX: ${{ steps.changes.outputs.cache-prefix }}
+          CURRENT_CACHE_KEY: ${{ steps.compiler_cache.outputs.cache-primary-key }}
+        run: python3 .github/ci/prune-compiler-cache.py "$CURRENT_CACHE_KEY"
 

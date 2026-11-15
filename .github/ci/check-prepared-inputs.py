@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reject a prepared image whose source inputs differ from the checkout."""
 import argparse
+import json
 from pathlib import Path
 
 
@@ -39,7 +40,13 @@ def inputs(root):
             # Generated extension payloads are pinned in build-lock.json.
             if name.startswith("extensions/dist/"):
                 continue
-            files[name] = path.read_bytes()
+            if name == "build-lock.json":
+                # Release numbering does not change the prepared Chromium tree.
+                lock = json.loads(path.read_text())
+                lock.pop("argon_revision", None)
+                files[name] = json.dumps(lock, sort_keys=True, separators=(",", ":")).encode()
+            else:
+                files[name] = path.read_bytes()
     # build.sh also contains runtime checkpoint/signing code, which need not
     # invalidate the image. Compare its source-preparation branch separately.
     script = (root / "build.sh").read_text()

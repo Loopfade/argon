@@ -8,6 +8,23 @@ depot=${2:?Pass the prepared depot_tools directory}
 export PATH="$depot:$PATH"
 export DEPOT_TOOLS_UPDATE=0
 
+configure_cache=()
+if [[ -n ${CCACHE_DIR:-} ]]; then
+  export CCACHE_BASEDIR="$src"
+  toolchain=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["chromium_commit"])' "$ROOT/build-lock.json")
+  export CCACHE_COMPILERCHECK="string:chromium-$toolchain"
+  export CCACHE_DEPEND=true
+  export CCACHE_DIRECT=true
+  export CCACHE_NOHASHDIR=true
+  export CCACHE_SLOPPINESS=modules,include_file_mtime,include_file_ctime
+  ccache --set-config compression=true
+  ccache --set-config compression_level=3
+  ccache --max-size "${CCACHE_MAXSIZE:-1G}"
+  ccache --zero-stats
+  configure_cache+=(--ccache)
+  trap 'ccache --show-stats' EXIT
+fi
+
 python3 "$ROOT/.github/ci/check-domain-test-inputs.py" \
   --lock "$ROOT/build-lock.json" --src "$src" --depot "$depot"
 
@@ -20,7 +37,7 @@ python3 "$ROOT/.github/ci/check-exit-dex.py" --src "$src"
 # Compile the native WebUI objects below; APK verification belongs to the full build.
 for arch in arm64 arm; do
   graph_out="$src/out/Argon-graph-$arch"
-  python3 "$ROOT/scripts/configure_build.py" --arch "$arch" --output "$graph_out/args.gn"
+  python3 "$ROOT/scripts/configure_build.py" --arch "$arch" --output "$graph_out/args.gn" "${configure_cache[@]}"
   (
     cd "$src"
     gn gen "$graph_out"
@@ -74,7 +91,7 @@ cp "$ROOT/chromium_overlay/chrome/browser/net/argon_ca_prefs.h" \
    "$src/chrome/browser/net/"
 
 out="$src/out/Argon-domain-tests"
-python3 "$ROOT/scripts/configure_build.py" --arch arm64 --output "$out/args.gn"
+python3 "$ROOT/scripts/configure_build.py" --arch arm64 --output "$out/args.gn" "${configure_cache[@]}"
 # Embed ICU tables so the host test uses actual IDN data without a runtime file.
 sed -i -e 's/^use_siso = true$/use_siso = false/' \
        -e 's/^icu_use_data_file = true$/icu_use_data_file = false/' \

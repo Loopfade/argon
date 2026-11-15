@@ -154,7 +154,7 @@ class PreparedImageTests(unittest.TestCase):
                 for name, content in fixture.items():
                     path = root / name
                     path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_text(content)
+                    path.write_text(json.dumps({"pin": content}) if name == "build-lock.json" else content)
             with patch.object(prepared, "PREPARED_INPUTS", ("build-lock.json", "extensions")), \
                  patch.object(sys, "argv", ["check", "--prepared", str(roots[0]),
                                              "--checkout", str(roots[1])]):

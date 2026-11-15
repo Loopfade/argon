@@ -61,14 +61,13 @@ def image_fingerprint(root=ROOT):
     spec.loader.exec_module(prepared)
     files = prepared.inputs(root)
     for name in ("docker/chromium/Dockerfile", ".dockerignore", "args.gn",
-                 "scripts/configure_build.py", "scripts/preflight.py",
-                 "tests/CMakeLists.txt", "tests/scoped_ca_test.cc",
+                 "scripts/configure_build.py",
                  ".github/ci/check-prepared-inputs.py"):
         files[name] = (root / name).read_bytes()
     # The submodule's immutable revision is also validated by preflight.
     lock = json.loads((root / "build-lock.json").read_text())
     files["vanadium gitlink"] = lock["vanadium_commit"].encode()
-    files["fingerprint schema"] = b"prepared-v1"
+    files["fingerprint schema"] = b"prepared-v2"
     return digest_inputs(files)
 
 

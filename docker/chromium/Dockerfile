@@ -69,16 +69,23 @@ RUN bash scripts/prepare_chromium.sh patch
 
 # Runtime CI, signing and documentation changes do not reapply patches.
 COPY --chown=argon:argon . .
-RUN BUILD_MODE=prepare ARGON_PREPATCHED_SOURCES=1 BUILD_JOBS=2 bash build.sh arm64 \
+ARG ARGON_RUN_UNIT_TESTS=1
+RUN ARGON_RUN_UNIT_TESTS="$ARGON_RUN_UNIT_TESTS" BUILD_MODE=prepare ARGON_PREPATCHED_SOURCES=1 BUILD_JOBS=2 bash build.sh arm64 \
     && rm -rf .build/policy-tests chromium/src/out
 
 # Cold validation runs inside BuildKit, avoiding a second Chromium checkout
 # in the Docker daemon's image store on disk-limited hosted runners.
 FROM prepared AS domain-policy-tests
 USER root
+COPY --from=validation_cache / /ccache/
 RUN git config --global --add safe.directory '*' \
-    && bash .github/ci/test-domain-policy.sh \
+    && CCACHE_DIR=/ccache CCACHE_MAXSIZE=1G bash .github/ci/test-domain-policy.sh \
         /opt/argon/chromium/src /opt/argon/depot_tools
+
+# Export only the bounded compiler cache, without loading a second Chromium
+# image into Docker's image store on hosted runners.
+FROM scratch AS domain-policy-cache
+COPY --from=domain-policy-tests /ccache/ /
 
 # Keep the published runtime image on the prepared stage and the argon user.
 FROM prepared AS final
