@@ -103,6 +103,10 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertEqual([call.args[1] for call in api.call_args_list[1:]], ["PUT", "POST"])
         self.assertEqual(api.call_args_list[1].args[2]["sha"], "blob")
         self.assertEqual(api.call_args_list[1].args[2]["branch"], dashboard.DATA_BRANCH)
+        self.assertEqual(dashboard.DATA_BRANCH, "dashboard")
+        self.assertEqual(api.call_args_list[0].args[0],
+                         "repos/fixture/argon/contents/dashboard-data.json?ref=dashboard")
+        self.assertEqual(api.call_args_list[2].args[2], {"ref": "main"})
 
     def test_large_snapshot_uses_raw_content_and_still_skips_timestamp_only_write(self):
         snapshot = {"generated_at": "today", "builds": []}
@@ -119,14 +123,14 @@ class DashboardSnapshotTests(unittest.TestCase):
             dashboard.publish("fixture/argon", {"builds": []})
         creation = api.call_args_list[2]
         self.assertEqual(creation.args[1:], ("POST", {
-            "ref": "refs/heads/argon-dashboard-data", "sha": "a" * 40}))
+            "ref": "refs/heads/dashboard", "sha": "a" * 40}))
         write = api.call_args_list[4]
         self.assertEqual(write.args[1], "PUT")
-        self.assertEqual(write.args[2]["branch"], "argon-dashboard-data")
+        self.assertEqual(write.args[2]["branch"], "dashboard")
         self.assertEqual(api.call_args_list[5].args[2], {"ref": "main"})
 
     def test_similar_branch_does_not_replace_exact_snapshot_branch(self):
         with patch.object(dashboard, "api", return_value=[{
-                "ref": "refs/heads/argon-dashboard-data-old"}]) as api:
+                "ref": "refs/heads/dashboard-old"}]) as api:
             self.assertFalse(dashboard.snapshot_branch("fixture/argon"))
         self.assertEqual(api.call_count, 1)

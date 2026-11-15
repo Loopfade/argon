@@ -59,7 +59,24 @@ class WorkflowWiringTests(unittest.TestCase):
 
     def test_pages_reads_service_data_without_changing_protected_main(self):
         deploy = (ROOT / ".github/workflows/deploy-dashboard.yml").read_text()
+        self.assertIn("branches: [dashboard]", deploy)
+        self.assertNotIn("branches: [main]", deploy)
+        self.assertIn("          ref: dashboard\n", deploy)
         self.assertIn("python3 .github/ci/update-dashboard.py --read-published", deploy)
+        updater = (ROOT / ".github/workflows/update-dashboard.yml").read_text()
+        self.assertIn("if: github.ref == 'refs/heads/main'", updater)
+        self.assertIn("          ref: main\n", updater)
+
+    def test_validation_caches_are_only_saved_and_pruned_by_main(self):
+        validation = (ROOT / ".github/workflows/validate.yml").read_text()
+        for step_id in ("snapshot", "save_cache"):
+            block = next(block for block in validation.split("\n      - name: ")
+                         if f"\n        id: {step_id}\n" in block)
+            self.assertIn("if: steps.cache_plan.outputs.write == 'true'", block)
+        prune = validation.split("\n      - name: Удалить старые версии и снимки", 1)[1]
+        self.assertIn("if: steps.cache_plan.outputs.write == 'true'", prune)
+        self.assertNotIn("legacy-cache-prefix", validation)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", validation)
 
     def test_domain_validator_tests_are_built_and_executed_in_ci(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()

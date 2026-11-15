@@ -19,7 +19,7 @@ RUN_FIELDS = (
 )
 JOB_FIELDS = ("id", "name", "status", "conclusion", "html_url", "started_at", "completed_at")
 STEP_FIELDS = ("name", "status", "conclusion", "number", "started_at", "completed_at")
-DATA_BRANCH = "argon-dashboard-data"
+DATA_BRANCH = "dashboard"
 
 
 def api(path, method=None, payload=None, paginate=False, raw=False):
@@ -199,7 +199,7 @@ def main():
             if not isinstance(snapshot, dict):
                 raise ValueError("Invalid published dashboard snapshot")
             target.write_text(json.dumps(snapshot, indent=2) + "\n")
-        # Before the first update, use the snapshot already checked out in main.
+        # Before the first update, use the snapshot already checked out.
         return
     if args.publish:
         publish(repository, json.loads(target.read_text()))

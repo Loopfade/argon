@@ -2,7 +2,7 @@ name: Публикация панели Argon
 
 on:
   push:
-    branches: [main]
+    branches: [dashboard]
     paths:
       - '.github/workflows/deploy-dashboard.yml'
       - 'index.html'
@@ -31,6 +31,7 @@ jobs:
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: dashboard
           persist-credentials: false
 
       - name: Настроить GitHub Pages

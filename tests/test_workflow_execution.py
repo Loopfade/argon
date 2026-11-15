@@ -45,9 +45,9 @@ elif args[0] == "api":
             print(os.environ["RELEASE_TARGET"])
         else:
             print(json.dumps({"object": {"sha": os.environ["RELEASE_TARGET"]}}))
-    elif "/git/matching-refs/heads/argon-dashboard-data" in url:
+    elif "/git/matching-refs/heads/dashboard" in url:
         print("[]" if os.environ.get("DASHBOARD_NO_BRANCH") else
-              '[{"ref":"refs/heads/argon-dashboard-data"}]')
+              '[{"ref":"refs/heads/dashboard"}]')
     elif "/releases/tags/" in url:
         print(json.dumps(release))
     elif "/releases?" in url:
@@ -328,7 +328,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         snapshot = json.loads((self.root / "dashboard-data.json").read_text())
         self.assertEqual(snapshot["generated_at"], "published")
-        self.assertTrue(any("?ref=argon-dashboard-data" in part for call in self.calls() for part in call))
+        self.assertTrue(any("?ref=dashboard" in part for call in self.calls() for part in call))
         self.assertFalse(any("--method" in call for call in self.calls()))
 
     def test_pages_uses_checkout_snapshot_before_first_data_branch_update(self):
