@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       source_run:
-        description: 'Номер запуска «Тестовая сборка Argon из временной ветки»'
+        description: 'Номер запуска «Сборка Argon test из PR (без публикации)»'
         type: string
         required: true
       runner:

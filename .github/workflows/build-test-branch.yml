@@ -1,4 +1,4 @@
-name: Тестовая сборка Argon из временной ветки
+name: Сборка Argon test из PR (без публикации)
 run-name: Тестовая сборка ветки ${{ github.ref_name }}
 
 on:
