@@ -119,6 +119,7 @@ def patched_fixture():
         patch.RENDER_PROCESS_HOST_IMPL: '      embedder_support::kUseMobileUserAgent,',
         patch.CLIENT_HINTS: '  if (!disable_due_to_custom_ua) {\n}',
         patch.FRAME_FETCH: '#include "base/feature_list.h"\n  std::optional<UserAgentMetadata> ua = GetUserAgentMetadata();',
+        patch.NAVIGATION_CONTROLLER: (ROOT/'tests/fixtures/user_agent/navigation_controller_android.cc.in').read_text(),
     }
     with tempfile.TemporaryDirectory() as directory:
         root=Path(directory)

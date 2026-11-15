@@ -8,6 +8,7 @@ import android.content.Context;
 import android.text.InputType;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -107,13 +108,13 @@ final class ArgonUserAgentPreference {
         for (int i = 0; i < presets.length; ++i) {
             choices[i] = context.getString(label(presets[i]));
         }
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle(R.string.argon_user_agent_title)
                 .setSingleChoiceItems(
                         choices,
                         ArgonUserAgent.getPreset().ordinal(),
-                        (dialog, which) -> {
-                            dialog.dismiss();
+                        (selectionDialog, which) -> {
+                            selectionDialog.dismiss();
                             Preset preset = presets[which];
                             if (preset == Preset.CUSTOM) {
                                 editCustom(preference, restart);
@@ -123,7 +124,17 @@ final class ArgonUserAgentPreference {
                             }
                         })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create();
+        // Keep the explanation inside the scrollable chooser. setMessage()
+        // would replace AlertDialog's list; a non-selectable footer keeps all
+        // four radio choices visible and their indices unchanged.
+        TextView help = new TextView(context);
+        help.setTextAppearance(android.R.style.TextAppearance_Material_Small);
+        help.setText(R.string.argon_user_agent_help);
+        int margin = Math.round(24 * context.getResources().getDisplayMetrics().density);
+        help.setPadding(margin, margin / 2, margin, margin / 2);
+        dialog.getListView().addFooterView(help, null, false);
+        dialog.show();
     }
 
     private static void editCustom(Preference preference, Preference restart) {

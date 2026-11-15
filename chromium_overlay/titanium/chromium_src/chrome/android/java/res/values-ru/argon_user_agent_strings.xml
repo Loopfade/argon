@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="argon_user_agent_title">User-Agent</string>
-    <string name="argon_user_agent_summary">Сейчас: %1$s.</string>
+    <string name="argon_user_agent_summary">%1$s</string>
     <string name="argon_user_agent_pending">Сейчас: %1$s. Сохранено: %2$s. Изменение применится после перезапуска браузера.</string>
     <string name="argon_user_agent_search_summary">Изменить строку пользовательского агента (User-Agent), которую браузер передаёт сайтам</string>
     <string name="argon_user_agent_default">По умолчанию (Chrome)</string>
     <string name="argon_user_agent_firefox">Firefox</string>
     <string name="argon_user_agent_yandex">Яндекс Браузер</string>
     <string name="argon_user_agent_custom">Свой User-Agent</string>
-    <string name="argon_user_agent_help">Выберите User-Agent для совместимости с сайтами. Версия для ПК настраивается отдельно в меню и настройках сайтов; исключения сайтов сохраняются. Своя строка используется в обоих режимах. Смена User-Agent не меняет движок браузера и не обеспечивает анонимность.</string>
+    <string name="argon_user_agent_help">User-Agent — строка, которую браузер передаёт сайтам. Готовые варианты подменяют её для совместимости, включая версии и сведения об устройстве. Это не меняет движок и не скрывает остальные сведения о браузере.\n\nВерсия для ПК переключается в меню и настройках сайтов; исключения сохраняются. Своя строка используется в обоих режимах. Выбор User-Agent применяется после перезапуска.</string>
     <string name="argon_user_agent_invalid">Введите User-Agent длиной до 1024 печатных символов ASCII.</string>
     <string name="argon_user_agent_restart">Применить User-Agent</string>
     <string name="argon_user_agent_restart_message">Изменение применится после перезапуска браузера. До этого все страницы используют прежний User-Agent. Перед перезапуском сохраните текст, введённый на сайтах.</string>
