@@ -21,6 +21,9 @@ on:
       standalone_test:
         type: boolean
         default: false
+      test_version_code:
+        type: string
+        default: ''
       fingerprint:
         type: string
         required: true
@@ -55,6 +58,7 @@ env:
   TARGET_ARCH: ${{ inputs.arch }}
   ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}
   BUILD_SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+  ARGON_TEST_VERSION_CODE: ${{ inputs.test_version_code }}
 
 jobs:
   build:
@@ -69,7 +73,7 @@ jobs:
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           [[ "$GITHUB_REF" == refs/heads/main ]]
-          [[ "$TEST_SIGNING" == test && "$ARGON_STANDALONE_TEST" == true ]]
+          [[ "$TEST_SIGNING" == release && "$ARGON_STANDALONE_TEST" == true ]]
           [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
       - name: Записать лимит времени и подготовить рабочий кеш и снимки
         run: |
@@ -128,12 +132,11 @@ jobs:
             --sdk /opt/argon/chromium/src/third_party/android_sdk/public \
             --jdk /opt/argon/chromium/src/third_party/jdk/current
       - name: Удалить кеши старых версий Chromium
-        continue-on-error: ${{ inputs.source_sha == '' }}
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
-          if [[ -n "$SOURCE_SHA" ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
             python3 .github/ci/prune-compiler-cache.py --replace-toolchain "$TARGET_ARCH"
           else
             python3 .github/ci/prune-compiler-cache.py --remove-old-versions "$TARGET_ARCH"
@@ -212,7 +215,7 @@ jobs:
           # Signing created these files as the container user; record provenance
           # there too, with the exact source SHA from this workflow run.
           if [[ -n "${SOURCE_SHA:-}" ]]; then export GITHUB_SHA="$SOURCE_SHA"; fi
-          docker exec --env GITHUB_SHA --env ARGON_STANDALONE_TEST "$BUILD_CONTAINER_NAME" \
+          docker exec --env GITHUB_SHA --env ARGON_STANDALONE_TEST --env ARGON_TEST_VERSION_CODE "$BUILD_CONTAINER_NAME" \
             python3 /workspace/.github/ci/full-build.py record --arch "$TARGET_ARCH" --mode "$SIGNING_MODE" \
             --fingerprint "$BUILD_FINGERPRINT" --certificate "$BUILD_CERTIFICATE" --image "$PREPARED_IMAGE"
       - name: Показать статистику кеша и остановить компиляцию

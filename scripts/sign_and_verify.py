@@ -14,7 +14,8 @@ import tempfile
 import zipfile
 
 from configure_build import TARGET_ABIS, target_cpu
-from build_identity import application_identity
+from build_identity import application_identity, apk_filename
+from apk_identity import verify_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -133,9 +134,14 @@ def main():
     lock = json.loads((ROOT / "build-lock.json").read_text())
     identity = application_identity(lock, args.mode)
     build_tools = signing_tools(args.sdk, args.jdk)
+    if identity["variant"] == "standalone-test":
+        # Validate the compiled/merged package before opening the release key.
+        manifest = run([build_tools / "aapt2", "dump", "xmltree", "--file", "AndroidManifest.xml", args.apk],
+                       capture_output=True, text=True).stdout
+        verify_manifest(manifest, identity, lock["application_id"])
     artifacts = ROOT / "artifacts" / abi
     artifacts.mkdir(parents=True, exist_ok=True)
-    name = f'Argon-{lock["chromium_version"]}-{args.mode}-{abi}.apk'
+    name = apk_filename(lock, args.mode, identity, abi)
     output = artifacts / name
     (ROOT / ".build").mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="argon-sign-", dir=ROOT / ".build") as tmp:
@@ -177,6 +183,11 @@ def main():
         raise SystemExit("APK application ID mismatch")
     if f"application-label:'{identity['application_label']}'" not in badging:
         raise SystemExit("APK application label mismatch")
+    if identity["variant"] == "standalone-test":
+        manifest = run([build_tools / "aapt2", "dump", "xmltree", "--file", "AndroidManifest.xml", output],
+                       capture_output=True, text=True).stdout
+        report = verify_manifest(manifest, identity, lock["application_id"])
+        (artifacts / "manifest-identity.json").write_text(json.dumps(report, indent=2) + "\n")
     verify_apk_abi(output, abi)
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
     (artifacts / (name + ".sha256")).write_text(f"{digest}  {name}\n")

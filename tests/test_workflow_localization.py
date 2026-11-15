@@ -33,7 +33,7 @@ class WorkflowLocalizationTests(unittest.TestCase):
         self.assertIn("'" + name + "'", subscriptions)
 
     def test_manual_signing_labels_preserve_internal_signing_modes(self):
-        for filename in ("build-all.yml", "build-all-no-publish.yml"):
+        for filename in ("build-all-no-publish.yml",):
             text = (ROOT / ".github/workflows" / filename).read_text()
             with self.subTest(workflow=filename):
                 self.assertIn("options: [Релизная, Тестовая]", text)
@@ -41,6 +41,20 @@ class WorkflowLocalizationTests(unittest.TestCase):
                 conversion = "${{ inputs.signing == 'Релизная' && 'release' || 'test' }}"
                 self.assertIn("SIGNING_MODE: " + conversion, text)
                 self.assertIn("      signing: " + conversion, text)
+
+    def test_release_and_branch_test_use_one_release_key_with_separate_app_variants(self):
+        workflows = ROOT / ".github/workflows"
+        production = (workflows / "build-all.yml").read_text()
+        test = (workflows / "build-test-main.yml").read_text()
+        self.assertNotIn("inputs.signing", production)
+        self.assertIn("SIGNING_MODE: release", production)
+        self.assertIn("      signing: release", production)
+        self.assertIn("      standalone_test: false", production)
+        self.assertIn("      signing: release", test)
+        self.assertIn("      standalone_test: true", test)
+        for name in ("TITANIUM_RU_KEYSTORE_BASE64", "TITANIUM_RU_KEY_ALIAS"):
+            self.assertIn("${{ secrets." + name + " }}", production)
+            self.assertIn("${{ secrets." + name + " }}", test)
 
 
 if __name__ == "__main__":

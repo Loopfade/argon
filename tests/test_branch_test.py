@@ -25,7 +25,7 @@ class BranchTestTests(unittest.TestCase):
         self.env = {
             "GITHUB_REPOSITORY": "Loopfade/argon", "GITHUB_REPOSITORY_OWNER": "Loopfade",
             "GITHUB_REF": "refs/heads/topic/ua", "GITHUB_REF_TYPE": "branch",
-            "GITHUB_RUN_ID": "123", "GITHUB_SHA": self.sha,
+            "GITHUB_RUN_ID": "123", "GITHUB_RUN_NUMBER": "17", "GITHUB_SHA": self.sha,
             "GITHUB_OUTPUT": str(self.root / "output"),
             "GITHUB_STEP_SUMMARY": str(self.root / "summary"),
             "TEST_RUNNER": "ubuntu-24.04", "TEST_AUTO_CONTINUE": "true",
@@ -105,34 +105,61 @@ class BranchTestTests(unittest.TestCase):
                                     "GITHUB_SHA": self.main_sha}), \
              patch.object(branch.subprocess, "check_output", return_value=self.sha + "\n"), \
              patch.object(branch, "module", return_value=pipeline), \
+             patch.object(pipeline, "release_certificate", return_value="c" * 64), \
              patch.object(pipeline, "reusable_artifact") as reuse:
             branch.plan()
             self.assertEqual(os.environ["GITHUB_SHA"], self.main_sha)
             self.assertEqual(os.environ["GITHUB_REF"], "refs/heads/main")
         reuse.assert_not_called()
         values = dict(line.split("=", 1) for line in (self.root / "output").read_text().splitlines())
-        self.assertEqual(values["certificate"], "temporary-test-key")
+        self.assertEqual(values["certificate"], "c" * 64)
+        self.assertEqual(values["version_code"], "1000000017")
         builds = json.loads(values["matrix"])["include"]
         self.assertEqual([item["arch"] for item in builds], ["arm64", "arm"])
         for item in builds:
             self.assertEqual(item["fingerprint"], pipeline.artifact_fingerprint(
-                self.sha, item["arch"], "test", "temporary-test-key", values["prepared_inputs"], True))
+                self.sha, item["arch"], "release", "c" * 64, values["prepared_inputs"], True, 1000000017))
 
     def test_changed_checkout_and_release_source_override_fail_before_build(self):
         with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main"}), \
              patch.object(branch.subprocess, "check_output", return_value=self.main_sha), \
              self.assertRaisesRegex(ValueError, "Checkout changed"):
             branch.check_checkout()
-        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main"}), \
+        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main", "ARGON_STANDALONE_TEST": "false"}), \
              self.assertRaisesRegex(ValueError, "test build"):
             pipeline.plan("release", source_sha=self.sha)
 
-    def test_new_workflow_has_no_release_key_or_publisher_and_uses_main_cache(self):
+    def test_test_updates_keep_version_on_retry_and_increase_on_new_run(self):
+        results = []
+        for number in (17, 17, 18):
+            with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main", "GITHUB_RUN_NUMBER": str(number)}), \
+                 patch.object(branch.subprocess, "check_output", return_value=self.sha), \
+                 patch.object(branch, "module", return_value=pipeline), \
+                 patch.object(pipeline, "release_certificate", return_value="c" * 64):
+                (self.root / "output").write_text("")
+                branch.plan()
+            output = dict(line.split("=", 1) for line in (self.root / "output").read_text().splitlines())
+            results.append((output["version_code"], output["fingerprint_arm64"]))
+        self.assertEqual(results[0], results[1])
+        self.assertLess(int(results[1][0]), int(results[2][0]))
+        self.assertNotEqual(results[1][1], results[2][1])
+
+    def test_missing_release_key_never_falls_back_to_temporary_test_key(self):
+        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main"}), \
+             patch.object(branch.subprocess, "check_output", return_value=self.sha), \
+             patch.object(branch, "module", return_value=pipeline), \
+             patch.object(pipeline, "release_certificate", side_effect=ValueError("release key unavailable")), \
+             self.assertRaisesRegex(ValueError, "release key unavailable"):
+            branch.plan()
+
+    def test_entry_has_no_key_and_worker_uses_release_key_without_publishing(self):
         entry = (ROOT / branch.ENTRY).read_text()
         worker = (ROOT / branch.WORKER).read_text()
         self.assertNotIn("signing:", entry)
-        self.assertNotIn("secrets:", entry + worker)
-        self.assertIn("      signing: test", worker)
+        self.assertNotIn("secrets:", entry)
+        self.assertNotIn("secrets: inherit", worker)
+        self.assertIn("TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}", worker)
+        self.assertIn("      signing: release", worker)
         self.assertIn("      standalone_test: true", worker)
         self.assertIn("      source_sha: ${{ needs.plan.outputs.sha }}", worker)
         self.assertIn("  group: argon-full-${{ github.ref }}", worker)

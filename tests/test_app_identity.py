@@ -16,6 +16,8 @@ import build_identity
 import configure_build
 import sign_and_verify
 import test_build_targets
+from apk_identity_fixture import manifest_dump
+import base64
 
 
 class AppIdentityTests(unittest.TestCase):
@@ -29,16 +31,44 @@ class AppIdentityTests(unittest.TestCase):
                     "variant": "standard", "application_id": "app.titaniumru.browser",
                     "application_label": "Argon"})
 
-    def test_standalone_test_is_explicit_and_rejects_release_signing(self):
+    def test_standalone_test_is_independent_of_signing_key(self):
         with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}):
             self.assertEqual(build_identity.application_identity(self.lock, "test"), {
                 "variant": "standalone-test", "application_id": "app.titaniumru.browser.test",
                 "application_label": "Argon Test"})
-            with self.assertRaisesRegex(ValueError, "test signing"):
-                build_identity.application_identity(self.lock, "release")
+            self.assertEqual(build_identity.application_identity(self.lock, "release"),
+                             build_identity.application_identity(self.lock, "test"))
         with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "unexpected"}):
             with self.assertRaisesRegex(ValueError, "true or false"):
                 build_identity.application_identity(self.lock, "test")
+
+    def test_test_version_code_is_validated_and_cannot_affect_production(self):
+        with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true", "ARGON_TEST_VERSION_CODE": "1000000017"}):
+            self.assertEqual(build_identity.application_identity(self.lock, "release")["version_code"], 1000000017)
+        for value in ("-1", "0", "1.2", "2100000001", "\n17"):
+            with self.subTest(value=value), patch.dict(os.environ, {
+                    "ARGON_STANDALONE_TEST": "true", "ARGON_TEST_VERSION_CODE": value}), self.assertRaises(ValueError):
+                build_identity.application_identity(self.lock, "release")
+        with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "false", "ARGON_TEST_VERSION_CODE": "1000000017"}):
+            self.assertNotIn("version_code", build_identity.application_identity(self.lock, "release"))
+
+    def test_wrong_test_manifest_is_rejected_before_opening_release_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            test_build_targets.ApkArchitectureTests.write_tools(root)
+            shutil.copy(ROOT / "build-lock.json", root / "build-lock.json")
+            apk = root / "wrong.apk"
+            test_build_targets.ApkArchitectureTests.write_apk(apk, ["arm64-v8a"])
+            argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", str(root / "sdk"),
+                    "--jdk", str(root / "jdk"), "--mode", "release", "--arch", "arm64"]
+            with patch.object(sign_and_verify, "ROOT", root), patch.object(sys, "argv", argv), \
+                 patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}), \
+                 patch.object(sign_and_verify, "run", return_value=subprocess.CompletedProcess(
+                     [], 0, stdout=manifest_dump("app.titaniumru.browser"))), \
+                 patch.object(sign_and_verify, "write_release_key") as key, \
+                 self.assertRaisesRegex(ValueError, "application ID"):
+                sign_and_verify.main()
+            key.assert_not_called()
 
     def test_both_architectures_configure_and_restore_the_original_name(self):
         resource_text = ('<resources><string name="app_name" translatable="false">Argon</string>'
@@ -49,6 +79,9 @@ class AppIdentityTests(unittest.TestCase):
                 resource = src / build_identity.CHANNEL_CONSTANTS
                 resource.parent.mkdir(parents=True)
                 resource.write_text(resource_text)
+                manifest = src / build_identity.MANIFEST
+                manifest.write_text('<manifest>' + build_identity.ORIGINAL_PACKAGE
+                                    + build_identity.GOOGLE_CHROME_SCHEME + '</manifest>')
                 output = src / "out/args.gn"
                 with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}):
                     build_identity.configure(src, output, arch, True, "test")
@@ -56,15 +89,19 @@ class AppIdentityTests(unittest.TestCase):
                                   output.read_text())
                     self.assertIn('target_cpu = "' + arch + '"', output.read_text())
                     self.assertIn('cc_wrapper = "ccache"', output.read_text())
+                    self.assertNotIn('android:scheme="googlechrome"', manifest.read_text())
+                    self.assertNotIn('<original-package', manifest.read_text())
                     self.assertEqual(resource.read_text(), resource_text.replace(
                         '>Argon</string>', '>Argon Test</string>', 1))
-                    for path in (resource, output):
+                    for path in (resource, output, manifest):
                         os.utime(path, (1000, 1000))
                     build_identity.configure(src, output, arch, True, "test")
-                    self.assertEqual([resource.stat().st_mtime, output.stat().st_mtime], [1000, 1000])
+                    self.assertEqual([resource.stat().st_mtime, output.stat().st_mtime, manifest.stat().st_mtime], [1000, 1000, 1000])
                 with patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "false"}):
                     build_identity.configure(src, output, arch, False, "release")
                 self.assertEqual(resource.read_text(), resource_text)
+                self.assertIn(build_identity.GOOGLE_CHROME_SCHEME, manifest.read_text())
+                self.assertIn(build_identity.ORIGINAL_PACKAGE, manifest.read_text())
                 self.assertEqual(output.read_text(), configure_build.render_gn_args(arch))
 
     def test_unknown_branding_fails_without_changing_generated_arguments(self):
@@ -98,7 +135,7 @@ class AppIdentityTests(unittest.TestCase):
                     self.assertEqual(selected, [expression], path.name)
                 elif path.name == "build-test-main.yml":
                     self.assertEqual(selected, ["true"], path.name)
-                    self.assertEqual(re.findall(r"(?m)^      signing: (.+)$", job), ["test"])
+                    self.assertEqual(re.findall(r"(?m)^      signing: (.+)$", job), ["release"])
                 else:
                     self.assertIn(selected, ([], ["false"]), path.name)
         self.assertIn("build-all-no-publish.yml", callers)
@@ -126,8 +163,9 @@ class AppIdentityTests(unittest.TestCase):
                 self.assertIn("ARGON_STANDALONE_TEST=" + selected, args)
 
     def test_signer_checks_the_standalone_package_and_name_for_both_abis(self):
-        for arch, abi in configure_build.TARGET_ABIS.items():
-            with self.subTest(arch=arch), tempfile.TemporaryDirectory() as tmp:
+        for arch, abi, mode in ((arch, abi, mode) for arch, abi in configure_build.TARGET_ABIS.items()
+                               for mode in ("test", "release")):
+            with self.subTest(arch=arch, mode=mode), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 test_build_targets.ApkArchitectureTests.write_tools(root)
                 for name in ("build-lock.json", "certificates/ministry-ca-lock.json",
@@ -142,6 +180,8 @@ class AppIdentityTests(unittest.TestCase):
                 test_build_targets.ApkArchitectureTests.write_apk(apk, [abi])
 
                 def fake_run(argv, **kwargs):
+                    if "xmltree" in argv:
+                        return subprocess.CompletedProcess(argv, 0, stdout=manifest_dump())
                     if Path(argv[0]).name == "zipalign" and "-f" in argv:
                         shutil.copy(argv[-2], argv[-1])
                     if "sign" in argv:
@@ -152,15 +192,21 @@ class AppIdentityTests(unittest.TestCase):
                         "package: name='app.titaniumru.browser.test'\napplication-label:'Argon Test'\n"))
 
                 argv = ["sign_and_verify.py", "--apk", str(apk), "--sdk", str(root / "sdk"),
-                        "--jdk", str(root / "jdk"), "--mode", "test", "--arch", arch]
+                        "--jdk", str(root / "jdk"), "--mode", mode, "--arch", arch]
                 with patch.object(sign_and_verify, "ROOT", root), patch.object(sys, "argv", argv), \
-                     patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true"}), \
+                     patch.dict(os.environ, {"ARGON_STANDALONE_TEST": "true",
+                         "TITANIUM_RU_KEYSTORE_BASE64": base64.b64encode(b"fixture PKCS12").decode(),
+                         "TITANIUM_RU_STORE_PASSWORD": "fixture", "TITANIUM_RU_KEY_PASSWORD": "fixture",
+                         "TITANIUM_RU_KEY_ALIAS": "fixture"}), \
                      patch.object(sign_and_verify, "run", side_effect=fake_run), \
                      patch.object(sign_and_verify.subprocess, "check_output", return_value="source-sha\n"):
                     sign_and_verify.main()
                 metadata = json.loads((root / "artifacts" / abi / "build-info.json").read_text())
                 self.assertEqual(metadata["application_identity"],
-                    build_identity.application_identity(self.lock, "test", standalone_test=True))
+                    build_identity.application_identity(self.lock, mode, standalone_test=True))
+                report = json.loads((root / "artifacts" / abi / "manifest-identity.json").read_text())
+                self.assertEqual(report["application_id"], "app.titaniumru.browser.test")
+                self.assertEqual(len(list((root / "artifacts" / abi).glob("Argon-Test-*.apk"))), 1)
 
 
 if __name__ == "__main__":

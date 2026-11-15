@@ -46,6 +46,7 @@ jobs:
       build: ${{ steps.plan.outputs.build }}
       matrix: ${{ steps.plan.outputs.matrix }}
       certificate: ${{ steps.plan.outputs.certificate }}
+      version_code: ${{ steps.plan.outputs.version_code }}
     steps:
       - name: Отклонить служебный запуск вне main
         run: test "$GITHUB_REF" = refs/heads/main
@@ -69,6 +70,10 @@ jobs:
         id: plan
         env:
           BUILD_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
+          TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
+          TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
+          TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
         run: |
           python3 scripts/preflight.py --inputs-only --arch arm64
           python3 scripts/preflight.py --inputs-only --arch arm
@@ -97,10 +102,15 @@ jobs:
       source_sha: ${{ needs.plan.outputs.sha }}
       image: ${{ needs.image.outputs.image }}
       runner: ${{ inputs.runner }}
-      signing: test
+      signing: release
       standalone_test: true
+      test_version_code: ${{ needs.plan.outputs.version_code }}
       auto_continue: ${{ inputs.auto_continue }}
-    # No release signing secrets are passed to this reusable workflow.
+    secrets:
+      TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
+      TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
+      TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
+      TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
 
   cleanup:
     name: Сохранить текущий образ после завершения всех сборок

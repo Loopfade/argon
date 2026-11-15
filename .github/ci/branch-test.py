@@ -85,7 +85,7 @@ def dispatch(max_polls=30):
         summary.write(f"## Тестовая сборка временной ветки\n\n"
                       f"- Исходники: `{run['head_branch']}` / `{run['head_sha']}`.\n"
                       f"- [Ход сборки и готовые APK в Artifacts]({url}).\n"
-                      "- Подпись: только временная; приложение Argon Test.\n"
+                      "- Подпись: постоянный релизный ключ; отдельное приложение Argon Test.\n"
                       "- Кеш компиляции читается и пополняется в main.\n"
                       "- Этот запуск передаёт задание; результат компиляции показан по ссылке.\n")
 
@@ -131,8 +131,15 @@ def plan():
     sha = check_checkout()
     pipeline = module("branch_test_pipeline", ".github/ci/full-build.py")
     # Supply the built revision explicitly, preserving the main run/cache ref.
-    # Every test build gets a new temporary signing key instead of a reused APK.
-    pipeline.plan("test", source_sha=sha, reuse=False)
+    # A stable signer and an increasing code allow Test -> Test upgrades without
+    # replacing the production package. Retries of this run keep the same code.
+    number = os.environ["GITHUB_RUN_NUMBER"]
+    if not re.fullmatch(r"[1-9][0-9]*", number) or int(number) > 1100000000:
+        raise ValueError("Invalid test build sequence")
+    version = str(1000000000 + int(number))
+    os.environ["ARGON_TEST_VERSION_CODE"] = version
+    pipeline.plan("release", source_sha=sha, reuse=False)
+    emit(version_code=version)
 
 
 

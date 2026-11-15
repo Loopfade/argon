@@ -1,15 +1,9 @@
 name: Сборка Argon (полный цикл)
-run-name: Полная сборка Argon (${{ inputs.signing }})
+run-name: Релизная сборка Argon из main
 
 on:
   workflow_dispatch:
     inputs:
-      signing:
-        description: 'Подпись: релизная публикует оба проверенных APK, тестовая использует временный ключ'
-        type: choice
-        options: [Релизная, Тестовая]
-        default: Релизная
-        required: true
       runner:
         description: 'Исполнитель сборки Linux x64: не менее 100 ГиБ свободного места'
         type: string
@@ -28,6 +22,7 @@ permissions:
 
 concurrency:
   group: argon-full-${{ github.ref }}
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -40,6 +35,8 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
       certificate: ${{ steps.plan.outputs.certificate }}
     steps:
+      - name: Отклонить релизный запуск вне main
+        run: test "$GITHUB_REF" = refs/heads/main
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -53,11 +50,11 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-          SIGNING_MODE: ${{ inputs.signing == 'Релизная' && 'release' || 'test' }}
-          TITANIUM_RU_KEYSTORE_BASE64: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_KEYSTORE_BASE64 || '' }}
-          TITANIUM_RU_STORE_PASSWORD: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_STORE_PASSWORD || '' }}
-          TITANIUM_RU_KEY_PASSWORD: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_KEY_PASSWORD || '' }}
-          TITANIUM_RU_KEY_ALIAS: ${{ inputs.signing == 'Релизная' && secrets.TITANIUM_RU_KEY_ALIAS || '' }}
+          SIGNING_MODE: release
+          TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
+          TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
+          TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
+          TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
         run: python3 .github/ci/full-build.py plan --mode "$SIGNING_MODE"
       - name: Прикрепить готовый APK ARM64 к этому запуску
         if: steps.plan.outputs.reuse_arm64 == 'true'
@@ -99,7 +96,8 @@ jobs:
       certificate: ${{ needs.plan.outputs.certificate }}
       image: ${{ needs.image.outputs.image }}
       runner: ${{ inputs.runner }}
-      signing: ${{ inputs.signing == 'Релизная' && 'release' || 'test' }}
+      signing: release
+      standalone_test: false
       auto_continue: ${{ inputs.auto_continue }}
     secrets: inherit
 
@@ -109,7 +107,7 @@ jobs:
     if: >-
       always() && !cancelled() && needs.plan.result == 'success' &&
       (needs.plan.outputs.build == 'false' || needs.build.result == 'success') &&
-      inputs.signing == 'Релизная' && github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main'
     permissions:
       contents: write
       actions: read
