@@ -200,6 +200,18 @@
     .files{margin-top:12px;border-top:1px solid var(--border);font-size:12px}.files summary{cursor:pointer;padding-top:12px;color:var(--muted)}.file-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.file-path{font-family:ui-monospace,monospace;font-size:11px;overflow-wrap:anywhere}.file-stats{white-space:nowrap}.notice-small{padding:12px 0;color:var(--muted);font-size:12px}.detail-panel[hidden]{display:none}
     @media(max-width:1050px){.overview-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.build-select{grid-template-columns:minmax(180px,1.5fr) minmax(100px,1fr) 95px}.build-status{display:none}.change-grid{grid-template-columns:1fr}.detail-panel .pipeline{grid-template-columns:repeat(3,minmax(0,1fr))}.day{min-height:75px}.month-grid{gap:3px}}
     @media(max-width:620px){.wrap{padding:0 14px 30px}.head{padding:13px 14px}.brand strong{font-size:17px}.brand span{font-size:11px}.actions{gap:5px}.actions .button{display:none}button{padding:7px 10px}.intro{margin:23px 0 18px;align-items:start;flex-direction:column;gap:12px}.intro h1{font-size:28px}.intro p{font-size:12px}.period{font-size:11px;padding:6px 9px}.overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.overview-metrics .metric-value{font-size:23px}.overview-metrics .metric{padding:13px 12px}.metric-label{font-size:11px}.metric-hint{font-size:10px}.month-card{padding:14px}.month-grid{grid-template-columns:repeat(15,minmax(0,1fr));gap:4px;margin-top:14px}.day{min-height:65px}.day-bars{height:34px}.section-head h2{font-size:18px}.filters{width:100%}.filter{flex:1;padding:7px 6px;font-size:11px}.build-select{padding:14px 13px;grid-template-columns:minmax(0,1fr) 78px;gap:8px}.build-progress{grid-column:1;grid-row:2}.build-duration{grid-column:2;grid-row:1;font-size:11px;text-align:right}.build-status{display:block;grid-column:2;grid-row:2;text-align:right;font-size:10px}.build-row{grid-template-columns:minmax(0,1fr) 26px}.type-tag{font-size:9px}.build-name{font-size:12px;gap:6px}.detail-panel{padding:16px 12px}.detail-heading{display:block}.detail-heading .pill{margin-top:10px}.detail-panel .pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-panel .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-panel h2{font-size:18px}.stage-detail{min-height:0}.detail-meta{font-size:11px;gap:8px}.architecture-grid{gap:9px}.release-title{font-size:14px}.legend{gap:10px;font-size:10px}.pr-item h4{font-size:13px}.timeline{padding:10px}.step-name{white-space:normal}.step{font-size:11px}.kv{grid-template-columns:minmax(0,1fr) auto}.release-top{gap:8px}}
+
+    .section-collapse{margin-top:18px;border:1px solid var(--border);background:var(--panel);border-radius:12px;overflow:hidden}
+    .section-collapse>summary.section-head{margin:0;padding:16px 18px;list-style:none;cursor:pointer}
+    .section-collapse>summary h2{flex:1}.section-collapse>summary::after,.release-top::after,.pr-summary::after{content:"+";color:var(--muted);font-size:20px;font-weight:400}
+    .section-collapse[open]>summary::after,.release-item[open]>.release-top::after,.pr-item[open]>.pr-summary::after{content:"−"}
+    .section-content{padding:0 16px 16px}.section-collapse .month-card,.section-collapse .build-list{border:0;border-radius:0}
+    .section-collapse .month-card{padding-top:0}.build-filters{padding:0 16px 12px}.build-row{display:block}.build-select{list-style:none;cursor:pointer;position:relative;padding-right:42px}
+    .build-select::after{content:"+";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:20px}.build-row[open]>.build-select::after{content:"−"}
+    .build-select::-webkit-details-marker,.section-collapse>summary::-webkit-details-marker,.release-top::-webkit-details-marker,.pr-summary::-webkit-details-marker{display:none}
+    .build-row[open]{box-shadow:inset 3px 0 var(--blue)}.build-body>.detail-panel{margin:0;border:0;border-top:1px solid var(--border);border-radius:0;background:var(--bg)}
+    .release-top,.pr-summary{list-style:none;cursor:pointer}.release-top{align-items:center}.release-body{padding-top:12px}.pr-summary{display:flex;gap:12px;align-items:center}.pr-summary h4{flex:1;margin:0}.pr-body{padding-top:10px}
+    .release-list{padding:0 16px 16px}.section-collapse .load-more{margin:0;border-radius:0;border-width:1px 0 0}.build-actions{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}
   </style>
 </head>
 <body>
@@ -207,11 +219,10 @@
 <main class="wrap">
   <section class="intro"><div><div class="eyebrow">История разработки</div><h1>Сборки Argon за месяц</h1><p>От последнего APK до текущих PR: что собрано, что изменилось и сколько времени заняло.</p></div><div class="period" id="period">Последние 30 дней · Москва</div></section>
   <section class="overview-metrics" id="overview-metrics" aria-label="Итоги за месяц"></section>
-  <section class="card month-card"><div class="section-head" style="margin:0"><h2>Активность за 30 дней</h2><span class="meta" id="month-total"></span></div><div class="month-grid" id="month-grid" aria-label="Сборки по дням"></div><div class="legend"><span><i style="background:var(--blue)"></i>Релизные</span><span><i style="background:var(--purple)"></i>Тестовые</span><span><i style="background:var(--red)"></i>Были ошибки</span><button class="date-reset" id="date-reset" type="button" hidden>Все дни</button></div></section>
-  <section id="build-section"><div class="section-head"><h2>Ход сборок</h2><div class="filters" id="filters" aria-label="Вид сборки"><button class="filter" data-filter="all" aria-pressed="true">Все</button><button class="filter" data-filter="release" aria-pressed="false">Релизные</button><button class="filter" data-filter="test" aria-pressed="false">Тестовые</button><button class="filter" data-filter="active" aria-pressed="false">В работе</button></div></div><section class="card build-list" id="history"><div class="empty">Загрузка сборок…</div></section><button class="load-more" id="load-more" type="button" hidden>Показать ещё</button></section>
-  <section class="detail-panel" id="detail-panel" hidden><div class="detail-heading"><div><h2 id="detail-title"></h2><div class="subtle" id="detail-subtitle"></div></div><div class="pill" id="detail-state"></div></div><div class="detail-meta" id="detail-meta"></div><div class="metrics" id="metrics"></div><div class="pipeline" id="pipeline"></div><h3 class="section-title" id="timeline-title">Время этапов</h3><div class="timeline" id="timeline"></div><h3 class="section-title" id="architecture-title">Архитектуры и попытки</h3><div class="architecture-grid" id="architectures"></div><div class="card" id="artifacts-card" style="margin-top:14px"></div></section>
-  <div class="section-head" id="changes"><h2>От релиза до текущего кода</h2><span class="meta">Сравнение с исходниками опубликованного APK</span></div><div class="change-grid"><section class="card" id="unreleased"></section><section class="card"><h3>Открытые PR</h3><div id="open-prs"></div></section></div>
-  <div class="section-head"><h2>Опубликованные APK</h2><span class="meta">Состав и изменения каждого релиза</span></div><section class="release-list" id="releases"></section>
+  <details class="section-collapse" data-fold="activity"><summary class="section-head"><h2>Активность за 30 дней</h2><span class="meta" id="month-total"></span></summary><section class="card month-card"><div class="month-grid" id="month-grid" aria-label="Сборки по дням"></div><div class="legend"><span><i style="background:var(--blue)"></i>Релизные</span><span><i style="background:var(--purple)"></i>Тестовые</span><span><i style="background:var(--red)"></i>Были ошибки</span><button class="date-reset" id="date-reset" type="button" hidden>Все дни</button></div></section></details>
+  <details class="section-collapse" id="build-section" data-fold="builds"><summary class="section-head"><h2>Ход сборок</h2><span class="meta" id="build-count"></span></summary><div class="filters build-filters" id="filters" aria-label="Вид сборки"><button class="filter" data-filter="all" aria-pressed="true">Все</button><button class="filter" data-filter="release" aria-pressed="false">Релизные</button><button class="filter" data-filter="test" aria-pressed="false">Тестовые</button><button class="filter" data-filter="active" aria-pressed="false">В работе</button></div><section class="card build-list" id="history"><div class="empty">Загрузка сборок…</div></section><button class="load-more" id="load-more" type="button" hidden>Показать ещё</button></details>
+  <details class="section-collapse" data-fold="changes"><summary class="section-head"><h2>От релиза до текущего кода</h2><span class="meta" id="change-count"></span></summary><div class="change-grid section-content"><section class="card" id="unreleased"></section><section class="card"><h3>Открытые PR</h3><div id="open-prs"></div></section></div></details>
+  <details class="section-collapse" data-fold="releases"><summary class="section-head"><h2>Опубликованные APK</h2><span class="meta" id="release-count"></span></summary><section class="release-list" id="releases"></section></details>
   <div class="note" id="notice" role="status">Загрузка данных…</div><footer>Loopfade/argon · Время по Москве · Длительность включает повторные попытки</footer>
 </main>
 
@@ -374,7 +385,7 @@
     ).join("");
   }
 
-  function renderPipeline(latest, jobs, isTest=false) {
+  function renderPipeline(latest, jobs, isTest=false, target=$("pipeline")) {
     const parts = findJobs(jobs);
     const stages = [
       ["Образ Chromium", parts.gate, "Подготовка совместимого образа"],
@@ -384,7 +395,7 @@
       ["Вся сборка", latest, "От начала до завершения"]
     ];
 
-    $("pipeline").innerHTML = stages.map(row => {
+    const markup = stages.map(row => {
       const name=row[0], item=row[1], detail=row[2], s=state(item);
       return '<article class="stage">' +
         '<div class="stage-name"><span class="dot" style="background:var(--' +
@@ -395,9 +406,11 @@
         '<div class="stage-detail">' + esc(detail) + '</div>' +
       '</article>';
     }).join("");
+    if(target)target.innerHTML=markup;
+    return markup;
   }
 
-  function renderTimeline(latest, jobs) {
+  function renderTimeline(latest, jobs, target=$("timeline")) {
     const parts=findJobs(jobs);
     const runStart=startTime(latest);
     const runEnd=endTime(latest);
@@ -410,7 +423,7 @@
       ["Публикация", parts.publish]
     ].filter(row => row[1]);
 
-    $("timeline").innerHTML = rows.map(row => {
+    const markup = rows.map(row => {
       const name=row[0], item=row[1];
       const bars=jobAttempts(item).map(attempt => {
         const start=startTime(attempt), end=endTime(attempt);
@@ -429,6 +442,8 @@
         '<div class="timeline-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
       '</div>';
     }).join("");
+    if(target)target.innerHTML=markup;
+    return markup;
   }
 
   function jobAttempts(job) {
@@ -511,9 +526,9 @@
     return dedup;
   }
 
-  function renderArchitecture(name, job) {
+  function renderArchitecture(name, job, foldPrefix="") {
     if (!job) {
-      return '<details class="arch"><summary><div class="arch-title">' + esc(name) +
+      return '<details class="arch" data-fold="'+esc(foldPrefix+'arch/'+name)+'"><summary><div class="arch-title">' + esc(name) +
         '</div><div class="arch-summary">Ожидает</div></summary></details>';
     }
     const s=state(job);
@@ -522,7 +537,7 @@
     const restore=stepDuration(job,"Restore compiler cache","Восстановить кеш компиляции");
     const attempts=jobAttempts(job);
 
-    return '<details class="arch">' +
+    return '<details class="arch" data-fold="'+esc(foldPrefix+'arch/'+name)+'">' +
       '<summary><div class="arch-title"><span class="dot" style="background:var(--' +
         (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
         ')"></span>' + esc(name) + '</div>' +
@@ -583,8 +598,30 @@
     return {finished,total:jobs.length,percent:jobs.length?Math.round(finished/jobs.length*100):0};
   }
   function filteredBuilds() {return (model?.builds || []).filter(b=>(filters.kind==="all" || b.kind===filters.kind || (filters.kind==="active" && b.run.status!=="completed")) && (!filters.date || dayKey(b.run.created_at)===filters.date));}
-  function selectedBuild() {return filteredBuilds().find(b=>String(b.run.id)===String(model.selectedRunId)) || filteredBuilds()[0] || null;}
-  function selectBuild(runId) {model.selectedRunId=String(runId);renderModel();}
+  function disclosureState() {return model.disclosures ||= new Map();}
+  function openBuilds() {$("build-section").open=true;disclosureState().set("builds",true);}
+  function disclosureNodes(root=document) {return Array.from(root.querySelectorAll?.("details[data-fold]") || []);}
+  function rememberDisclosures() {for(const node of disclosureNodes())disclosureState().set(node.dataset.fold,node.open);}
+  function loadBuildBody(node) {
+    if(node.isConnected===false)return;
+    const body=node.querySelector("[data-build-body]");
+    const build=model.builds.find(b=>String(b.run.id)===node.dataset.buildId);
+    if(!body || !build || body.dataset.loaded)return;
+    body.innerHTML=buildDetails(build);body.dataset.loaded="true";restoreDisclosures(body);
+  }
+  function restoreDisclosures(root=document) {
+    for(const node of disclosureNodes(root)){
+      if(disclosureState().has(node.dataset.fold))node.open=disclosureState().get(node.dataset.fold);
+      if(node.open && node.dataset.buildId)loadBuildBody(node);
+      if(node.dataset.foldBound)continue;
+      node.dataset.foldBound="true";
+      node.addEventListener("toggle",()=>{
+        if(node.isConnected===false)return;
+        disclosureState().set(node.dataset.fold,node.open);
+        if(node.open && node.dataset.buildId)loadBuildBody(node);
+      });
+    }
+  }
   function compactDuration(value) {if(value>=3600000)return Math.floor(value/3600000)+" ч "+Math.floor(value/60000)%60+" мин";return formatDuration(value);}
   function metric(label,value,hint,runId=null) {return '<div class="metric"><div class="metric-label">'+esc(label)+'</div><div class="metric-value"'+(runId?' data-live-run="'+esc(runId)+'"':'')+'>'+esc(value)+'</div><div class="metric-hint">'+esc(hint || "")+'</div></div>';}
   function renderOverview() {
@@ -601,36 +638,30 @@
     $("month-total").textContent=builds.length+" запусков · "+builds.filter(b=>b.kind==="release").length+" релизных";
     const max=Math.max(1,...(model.days||[]).map(d=>Math.max(d.release+d.legacy,d.test)));
     $("month-grid").innerHTML=(model.days||[]).map(d=>'<button type="button" class="day'+(d.failed?' failed':'')+'" data-day="'+esc(d.date)+'" aria-pressed="'+(filters.date===d.date)+'" aria-label="'+esc(dayText(d.date)+": запусков "+d.builds+", релизных "+d.release+", тестовых "+d.test+", ошибок "+d.failed)+'" title="'+esc(dayText(d.date)+" · "+d.builds+" запусков")+'"><span class="day-bars"><span class="day-bar" style="height:'+((d.release+d.legacy)/max*100)+'%"></span><span class="day-bar test" style="height:'+(d.test/max*100)+'%"></span></span><span class="day-num">'+d.date.slice(-2)+'</span></button>').join("");
-    $("month-grid").querySelectorAll("[data-day]").forEach(button=>button.addEventListener("click",()=>{filters.date=filters.date===button.dataset.day?"":button.dataset.day;filters.limit=20;renderModel();}));
+    $("month-grid").querySelectorAll("[data-day]").forEach(button=>button.addEventListener("click",()=>{filters.date=filters.date===button.dataset.day?"":button.dataset.day;filters.limit=20;openBuilds();renderModel();}));
     $("date-reset").hidden=!filters.date;
   }
   function renderHistory() {
     const builds=filteredBuilds();
+    $("build-count").textContent=builds.length+" "+plural(builds.length,"сборка","сборки","сборок");
     $("filters").querySelectorAll("[data-filter]").forEach(b=>b.setAttribute("aria-pressed",String(filters.kind===b.dataset.filter)));
     $("history").innerHTML=builds.slice(0,filters.limit).map(b=>{
-      const r=b.run,p=progress(b),s=state(r),selected=String(r.id)===String(selectedBuild()?.run.id);
-      return '<article class="build-row'+(selected?' selected':'')+'"><button type="button" class="build-select" data-run-id="'+esc(r.id)+'" aria-label="'+esc(kindLabel(b)+" сборка №"+r.run_number+", "+s.label)+'"><div><div class="build-name"><span class="type-tag '+esc(b.kind)+'">'+esc(kindLabel(b))+'</span><span>№'+esc(r.run_number)+'</span>'+(b.pr_number?'<span>PR №'+esc(b.pr_number)+'</span>':'')+'</div><div class="build-sub">'+esc((b.release?.tag_name || b.baseline_tag || (b.kind==="test"?"Без публикации релиза":"APK ещё не опубликован"))+" · "+dateText(r.created_at))+'</div></div><div class="build-progress"><div class="stage-count">'+(p.total?'Завершено этапов: '+p.finished+' / '+p.total:'Ожидание заданий')+'</div><div class="stage-meter" role="progressbar" aria-label="Завершённые этапы" aria-valuenow="'+p.finished+'" aria-valuemax="'+(p.total||1)+'"><span style="width:'+p.percent+'%"></span></div></div><div class="build-duration" data-live-run="'+esc(r.id)+'">'+esc(formatDuration(durationMs(r)))+'</div><div class="build-status '+statusTextClass(r)+'">'+esc(s.label)+'</div></button>'+link(r.html_url,"↗","build-link")+'</article>';
+      const r=b.run,p=progress(b),s=state(r),key="build/"+r.id,expanded=disclosureState().get(key)===true;
+      return '<details class="build-row" data-fold="'+esc(key)+'" data-build-id="'+esc(r.id)+'"'+(expanded?' open':'')+'><summary class="build-select" aria-label="'+esc(kindLabel(b)+" сборка №"+r.run_number+", "+s.label)+'"><div><div class="build-name"><span class="type-tag '+esc(b.kind)+'">'+esc(kindLabel(b))+'</span><span>№'+esc(r.run_number)+'</span>'+(b.pr_number?'<span>PR №'+esc(b.pr_number)+'</span>':'')+'</div><div class="build-sub">'+esc((b.release?.tag_name || b.baseline_tag || (b.kind==="test"?"Без публикации релиза":"APK ещё не опубликован"))+" · "+dateText(r.created_at))+'</div></div><div class="build-progress"><div class="stage-count">'+(p.total?'Завершено этапов: '+p.finished+' / '+p.total:'Ожидание заданий')+'</div><div class="stage-meter" role="progressbar" aria-label="Завершённые этапы" aria-valuenow="'+p.finished+'" aria-valuemax="'+(p.total||1)+'"><span style="width:'+p.percent+'%"></span></div></div><div class="build-duration" data-live-run="'+esc(r.id)+'">'+esc(formatDuration(durationMs(r)))+'</div><div class="build-status '+statusTextClass(r)+'">'+esc(s.label)+'</div></summary><div class="build-body" data-build-body'+(expanded?' data-loaded="true"':'')+'>'+ (expanded?buildDetails(b):'') +'</div></details>';
     }).join("") || '<div class="empty">'+(filters.kind==="active"?'Сейчас нет активных сборок.':filters.date?'В этот день сборок не было.':'Сборок за выбранный период пока нет.')+'</div>';
-    $("history").querySelectorAll("[data-run-id]").forEach(row=>row.addEventListener("click",()=>selectBuild(row.dataset.runId)));
     $("load-more").hidden=builds.length<=filters.limit;
   }
-  function renderArtifacts(artifacts,run) {
+  function renderArtifacts(artifacts,run,target=$("artifacts-card")) {
     const list=(artifacts.artifacts||[]).filter(a=>/^Argon-(arm64|arm)-/.test(a.name));
-    $("artifacts-card").innerHTML='<h3>APK этой сборки</h3>'+(list.length?'<ul class="artifacts">'+list.map(a=>'<li>'+esc(a.name)+' <span class="artifact-size">'+esc(formatBytes(a.size_in_bytes))+(a.expired || (a.expires_at&&ms(a.expires_at)<Date.now())?' · срок хранения истёк':'')+'</span></li>').join("")+'</ul><p>'+link(run.html_url,"Открыть сборку и скачать APK")+'</p>':'<div class="subtle">Готовые артефакты APK пока отсутствуют. Успех сборки подтверждается отдельно от наличия файлов.</div>');
+    const markup='<h3>APK этой сборки</h3>'+(list.length?'<ul class="artifacts">'+list.map(a=>'<li>'+esc(a.name)+' <span class="artifact-size">'+esc(formatBytes(a.size_in_bytes))+(a.expired || (a.expires_at&&ms(a.expires_at)<Date.now())?' · срок хранения истёк':'')+'</span></li>').join("")+'</ul><p>'+link(run.html_url,"Открыть сборку и скачать APK")+'</p>':'<div class="subtle">Готовые артефакты APK пока отсутствуют. Успех сборки подтверждается отдельно от наличия файлов.</div>');
+    if(target)target.innerHTML=markup;
+    return markup;
   }
-  function renderDetail() {
-    const b=selectedBuild();$("detail-panel").hidden=!b;if(!b)return;
-    const r=b.run,p=progress(b);
-    $("detail-title").textContent=kindLabel(b)+" сборка №"+r.run_number;
-    $("detail-subtitle").textContent=(b.pr_number?"PR №"+b.pr_number+" · ":"")+(b.kind==="test"?"Отдельное тестовое приложение Argon Test":"Релизное приложение Argon");
-    renderPill($("detail-state"),r);
-    $("detail-meta").innerHTML=link(r.html_url,"Открыть журнал сборки")+'<span>Начало: '+esc(dateText(r.first_started_at||r.created_at))+'</span><span>Исходники: '+(b.source_sha?link('https://github.com/'+model.repository+'/commit/'+b.source_sha,b.source_sha.slice(0,8)):'не установлены')+'</span><span>Повторных попыток: '+Math.max(0,(r.run_attempt||1)-1)+'</span>';
-    renderMetrics(r,b.jobs||[]);
-    const extra=metric("Работа исполнителей",formatDuration(r.runner_ms),"сумма заданий, без ожидания")+metric(b.kind==="test"?"PR для проверки":"Новых PR в APK",b.kind==="test"?(b.pr_number?'№'+b.pr_number:'—'):(b.pr_count ?? '—'),b.kind==="test"?'закреплённый коммит':b.baseline_tag || 'от предыдущего APK');
-    $("metrics").innerHTML=metric("Вся сборка",formatDuration(durationMs(r)),"включая ожидание повторов",r.id)+extra;
-    renderPipeline(r,b.jobs||[],b.kind==="test");renderTimeline(r,b.jobs||[]);renderArchitectures(b.jobs||[]);renderArtifacts({artifacts:b.artifacts||[]},r);
-    $("timeline-title").textContent="Время этапов · завершено "+p.finished+" из "+p.total;
-    $("architecture-title").textContent="Архитектуры и попытки";
+  function buildDetails(b) {
+    const r=b.run,p=progress(b),s=state(r),prefix="build/"+r.id+"/";
+    const metrics=metric("Вся сборка",formatDuration(durationMs(r)),"включая ожидание повторов",r.id)+metric("Работа исполнителей",formatDuration(r.runner_ms),"сумма заданий, без ожидания")+metric(b.kind==="test"?"PR для проверки":"Новых PR в APK",b.kind==="test"?(b.pr_number?'№'+b.pr_number:'—'):(b.pr_count ?? '—'),b.kind==="test"?'закреплённый коммит':b.baseline_tag || 'от предыдущего APK');
+    const parts=findJobs(b.jobs||[]);
+    return '<div class="detail-panel"><div class="detail-heading"><div><h2>'+esc(kindLabel(b)+" сборка №"+r.run_number)+'</h2><div class="subtle">'+esc((b.pr_number?"PR №"+b.pr_number+" · ":"")+(b.kind==="test"?"Отдельное тестовое приложение Argon Test":"Релизное приложение Argon"))+'</div></div><div class="pill status-'+esc(s.key)+'"><span class="dot"></span><span>'+esc(s.label)+'</span></div></div><div class="detail-meta">'+link(r.html_url,"Журнал сборки в GitHub")+'<span>Начало: '+esc(dateText(r.first_started_at||r.created_at))+'</span><span>Исходники: '+(b.source_sha?link('https://github.com/'+model.repository+'/commit/'+b.source_sha,b.source_sha.slice(0,8)):'не установлены')+'</span><span>Повторных попыток: '+Math.max(0,(r.run_attempt||1)-1)+'</span></div><div class="metrics">'+metrics+'</div><div class="pipeline">'+renderPipeline(r,b.jobs||[],b.kind==="test",null)+'</div><h3 class="section-title">Время этапов · завершено '+p.finished+' из '+p.total+'</h3><div class="timeline">'+renderTimeline(r,b.jobs||[],null)+'</div><h3 class="section-title">Архитектуры и попытки</h3><div class="architecture-grid">'+renderArchitecture("arm64-v8a",parts.arm64,prefix)+renderArchitecture("armeabi-v7a",parts.arm,prefix)+'</div><div class="card" style="margin-top:14px">'+renderArtifacts({artifacts:b.artifacts||[]},r,null)+'</div></div>';
   }
   function diffValues(diff) {
     if(!diff) return '<p class="subtle">Сравнение исходников пока недоступно.</p>';
@@ -640,20 +671,20 @@
   function prsList(prs) {return prs?.length?'<ul class="pr-list">'+prs.map(p=>'<li>'+link(p.html_url,'#'+p.number+' '+p.title)+'</li>').join("")+'</ul>':'';}
   function filesList(diff) {
     if(!diff?.files?.length)return '';
-    return '<details class="files"><summary>Изменённые файлы ('+diff.files.length+(diff.files_complete?'':'+')+')</summary>'+diff.files.map(f=>'<div class="file-row"><span class="file-path">'+esc(f.filename)+(f.previous_filename?'<br>← '+esc(f.previous_filename):'')+'</span><span class="file-stats"><span class="add">+'+esc(f.additions||0)+'</span> <span class="del">−'+esc(f.deletions||0)+'</span></span></div>').join("")+'</details>';
+    return '<details class="files" data-fold="unreleased-files"><summary>Изменённые файлы ('+diff.files.length+(diff.files_complete?'':'+')+')</summary>'+diff.files.map(f=>'<div class="file-row"><span class="file-path">'+esc(f.filename)+(f.previous_filename?'<br>← '+esc(f.previous_filename):'')+'</span><span class="file-stats"><span class="add">+'+esc(f.additions||0)+'</span> <span class="del">−'+esc(f.deletions||0)+'</span></span></div>').join("")+'</details>';
   }
   function renderChanges() {
     const u=model.unreleased||{},release=model.release;
     $("unreleased").innerHTML='<h3>Что ещё не вошло в APK</h3><div class="subtle">'+(release?'После '+esc(release.tag_name):'Опубликованного APK пока нет')+'</div>'+diffValues(u.comparison)+(u.pr_count!=null?'<p><strong>'+esc(u.pr_count)+' PR</strong> уже слиты в main после этого APK.</p>':'')+prsList(u.included_prs)+(u.comparison?.html_url?'<div class="pr-links">'+link(u.comparison.html_url,'Открыть полный diff с main')+'</div>':'')+filesList(u.comparison);
     $("open-prs").innerHTML=(model.open_prs||[]).map(pr=>{
       const current=pr.test_runs?.find(t=>t.current),older=pr.test_runs?.length;
-      return '<article class="pr-item"><h4>'+link(pr.html_url,'#'+pr.number+' '+pr.title)+'</h4><span class="pr-state">'+(pr.draft?'Черновик':'Открыт')+' · '+esc(pr.author||'')+' · '+esc(timeAgo(pr.updated_at))+'</span><div class="diff-values"><span>'+esc(pr.changed_files??'—')+' файлов в PR</span><span class="add">+'+esc(pr.additions??'—')+'</span><span class="del">−'+esc(pr.deletions??'—')+'</span></div><p>'+(current?'Тест текущего коммита: '+link(current.html_url,state(current).label):older?'Есть тест предыдущего коммита. Текущий ещё не собран.':'Тестовая сборка текущего коммита ещё не найдена.')+'</p><p>От опубликованного APK до ветки PR:</p>'+diffValues(pr.comparison)+'<div class="pr-links">'+link(pr.html_url+'/files','Только изменения PR')+(pr.comparison?.html_url?link(pr.comparison.html_url,'Diff от APK'):'')+'</div></article>';
+      return '<details class="pr-item" data-fold="pr/'+esc(pr.number)+'"><summary class="pr-summary"><h4>'+esc('#'+pr.number+' '+pr.title)+'</h4></summary><div class="pr-body"><span class="pr-state">'+(pr.draft?'Черновик':'Открыт')+' · '+esc(pr.author||'')+' · '+esc(timeAgo(pr.updated_at))+'</span><div class="diff-values"><span>'+esc(pr.changed_files??'—')+' файлов в PR</span><span class="add">+'+esc(pr.additions??'—')+'</span><span class="del">−'+esc(pr.deletions??'—')+'</span></div><p>'+(current?'Тест текущего коммита: '+link(current.html_url,state(current).label):older?'Есть тест предыдущего коммита. Текущий ещё не собран.':'Тестовая сборка текущего коммита ещё не найдена.')+'</p><p>От опубликованного APK до ветки PR:</p>'+diffValues(pr.comparison)+'<div class="pr-links">'+link(pr.html_url,'Открыть PR в GitHub')+link(pr.html_url+'/files','Только изменения PR')+(pr.comparison?.html_url?link(pr.comparison.html_url,'Diff от APK'):'')+'</div></div></details>';
     }).join("") || '<div class="subtle">Открытых PR в main сейчас нет.</div>';
   }
   function renderReleases() {
-    $("releases").innerHTML=(model.releases||[]).map(r=>'<article class="release-item"><div class="release-top"><div><div class="release-title">'+link(r.html_url,r.tag_name||r.name)+'</div><div class="subtle">'+esc(dateText(r.published_at))+' · '+(r.source_sha?link('https://github.com/'+model.repository+'/commit/'+r.source_sha,r.source_sha.slice(0,8)):'исходники не установлены')+'</div></div><div class="pr-number">'+esc(r.pr_count??'—')+'<small>'+ (r.initial_release?'PR в истории':'новых PR') +'</small></div></div><div class="subtle" style="margin-top:10px">Подтверждённых слияний PR в истории: '+esc(r.total_pr_count??'—')+' слитых PR. Новые PR считаются от предыдущего доступного APK.</div>'+diffValues(r.comparison)+'<div class="downloads">'+(r.assets||[]).filter(a=>a.name.endsWith('.apk')).map(a=>link(a.browser_download_url,a.name.includes('arm64')?'Скачать ARM64':'Скачать ARMv7','download')).join('')+(r.comparison?.html_url?link(r.comparison.html_url,'Все изменения','download'):'')+'</div>'+(r.included_prs?.length?'<details class="files"><summary>Какие PR вошли в релиз</summary>'+prsList(r.included_prs)+'</details>':'')+'</article>').join('') || '<div class="card empty">Опубликованных релизов пока нет.</div>';
+    $("releases").innerHTML=(model.releases||[]).map(r=>'<details class="release-item" data-fold="release/'+esc(r.id||r.tag_name)+'"><summary class="release-top"><div><div class="release-title">'+esc(r.tag_name||r.name)+'</div><div class="subtle">'+esc(dateText(r.published_at))+' · '+(r.source_sha?link('https://github.com/'+model.repository+'/commit/'+r.source_sha,r.source_sha.slice(0,8)):'исходники не установлены')+'</div></div><div class="pr-number">'+esc(r.pr_count??'—')+'<small>'+ (r.initial_release?'PR в истории':'новых PR') +'</small></div></summary><div class="release-body"><div class="subtle" style="margin-top:10px">Подтверждённых слияний PR в истории: '+esc(r.total_pr_count??'—')+' слитых PR. Новые PR считаются от предыдущего доступного APK.</div>'+diffValues(r.comparison)+'<div class="downloads">'+link(r.html_url,'Релиз в GitHub','download')+(r.assets||[]).filter(a=>a.name.endsWith('.apk')).map(a=>link(a.browser_download_url,a.name.includes('arm64')?'Скачать ARM64':'Скачать ARMv7','download')).join('')+(r.comparison?.html_url?link(r.comparison.html_url,'Все изменения','download'):'')+'</div>'+(r.included_prs?.length?'<details class="files" data-fold="release-prs/'+esc(r.id||r.tag_name)+'"><summary>Какие PR вошли в релиз</summary>'+prsList(r.included_prs)+'</details>':'')+'</div></details>').join('') || '<div class="card empty">Опубликованных релизов пока нет.</div>';
   }
-  function renderModel() {if(!model)return;renderOverview();renderHistory();renderDetail();renderChanges();renderReleases();}
+  function renderModel() {if(!model)return;rememberDisclosures();renderOverview();renderHistory();renderChanges();renderReleases();$("change-count").textContent=(model.unreleased?.pr_count ?? "—")+" PR в main · открытых PR: "+(model.open_prs||[]).length;$("release-count").textContent=(model.releases||[]).length+" "+plural((model.releases||[]).length,"релиз","релиза","релизов");restoreDisclosures();}
   function normalizeSnapshot(snapshot) {
     const builds=(snapshot.builds||[]).map(b=>({...b,kind:b.kind||'release'}));
     return {...snapshot,repository:snapshot.repository||'Loopfade/argon',builds,releases:snapshot.releases||(snapshot.release?[snapshot.release]:[]),days:snapshot.days||[],open_prs:snapshot.open_prs||[]};
@@ -662,8 +693,8 @@
     const refresh=$("refresh");refresh.disabled=true;refresh.textContent="Обновляется…";
     try {
       const snapshot=normalizeSnapshot(await requestSnapshot());
-      const previous=model?.selectedRunId;
-      model={...snapshot,selectedRunId:previous||snapshot.builds[0]?.run.id};renderModel();
+      const disclosures=model?.disclosures || new Map();
+      model={...snapshot,disclosures};renderModel();
       $("notice").classList.remove("error");
       $("notice").textContent='Данные обновлены '+timeAgo(snapshot.generated_at)+'. Завершённые этапы показывают ход задания, а не процент компиляции. Время исполнителей суммируется отдельно от длительности сборок.'+(snapshot.window?.partial?' История запусков получена не полностью.':'')+(!snapshot.schema_version?' История за 30 дней обновляется.':'');
     } catch(error) {
@@ -674,7 +705,7 @@
   $("refresh").addEventListener("click",loadDashboard);
   $("filters").querySelectorAll("[data-filter]").forEach(button=>button.addEventListener("click",()=>{filters.kind=button.dataset.filter;filters.limit=20;renderModel();}));
   $("date-reset").addEventListener("click",()=>{filters.date="";renderModel();});
-  $("load-more").addEventListener("click",()=>{filters.limit+=20;renderHistory();});
+  $("load-more").addEventListener("click",()=>{filters.limit+=20;renderModel();});
   loadDashboard();
   setInterval(loadDashboard,60*1000);
   setInterval(()=>{
