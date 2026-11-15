@@ -142,8 +142,8 @@ public final class ArgonExternalNavigationPolicy {
     private static boolean isBrowserScheme(String scheme) {
         // Preserve browser-internal navigation and local documents.
         return switch (scheme) {
-            case "about", "chrome", "chrome-native", "chrome-search", "devtools", "data",
-                    "javascript", "blob", "file", "content", "filesystem" -> true;
+            case "about", "chrome", "chrome-native", "chrome-search", "chrome-extension",
+                    "devtools", "data", "javascript", "blob", "file", "content", "filesystem" -> true;
             default -> false;
         };
     }

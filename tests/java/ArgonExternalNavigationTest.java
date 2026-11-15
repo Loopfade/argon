@@ -128,6 +128,45 @@ public class ArgonExternalNavigationTest {
         check(flow.navigate(new NavigationFlow.Params("tg://resolve"),new Intent("tg://resolve"),empty).action.equals("usual-browser-rules"), "Allow mode preserves ordinary browser handling");
     }
 
+    private static void extensionPages() {
+        var policy = ArgonExternalNavigationPolicy.get();
+        String extensionId = "abcdefghijklmnopabcdefghijklmnop";
+        String extensionUrl = "chrome-extension://" + extensionId + "/options.html";
+        String[] pages = {extensionUrl, "chrome-extension://" + extensionId + "/popup.html"};
+        for (int mode : new int[] {policy.ALLOW, policy.ALLOW_LIST, policy.BLOCK}) {
+            for (boolean hasSite : new boolean[] {false, true}) {
+                Context.values.clear();
+                policy.setMode(mode);
+                if (hasSite) check(policy.addSite("allowed.test"), "Populate the site list");
+                var flow = new NavigationFlow();
+                for (String page : pages) {
+                    check(!blocked(page), "Extension pages remain internal in mode " + mode);
+                    var params = new NavigationFlow.Params(page);
+                    check(flow.navigate(params, new Intent(page), new GURL("")).action
+                                    .equals("usual-browser-rules"),
+                            "Extension navigation retains Chromium handling in mode " + mode);
+                    check(!params.started && flow.notices == 0,
+                            "Extension pages are not cancelled or reported as blocked app links");
+                }
+                boolean restricted = mode != policy.ALLOW;
+                check(blocked("https://denied.test") == restricted,
+                        "Unlisted web destinations still respect the selected mode");
+                check(blocked("https://allowed.test")
+                                == (mode == policy.BLOCK || (mode == policy.ALLOW_LIST && !hasSite)),
+                        "Saved site rules still control external web destinations");
+                check(blocked("tg://resolve?domain=allowed.test") == restricted,
+                        "App-only links remain subject to the external navigation policy");
+                check(blocked("chrome-extension-fake://" + extensionId + "/options.html")
+                                == restricted,
+                        "Only the exact internal extension scheme is exempt");
+                check(policy.shouldBlock(new GURL("intent://" + extensionId
+                                        + "/options.html#Intent;scheme=chrome-extension;end"),
+                                new Intent(extensionUrl)) == restricted,
+                        "An intent wrapper does not inherit the internal-page exemption");
+            }
+        }
+    }
+
     private static void settings() {
         Context.values.clear();
         var policy=ArgonExternalNavigationPolicy.get();
@@ -160,7 +199,7 @@ public class ArgonExternalNavigationTest {
     }
 
     public static void main(String[] args) throws Exception {
-        policy(); navigation(); settings();
+        policy(); navigation(); extensionPages(); settings();
         System.out.println("PASS: external navigation whole-site modes, storage, redirect/intent/fallback cancellation and native settings");
     }
 }
