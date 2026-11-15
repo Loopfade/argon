@@ -130,12 +130,12 @@ class AppIdentityTests(unittest.TestCase):
                     continue
                 callers.append(path.name)
                 selected = re.findall(r"(?m)^      standalone_test: (.+)$", job)
-                if path.name == "build-test-main.yml":
+                if path.name == "build-test-branch.yml":
                     self.assertEqual(selected, ["true"], path.name)
                     self.assertEqual(re.findall(r"(?m)^      signing: (.+)$", job), ["release"])
                 else:
                     self.assertIn(selected, ([], ["false"]), path.name)
-        self.assertCountEqual(callers, ["build-all.yml", "build-test-main.yml"])
+        self.assertCountEqual(callers, ["build-all.yml", "build-test-branch.yml"])
         reusable = (workflows / "build-unified-arch.yml").read_text()
         self.assertIn("      standalone_test:\n        type: boolean\n        default: false\n", reusable)
         self.assertIn("  ARGON_STANDALONE_TEST: ${{ inputs.standalone_test }}\n", reusable)

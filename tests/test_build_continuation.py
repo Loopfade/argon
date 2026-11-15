@@ -66,7 +66,7 @@ class ContinuationTests(unittest.TestCase):
         self.fail(f"Unexpected API path {path}")
 
     def test_test_executor_keeps_main_cache_scope_when_resumed(self):
-        self.run.update(path=".github/workflows/build-test-main.yml", event="workflow_dispatch",
+        self.run.update(path=".github/workflows/build-test-branch.yml", event="workflow_dispatch",
                         head_branch="main", head_sha=self.merge)
         self.env.update(GITHUB_REF="refs/heads/main")
         with patch.object(continuation, "api", side_effect=self.api):
@@ -172,6 +172,7 @@ class ContinuationTests(unittest.TestCase):
 
     def test_full_pipeline_continues_only_its_original_manual_main_run(self):
         for workflow in (".github/workflows/build-all.yml",
+                         ".github/workflows/build-test-branch.yml",
                          ".github/workflows/build-test-main.yml"):
             with self.subTest(workflow=workflow):
                 self.run.update(path=workflow, event="workflow_dispatch",

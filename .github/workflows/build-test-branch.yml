@@ -1,44 +1,153 @@
 name: Сборка Argon test из PR (без публикации)
-run-name: Тестовая сборка ветки ${{ github.ref_name }}
+run-name: Тестовая сборка Argon — PR №${{ inputs.pr_number }}
 
+# Run on main to share compilation caches; compile the selected PR head SHA.
 on:
   workflow_dispatch:
     inputs:
+      pr_number:
+        description: 'Номер открытого PR в main из этого репозитория, например 88'
+        type: string
+        required: true
       runner:
         description: 'Исполнитель Linux x64: не менее 100 ГиБ свободного места'
         type: string
         default: ubuntu-24.04
         required: true
       auto_continue:
-        description: 'Продолжать тот же коммит после тайм-аута с кешем main'
+        description: 'Продолжать после тайм-аута с накопленным кешем main'
         type: boolean
         default: true
 
 permissions:
   contents: read
   actions: write
+  packages: write
+  pull-requests: read
+
+# Serialize with the existing main pipelines: every attempt starts from their
+# latest saved ccache and adds its own entries before the next build restores it.
+concurrency:
+  group: argon-full-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
+env:
+  ARGON_STANDALONE_TEST: 'true'
 
 jobs:
-  dispatch:
-    name: Передать коммит ветки исполнителю с кешем main
+  plan:
+    name: Проверить PR и закрепить исходный коммит
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      build: ${{ steps.plan.outputs.build }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      certificate: ${{ steps.plan.outputs.certificate }}
+      version_code: ${{ steps.plan.outputs.version_code }}
     steps:
-      - name: Отклонить запуск из main или тега
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-        run: |
-          if [[ "$REF_TYPE" != branch || "$GITHUB_REF" == refs/heads/main ]]; then
-            echo '::error::Выберите временную ветку. Этот workflow не собирает main или теги.'
-            exit 1
-          fi
-      - name: Получить исходники выбранной ветки
+      - name: Отклонить тестовый запуск вне main
+        run: test "$GITHUB_REF" = refs/heads/main
+      - name: Получить инструменты проверки PR из main
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
-      - name: Запустить тестовую сборку точного коммита с общим кешем
+      - name: Восстановить закреплённый источник при повторной попытке
+        if: github.run_attempt > 1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: argon-test-source
+          path: ${{ runner.temp }}/argon-test-source
+      - name: Проверить PR и получить его точный SHA
+        id: source
         env:
           GH_TOKEN: ${{ github.token }}
-          TEST_RUNNER: ${{ inputs.runner }}
-          TEST_AUTO_CONTINUE: ${{ inputs.auto_continue }}
-        run: python3 .github/ci/branch-test.py dispatch
+          TEST_PR_NUMBER: ${{ inputs.pr_number }}
+          TEST_SOURCE_FILE: ${{ runner.temp }}/argon-test-source/source.json
+        run: python3 .github/ci/branch-test.py source
+      - name: Сохранить источник для повторных попыток
+        if: github.run_attempt == 1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: argon-test-source
+          path: ${{ runner.temp }}/argon-test-source/source.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Получить закреплённый коммит временной ветки
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          submodules: true
+          persist-credentials: false
+      - name: Проверить входные данные и составить тестовый план
+        id: plan
+        env:
+          BUILD_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
+          TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
+          TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
+          TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
+        run: |
+          python3 scripts/preflight.py --inputs-only --arch arm64
+          python3 scripts/preflight.py --inputs-only --arch arm
+          python3 .github/ci/branch-test.py plan
+
+  image:
+    name: Подготовить общий Docker-образ из коммита PR
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    uses: ./.github/workflows/build-chromium-image.yml
+    with:
+      source_sha: ${{ needs.plan.outputs.sha }}
+
+  build:
+    name: Собрать и проверить ${{ matrix.arch }}
+    needs: [plan, image]
+    if: needs.plan.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/build-unified-arch.yml
+    with:
+      arch: ${{ matrix.arch }}
+      fingerprint: ${{ matrix.fingerprint }}
+      certificate: ${{ needs.plan.outputs.certificate }}
+      source_sha: ${{ needs.plan.outputs.sha }}
+      image: ${{ needs.image.outputs.image }}
+      runner: ${{ inputs.runner }}
+      signing: release
+      standalone_test: true
+      test_version_code: ${{ needs.plan.outputs.version_code }}
+      auto_continue: ${{ inputs.auto_continue }}
+    secrets:
+      TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}
+      TITANIUM_RU_STORE_PASSWORD: ${{ secrets.TITANIUM_RU_STORE_PASSWORD }}
+      TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
+      TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
+
+  cleanup:
+    name: Сохранить текущий образ после завершения всех сборок
+    continue-on-error: true
+    needs: [plan, image, build]
+    if: always() && !cancelled() && needs.image.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Удалить устаревшие образы после завершения остальных запусков
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: argon-build
+          KEEP_TAG: branch-main
+        run: python3 .github/ci/prune-prepared-images.py --ignore-current-consumer

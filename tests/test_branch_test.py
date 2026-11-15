@@ -1,4 +1,4 @@
-"""Exercise branch dispatch, exact-source provenance and main cache execution."""
+"""Exercise the single PR worker, pinned retries and main cache execution."""
 import copy
 import json
 import os
@@ -24,81 +24,109 @@ class BranchTestTests(unittest.TestCase):
         self.main_sha = "b" * 40
         self.env = {
             "GITHUB_REPOSITORY": "Loopfade/argon", "GITHUB_REPOSITORY_OWNER": "Loopfade",
-            "GITHUB_REF": "refs/heads/topic/ua", "GITHUB_REF_TYPE": "branch",
-            "GITHUB_RUN_ID": "123", "GITHUB_RUN_NUMBER": "17", "GITHUB_SHA": self.sha,
+            "GITHUB_REF": "refs/heads/main", "GITHUB_REF_TYPE": "branch",
+            "GITHUB_RUN_ID": "123", "GITHUB_RUN_NUMBER": "17", "GITHUB_SHA": self.main_sha,
+            "GITHUB_RUN_ATTEMPT": "1",
             "GITHUB_OUTPUT": str(self.root / "output"),
             "GITHUB_STEP_SUMMARY": str(self.root / "summary"),
-            "TEST_RUNNER": "ubuntu-24.04", "TEST_AUTO_CONTINUE": "true",
-            "TEST_SOURCE_RUN": "123", "BUILD_SOURCE_SHA": self.sha,
+            "TEST_PR_NUMBER": "88", "TEST_SOURCE_FILE": str(self.root / "source.json"),
+            "BUILD_SOURCE_SHA": self.sha,
             "ARGON_STANDALONE_TEST": "true", "SIGNING_MODE": "test", "TARGET_ARCH": "arm64",
             "JAVA_HOME": "/fixture/jdk", "ANDROID_HOME": "/fixture/sdk",
         }
-        self.run = {
-            "id": 123, "path": branch.ENTRY, "event": "workflow_dispatch", "run_attempt": 1,
-            "repository": {"full_name": "Loopfade/argon"},
-            "head_repository": {"full_name": "Loopfade/argon"},
-            "head_branch": "topic/ua", "head_sha": self.sha,
+        self.pr = {
+            "number": 88, "state": "open",
+            "base": {"ref": "main", "repo": {"full_name": "Loopfade/argon"}},
+            "head": {"ref": "topic/ua", "sha": self.sha,
+                     "repo": {"full_name": "Loopfade/argon"}},
         }
-        self.writes = []
 
-    def api(self, path, payload=None):
-        if payload is not None:
-            self.writes.append((path, payload))
-            return None
-        if path == "actions/runs/123":
-            return copy.deepcopy(self.run)
-        if path == "actions/runs/123/attempts/1/jobs?per_page=100":
-            return {"jobs": [{"steps": [{"name": "Отклонить запуск из main или тега",
-                                         "conclusion": "success"}]}]}
-        if path.startswith("actions/workflows/build-test-main.yml/runs?"):
-            return {"workflow_runs": [{"id": 456, "display_title": "Argon Test — исходный запуск №123",
-                                       "html_url": "https://github.com/Loopfade/argon/actions/runs/456"}]}
+    def api(self, path):
+        if path == "pulls/88":
+            return copy.deepcopy(self.pr)
         self.fail(path)
 
-    def test_dispatch_runs_main_service_without_release_or_source_selection_inputs(self):
-        with patch.dict(os.environ, self.env), patch.object(branch, "api", side_effect=self.api):
-            branch.dispatch(max_polls=1)
-        self.assertEqual(self.writes, [("actions/workflows/build-test-main.yml/dispatches", {
-            "ref": "main", "inputs": {"source_run": "123", "runner": "ubuntu-24.04",
-                                        "auto_continue": "true"}})])
+    def test_source_resolves_pr_and_saves_its_sha_in_this_run(self):
+        with patch.dict(os.environ, self.env), patch.object(branch, "api", side_effect=self.api) as api:
+            branch.source()
+        api.assert_called_once_with("pulls/88")
+        self.assertEqual((self.root / "output").read_text(), f"sha={self.sha}\n")
+        saved = json.loads((self.root / "source.json").read_text())
+        self.assertEqual(saved["sha"], self.sha)
+        self.assertEqual(saved["pr_number"], 88)
+        self.assertEqual(saved["run_id"], 123)
+        self.assertEqual(saved["run_number"], 17)
         summary = (self.root / "summary").read_text()
-        self.assertIn(self.sha, summary)
-        self.assertIn("actions/runs/456", summary)
+        for expected in (self.sha, "№88", "refs/heads/main", "Artifacts этого запуска"):
+            self.assertIn(expected, summary)
 
-    def test_main_and_tags_cannot_dispatch(self):
-        for ref, kind in (("refs/heads/main", "branch"), ("refs/tags/v1", "tag")):
-            with self.subTest(ref=ref), patch.dict(os.environ, {**self.env, "GITHUB_REF": ref,
-                                                             "GITHUB_REF_TYPE": kind}), \
+    def test_branches_and_tags_cannot_use_the_main_worker(self):
+        for ref in ("refs/heads/topic/ua", "refs/tags/main"):
+            with self.subTest(ref=ref), patch.dict(os.environ, {**self.env, "GITHUB_REF": ref}), \
                  patch.object(branch, "api") as api, self.assertRaises(ValueError):
-                branch.dispatch(max_polls=1)
+                branch.source()
             api.assert_not_called()
 
-    def test_source_uses_original_sha_even_after_branch_moves(self):
-        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main",
-                                    "GITHUB_SHA": self.main_sha}), \
-             patch.object(branch, "api", side_effect=self.api):
+    def test_retries_keep_the_original_sha_without_resolving_the_pr_again(self):
+        with patch.dict(os.environ, self.env), patch.object(branch, "api", side_effect=self.api):
             branch.source()
-        self.assertEqual((self.root / "output").read_text(), f"sha={self.sha}\n")
-        self.assertIn("refs/heads/main", (self.root / "summary").read_text())
-
-    def test_source_requires_main_executor_and_successful_branch_guard(self):
-        with patch.dict(os.environ, self.env), patch.object(branch, "api") as api, \
-             self.assertRaises(ValueError):
+        saved = (self.root / "source.json").read_bytes()
+        self.pr["head"]["sha"] = "c" * 40
+        self.pr["state"] = "closed"
+        with patch.dict(os.environ, {**self.env, "GITHUB_RUN_ATTEMPT": "2"}), \
+             patch.object(branch, "api") as api:
             branch.source()
         api.assert_not_called()
-        with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main"}), \
-             patch.object(branch, "api", side_effect=[self.run, {"jobs": []}]), \
-             self.assertRaisesRegex(ValueError, "guard"):
-            branch.source()
+        self.assertEqual((self.root / "source.json").read_bytes(), saved)
+        self.assertEqual((self.root / "output").read_text(), f"sha={self.sha}\nsha={self.sha}\n")
 
-    def test_unrelated_or_main_source_runs_are_rejected(self):
-        for changes in ({"head_branch": "main"}, {"head_sha": "bad"},
-                        {"path": ".github/workflows/build-all.yml"}, {"event": "pull_request"},
-                        {"head_repository": {"full_name": "other/repo"}}):
-            with self.subTest(changes=changes), patch.dict(os.environ, self.env), \
-                 patch.object(branch, "api", return_value={**self.run, **changes}), \
-                 self.assertRaises(ValueError):
-                branch.source_run("123")
+    def test_missing_retry_snapshot_never_falls_back_to_a_new_pr_head(self):
+        with patch.dict(os.environ, {**self.env, "GITHUB_RUN_ATTEMPT": "2"}), \
+             patch.object(branch, "api") as api, self.assertRaises(FileNotFoundError):
+            branch.source()
+        api.assert_not_called()
+
+    def test_retry_snapshot_must_belong_to_the_same_run_pr_and_repository(self):
+        with patch.dict(os.environ, self.env), patch.object(branch, "api", side_effect=self.api):
+            branch.source()
+        path = self.root / "source.json"
+        saved = json.loads(path.read_text())
+        for changes in ({"run_id": 124}, {"run_number": 18}, {"pr_number": 89},
+                        {"repository": "other/repo"}, {"workflow": ".github/workflows/build-all.yml"},
+                        {"schema": True}, {"sha": "bad"}, {"branch": "topic\nother"}):
+            with self.subTest(changes=changes):
+                path.write_text(json.dumps({**saved, **changes}))
+                with patch.dict(os.environ, {**self.env, "GITHUB_RUN_ATTEMPT": "2"}), \
+                     patch.object(branch, "api") as api, self.assertRaises(ValueError):
+                    branch.source()
+                api.assert_not_called()
+
+    def test_only_open_main_prs_from_this_repository_are_accepted(self):
+        for field, value in (("state", "closed"), ("number", 89),
+                             ("base", {**self.pr["base"], "ref": "other"}),
+                             ("base", {**self.pr["base"], "repo": {"full_name": "other/repo"}}),
+                             ("head", {**self.pr["head"], "repo": {"full_name": "fork/argon"}}),
+                             ("head", {**self.pr["head"], "repo": None}),
+                             ("head", {**self.pr["head"], "ref": "main"}),
+                             ("head", {**self.pr["head"], "sha": "invalid"})):
+            with self.subTest(field=field, value=value), patch.dict(os.environ, self.env), \
+                 patch.object(branch, "api", return_value={**self.pr, field: value}), self.assertRaises(ValueError):
+                branch.source()
+            self.assertFalse((self.root / "source.json").exists())
+
+    def test_invalid_pr_numbers_are_rejected_before_api_access(self):
+        for value in ("0", "-1", "01", "88\n", "88/other", ""):
+            with self.subTest(value=value), patch.dict(os.environ, {**self.env, "TEST_PR_NUMBER": value}), \
+                 patch.object(branch, "api") as api, self.assertRaises(ValueError):
+                branch.source()
+            api.assert_not_called()
+
+    def test_api_failure_does_not_create_a_source_snapshot(self):
+        with patch.dict(os.environ, self.env), \
+             patch.object(branch, "api", side_effect=subprocess.CalledProcessError(1, "gh")), \
+             self.assertRaises(subprocess.CalledProcessError):
+            branch.source()
+        self.assertFalse((self.root / "source.json").exists())
 
     def test_plan_uses_branch_sha_and_leaves_main_cache_context(self):
         with patch.dict(os.environ, {**self.env, "GITHUB_REF": "refs/heads/main",
@@ -152,11 +180,12 @@ class BranchTestTests(unittest.TestCase):
              self.assertRaisesRegex(ValueError, "release key unavailable"):
             branch.plan()
 
-    def test_entry_has_no_key_and_worker_uses_release_key_without_publishing(self):
-        entry = (ROOT / branch.ENTRY).read_text()
-        worker = (ROOT / branch.WORKER).read_text()
-        self.assertNotIn("signing:", entry)
-        self.assertNotIn("secrets:", entry)
+    def test_single_worker_takes_pr_number_and_uses_release_key_without_publishing(self):
+        worker = (ROOT / branch.WORKFLOW).read_text()
+        self.assertFalse((ROOT / ".github/workflows/build-test-main.yml").exists())
+        self.assertIn("      pr_number:", worker)
+        self.assertNotIn("source_run", worker)
+        self.assertNotIn("/dispatches", worker)
         self.assertNotIn("secrets: inherit", worker)
         self.assertIn("TITANIUM_RU_KEYSTORE_BASE64: ${{ secrets.TITANIUM_RU_KEYSTORE_BASE64 }}", worker)
         self.assertIn("      signing: release", worker)
@@ -172,7 +201,7 @@ class BranchTestTests(unittest.TestCase):
         self.assertIn("export GITHUB_SHA=\"$SOURCE_SHA\"", shared)
 
     def test_worker_prepares_one_shared_image_and_pins_it_for_both_architectures(self):
-        text = (ROOT / branch.WORKER).read_text()
+        text = (ROOT / branch.WORKFLOW).read_text()
         image = text.split("\n  image:\n", 1)[1].split("\n  build:\n", 1)[0]
         build = text.split("\n  build:\n", 1)[1].split("\n  cleanup:\n", 1)[0]
         cleanup = text.split("\n  cleanup:\n", 1)[1]

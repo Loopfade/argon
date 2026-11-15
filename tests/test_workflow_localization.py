@@ -35,7 +35,7 @@ class WorkflowLocalizationTests(unittest.TestCase):
     def test_release_and_branch_test_use_one_release_key_with_separate_app_variants(self):
         workflows = ROOT / ".github/workflows"
         production = (workflows / "build-all.yml").read_text()
-        test = (workflows / "build-test-main.yml").read_text()
+        test = (workflows / "build-test-branch.yml").read_text()
         self.assertNotIn("inputs.signing", production)
         self.assertIn("SIGNING_MODE: release", production)
         self.assertIn("      signing: release", production)
