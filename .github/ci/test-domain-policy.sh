@@ -55,7 +55,8 @@ for arch in arm64 arm; do
 done
 
 # Compile the WebUI, theme and UA targets with the production toolchain: ARMv7 layout,
-# navigation/subresource UA-CH, ContentUtils JNI and complete browser Java sources.
+# navigation/subresource UA-CH, viewport scale restoration, ContentUtils JNI and
+# complete browser Java sources.
 (
   cd "$src"
   autoninja -C out/Argon-graph-arm -j 4 \
@@ -71,13 +72,15 @@ done
     obj/content/browser/browser/client_hints.o \
     obj/content/browser/browser/render_process_host_impl.o \
     obj/content/browser/browser/navigation_controller_android.o \
+    obj/content/renderer/renderer/render_frame_impl.o \
+    obj/content/renderer/renderer/document_state.o \
     obj/third_party/blink/renderer/core/core/frame_fetch_context.o \
     chrome_java
 )
 echo "PASS: homepage WebUI controller, icon, search and theme handlers compiled"
 echo "PASS: ARMv7 ComputedStyle size assertion"
 echo "PASS: night mode Java module compiled"
-echo "PASS: User-Agent navigation, subresources, renderer flags, JNI and browser Java compiled"
+echo "PASS: User-Agent navigation, scale restoration, subresources, renderer flags, JNI and browser Java compiled"
 
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert" "$src/chrome/browser/net"

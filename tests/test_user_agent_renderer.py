@@ -9,6 +9,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import apply_user_agent as patch
+from user_agent_navigation_flow import methods
 
 VIEWPORT_IMPL=Path('content/browser/web_contents/web_contents_impl.cc')
 VIEWPORT_FIXTURE=ROOT/'tests/fixtures/user_agent/web_contents_viewport.cc.in'
@@ -216,6 +217,18 @@ def patched_fixture():
         patch.CLIENT_HINTS: '  if (!disable_due_to_custom_ua) {\n}',
         patch.FRAME_FETCH: '#include "base/feature_list.h"\n  std::optional<UserAgentMetadata> ua = GetUserAgentMetadata();',
         patch.NAVIGATION_CONTROLLER: (ROOT/'tests/fixtures/user_agent/navigation_controller_android.cc.in').read_text(),
+        patch.RENDER_FRAME: 'void RenderFrameImpl::CommitNavigationWithParams() {\n'
+            '  navigation_params->frame_load_type = load_type;\n}\n'
+            'void RenderFrameImpl::DidCommitNavigation() {\n'
+            '  DCHECK(!navigation_state->WasWithinSameDocument());\n}\n' + methods(
+                (ROOT/'tests/fixtures/user_agent/page_scale.cc.in').read_text(),
+                ('bool RenderFrameImpl::ShouldUseUserAgentOverride() const',)),
+        patch.DOCUMENT_STATE: 'class DocumentState {\n'
+            '  bool is_overriding_user_agent() const { return is_overriding_user_agent_; }\n'
+            '  void set_is_overriding_user_agent(bool state) {\n'
+            '    is_overriding_user_agent_ = state;\n  }\n'
+            '  // This is a fake navigation request id,\n'
+            '  bool is_overriding_user_agent_ = false;\n};\n',
     }
     with tempfile.TemporaryDirectory() as directory:
         root=Path(directory)

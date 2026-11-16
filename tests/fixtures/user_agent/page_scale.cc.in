@@ -1,0 +1,151 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE.chromium file.
+// Extracted from Chromium a733b5afbb3ba618844ff8876b89ad1a774b2f18.
+
+bool RenderFrameImpl::ShouldUseUserAgentOverride() const {
+  auto* web_view = GetWebView();
+  // TODO(nasko): When the top-level frame is remote, there is no
+  // WebDocumentLoader associated with it, so the checks below are not valid.
+  // Temporarily return early and fix properly as part of
+  // https://crbug.com/426555.
+  if (web_view->MainFrame()->IsWebRemoteFrame()) {
+    return false;
+  }
+  const WebLocalFrame* main_frame = web_view->MainFrame()->ToWebLocalFrame();
+
+  WebDocumentLoader* document_loader = main_frame->GetDocumentLoader();
+  DocumentState* document_state =
+      document_loader ? DocumentState::FromDocumentLoader(document_loader)
+                      : nullptr;
+  return document_state && document_state->is_overriding_user_agent();
+}
+
+void WebViewImpl::ResetScrollAndScaleState() {
+  // Skip scroll restoration when restoring from back-forward cache.
+  if (last_page_lifecycle_state_update_restored_from_bfcache_) {
+    last_page_lifecycle_state_update_restored_from_bfcache_ = false;
+    return;
+  }
+  GetPage()->GetVisualViewport().Reset();
+
+  auto* main_local_frame = DynamicTo<LocalFrame>(GetPage()->MainFrame());
+  if (!main_local_frame) {
+    return;
+  }
+
+  if (LocalFrameView* frame_view = main_local_frame->View()) {
+    ScrollableArea* scrollable_area = frame_view->LayoutViewport();
+
+    if (!scrollable_area->GetScrollOffset().IsZero()) {
+      scrollable_area->SetScrollOffset(ScrollOffset(),
+                                       mojom::blink::ScrollType::kProgrammatic,
+                                       cc::ScrollSourceType::kAbsoluteScroll);
+    }
+  }
+
+  if (Document* document = main_local_frame->GetDocument()) {
+    if (DocumentLoader* loader = document->Loader()) {
+      if (HistoryItem* item = loader->GetHistoryItem()) {
+        item->ClearViewState();
+      }
+    }
+  }
+
+  GetPageScaleConstraintsSet().SetNeedsReset(true);
+}
+
+void WebViewImpl::RefreshPageScaleFactor() {
+  if (!MainFrame() || !GetPage() || !GetPage()->MainFrame() ||
+      !GetPage()->MainFrame()->IsLocalFrame() ||
+      !GetPage()->DeprecatedLocalMainFrame()->View()) {
+    return;
+  }
+  UpdatePageDefinedViewportConstraints(MainFrameImpl()
+                                           ->GetFrame()
+                                           ->GetDocument()
+                                           ->GetViewportData()
+                                           .GetViewportDescription());
+  GetPageScaleConstraintsSet().ComputeFinalConstraints();
+
+  float new_page_scale_factor = PageScaleFactor();
+  if (GetPageScaleConstraintsSet().NeedsReset() &&
+      GetPageScaleConstraintsSet().FinalConstraints().initial_scale != -1) {
+    new_page_scale_factor =
+        GetPageScaleConstraintsSet().FinalConstraints().initial_scale;
+    GetPageScaleConstraintsSet().SetNeedsReset(false);
+  }
+  SetPageScaleFactor(new_page_scale_factor);
+
+  // The constraints may have changed above which affects the page scale limits,
+  // so we must update those even though SetPageScaleFactor() may do the same if
+  // the scale factor is changed.
+  if (does_composite_) {
+    auto& viewport = GetPage()->GetVisualViewport();
+    MainFrameImpl()->FrameWidgetImpl()->SetPageScaleStateAndLimits(
+        viewport.Scale(), viewport.IsPinchGestureActive(),
+        MinimumPageScaleFactor(), MaximumPageScaleFactor());
+  }
+}
+
+void FrameLoader::RestoreScrollPositionAndViewState() {
+  if (!frame_->GetPage() || !GetDocumentLoader() ||
+      !GetDocumentLoader()->GetHistoryItem() ||
+      !GetDocumentLoader()->GetHistoryItem()->GetViewState() ||
+      !GetDocumentLoader()->NavigationScrollAllowed()) {
+    return;
+  }
+
+  // We need to suppress scroll restoration animations for navigations with
+  // visual transitions for the same-document case only. This is done in
+  // ProcessScrollForSameDocumentNavigation.
+  //
+  // For cross-document navigations (which take this path) the animation is
+  // suppressed by default.
+  RestoreScrollPositionAndViewState(
+      GetDocumentLoader()->LoadType(),
+      *GetDocumentLoader()->GetHistoryItem()->GetViewState(),
+      GetDocumentLoader()->GetHistoryItem()->ScrollRestorationType(),
+      mojom::blink::ScrollBehavior::kAuto);
+}
+
+bool FrameLoader::NeedsHistoryItemRestore(WebFrameLoadType type) {
+  return IsBackForwardOrRestore(type) || IsReloadLoadType(type);
+}
+
+void FrameLoader::RestoreScrollPositionAndViewState(
+    WebFrameLoadType load_type,
+    const HistoryItem::ViewState& view_state,
+    mojom::blink::ScrollRestorationType scroll_restoration_type,
+    mojom::blink::ScrollBehavior scroll_behavior) {
+  LocalFrameView* view = frame_->View();
+  if (!view || !view->LayoutViewport() || !frame_->IsAttached() ||
+      frame_->GetDocument()->IsInitialEmptyDocument()) {
+    return;
+  }
+  if (!NeedsHistoryItemRestore(load_type))
+    return;
+
+  view->LayoutViewport()->SetPendingHistoryRestoreScrollOffset(
+      view_state,
+      scroll_restoration_type != mojom::blink::ScrollRestorationType::kManual,
+      scroll_behavior);
+  view->GetScrollableArea()->SetPendingHistoryRestoreScrollOffset(
+      view_state,
+      scroll_restoration_type != mojom::blink::ScrollRestorationType::kManual,
+      scroll_behavior);
+
+  view->ScheduleAnimation();
+}
+
+std::unique_ptr<blink::WebDocumentLoader::ExtraData> DocumentState::Clone() {
+  auto cloned_document_state = std::make_unique<DocumentState>();
+  cloned_document_state->set_was_load_data_with_base_url_request(
+      was_load_data_with_base_url_request_);
+  cloned_document_state->set_data_url(data_url_);
+  cloned_document_state->set_is_overriding_user_agent(
+      is_overriding_user_agent_);
+  cloned_document_state->set_request_id(request_id_);
+  return cloned_document_state;
+}
+
