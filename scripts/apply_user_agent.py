@@ -153,7 +153,10 @@ std::optional<std::string> GetArgonUserAgentOverride(bool desktop) {
     replace(DESKTOP_UA, anchor, """\
   if (auto ua = embedder_support::GetArgonUserAgentOverride(/*desktop=*/true)) {
     blink::UserAgentOverride ua_override = blink::UserAgentOverride::UserAgentOnly(*ua);
-    ua_override.ua_metadata_override.reset();
+    // WebContents uses metadata.mobile to select the desktop viewport. Keep
+    // only that local layout signal; UA-CH headers stay suppressed below.
+    ua_override.ua_metadata_override.emplace();
+    ua_override.ua_metadata_override->mobile = false;
     content::WebContents::FromJavaWebContents(jweb_contents)
         ->SetUserAgentOverride(ua_override, j_override_in_new_tabs);
     return;

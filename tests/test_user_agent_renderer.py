@@ -10,6 +10,9 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import apply_user_agent as patch
 
+VIEWPORT_IMPL=Path('content/browser/web_contents/web_contents_impl.cc')
+VIEWPORT_FIXTURE=ROOT/'tests/fixtures/user_agent/web_contents_viewport.cc.in'
+
 
 def compile_and_run(program):
     with tempfile.TemporaryDirectory(prefix='argon-ua-native-') as directory:
@@ -102,6 +105,99 @@ int main() {
     return 'PASS: native UA-CH defaults and suppression for navigation and subresources'
 
 
+def viewport_policy(source):
+    marker='#if BUILDFLAG(IS_ANDROID)\n  bool is_request_android_desktop_site = false;\n#endif\n'
+    if source.count(marker)!=1:
+        raise ValueError('Review the pinned Android desktop viewport policy')
+    start=source.index(marker)
+    end=source.index('\n  }\n',start)+5
+    return source[start:end]
+
+
+def verify_viewport(desktop, ua_utils, web_contents):
+    policy=viewport_policy(web_contents)
+    if policy!=viewport_policy(VIEWPORT_FIXTURE.read_text()):
+        raise ValueError('Chromium desktop viewport policy changed; review the fixture')
+    native=re.search(r'std::optional<std::string> GetArgonUserAgentOverride\(bool desktop\) \{[\s\S]*?\n}\n',ua_utils)
+    override=re.search(r'  if \(auto ua = embedder_support::GetArgonUserAgentOverride\(/\*desktop=\*/true\)\) \{[\s\S]*?    return;\n  }\n',desktop)
+    if not native or not override:
+        raise ValueError('Missing production desktop preset override')
+    # Compile the actual preset branch against Chromium's actual viewport
+    # decision. The adapters capture JNI transport, not a browser layout engine.
+    compile_and_run(PRELUDE+r'''
+#include <iostream>
+#include <vector>
+#define BUILDFLAG(name) name
+#define IS_ANDROID 1
+#define CHECK_VIEWPORT(value) do { if (!(value)) { std::cerr << #value << "\n"; return 1; } } while (false)
+namespace embedder_support {
+'''+native[0]+r'''
+}
+namespace blink {
+struct UserAgentMetadata {
+  bool mobile=false;
+  std::vector<std::string> brand_version_list, brand_full_version_list;
+  std::string platform, platform_version, model, architecture, bitness, full_version;
+};
+struct UserAgentOverride {
+  std::string ua_string_override;
+  std::optional<UserAgentMetadata> ua_metadata_override;
+  static UserAgentOverride UserAgentOnly(const std::string& ua) {
+    UserAgentOverride result; result.ua_string_override=ua; return result;
+  }
+};
+}
+namespace content {
+struct WebContents {
+  struct { blink::UserAgentOverride user_agent_override; } renderer_preferences_;
+  bool overriding=false, has_entry=true, override_in_new_tabs=false;
+  static WebContents* FromJavaWebContents(WebContents* value) { return value; }
+  void SetUserAgentOverride(const blink::UserAgentOverride& ua, bool new_tabs) {
+    renderer_preferences_.user_agent_override=ua; override_in_new_tabs=new_tabs;
+  }
+  WebContents& GetController() { return *this; }
+  WebContents* GetVisibleEntry() { return has_entry ? this : nullptr; }
+  bool GetIsOverridingUserAgent() const { return overriding; }
+  bool ViewportMetaEnabled() {
+    struct { bool viewport_meta_enabled=true; } prefs;
+'''+policy+r'''
+    return prefs.viewport_meta_enabled;
+  }
+};
+}
+void SetDesktopPreset(content::WebContents* jweb_contents, bool j_override_in_new_tabs) {
+'''+override[0]+r'''
+}
+int main() {
+  auto& args=base::CommandLine::ForCurrentProcess()->values;
+  content::WebContents native;
+  native.renderer_preferences_.user_agent_override.ua_string_override="native";
+  SetDesktopPreset(&native,true);
+  CHECK_VIEWPORT(native.renderer_preferences_.user_agent_override.ua_string_override=="native");
+  for (const std::string ua : {"Firefox/154.0", "Chrome/152 YaBrowser/26.10",
+                               "Custom/1.0 Mobile", "Custom/1.0"}) {
+    args["argon-user-agent-desktop"]=ua;
+    content::WebContents page;
+    SetDesktopPreset(&page,true);
+    const auto& selected=page.renderer_preferences_.user_agent_override;
+    CHECK_VIEWPORT(selected.ua_string_override==ua && page.override_in_new_tabs);
+    for (bool desktop : {false,true,false,true,false}) {
+      page.overriding=desktop;
+      CHECK_VIEWPORT(page.ViewportMetaEnabled()==!desktop);
+    }
+    CHECK_VIEWPORT(selected.ua_metadata_override.has_value());
+    const auto& metadata=*selected.ua_metadata_override;
+    CHECK_VIEWPORT(!metadata.mobile);
+    CHECK_VIEWPORT(metadata.brand_version_list.empty() && metadata.brand_full_version_list.empty());
+    CHECK_VIEWPORT(metadata.platform.empty() && metadata.full_version.empty() && metadata.model.empty());
+    page.has_entry=false;page.overriding=true;
+    CHECK_VIEWPORT(page.ViewportMetaEnabled());
+  }
+}
+''')
+    return 'PASS: preset desktop viewport, mobile restore, custom UA and native fallback'
+
+
 def patched_fixture():
     sources = {
         patch.ANDROID_GN: f'      "{patch.BASE}/ApplicationInitHook.java",',
@@ -141,6 +237,10 @@ class UserAgentNativeTests(unittest.TestCase):
     def test_native_client_hints(self):
         sources=patched_fixture()
         self.assertIn('PASS:',verify_client_hints(sources[patch.CLIENT_HINTS],sources[patch.FRAME_FETCH],sources[patch.RENDER_PROCESS_HOST_IMPL]))
+
+    def test_presets_switch_viewport_and_restore_mobile_layout(self):
+        sources=patched_fixture()
+        self.assertIn('PASS:',verify_viewport(sources[patch.DESKTOP_UA],sources[patch.UA_UTILS],VIEWPORT_FIXTURE.read_text()))
 
     def test_no_live_mutation_or_site_preference_rewrite(self):
         script=(ROOT/'scripts/apply_user_agent.py').read_text()
