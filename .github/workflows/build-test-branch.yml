@@ -1,5 +1,5 @@
 name: Сборка Argon test из PR (без публикации)
-run-name: Тестовая сборка Argon — PR №${{ inputs.pr_number }}
+run-name: Тестовая сборка Argon — PR №${{ inputs.pr_number }} · запуск №${{ github.run_number }}
 
 # Run on main to share compilation caches; compile the selected PR head SHA.
 on:
