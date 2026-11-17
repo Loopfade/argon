@@ -1,30 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="argon_external_title">Open links in apps</string>
-    <string name="argon_external_menu_summary">Control which sites can open external apps</string>
-    <string name="argon_external_search_keywords">links, apps, external apps, open links</string>
-    <string name="argon_external_mode">Opening mode</string>
+    <string name="argon_external_title">Switching to apps</string>
+    <string name="argon_external_menu_summary">Control link navigation to other apps</string>
+    <string name="argon_external_search_keywords">switching, links, apps, external apps, open links, phone, calls</string>
+    <string name="argon_external_mode">Link navigation mode</string>
     <string name="argon_external_allow">Allow</string>
     <string name="argon_external_allow_list">Only for listed sites</string>
     <string name="argon_external_block">Block</string>
-    <string name="argon_external_allow_description">Use the usual browser rules for opening links in installed apps.</string>
-    <string name="argon_external_list_description">Only links to listed sites and their subdomains can open apps. Other web links stay in Argon.</string>
-    <string name="argon_external_block_description">Keep web links in Argon and block links that require another app.</string>
-    <string name="argon_external_sites">Allowed sites</string>
+    <string name="argon_external_allow_description">Allow links to open other apps using the usual browser rules.</string>
+    <string name="argon_external_list_description">Only links to listed sites and their subdomains can open apps. Block phone, email and SMS links.</string>
+    <string name="argon_external_block_description">Keep web links in Argon. Block link navigation to other apps, including phone, email and SMS apps.</string>
+    <string name="argon_external_sites">Allowed destination sites</string>
     <string name="argon_external_add_site">Add site</string>
     <string name="argon_external_site_scope">All pages and subdomains · Tap to remove</string>
     <string name="argon_external_remove">Remove site</string>
     <string name="argon_external_remove_description">Remove %1$s and its subdomains from the allowed list?</string>
     <string name="argon_external_empty">The list is empty. In “Only for listed sites” mode, no links can open apps.</string>
     <string name="argon_external_saved_list">The list applies only in “Only for listed sites” mode. Switching modes keeps your saved sites.</string>
-    <string name="argon_external_details">Rules check the link destination, including redirects, rather than the page containing the link. Each rule covers the entire site and its subdomains. Links without a web destination can open apps only in “Allow” mode. If an app link has a web version, Argon opens that version when the app is blocked. These settings also apply in private tabs and browser tabs opened by other apps.</string>
+    <string name="argon_external_details">Rules check the site a link leads to, including after redirects. The site where you tap the link does not grant permission. Each rule covers all pages on the destination site and its subdomains.</string>
+    <string name="argon_external_actions">Phone, email, SMS and other links without a web destination can open apps only in “Allow” mode. This includes Call, Send message and Add to contacts in the link menu.</string>
+    <string name="argon_external_scope">When app navigation is blocked, Argon opens the web version of the link if available. Rules also apply to Open in app, private tabs and Argon tabs opened by other apps.</string>
     <string name="argon_external_domain">Site or link</string>
     <string name="argon_external_domain_hint">Enter a site such as example.com, or paste a web link.</string>
     <string name="argon_external_invalid_site">Enter a valid site or HTTP(S) link. Addresses with login details, IP addresses and shared domain suffixes are not supported.</string>
-    <string name="argon_external_preview">Allow all pages on %1$s and its subdomains to open apps.</string>
+    <string name="argon_external_preview">Allow links to %1$s and its subdomains to open apps.</string>
     <string name="argon_external_save">Add to list</string>
     <string name="argon_external_duplicate">This site is already in the list.</string>
     <string name="argon_external_limit">You can add up to 100 sites. Remove a site to add another.</string>
     <string name="argon_external_save_failed">Could not add the site. Check the address, duplicates and the list limit.</string>
-    <string name="argon_external_blocked">Opening an external app is blocked in browser settings.</string>
+    <string name="argon_external_blocked">App navigation is blocked in Switching to apps settings.</string>
 </resources>

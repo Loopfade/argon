@@ -55,11 +55,32 @@ public class Uri { private final String value; private Uri(String v) { value=v; 
   public static Uri parse(String v) { return new Uri(v); } public String toString() { return value; } }''',
     "android/content/Intent.java": '''package android.content;
 public class Intent {
-  public static final String ACTION_VIEW="view";
+  public static final String ACTION_VIEW="view", ACTION_INSERT="insert";
+  public static final int FLAG_ACTIVITY_NEW_TASK=1, FLAG_ACTIVITY_REQUIRE_NON_BROWSER=2;
   private android.net.Uri data; public Intent() {}
   public Intent(String action, android.net.Uri value) { data=value; }
   public Intent(String value) { data = value == null ? null : android.net.Uri.parse(value); }
   public android.net.Uri getData() { return data; }
+  public void setData(android.net.Uri value) { data=value; }
+  public void setFlags(int flags) {} public void addFlags(int flags) {}
+  public void setType(String type) {} public void putExtra(String key, String value) {}
+}''',
+    "org/chromium/base/IntentUtils.java": '''package org.chromium.base;
+public class IntentUtils {
+  public static final java.util.List<android.content.Intent> launches=new java.util.ArrayList<>();
+  public static void safeStartActivity(android.content.Context c, android.content.Intent intent) { launches.add(intent); }
+}''',
+    "android/net/MailTo.java": '''package android.net;
+public class MailTo {
+  private String address;
+  public static boolean isMailTo(String url) { return url.startsWith("mailto:"); }
+  public static MailTo parse(String url) { var result=new MailTo(); result.address=url.substring(7); return result; }
+  public String getTo() { return address; }
+}''',
+    "android/provider/ContactsContract.java": '''package android.provider;
+public class ContactsContract {
+  public static class Contacts { public static final String CONTENT_TYPE="contact"; }
+  public static class Intents { public static class Insert { public static final String EMAIL="email", PHONE="phone"; } }
 }''',
     "android/widget/Toast.java": '''package android.widget;
 public class Toast { public static final int LENGTH_SHORT=0, LENGTH_LONG=1; public static int shown;
@@ -102,6 +123,8 @@ public class GURL {
     "org/chromium/components/embedder_support/util/UrlUtilities.java": '''package org.chromium.components.embedder_support.util;
 public class UrlUtilities {
   public static boolean isHttpOrHttps(org.chromium.url.GURL u) { return u.getScheme().equals("https") || u.getScheme().equals("http"); }
+  public static boolean isTelScheme(org.chromium.url.GURL u) { return u.getScheme().equals("tel"); }
+  public static String getTelNumber(org.chromium.url.GURL u) { return u.getSpec().substring(4); }
   public static String getDomainAndRegistry(String value, boolean privateRegistries) {
     String host=new org.chromium.url.GURL(value).getHost();
     if(!privateRegistries) throw new AssertionError("Private registries must be excluded too");
@@ -154,7 +177,30 @@ def resources_java(sources):
     return result + "public static java.util.Map<Integer,String> text=java.util.Map.ofEntries(" + ",".join(entries) + ");}\n"
 
 
-def run_flow(guard, fallback_guard, market_guard):
+def explicit_actions(context_menu=None, open_in_app=None, helper_guard=None):
+    """Use the pinned link action bodies, both in unit and upstream integration checks."""
+    import apply_external_navigation as patch
+    from apply_homepage import method_source
+    fixture = (ROOT / "tests/fixtures/external_navigation/ExplicitActions.java.in").read_text()
+    fixture = fixture.replace("/* HELPER_POLICY */", helper_guard or patch.EXPLICIT_HELPER_GUARD)
+    if context_menu is None:
+        return patch.patch_open_in_app(patch.patch_context_menu_delegate(fixture))
+    for action in patch.CONTEXT_MENU_ACTIONS:
+        signature = f"    public void {action}(GURL url) {{"
+        method = method_source(context_menu, signature)
+        if not method.startswith(signature + "\n" + patch.EXPLICIT_GUARD):
+            raise ValueError("Explicit link action must check the policy before dispatch: " + action)
+        fixture = fixture.replace(method_source(fixture, signature), method)
+    action = method_source(open_in_app, "        Runnable openInApp =")
+    if action.count(patch.OPEN_IN_APP_ANCHOR + patch.OPEN_IN_APP_GUARD) != 1:
+        raise ValueError("Open in app must check current policy before launching or closing a tab")
+    fixture = fixture.replace(method_source(fixture, "        Runnable openInApp ="), action)
+    return patch.patch_explicit_action_import(fixture)
+
+
+def run_flow(guard, fallback_guard, market_guard, context_menu=None, open_in_app=None,
+             helper_guard=None, helper_api=None):
+    import apply_external_navigation as patch
     adapters = dict(ADAPTERS)
     flow = (ROOT / "tests/fixtures/external_navigation/NavigationFlow.java.in").read_text().replace("/* USER_GUARD */", guard)
     flow = flow.replace("/* FALLBACK_GUARD */", fallback_guard).replace("/* MARKET_GUARD */", market_guard)
@@ -162,6 +208,9 @@ def run_flow(guard, fallback_guard, market_guard):
     production = [OVERLAY / "src" / PACKAGE / ("ArgonExternalNavigation" + name + ".java")
                   for name in ("Policy", "Settings")]
     adapters[PACKAGE + "NavigationFlow.java"] = flow
+    adapters[PACKAGE + "ExplicitActions.java"] = explicit_actions(context_menu, open_in_app, helper_guard)
+    adapters["org/chromium/components/external_intents/ExternalNavigationHelper.java"] = helper_api or patch.patch_helper(
+        (ROOT / "tests/fixtures/external_navigation/ExternalNavigationHelper.java.in").read_text())
     adapters["org/chromium/chrome/R.java"] = resources_java(
         [*adapters.values(), test.read_text(), *(p.read_text() for p in production)])
     with tempfile.TemporaryDirectory() as directory:
@@ -205,7 +254,14 @@ def verify_upstream(src):
         raise ValueError("Review the custom tab override of the user policy")
     fallback = handler.index(patch.FALLBACK_GUARD)
     market = handler.index(patch.MARKET_GUARD)
+    context_menu = (src / patch.CONTEXT_MENU_DELEGATE).read_text()
+    open_in_app = (src / patch.OPEN_IN_APP).read_text()
+    if handler.count(patch.EXPLICIT_HELPER_GUARD) != 1:
+        raise ValueError("Missing or duplicate explicit app launch guard")
+    start = handler.index(patch.EXPLICIT_HELPER_GUARD)
     navigation = run_flow(handler[guard:guard + len(patch.USER_GUARD)],
                     handler[fallback:fallback + len(patch.FALLBACK_GUARD)],
-                    handler[market:market + len(patch.MARKET_GUARD)])
+                    handler[market:market + len(patch.MARKET_GUARD)], context_menu, open_in_app,
+                    handler[start:start + len(patch.EXPLICIT_HELPER_GUARD)],
+                    (src / patch.HELPER).read_text())
     return navigation + '\n' + verify_search(src)
