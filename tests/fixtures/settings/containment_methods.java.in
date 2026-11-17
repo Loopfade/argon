@@ -1,0 +1,143 @@
+// Copyright 2025 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in ../user_agent/LICENSE.chromium.
+// Extracted from Chromium a733b5afbb3ba618844ff8876b89ad1a774b2f18.
+
+    public ArrayList<ContainerStyle> generatePreferenceStyles(
+            ArrayList<Preference> visiblePreferences) {
+        ArrayList<ContainerStyle> preferenceStyles = new ArrayList<>();
+        for (int i = 0; i < visiblePreferences.size(); i++) {
+            preferenceStyles.add(getPreferenceStyleForPosition(visiblePreferences, i));
+        }
+        return preferenceStyles;
+    }
+
+    private ContainerStyle getPreferenceStyleForPosition(
+            ArrayList<Preference> visiblePreferences, int position) {
+        Preference currentPref = visiblePreferences.get(position);
+
+        if (currentPref instanceof PreferenceCategory) {
+            return new ContainerStyle.Builder()
+                    .setBottomMargin(mDefaultMargin)
+                    .setHorizontalMargin(mHorizontalMargin)
+                    .setBackgroundColor(TRANSPARENT_BACKGROUND_COLOR)
+                    .build();
+        }
+        if (currentPref instanceof ContainmentItem customStyledPreference) {
+            if (customStyledPreference.getCustomBackgroundStyle() == BackgroundStyle.NONE) {
+                return ContainerStyle.EMPTY;
+            }
+        }
+
+        ContainerStyle.Builder containerStyleBuilder = new ContainerStyle.Builder();
+
+        // Evaluate position of preference
+        Preference prefAbove = (position > 0) ? visiblePreferences.get(position - 1) : null;
+        Preference prefBelow =
+                (position < visiblePreferences.size() - 1)
+                        ? visiblePreferences.get(position + 1)
+                        : null;
+        boolean isTop = (prefAbove == null) || isCustomStyledPreference(prefAbove);
+        boolean isBottom = (prefBelow == null) || isCustomStyledPreference(prefBelow);
+
+        addStandardStyling(containerStyleBuilder, currentPref.getSummary() == null);
+        if (currentPref instanceof ContainmentItem customStyledPreference) {
+            if (customStyledPreference.getCustomBackgroundStyle() == BackgroundStyle.CARD) {
+                isTop = true;
+                isBottom = true;
+            }
+            addCustomStyling(containerStyleBuilder, customStyledPreference);
+        }
+        addPositionBasedStyling(containerStyleBuilder, isTop, isBottom);
+        return containerStyleBuilder.build();
+    }
+
+    private boolean isCustomStyledPreference(Preference preference) {
+        if (preference instanceof ContainmentItem customStyledPreference) {
+            return customStyledPreference.getCustomBackgroundStyle() != BackgroundStyle.STANDARD;
+        }
+        return preference instanceof PreferenceCategory;
+    }
+
+    private void addStandardStyling(
+            ContainerStyle.Builder containerStyleBuilder, boolean isSingleLine) {
+        containerStyleBuilder
+                .setTopMargin(mDefaultContainerVerticalMargin)
+                .setHorizontalMargin(mHorizontalMargin)
+                .setVerticalPadding(isSingleLine ? mDefaultPadding : mMultiLineVerticalPadding)
+                .setBackgroundColor(mDefaultBackgroundColor);
+    }
+
+    public void addCustomStyling(
+            ContainerStyle.Builder containerStyleBuilder, ContainmentItem container) {
+
+        int backgroundColor = container.getCustomBackgroundColor();
+        if (backgroundColor == DEFAULT_COLOR) backgroundColor = mDefaultBackgroundColor;
+
+        containerStyleBuilder.setBackgroundColor(backgroundColor);
+
+        int minHeight = container.getCustomMinHeight();
+        if (minHeight != DEFAULT_VALUE) {
+            // Only set the default height if a custom value was provided
+            containerStyleBuilder.setMinHeight(minHeight);
+        }
+    }
+
+    public void addPositionBasedStyling(
+            ContainerStyle.Builder containerStyleBuilder, boolean isTop, boolean isBottom) {
+        float topRadius = mDefaultRadius;
+        float bottomRadius = mDefaultRadius;
+        int bottomMargin = mDefaultContainerVerticalMargin;
+
+        if (isTop && isBottom) { // Standalone
+            // Standalone items have an additional bottom margin
+            bottomMargin += mSectionBottomAdditionalMargin;
+        } else if (isTop) { // Top
+            bottomRadius = mInnerRadius;
+        } else if (isBottom) { // Bottom
+            // Items at the end of a section have an additional bottom margin
+            topRadius = mInnerRadius;
+            bottomMargin += mSectionBottomAdditionalMargin;
+        } else { // Middle
+            topRadius = mInnerRadius;
+            bottomRadius = mInnerRadius;
+        }
+
+        containerStyleBuilder
+                .setBottomMargin(bottomMargin)
+                .setTopRadius(topRadius)
+                .setBottomRadius(bottomRadius);
+    }
+
+    public static ArrayList<Preference> getVisiblePreferences(PreferenceScreen preferenceScreen) {
+        ArrayList<Preference> visiblePreferences = new ArrayList<>();
+        if (preferenceScreen == null) return visiblePreferences;
+
+        for (int i = 0; i < preferenceScreen.getPreferenceCount(); i++) {
+            Preference preference = preferenceScreen.getPreference(i);
+            if (preference.isVisible()) {
+                addVisiblePreferences(preference, visiblePreferences);
+            }
+        }
+        return visiblePreferences;
+    }
+
+    private static void addVisiblePreferences(
+            Preference preference, ArrayList<Preference> visiblePreferences) {
+        visiblePreferences.add(preference);
+        if (preference instanceof PreferenceGroup preferenceGroup) {
+            for (int i = 0; i < preferenceGroup.getPreferenceCount(); i++) {
+                Preference nestedPreference = preferenceGroup.getPreference(i);
+                if (nestedPreference.isVisible()) {
+                    addVisiblePreferences(nestedPreference, visiblePreferences);
+                }
+            }
+        }
+    }
+
+    protected void notifyPreferencesUpdated() {
+        if (mPreferenceUpdateObserver != null) {
+            mPreferenceUpdateObserver.onPreferencesUpdated(this);
+        }
+    }
+

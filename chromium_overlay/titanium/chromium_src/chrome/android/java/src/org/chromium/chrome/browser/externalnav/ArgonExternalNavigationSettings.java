@@ -107,6 +107,8 @@ public final class ArgonExternalNavigationSettings extends ChromeBaseSettingsFra
                 ? R.string.argon_external_empty : R.string.argon_external_saved_list)
                 + "\n\n" + getString(R.string.argon_external_details));
         screen.addPreference(help);
+        // Replacing the screen also invalidates the host's position-based styles.
+        notifyPreferencesUpdated();
     }
 
     private static String displayHost(String host) {

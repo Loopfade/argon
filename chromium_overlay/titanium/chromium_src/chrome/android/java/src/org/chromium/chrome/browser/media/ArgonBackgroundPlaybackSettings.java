@@ -99,6 +99,8 @@ public final class ArgonBackgroundPlaybackSettings extends ChromeBaseSettingsFra
                         : R.string.argon_background_reset_description_disabled));
         help.setSelectable(false);
         screen.addPreference(help);
+        // The host caches containment styles by position, including after resume.
+        notifyPreferencesUpdated();
     }
 
     /** One native switch row with a separate help action in the same card. */

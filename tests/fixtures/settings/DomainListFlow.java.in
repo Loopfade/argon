@@ -1,0 +1,175 @@
+package org.chromium.chrome.browser.settings;
+
+import androidx.preference.*;
+import java.util.*;
+import org.chromium.chrome.browser.privacy.settings.ArgonCertificateDomainsSettings;
+import org.chromium.chrome.browser.privacy.settings.ArgonCertificateDomainsSettingsJni;
+import org.chromium.chrome.browser.media.*;
+import org.chromium.chrome.browser.externalnav.*;
+
+/** Host regression: actual list builders and Chromium's actual card-style rules.
+ * Theme values, storage and the next-layout observer are platform adapters.
+ * This checks cached styles and row positions, not pixels rendered on Android. */
+public final class DomainListFlow {
+    public interface UpdateObserver { void onPreferencesUpdated(ChromeBaseSettingsFragment page); }
+    enum BackgroundStyle { NONE, STANDARD, CARD }
+    interface ContainmentItem {
+        BackgroundStyle getCustomBackgroundStyle();
+        int getCustomBackgroundColor();
+        int getCustomMinHeight();
+    }
+    record ContainerStyle(int color, float topRadius, float bottomRadius,
+                          int topMargin, int bottomMargin, int horizontalMargin,
+                          int verticalPadding, int minHeight) {
+        static final ContainerStyle EMPTY = new Builder().build();
+        static final class Builder {
+            int color, topMargin, bottomMargin, horizontalMargin, verticalPadding, minHeight;
+            float topRadius, bottomRadius;
+            Builder setBackgroundColor(int v) { color = v; return this; }
+            Builder setTopRadius(float v) { topRadius = v; return this; }
+            Builder setBottomRadius(float v) { bottomRadius = v; return this; }
+            Builder setTopMargin(int v) { topMargin = v; return this; }
+            Builder setBottomMargin(int v) { bottomMargin = v; return this; }
+            Builder setHorizontalMargin(int v) { horizontalMargin = v; return this; }
+            Builder setVerticalPadding(int v) { verticalPadding = v; return this; }
+            Builder setMinHeight(int v) { minHeight = v; return this; }
+            ContainerStyle build() {
+                return new ContainerStyle(color, topRadius, bottomRadius, topMargin,
+                        bottomMargin, horizontalMargin, verticalPadding, minHeight);
+            }
+        }
+    }
+    static final class Controller {
+        static final int TRANSPARENT_BACKGROUND_COLOR = 0, DEFAULT_COLOR = -1, DEFAULT_VALUE = -1;
+        final float mDefaultRadius = 24, mInnerRadius = 4;
+        final int mDefaultContainerVerticalMargin = 2, mDefaultMargin = 12;
+        final int mSectionBottomAdditionalMargin = 16, mDefaultPadding = 16;
+        final int mMultiLineVerticalPadding = 12;
+        final int mDefaultBackgroundColor, mHorizontalMargin;
+        Controller(boolean dark, boolean wide) {
+            mDefaultBackgroundColor = dark ? 0x121212 : 0xf1f1f1;
+            mHorizontalMargin = wide ? 0 : mDefaultMargin;
+        }
+        @CONTROLLER_METHODS@
+    }
+
+    @VISIBLE_METHODS@
+
+    static final class Decoration implements UpdateObserver {
+        final ChromeBaseSettingsFragment page;
+        final Controller controller;
+        ArrayList<ContainerStyle> styles;
+        boolean pending;
+        Decoration(ChromeBaseSettingsFragment page, boolean dark, boolean wide) {
+            this.page = page;
+            controller = new Controller(dark, wide);
+            styles = controller.generatePreferenceStyles(getVisiblePreferences(page.getPreferenceScreen()));
+            page.setPreferenceUpdateObserver(this);
+        }
+        public void onPreferencesUpdated(ChromeBaseSettingsFragment changed) {
+            check(changed == page, "Only the updated fragment is restyled");
+            pending = true;  // The real host schedules the update for the next global layout.
+        }
+        void layout() {
+            if (!pending) return;
+            styles = controller.generatePreferenceStyles(getVisiblePreferences(page.getPreferenceScreen()));
+            pending = false;
+        }
+        void checkCurrent(String state) {
+            layout();
+            var visible = getVisiblePreferences(page.getPreferenceScreen());
+            var expected = controller.generatePreferenceStyles(visible);
+            check(styles.size() == visible.size(), "stale containment snapshot: " + state
+                    + ", cached=" + styles.size() + ", actual=" + visible.size());
+            for (int i = 0; i < visible.size(); i++) {
+                check(styles.get(i).equals(expected.get(i)),
+                        "stale containment snapshot at row " + i + ": " + state);
+                if (!(visible.get(i) instanceof PreferenceCategory)) {
+                    check(styles.get(i).color() == controller.mDefaultBackgroundColor,
+                            "Every visible row retains its card background: " + state);
+                    check(styles.get(i).horizontalMargin() == controller.mHorizontalMargin,
+                            "Every visible row retains its horizontal spacing: " + state);
+                }
+            }
+        }
+    }
+
+    static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+
+    static void populate(String kind, int count) {
+        var domains = new ArrayList<String>();
+        for (int i = 0; i < count; i++) domains.add(String.format("site%03d.ru", i));
+        if (kind.equals("certificates")) {
+            ArgonCertificateDomainsSettingsJni.domains.clear();
+            ArgonCertificateDomainsSettingsJni.domains.addAll(domains);
+        } else if (kind.equals("background")) {
+            var rules = new ArrayList<ArgonBackgroundPlaybackPolicy.Rule>();
+            for (int i = 0; i < domains.size(); i++) {
+                rules.add(new ArgonBackgroundPlaybackPolicy.Rule(domains.get(i), 1 + i,
+                        i % 2 == 0, i % 3 == 0));
+            }
+            ArgonBackgroundPlaybackStore.get().policy.configure(true, rules);
+        } else {
+            android.content.Context.values.clear();
+            android.content.Context.values.put("mode", 1);
+            android.content.Context.values.put("sites", new LinkedHashSet<>(domains));
+        }
+    }
+
+    static ChromeBaseSettingsFragment create(String kind) {
+        return switch (kind) {
+            case "certificates" -> new ArgonCertificateDomainsSettings();
+            case "background" -> new ArgonBackgroundPlaybackSettings();
+            case "external" -> new ArgonExternalNavigationSettings();
+            default -> throw new AssertionError(kind);
+        };
+    }
+
+    static void refresh(ChromeBaseSettingsFragment page, boolean resume) throws Exception {
+        if (resume || !(page instanceof ArgonCertificateDomainsSettings)) {
+            page.onResume();  // Return from a site editor or another settings screen.
+        } else {
+            // Add/remove dialogs update this same live fragment through refreshDomains().
+            var refresh = page.getClass().getDeclaredMethod("refreshDomains");
+            refresh.setAccessible(true);
+            refresh.invoke(page);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String kind = args[0];
+        for (boolean dark : new boolean[] {false, true}) {
+            for (boolean wide : new boolean[] {false, true}) {
+                populate(kind, 0);
+                var page = create(kind);
+                page.onCreatePreferences(null, null);
+                page.onResume();
+                var decoration = new Decoration(page, dark, wide);
+                // Begin empty: a stale placeholder/footer style becomes the second
+                // domain's rounded bottom; the third domain has no cached style at all.
+                for (int count : new int[] {0, 1, 2, 3, 4, 20, 64, 100, 4, 3, 2, 1, 0, 3}) {
+                    populate(kind, count);
+                    refresh(page, count % 2 == 0);
+                    decoration.checkCurrent(kind + " domains=" + count);
+                }
+                if (page instanceof ArgonCertificateDomainsSettings) {
+                    // Zone changes refresh every domain's overlap summary in place.
+                    var zones = (PreferenceGroup) page.getPreferenceScreen().getPreference(1);
+                    ((SwitchPreferenceCompat) zones.getPreference(0)).change(true);
+                    decoration.checkCurrent("zone enabled with existing domains");
+                    ((SwitchPreferenceCompat) zones.getPreference(0)).change(false);
+                    decoration.checkCurrent("zone disabled with existing domains");
+                }
+                page.setPreferenceUpdateObserver(null);
+                refresh(page, true);  // Detached observers do not retain a destroyed view.
+                var recreated = create(kind);
+                recreated.onCreatePreferences(null, null);
+                recreated.onResume();
+                new Decoration(recreated, dark, wide).checkCurrent("recreated fragment");
+            }
+        }
+        System.out.println("PASS: " + kind + " domain-list growth, removal, styling and recreation");
+    }
+}

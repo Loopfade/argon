@@ -222,6 +222,7 @@ public abstract class ChromeBaseSettingsFragment {
   public android.content.Context requireContext() { return new android.content.Context(); }
   public androidx.preference.PreferenceManager getPreferenceManager() { return new androidx.preference.PreferenceManager(); }
   public void setPreferenceScreen(androidx.preference.PreferenceScreen s) { screen = s; }
+  protected void notifyPreferencesUpdated() {}
   public androidx.preference.PreferenceScreen getPreferenceScreen() { return screen; }
   public android.os.Bundle getArguments() { return args; } public void setArguments(android.os.Bundle a) { args = a; }
   public String getString(int id, Object... args) { return Integer.toString(id); }
