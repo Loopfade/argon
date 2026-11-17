@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.externalnav;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.widget.Toast;
 
 import org.chromium.base.ContextUtils;
@@ -136,6 +137,14 @@ public final class ArgonExternalNavigationPolicy {
         for (String site : getSites()) {
             if (host.equals(site) || host.endsWith("." + site)) return false;
         }
+        return true;
+    }
+
+    /** Check explicit browser link actions before dispatching or closing the current tab. */
+    public boolean shouldBlockExplicitNavigation(GURL url) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url.getSpec()));
+        if (!shouldBlock(url, intent)) return false;
+        showBlockedMessage();
         return true;
     }
 

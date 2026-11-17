@@ -2,6 +2,7 @@ package org.chromium.chrome.browser.externalnav;
 
 import android.content.Context;
 import android.content.Intent;
+import android.widget.Toast;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
@@ -10,6 +11,7 @@ import org.chromium.base.task.PostTask;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.url.GURL;
 import java.util.Set;
+import org.chromium.base.IntentUtils;
 
 public class ArgonExternalNavigationTest {
     private static void check(boolean condition, String reason) {
@@ -198,8 +200,67 @@ public class ArgonExternalNavigationTest {
         check(policy.getSites().isEmpty(), "Confirmed removal updates the screen and enforcement");
     }
 
+    private static void explicitActions() {
+        var policy = ArgonExternalNavigationPolicy.get();
+        for (int mode : new int[] {policy.ALLOW, policy.ALLOW_LIST, policy.BLOCK}) {
+            for (boolean hasSites : new boolean[] {false, true}) {
+                Context.values.clear();
+                policy.setMode(mode);
+                if (hasSites) policy.addSite("allowed.test");
+                var flow = new NavigationFlow();
+                var params = new NavigationFlow.Params("tel:+123456789");
+                var result = flow.navigate(params, new Intent("tel:+123456789"), new GURL(""));
+                check(result.action.equals(mode == policy.ALLOW ? "usual-browser-rules" : "cancel"),
+                        "Tapping a phone link obeys the same mode as the explicit Call command");
+                PostTask.drain();
+                check(flow.launches == (mode == policy.ALLOW ? 1 : 0),
+                        "Blocked phone links never reach app dispatch");
+                var actions = new ExplicitActions();
+                var phone = new GURL("tel:+123456789");
+                var email = new GURL("mailto:person@allowed.test");
+                for (Runnable action : new Runnable[] {
+                        () -> actions.onCall(phone), () -> actions.onSendEmailMessage(email),
+                        () -> actions.onSendTextMessage(phone), () -> actions.onAddToContacts(phone),
+                        () -> actions.onAddToContacts(email)}) {
+                    IntentUtils.launches.clear();
+                    int notices = Toast.shown;
+                    action.run();
+                    boolean blocked = mode != policy.ALLOW;
+                    check(IntentUtils.launches.size() == (blocked ? 0 : 1),
+                            "Phone/email/SMS/contact actions obey the current mode, including a populated allow list");
+                    check(Toast.shown == notices + (blocked ? 1 : 0),
+                            "Blocked explicit link actions explain why no app opens");
+                }
+                for (boolean incognito : new boolean[] {false, true}) {
+                    for (String url : new String[] {"https://allowed.test/watch", "https://other.test/"}) {
+                        actions.incognito = incognito;
+                        actions.closures = actions.confirmations = 0;
+                        IntentUtils.launches.clear();
+                        int notices = Toast.shown;
+                        actions.openInAppAction(new GURL(url)).run();
+                        PostTask.drain();
+                        boolean blocked = mode == policy.BLOCK || (mode == policy.ALLOW_LIST
+                                && (!hasSites || !url.startsWith("https://allowed.test/")));
+                        check(IntentUtils.launches.size() == (blocked ? 0 : 1),
+                                "Open in app uses the destination rule in regular and private tabs");
+                        check(actions.closures == (blocked ? 0 : 1), "Blocked Open in app preserves the tab");
+                        check(actions.confirmations == (!blocked && incognito ? 1 : 0),
+                                "Allowed private app actions retain their confirmation path");
+                        check(Toast.shown == notices + (blocked ? 1 : 0), "Blocked Open in app explains the setting");
+                    }
+                }
+            }
+        }
+        policy.setMode(policy.ALLOW);
+        var action = new ExplicitActions().openInAppAction(new GURL("https://allowed.test"));
+        policy.setMode(policy.BLOCK);
+        IntentUtils.launches.clear();
+        action.run();
+        check(IntentUtils.launches.isEmpty(), "Changing the policy before a menu click takes effect immediately");
+    }
+
     public static void main(String[] args) throws Exception {
-        policy(); navigation(); extensionPages(); settings();
+        policy(); navigation(); extensionPages(); settings(); explicitActions();
         System.out.println("PASS: external navigation whole-site modes, storage, redirect/intent/fallback cancellation and native settings");
     }
 }

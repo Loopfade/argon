@@ -7,12 +7,16 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = Path("components/external_intents/android/java/src/org/chromium/components/external_intents")
 DELEGATE = COMPONENT / "ExternalNavigationDelegate.java"
 HANDLER = COMPONENT / "ExternalNavigationHandler.java"
+HELPER = COMPONENT / "ExternalNavigationHelper.java"
 CHROME_DELEGATE = Path("chrome/android/java/src/org/chromium/chrome/browser/externalnav/ExternalNavigationDelegateImpl.java")
+CONTEXT_MENU_DELEGATE = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabContextMenuItemDelegate.java")
+OPEN_IN_APP = Path("chrome/browser/open_in_app/android/java/src/org/chromium/chrome/browser/open_in_app/OpenInAppEntryPoint.java")
 MAIN_PREFERENCES = Path("chrome/android/java/res/xml/main_preferences.xml")
 PRIVACY_PREFERENCES = Path("chrome/android/java/res/xml/privacy_preferences.xml")
 JAVA_SOURCES = Path("titanium/chromium_src/chrome/android/chrome_java_ext_sources.gni")
 RESOURCES = Path("titanium/chromium_src/chrome/android/chrome_app_java_resources_ext_sources.gni")
-INPUT_PATHS = (DELEGATE, HANDLER, CHROME_DELEGATE, MAIN_PREFERENCES, PRIVACY_PREFERENCES,
+INPUT_PATHS = (DELEGATE, HANDLER, HELPER, CHROME_DELEGATE, CONTEXT_MENU_DELEGATE, OPEN_IN_APP,
+               MAIN_PREFERENCES, PRIVACY_PREFERENCES,
                JAVA_SOURCES, RESOURCES)
 CUSTOM_TAB = Path("chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactory.java")
 PRIVACY_SETTINGS = Path("chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/PrivacySettings.java")
@@ -93,6 +97,19 @@ MARKET_GUARD = '''        // ARGON: installing a missing app must also respect t
         }
 '''
 
+EXPLICIT_GUARD = '        if (ArgonExternalNavigationPolicy.get().shouldBlockExplicitNavigation(url)) return;\n'
+CONTEXT_MENU_ACTIONS = ("onCall", "onSendEmailMessage", "onSendTextMessage", "onAddToContacts")
+OPEN_IN_APP_ANCHOR = '                    if (helper != null) {\n'
+OPEN_IN_APP_GUARD = '                        if (helper.shouldBlockExternalAppLaunch(url, targetIntent)) return;\n'
+EXPLICIT_HELPER_GUARD = '''    @Override
+    public boolean shouldBlockExternalAppLaunch(GURL url, Intent intent) {
+        if (!mDelegate.shouldBlockExternalNavigationForUser(url, intent)) return false;
+        mDelegate.onExternalNavigationBlocked();
+        return true;
+    }
+
+'''
+
 
 def replace_once(text, anchor, replacement):
     if replacement in text:
@@ -109,7 +126,7 @@ def patch_delegate(text):
         return false;
     }
 
-    /** Report a blocked app-only link that has no web fallback. */
+    /** Report a blocked app transition. */
     default void onExternalNavigationBlocked() {}
 
 ''' + anchor)
@@ -121,7 +138,21 @@ def patch_handler(text):
     anchor = "        if (canLaunchExternalFallback) {\n"
     text = replace_once(text, anchor, FALLBACK_GUARD + "\n" + anchor)
     anchor = '        Uri.Builder builder = new Uri.Builder().scheme("market").authority("details");'
-    return replace_once(text, anchor, MARKET_GUARD + "\n" + anchor)
+    text = replace_once(text, anchor, MARKET_GUARD + "\n" + anchor)
+    anchor = '    @Override\n    public void launchExternalApp(Intent intent, Context context) {'
+    return replace_once(text, anchor, EXPLICIT_HELPER_GUARD + anchor)
+
+
+def patch_helper(text):
+    anchor = "import org.chromium.build.annotations.NullMarked;"
+    text = replace_once(text, anchor, anchor + "\nimport org.chromium.url.GURL;")
+    anchor = '    /**\n     * Launches an external app.\n'
+    return replace_once(text, anchor, '''    /** Check the current user policy before an explicit launch or tab closure. */
+    default boolean shouldBlockExternalAppLaunch(GURL url, Intent intent) {
+        return false;
+    }
+
+''' + anchor)
 
 
 def patch_chrome_delegate(text):
@@ -151,6 +182,25 @@ def patch_menu(text):
     return text
 
 
+def patch_explicit_action_import(text):
+    anchor = "import org.chromium.url.GURL;"
+    return replace_once(text, anchor,
+                        "import org.chromium.chrome.browser.externalnav.ArgonExternalNavigationPolicy;\n"
+                        + anchor)
+
+
+def patch_context_menu_delegate(text):
+    text = patch_explicit_action_import(text)
+    for action in CONTEXT_MENU_ACTIONS:
+        anchor = f"    public void {action}(GURL url) {{\n"
+        text = replace_once(text, anchor, anchor + EXPLICIT_GUARD)
+    return text
+
+
+def patch_open_in_app(text):
+    return replace_once(text, OPEN_IN_APP_ANCHOR, OPEN_IN_APP_ANCHOR + OPEN_IN_APP_GUARD)
+
+
 def patch_privacy_menu(text):
     return replace_once(text, SECURITY_SECTION, SECURITY_SECTION + "\n" + SECURITY_MENU_ENTRY)
 
@@ -169,7 +219,8 @@ def patch_resources(text):
     return replace_once(text, anchor, anchor + "\n" + block)
 
 
-TRANSFORMS = dict(zip(INPUT_PATHS, (patch_delegate, patch_handler, patch_chrome_delegate,
+TRANSFORMS = dict(zip(INPUT_PATHS, (patch_delegate, patch_handler, patch_helper, patch_chrome_delegate,
+                                  patch_context_menu_delegate, patch_open_in_app,
                                   patch_menu, patch_privacy_menu, patch_java_sources, patch_resources)))
 
 
