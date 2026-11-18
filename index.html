@@ -189,7 +189,7 @@
     .filters{display:flex;gap:5px;flex-wrap:wrap}.filter{font-size:12px;font-weight:500;padding:7px 10px;background:transparent}.filter[aria-pressed=true]{background:var(--panel2);border-color:var(--blue);color:var(--blue)}
     .build-list{padding:0;overflow:hidden}.build-row{display:grid;grid-template-columns:minmax(0,1fr) 40px;border-top:1px solid var(--border)}.build-row:first-child{border-top:0}.build-row.selected{background:rgba(112,167,255,.06);box-shadow:inset 3px 0 var(--blue)}
     .build-select{border:0;background:none;border-radius:0;width:100%;padding:16px 18px;display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(120px,1fr) 100px 100px;align-items:center;gap:18px;text-align:left;font-weight:400}.build-select:hover{background:rgba(255,255,255,.025)}
-    .build-name{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-weight:700}.build-sub{font-size:11px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.build-duration{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px}.build-status{font-size:11px;font-weight:700}
+    .build-name{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-weight:700}.build-sub{font-size:11px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.build-version{color:var(--text);font-weight:600}.build-ref{white-space:normal;overflow-wrap:anywhere}.build-duration{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px}.build-status{font-size:11px;font-weight:700}
     .build-link{display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted)}.stage-meter{height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin:7px 0 4px}.stage-meter span{display:block;height:100%;background:var(--blue)}.stage-count{font-size:11px;color:var(--muted)}
     .empty{padding:28px 18px;color:var(--muted);font-size:13px;text-align:center}.load-more{width:100%;margin-top:10px;font-size:12px}.detail-panel{margin-top:22px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px}
     .detail-panel h2{margin:0 0 6px;font-size:21px}.detail-heading{display:flex;gap:15px;justify-content:space-between;align-items:start}.detail-heading .pill{font-size:11px;padding:6px 10px}.detail-panel .pipeline{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:17px 0}.detail-panel .stage{padding:12px;background:var(--bg)}.stage-name{font-size:12px;min-height:32px}.stage-status{font-size:11px}.stage-time{font-size:16px}.stage-detail{min-height:30px;font-size:10px}
@@ -585,6 +585,41 @@
   }
   function plural(n,one,few,many) {return n%10===1&&n%100!==11?one:n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?few:many;}
   function kindLabel(build) {return ({release:"Релизная",test:"Тестовая",legacy:"Архивная"})[build.kind] || "Сборка";}
+  // The dashboard branch owns the presentation. The snapshot already contains
+  // the exact source SHA for each verified release and pinned PR test build.
+  // Resolve its lockfile directly without changing the main CI pipeline.
+  const chromiumBySha = new Map();
+  function verifiedBuildSource(build) {
+    const sha = build.source_verified === true ? build.source_sha : null;
+    return typeof sha === "string" && /^[a-f0-9]{40}$/.test(sha) ? sha : null;
+  }
+  function buildChromiumLabel(build) {
+    return "Chromium " + (build.chromium_version || (verifiedBuildSource(build) ? "определяется…" : "версия неизвестна"));
+  }
+  function buildReference(build) {
+    if (build.release?.tag_name) return "Опубликованный релиз: " + build.release.tag_name;
+    if (build.baseline_tag) return "Базовый релиз для сравнения: " + build.baseline_tag;
+    return build.kind === "test" ? "Без публикации релиза" : "APK ещё не опубликован";
+  }
+  async function hydrateChromiumVersions(snapshot) {
+    await Promise.all((snapshot.builds || []).map(async build => {
+      const sha = verifiedBuildSource(build);
+      if (!sha) { build.chromium_version = null; return; }
+      if (!chromiumBySha.has(sha)) {
+        const request = fetch("https://raw.githubusercontent.com/Loopfade/argon/" + sha + "/build-lock.json",
+          {cache:"force-cache"})
+          .then(response => {if (!response.ok) throw new Error("Chromium lockfile unavailable"); return response.json();})
+          .then(lock => {
+            const v = lock?.chromium_version;
+            return typeof v === "string" && /^\d+(?:\.\d+){3}$/.test(v) ? v : null;
+          })
+          .catch(() => null);
+        chromiumBySha.set(sha, request);
+      }
+      build.chromium_version = await chromiumBySha.get(sha);
+    }));
+    if (model === snapshot) renderModel();
+  }
   function translateStep(name) {
     const labels={"Build, sign and verify APK":"Собрать, подписать и проверить APK","Start one uninterrupted APK build":"Запустить непрерывную сборку APK","Collect actual build result":"Получить результат сборки","Restore compiler cache":"Восстановить кеш компиляции","Save compiler cache":"Сохранить кеш компиляции","Inspect compiler cache and stop compilation":"Проверить кеш и остановить компиляцию","Upload verified APK and provenance":"Загрузить APK и данные о сборке"};
     if (labels[name]) return labels[name];
@@ -647,7 +682,7 @@
     $("filters").querySelectorAll("[data-filter]").forEach(b=>b.setAttribute("aria-pressed",String(filters.kind===b.dataset.filter)));
     $("history").innerHTML=builds.slice(0,filters.limit).map(b=>{
       const r=b.run,p=progress(b),s=state(r),key="build/"+r.id,expanded=disclosureState().get(key)===true;
-      return '<details class="build-row" data-fold="'+esc(key)+'" data-build-id="'+esc(r.id)+'"'+(expanded?' open':'')+'><summary class="build-select" aria-label="'+esc(kindLabel(b)+" сборка №"+r.run_number+", "+s.label)+'"><div><div class="build-name"><span class="type-tag '+esc(b.kind)+'">'+esc(kindLabel(b))+'</span><span>№'+esc(r.run_number)+'</span>'+(b.pr_number?'<span>PR №'+esc(b.pr_number)+'</span>':'')+'</div><div class="build-sub">'+esc((b.release?.tag_name || b.baseline_tag || (b.kind==="test"?"Без публикации релиза":"APK ещё не опубликован"))+" · "+dateText(r.created_at))+'</div></div><div class="build-progress"><div class="stage-count">'+(p.total?'Завершено этапов: '+p.finished+' / '+p.total:'Ожидание заданий')+'</div><div class="stage-meter" role="progressbar" aria-label="Завершённые этапы" aria-valuenow="'+p.finished+'" aria-valuemax="'+(p.total||1)+'"><span style="width:'+p.percent+'%"></span></div></div><div class="build-duration" data-live-run="'+esc(r.id)+'">'+esc(formatDuration(durationMs(r)))+'</div><div class="build-status '+statusTextClass(r)+'">'+esc(s.label)+'</div></summary><div class="build-body" data-build-body'+(expanded?' data-loaded="true"':'')+'>'+ (expanded?buildDetails(b):'') +'</div></details>';
+      return '<details class="build-row" data-fold="'+esc(key)+'" data-build-id="'+esc(r.id)+'"'+(expanded?' open':'')+'><summary class="build-select" aria-label="'+esc(kindLabel(b)+" сборка №"+r.run_number+", "+s.label)+'"><div><div class="build-name"><span class="type-tag '+esc(b.kind)+'">'+esc(kindLabel(b))+'</span><span>№'+esc(r.run_number)+'</span>'+(b.pr_number?'<span>PR №'+esc(b.pr_number)+'</span>':'')+'</div><div class="build-sub"><span class="build-version">'+esc(buildChromiumLabel(b))+'</span> · '+esc(dateText(r.created_at))+'</div><div class="build-sub build-ref">'+esc(buildReference(b))+'</div></div><div class="build-progress"><div class="stage-count">'+(p.total?'Завершено этапов: '+p.finished+' / '+p.total:'Ожидание заданий')+'</div><div class="stage-meter" role="progressbar" aria-label="Завершённые этапы" aria-valuenow="'+p.finished+'" aria-valuemax="'+(p.total||1)+'"><span style="width:'+p.percent+'%"></span></div></div><div class="build-duration" data-live-run="'+esc(r.id)+'">'+esc(formatDuration(durationMs(r)))+'</div><div class="build-status '+statusTextClass(r)+'">'+esc(s.label)+'</div></summary><div class="build-body" data-build-body'+(expanded?' data-loaded="true"':'')+'>'+ (expanded?buildDetails(b):'') +'</div></details>';
     }).join("") || '<div class="empty">'+(filters.kind==="active"?'Сейчас нет активных сборок.':filters.date?'В этот день сборок не было.':'Сборок за выбранный период пока нет.')+'</div>';
     $("load-more").hidden=builds.length<=filters.limit;
   }
@@ -661,7 +696,7 @@
     const r=b.run,p=progress(b),s=state(r),prefix="build/"+r.id+"/";
     const metrics=metric("Вся сборка",formatDuration(durationMs(r)),"включая ожидание повторов",r.id)+metric("Работа исполнителей",formatDuration(r.runner_ms),"сумма заданий, без ожидания")+metric(b.kind==="test"?"PR для проверки":"Новых PR в APK",b.kind==="test"?(b.pr_number?'№'+b.pr_number:'—'):(b.pr_count ?? '—'),b.kind==="test"?'закреплённый коммит':b.baseline_tag || 'от предыдущего APK');
     const parts=findJobs(b.jobs||[]);
-    return '<div class="detail-panel"><div class="detail-heading"><div><h2>'+esc(kindLabel(b)+" сборка №"+r.run_number)+'</h2><div class="subtle">'+esc((b.pr_number?"PR №"+b.pr_number+" · ":"")+(b.kind==="test"?"Отдельное тестовое приложение Argon Test":"Релизное приложение Argon"))+'</div></div><div class="pill status-'+esc(s.key)+'"><span class="dot"></span><span>'+esc(s.label)+'</span></div></div><div class="detail-meta">'+link(r.html_url,"Журнал сборки в GitHub")+'<span>Начало: '+esc(dateText(r.first_started_at||r.created_at))+'</span><span>Исходники: '+(b.source_sha?link('https://github.com/'+model.repository+'/commit/'+b.source_sha,b.source_sha.slice(0,8)):'не установлены')+'</span><span>Повторных попыток: '+Math.max(0,(r.run_attempt||1)-1)+'</span></div><div class="metrics">'+metrics+'</div><div class="pipeline">'+renderPipeline(r,b.jobs||[],b.kind==="test",null)+'</div><h3 class="section-title">Время этапов · завершено '+p.finished+' из '+p.total+'</h3><div class="timeline">'+renderTimeline(r,b.jobs||[],null)+'</div><h3 class="section-title">Архитектуры и попытки</h3><div class="architecture-grid">'+renderArchitecture("arm64-v8a",parts.arm64,prefix)+renderArchitecture("armeabi-v7a",parts.arm,prefix)+'</div><div class="card" style="margin-top:14px">'+renderArtifacts({artifacts:b.artifacts||[]},r,null)+'</div></div>';
+    return '<div class="detail-panel"><div class="detail-heading"><div><h2>'+esc(kindLabel(b)+" сборка №"+r.run_number)+'</h2><div class="subtle">'+esc((b.pr_number?"PR №"+b.pr_number+" · ":"")+(b.kind==="test"?"Отдельное тестовое приложение Argon Test":"Релизное приложение Argon"))+'</div></div><div class="pill status-'+esc(s.key)+'"><span class="dot"></span><span>'+esc(s.label)+'</span></div></div><div class="detail-meta">'+link(r.html_url,"Журнал сборки в GitHub")+'<span>Начало: '+esc(dateText(r.first_started_at||r.created_at))+'</span><span>Исходники: '+(b.source_sha?link('https://github.com/'+model.repository+'/commit/'+b.source_sha,b.source_sha.slice(0,8)):'не установлены')+'</span><span>Повторных попыток: '+Math.max(0,(r.run_attempt||1)-1)+'</span><span>'+esc(buildChromiumLabel(b))+'</span><span>'+esc(buildReference(b))+'</span></div><div class="metrics">'+metrics+'</div><div class="pipeline">'+renderPipeline(r,b.jobs||[],b.kind==="test",null)+'</div><h3 class="section-title">Время этапов · завершено '+p.finished+' из '+p.total+'</h3><div class="timeline">'+renderTimeline(r,b.jobs||[],null)+'</div><h3 class="section-title">Архитектуры и попытки</h3><div class="architecture-grid">'+renderArchitecture("arm64-v8a",parts.arm64,prefix)+renderArchitecture("armeabi-v7a",parts.arm,prefix)+'</div><div class="card" style="margin-top:14px">'+renderArtifacts({artifacts:b.artifacts||[]},r,null)+'</div></div>';
   }
   function diffValues(diff) {
     if(!diff) return '<p class="subtle">Сравнение исходников пока недоступно.</p>';
@@ -695,6 +730,8 @@
       const snapshot=normalizeSnapshot(await requestSnapshot());
       const disclosures=model?.disclosures || new Map();
       model={...snapshot,disclosures};renderModel();
+      // Refresh only the visual labels when the pinned source versions arrive.
+      void hydrateChromiumVersions(model);
       $("notice").classList.remove("error");
       $("notice").textContent='Данные обновлены '+timeAgo(snapshot.generated_at)+'. Завершённые этапы показывают ход задания, а не процент компиляции. Время исполнителей суммируется отдельно от длительности сборок.'+(snapshot.window?.partial?' История запусков получена не полностью.':'')+(!snapshot.schema_version?' История за 30 дней обновляется.':'');
     } catch(error) {
