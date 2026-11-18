@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-18T18:08:57Z",
+  "generated_at": "2026-11-18T22:59:06Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
-    "start": "2026-10-20",
-    "end": "2026-11-18",
+    "start": "2026-10-21",
+    "end": "2026-11-19",
     "timezone": "Europe/Moscow",
     "partial": false
   },
@@ -57515,14 +57515,6 @@
   },
   "days": [
     {
-      "date": "2026-10-20",
-      "release": 0,
-      "test": 0,
-      "legacy": 0,
-      "failed": 0,
-      "builds": 0
-    },
-    {
       "date": "2026-10-21",
       "release": 1,
       "test": 0,
@@ -57753,6 +57745,14 @@
       "legacy": 0,
       "failed": 0,
       "builds": 1
+    },
+    {
+      "date": "2026-11-19",
+      "release": 0,
+      "test": 0,
+      "legacy": 0,
+      "failed": 0,
+      "builds": 0
     }
   ],
   "comparison_cache": {
