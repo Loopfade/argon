@@ -48,6 +48,8 @@ def monthly_fixture(now=None, repository="fixture/argon"):
         f"{root}/pulls?state=closed&base=main&per_page=100": [],
         f"{root}/pulls?state=open&base=main&per_page=100": [],
         f"{root}/git/ref/heads/main": {"object": {"sha": "a" * 40}},
+        f"{root}/contents/build-lock.json?ref={'a' * 40}": {
+            "content": base64.b64encode(json.dumps({"chromium_version": "157.0.8103.78"}).encode()).decode()},
         f"{root}/commits?sha={'a' * 40}&per_page=100": [{"sha": "a" * 40}],
         f"{root}/compare/{'a' * 40}...{'a' * 40}?per_page=100": {"status": "identical", "total_commits": 0, "commits": [], "files": []},
     }
@@ -84,6 +86,7 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertEqual(jobs["arm64"]["attempts"][0]["conclusion"], "failure")
         self.assertEqual(len(snapshot["days"]), 30)
         self.assertEqual(snapshot["window"]["timezone"], "Europe/Moscow")
+        self.assertEqual(build["chromium_version"], "157.0.8103.78")
 
     def test_workflow_path_selects_builds_independently_of_title(self):
         values = monthly_fixture(self.now)
@@ -103,11 +106,16 @@ class DashboardSnapshotTests(unittest.TestCase):
         values["repos/fixture/argon/actions/runs/43/attempts/1/jobs?per_page=100"] = {"jobs": [job(5, "Собрать и проверить arm", "10:00:00", "11:00:00", "failure")]}
         values["repos/fixture/argon/actions/runs/43/artifacts?per_page=100"] = {"artifacts": [{"id": 2, "name": "Argon-arm64-" + "b" * 40 + "-test", "expired": False}]}
         values[f"repos/fixture/argon/compare/{'a' * 40}...{'b' * 40}?per_page=100"] = {"status": "ahead", "total_commits": 1, "commits": [{"sha": "b" * 40}], "files": []}
+        values[f"repos/fixture/argon/contents/build-lock.json?ref={'b' * 40}"] = {
+            "content": base64.b64encode(json.dumps({"chromium_version": "157.0.8103.97"}).encode()).decode()}
         snapshot = self.snapshot(values)
         test = next(b for b in snapshot["builds"] if b["kind"] == "test")
         self.assertEqual(test["source_sha"], "b" * 40)
         self.assertEqual(test["run"]["head_sha"], "a" * 40)
         self.assertEqual(test["pr_number"], 7)
+        self.assertEqual(test["chromium_version"], "157.0.8103.97")
+        self.assertEqual(next(b for b in snapshot["builds"] if b["kind"] == "release")["chromium_version"],
+                         "157.0.8103.78")
         self.assertEqual(snapshot["days"][-1]["test"], 1)
         self.assertEqual(snapshot["days"][-1]["failed"], 1)
 
@@ -117,8 +125,18 @@ class DashboardSnapshotTests(unittest.TestCase):
         with patch.object(dashboard, "api", side_effect=respond_with(values)) as api:
             after = dashboard.build_snapshot("fixture/argon", now=self.now, previous=before)
         paths = [call.args[0] for call in api.call_args_list]
-        self.assertFalse(any("/attempts/" in path or "/compare/" in path or "/commits?" in path for path in paths))
+        self.assertFalse(any("/attempts/" in path or "/compare/" in path or "/commits?" in path
+                             or "/contents/build-lock.json" in path for path in paths))
         self.assertEqual(before, after)
+
+    def test_unknown_source_does_not_fall_back_to_current_main_or_old_release(self):
+        with patch.object(dashboard, "api") as api:
+            self.assertIsNone(dashboard.source_chromium_version("fixture/argon", None))
+            self.assertIsNone(dashboard.source_chromium_version("fixture/argon", "invalid"))
+            api.assert_not_called()
+        with patch.object(dashboard, "api", return_value={"content": base64.b64encode(
+                json.dumps({"chromium_version": "unknown"}).encode()).decode()}):
+            self.assertIsNone(dashboard.source_chromium_version("fixture/argon", "a" * 40))
 
     def test_source_snapshot_is_bound_to_run_and_never_uses_main_as_pr_source(self):
         run = {"id": 42, "run_number": 9, "head_sha": "a" * 40}
