@@ -149,6 +149,23 @@ class DashboardRenderingTests(unittest.TestCase):
         self.assertIn('data-day="2026-11-15"',data["calendar"])
         self.assertIn('href="https://github.com',data["link"])
 
+    def test_build_rows_separate_chromium_version_from_comparison_release(self):
+        data = self.execute_view("""
+          const run={id:17,run_number:17,status:"in_progress",created_at:"2026-11-18T16:30:00Z",
+            first_started_at:"2026-11-18T16:30:00Z"};
+          model={repository:"fixture/argon",builds:[{kind:"release",run,chromium_version:"157.0.8103.78",
+            baseline_tag:"v157.0.8103.38-4",source_sha:"a".repeat(40),jobs:[],artifacts:[]}],
+            days:[],releases:[],open_prs:[],unreleased:{}};
+          renderModel();
+          const history=elements.history.innerHTML;
+          model.builds[0].chromium_version=null;renderModel();
+          process.stdout.write(JSON.stringify({history,unknown:elements.history.innerHTML}));
+        """)
+        self.assertIn("Chromium 157.0.8103.78", data["history"])
+        self.assertIn("Базовый релиз для сравнения: v157.0.8103.38-4", data["history"])
+        self.assertIn("Chromium версия неизвестна", data["unknown"])
+        self.assertNotIn("Chromium 157.0.8103.38", data["unknown"])
+
     def test_active_duration_advances_after_last_snapshot_and_empty_month_is_valid(self):
         data = self.execute_view("""
           Date.now=()=>Date.parse("2026-11-15T12:00:00Z");
