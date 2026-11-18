@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-18T17:59:11Z",
+  "generated_at": "2026-11-18T18:08:57Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -57493,75 +57493,7 @@
       "runner_ms": 15027000
     }
   ],
-  "open_prs": [
-    {
-      "number": 92,
-      "title": "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u0443\u044e \u0432\u0435\u0440\u0441\u0438\u044e Chromium \u0432 \u0438\u0441\u0442\u043e\u0440\u0438\u0438 \u0441\u0431\u043e\u0440\u043e\u043a",
-      "html_url": "https://github.com/Loopfade/argon/pull/92",
-      "state": "open",
-      "draft": false,
-      "created_at": "2026-11-18T17:58:24Z",
-      "updated_at": "2026-11-18T17:58:24Z",
-      "merged_at": null,
-      "head_sha": "42bd6e857f2c8d916cb3971ff5de98aaf635fc89",
-      "merge_commit_sha": "132b4e0c006059047aaf8529578c2d8450208c73",
-      "author": "Loopfade",
-      "additions": 79,
-      "deletions": 4,
-      "changed_files": 5,
-      "commits": 5,
-      "comparison": {
-        "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "42bd6e857f2c8d916cb3971ff5de98aaf635fc89",
-        "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...42bd6e857f2c8d916cb3971ff5de98aaf635fc89",
-        "commits": 5,
-        "commits_complete": true,
-        "files_complete": true,
-        "changed_files": 5,
-        "additions": 79,
-        "deletions": 4,
-        "files": [
-          {
-            "filename": ".github/ci/update-dashboard.py",
-            "previous_filename": null,
-            "status": "modified",
-            "additions": 30,
-            "deletions": 0
-          },
-          {
-            "filename": "docs/build-pipeline.md",
-            "previous_filename": null,
-            "status": "modified",
-            "additions": 5,
-            "deletions": 0
-          },
-          {
-            "filename": "index.html",
-            "previous_filename": null,
-            "status": "modified",
-            "additions": 8,
-            "deletions": 3
-          },
-          {
-            "filename": "tests/test_dashboard_rendering.py",
-            "previous_filename": null,
-            "status": "modified",
-            "additions": 17,
-            "deletions": 0
-          },
-          {
-            "filename": "tests/test_dashboard_snapshot.py",
-            "previous_filename": null,
-            "status": "modified",
-            "additions": 19,
-            "deletions": 1
-          }
-        ]
-      },
-      "test_runs": []
-    }
-  ],
+  "open_prs": [],
   "unreleased": {
     "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
     "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
@@ -63365,62 +63297,6 @@
           "status": "modified",
           "additions": 7,
           "deletions": 0
-        }
-      ]
-    },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...42bd6e857f2c8d916cb3971ff5de98aaf635fc89": {
-      "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "42bd6e857f2c8d916cb3971ff5de98aaf635fc89",
-      "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...42bd6e857f2c8d916cb3971ff5de98aaf635fc89",
-      "commits": 5,
-      "commit_shas": [
-        "3eb308b87f8d20b8ca0d93a0bc8aff79f2680271",
-        "42bd6e857f2c8d916cb3971ff5de98aaf635fc89",
-        "77cdaff765ddc469aaf7985ff08dd26926ae554d",
-        "886b1af319d27925fcbd2fc6b1f8f6fc35f3e437",
-        "8c6615f98e621e00388fa1f18462ed7ba47e8975"
-      ],
-      "commits_complete": true,
-      "files_complete": true,
-      "changed_files": 5,
-      "additions": 79,
-      "deletions": 4,
-      "files": [
-        {
-          "filename": ".github/ci/update-dashboard.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 30,
-          "deletions": 0
-        },
-        {
-          "filename": "docs/build-pipeline.md",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 5,
-          "deletions": 0
-        },
-        {
-          "filename": "index.html",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 8,
-          "deletions": 3
-        },
-        {
-          "filename": "tests/test_dashboard_rendering.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 17,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_dashboard_snapshot.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 19,
-          "deletions": 1
         }
       ]
     },
