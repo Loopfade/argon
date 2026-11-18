@@ -144,6 +144,20 @@ def test_source(repository, run, artifacts, jobs=None):
             "pr_number": int(title[1]) if title else None, "source_verified": len(sources) == 1}
 
 
+def source_chromium_version(repository, source_sha):
+    """Read Chromium version from build-lock.json at the verified build source."""
+    if not SHA.fullmatch(source_sha or ""):
+        return None
+    try:
+        response = api(f"repos/{repository}/contents/build-lock.json?ref={source_sha}")
+        lock = json.loads(base64.b64decode(response["content"]))
+    except (subprocess.CalledProcessError, KeyError, ValueError) as exc:
+        print(f"Chromium version unavailable for {source_sha[:8]}: {exc}", file=sys.stderr)
+        return None
+    version = lock.get("chromium_version") if isinstance(lock, dict) else None
+    return version if isinstance(version, str) and re.fullmatch(r"\d+(?:\.\d+){3}", version) else None
+
+
 def collect_build(repository, raw_run, now, previous=None):
     if previous and all(previous["run"].get(k) == raw_run.get(k)
                         for k in ("id", "status", "conclusion", "run_attempt", "updated_at")) \
@@ -316,6 +330,22 @@ def build_snapshot(repository, event="workflow_dispatch", trigger="", *, now=Non
     release_by_run = {r["source_run_id"]: r for r in releases if r["source_run_id"]}
     builds = [collect_build(repository, r, now, old_builds.get(r["id"])) for r in raw_runs]
     builds = [b for b in builds if b["kind"] != "dispatch"]
+    # Retain verified versions across refreshes, including completed old builds.
+    # Failed lookups are retried next refresh rather than cached indefinitely.
+    version_cache = {
+        b["source_sha"]: b["chromium_version"] for b in old_builds.values()
+        if b.get("source_verified") and SHA.fullmatch(b.get("source_sha") or "")
+        and isinstance(b.get("chromium_version"), str)
+        and re.fullmatch(r"\d+(?:\.\d+){3}", b["chromium_version"])
+    }
+    for build in builds:
+        source = build.get("source_sha") if build.get("source_verified") else None
+        if source and SHA.fullmatch(source):
+            if source not in version_cache:
+                version_cache[source] = source_chromium_version(repository, source)
+            build["chromium_version"] = version_cache[source]
+        else:
+            build["chromium_version"] = None
     builds.sort(key=lambda b: (b["run"].get("created_at") or "", b["run"]["id"]), reverse=True)
     latest_release = releases[0] if releases else None
     baseline = latest_release and latest_release["source_sha"]
