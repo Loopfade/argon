@@ -20,6 +20,18 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("'.github/workflows/deploy-dashboard.yml'", deploy)
         self.assertIn("include-hidden-files: true", deploy)
 
+    def test_dashboard_refreshes_month_history_during_builds_and_without_new_releases(self):
+        workflows = ROOT / ".github/workflows"
+        updater = (workflows / "update-dashboard.yml").read_text()
+        subscriptions = re.search(r"(?m)^    workflows: \[(.+)\]$", updater)[1]
+        for filename in ("build-all.yml", "build-test-branch.yml", "validate.yml"):
+            name = (workflows / filename).read_text().splitlines()[0].removeprefix("name: ")
+            self.assertIn("'" + name + "'", subscriptions)
+        self.assertIn("types: [requested, in_progress, completed]", updater)
+        self.assertIn("cron: '*/15 * * * *'", updater)
+        self.assertNotIn("'Обновление данных панели Argon'", subscriptions)
+        self.assertNotIn("'Публикация панели Argon'", subscriptions)
+
     def test_required_checks_run_for_every_pr_and_main_only_seeds_its_cache(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()
         trigger = validation.split("\npermissions:", 1)[0].split("\non:\n", 1)[1]
@@ -59,7 +71,28 @@ class WorkflowWiringTests(unittest.TestCase):
 
     def test_pages_reads_service_data_without_changing_protected_main(self):
         deploy = (ROOT / ".github/workflows/deploy-dashboard.yml").read_text()
+        self.assertIn("branches: [dashboard]", deploy)
+        self.assertNotIn("branches: [main]", deploy)
+        self.assertIn("          ref: dashboard\n", deploy)
+        self.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/dashboard'", deploy)
+        self.assertIn("if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'", deploy)
+        self.assertIn('deploy-dashboard.yml/dispatches" -f ref=main', deploy)
+        self.assertIn("group: argon-pages-${{ github.event_name }}", deploy)
         self.assertIn("python3 .github/ci/update-dashboard.py --read-published", deploy)
+        updater = (ROOT / ".github/workflows/update-dashboard.yml").read_text()
+        self.assertIn("if: github.ref == 'refs/heads/main'", updater)
+        self.assertIn("          ref: main\n", updater)
+
+    def test_validation_caches_are_only_saved_and_pruned_by_main(self):
+        validation = (ROOT / ".github/workflows/validate.yml").read_text()
+        for step_id in ("snapshot", "save_cache"):
+            block = next(block for block in validation.split("\n      - name: ")
+                         if f"\n        id: {step_id}\n" in block)
+            self.assertIn("if: steps.cache_plan.outputs.write == 'true'", block)
+        prune = validation.split("\n      - name: Удалить старые версии и снимки", 1)[1]
+        self.assertIn("if: steps.cache_plan.outputs.write == 'true'", prune)
+        self.assertNotIn("legacy-cache-prefix", validation)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", validation)
 
     def test_domain_validator_tests_are_built_and_executed_in_ci(self):
         validation = (ROOT / ".github/workflows/validate.yml").read_text()

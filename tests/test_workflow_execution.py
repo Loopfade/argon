@@ -38,6 +38,11 @@ elif args[0] == "api":
         print("{}")
         sys.exit(0)
     url = next(arg for arg in args[1:] if arg.startswith("repos/"))
+    corpus = root / "dashboard-api.json"
+    if corpus.exists() and url in (values := json.loads(corpus.read_text())):
+        value = values[url]
+        print(json.dumps([value] if "--paginate" in args else value))
+        sys.exit(0)
     if os.environ.get("FAIL_INVENTORY") and os.environ["FAIL_INVENTORY"] in url:
         raise SystemExit("Fixture GitHub inventory request failed")
     if "/git/ref/heads/main" in url:
@@ -45,9 +50,9 @@ elif args[0] == "api":
             print(os.environ["RELEASE_TARGET"])
         else:
             print(json.dumps({"object": {"sha": os.environ["RELEASE_TARGET"]}}))
-    elif "/git/matching-refs/heads/argon-dashboard-data" in url:
+    elif "/git/matching-refs/heads/dashboard" in url:
         print("[]" if os.environ.get("DASHBOARD_NO_BRANCH") else
-              '[{"ref":"refs/heads/argon-dashboard-data"}]')
+              '[{"ref":"refs/heads/dashboard"}]')
     elif "/releases/tags/" in url:
         print(json.dumps(release))
     elif "/releases?" in url:
@@ -73,8 +78,9 @@ elif args[0] == "api":
                           "head_branch":os.environ.get("FIXTURE_RUN_BRANCH", "main"),
                           "repository":{"full_name":os.environ.get("FIXTURE_RUN_REPOSITORY", os.environ["GH_REPO"])}}))
     elif "/contents/dashboard-data.json" in url:
-        print(json.dumps({"sha":"existing-snapshot-sha", "content":base64.b64encode(
-            b'{"generated_at":"published","builds":[]}').decode()}))
+        saved = root / "published.json"
+        payload = saved.read_bytes() if saved.exists() else b'{"generated_at":"published","builds":[]}'
+        print(json.dumps({"sha":"existing-snapshot-sha", "content":base64.b64encode(payload).decode()}))
     else:
         raise SystemExit("Unexpected fixture URL: " + url)
 else:
@@ -86,6 +92,7 @@ def workflow_step(filename, step_id):
     workflow = (ROOT / ".github/workflows" / filename).read_text()
     blocks = re.split(r"(?m)^      - ", workflow)[1:]
     block, = [block for block in blocks if f"\n        id: {step_id}\n" in block]
+    block = re.split(r"(?m)^  [\w-]+:\n", block, maxsplit=1)[0]
     script = textwrap.dedent(block.split("        run: |\n", 1)[1])
     # Materialize read-only process substitutions for environments without
     # /dev/fd. The shell validation and all GitHub operations stay unchanged.
@@ -137,6 +144,10 @@ class WorkflowExecutionTests(unittest.TestCase):
                     "GITHUB_OUTPUT": str(root / "output"), "EVENT_NAME": "workflow_run"}
 
     def execute(self, filename, name):
+        if filename == "update-dashboard.yml" and name == "snapshot":
+            from datetime import datetime, timezone
+            from test_dashboard_snapshot import monthly_fixture
+            (self.root / "dashboard-api.json").write_text(json.dumps(monthly_fixture(datetime.now(timezone.utc))))
         (self.root / "release.json").write_text(json.dumps(self.release))
         _, script = workflow_step(filename, name)
         return subprocess.run(["bash", "-e", "-o", "pipefail", "-c", script],
@@ -301,16 +312,23 @@ class WorkflowExecutionTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(any(call[0] == "release" for call in self.calls()))
 
-    def test_dashboard_skip_preserves_checkout_and_does_not_write_or_deploy(self):
+    def test_build_event_refreshes_month_view_without_waiting_for_a_new_release(self):
         self.env["TRIGGER_RUN_ID"] = "999"
-        old = '{"generated_at":"old-checkout-snapshot"}\n'
-        (self.root / "dashboard-data.json").write_text(old)
         result = self.execute("update-dashboard.yml", "snapshot")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.root / "dashboard-data.json").read_text(), old)
-        self.assertEqual((self.root / "output").read_text(), "updated=false\n")
-        publish, _ = workflow_step("update-dashboard.yml", "publish")
-        self.assertIn("if: steps.snapshot.outputs.updated == 'true'", publish)
+        data = json.loads((self.root / "dashboard-data.json").read_text())
+        self.assertEqual(data["window"]["days"], 30)
+        self.assertEqual(data["latest"]["id"], 42)
+        self.assertEqual((self.root / "output").read_text().splitlines()[-1], "updated=true")
+        self.assertFalse(any("--method" in call for call in self.calls()))
+
+    def test_unchanged_month_snapshot_does_not_request_another_publication(self):
+        result = self.execute("update-dashboard.yml", "snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        (self.root / "published.json").write_bytes((self.root / "dashboard-data.json").read_bytes())
+        result = self.execute("update-dashboard.yml", "snapshot")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "output").read_text().splitlines()[-1], "updated=false")
         self.assertFalse(any("--method" in call for call in self.calls()))
 
     def test_updated_dashboard_publishes_and_dispatches_pages(self):
@@ -328,7 +346,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         snapshot = json.loads((self.root / "dashboard-data.json").read_text())
         self.assertEqual(snapshot["generated_at"], "published")
-        self.assertTrue(any("?ref=argon-dashboard-data" in part for call in self.calls() for part in call))
+        self.assertTrue(any("?ref=dashboard" in part for call in self.calls() for part in call))
         self.assertFalse(any("--method" in call for call in self.calls()))
 
     def test_pages_uses_checkout_snapshot_before_first_data_branch_update(self):
@@ -339,6 +357,13 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "dashboard-data.json").read_text(), original)
         self.assertFalse(any("--method" in call for call in self.calls()))
+
+    def test_dashboard_push_requests_main_deploy_without_writing_main(self):
+        result = self.execute("deploy-dashboard.yml", "dispatch")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [["api", "--method", "POST",
+                                        "repos/fixture/argon/actions/workflows/deploy-dashboard.yml/dispatches",
+                                        "-f", "ref=main"]])
 
 
 if __name__ == "__main__":

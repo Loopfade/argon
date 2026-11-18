@@ -23,6 +23,8 @@ UA_HEADER = UA_UTILS.with_suffix(".h")
 DESKTOP_UA = Path("chrome/browser/android/content/content_utils.cc")
 RENDER_PROCESS_HOST_IMPL = Path("content/browser/renderer_host/render_process_host_impl.cc")
 NAVIGATION_CONTROLLER = Path("content/browser/renderer_host/navigation_controller_android.cc")
+RENDER_FRAME = Path("content/renderer/render_frame_impl.cc")
+DOCUMENT_STATE = Path("content/renderer/document_state.h")
 
 CLIENT_HINTS = Path("content/browser/client_hints/client_hints.cc")
 FRAME_FETCH = Path("third_party/blink/renderer/core/loader/frame_fetch_context.cc")
@@ -32,6 +34,7 @@ INPUT_PATHS = (
     TITANIUM_CHROME_JAVA_SOURCES, TITANIUM_CHROME_RESOURCES,
     TITANIUM_PRIVACY_PREFERENCES, TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
     RENDER_PROCESS_HOST_IMPL, CLIENT_HINTS, FRAME_FETCH, NAVIGATION_CONTROLLER,
+    RENDER_FRAME, DOCUMENT_STATE,
 )
 
 
@@ -66,6 +69,53 @@ def patch_navigation_controller(source: str) -> str:
 
   // Set the flag in the NavigationEntry.""")
     return source
+
+
+def patch_document_scale_state(source: str) -> str:
+    source = replace_once(source, "  // This is a fake navigation request id,", """\
+  // One-shot action for a committing UA-mode change. Clone() deliberately does
+  // not copy it into document replacements (javascript:, XSLT or discard).
+  void set_reset_scroll_and_scale_state(bool value) {
+    reset_scroll_and_scale_state_ = value;
+  }
+  bool TakeResetScrollAndScaleState() {
+    const bool value = reset_scroll_and_scale_state_;
+    reset_scroll_and_scale_state_ = false;
+    return value;
+  }
+
+  // This is a fake navigation request id,""")
+    return replace_once(source, "  bool is_overriding_user_agent_ = false;",
+                        "  bool is_overriding_user_agent_ = false;\n"
+                        "  bool reset_scroll_and_scale_state_ = false;")
+
+
+def patch_renderer_scale_state(source: str) -> str:
+    source = replace_once(source, "  navigation_params->frame_load_type = load_type;", """\
+#if BUILDFLAG(IS_ANDROID)
+  // A mode switch is a reload, but its old desktop/mobile scale must not be
+  // restored into the new layout. Read the still-committed main document before
+  // CommitNavigation swaps it out. Normal reloads and history keep their zoom.
+  if (frame_->IsOutermostMainFrame() &&
+      (load_type == WebFrameLoadType::kReload ||
+       load_type == WebFrameLoadType::kReloadBypassingCache ||
+       load_type == WebFrameLoadType::kReplaceCurrentItem) &&
+      ShouldUseUserAgentOverride() != document_state->is_overriding_user_agent()) {
+    document_state->set_reset_scroll_and_scale_state(true);
+  }
+#endif
+
+  navigation_params->frame_load_type = load_type;""")
+    return replace_once(source, "  DCHECK(!navigation_state->WasWithinSameDocument());", """\
+  DCHECK(!navigation_state->WasWithinSameDocument());
+
+#if BUILDFLAG(IS_ANDROID)
+  if (document_state->TakeResetScrollAndScaleState()) {
+    // The new HistoryItem is installed now. Clear its copied view state before
+    // FrameLoader restores it, and let this document calculate its initial scale.
+    GetWebView()->ResetScrollAndScaleState();
+  }
+#endif""")
 
 
 def apply(src: Path) -> None:
@@ -153,7 +203,10 @@ std::optional<std::string> GetArgonUserAgentOverride(bool desktop) {
     replace(DESKTOP_UA, anchor, """\
   if (auto ua = embedder_support::GetArgonUserAgentOverride(/*desktop=*/true)) {
     blink::UserAgentOverride ua_override = blink::UserAgentOverride::UserAgentOnly(*ua);
-    ua_override.ua_metadata_override.reset();
+    // WebContents uses metadata.mobile to select the desktop viewport. Keep
+    // only that local layout signal; UA-CH headers stay suppressed below.
+    ua_override.ua_metadata_override.emplace();
+    ua_override.ua_metadata_override->mobile = false;
     content::WebContents::FromJavaWebContents(jweb_contents)
         ->SetUserAgentOverride(ua_override, j_override_in_new_tabs);
     return;
@@ -186,6 +239,8 @@ std::optional<std::string> GetArgonUserAgentOverride(bool desktop) {
 """)
 
     sources[NAVIGATION_CONTROLLER] = patch_navigation_controller(sources[NAVIGATION_CONTROLLER])
+    sources[DOCUMENT_STATE] = patch_document_scale_state(sources[DOCUMENT_STATE])
+    sources[RENDER_FRAME] = patch_renderer_scale_state(sources[RENDER_FRAME])
 
     for path, content in sources.items():
         (src / path).write_text(content)

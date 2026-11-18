@@ -1,0 +1,25 @@
+package org.chromium.chrome.browser.privacy.settings;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** In-memory JNI transport for the real certificate list builder. */
+public final class ArgonCertificateDomainsSettingsJni {
+    private static final ArgonCertificateDomainsSettingsJni INSTANCE =
+            new ArgonCertificateDomainsSettingsJni();
+    public static final List<String> domains = new ArrayList<>();
+    private final boolean[] zones = new boolean[3];
+    public static ArgonCertificateDomainsSettingsJni get() { return INSTANCE; }
+    public List<String> getDomains(Object profile) { return new ArrayList<>(domains); }
+    public boolean isBuiltInZoneEnabled(Object profile, int zone) { return zones[zone]; }
+    public boolean setBuiltInZoneEnabled(Object profile, int zone, boolean value) {
+        zones[zone] = value;
+        return true;
+    }
+    public List<String> getCoveredDomains(Object profile, List<String> requested) {
+        return requested.stream().filter(domain -> !getCoveringRules(profile, domain).isEmpty()).toList();
+    }
+    public List<String> getCoveringRules(Object profile, String domain) {
+        return zones[0] && domain.endsWith(".ru") ? List.of(".ru") : List.of();
+    }
+}

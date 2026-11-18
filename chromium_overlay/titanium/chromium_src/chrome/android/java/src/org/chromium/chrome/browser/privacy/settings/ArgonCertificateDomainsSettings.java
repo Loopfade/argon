@@ -216,6 +216,7 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
             empty.setSummary(R.string.argon_certificates_no_additional_domains);
             empty.setSelectable(false);
             category.addPreference(empty);
+            notifyPreferencesUpdated();
             return;
         }
         Set<String> coveredDomains =
@@ -230,6 +231,8 @@ public final class ArgonCertificateDomainsSettings extends ChromeBaseSettingsFra
                             : Collections.emptyList();
             category.addPreference(new DomainPreference(domain, rules));
         }
+        // Recompute card backgrounds, corners and spacing for the new positions.
+        notifyPreferencesUpdated();
     }
 
     private final class DomainPreference extends Preference {

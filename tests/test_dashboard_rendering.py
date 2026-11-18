@@ -40,8 +40,8 @@ class DashboardRenderingTests(unittest.TestCase):
         self.assertEqual(data["jobDuration"], 9 * 3600_000)
         self.assertEqual(data["legacyDuration"], 3 * 3600_000)
         self.assertEqual(data["warm"]["success"], 2)
-        self.assertIn("Attempt 1 · FAILED", data["architecture"])
-        self.assertIn("Attempt 2 · SUCCESS", data["architecture"])
+        self.assertIn("Попытка 1 · ОШИБКА", data["architecture"])
+        self.assertIn("Попытка 2 · УСПЕШНО", data["architecture"])
         self.assertEqual(data["timeline"].count('class="bar '), 2)
         self.assertIn('left:75.00%', data["timeline"])
 
@@ -107,6 +107,117 @@ class DashboardRenderingTests(unittest.TestCase):
             self.assertEqual(data["restore"], 60000)
             self.assertEqual(data["checkpoints"]["success"], 5)
             self.assertEqual(data["checkpoints"]["total"], 5)
-            self.assertIn("Checkpoints", data["architecture"])
-            self.assertNotIn("Waiting", data["architecture"])
+            self.assertIn("Снимки кеша", data["architecture"])
+            self.assertNotIn("Ожидает", data["architecture"])
             self.assertEqual(data["timeline"].count('class="bar '), len(jobs))
+
+
+    def execute_view(self, code):
+        script = (ROOT / "index.html").read_text().split("<script>", 1)[1].split("</script>", 1)[0]
+        script = script[:script.index('  $("refresh").addEventListener')]
+        setup = """
+          const elements={};
+          document.getElementById=id => elements[id] ||= {innerHTML:"",textContent:"",hidden:false,
+            querySelectorAll:()=>[],setAttribute:()=>{},classList:{add:()=>{},remove:()=>{}}};
+        """
+        result = subprocess.run(["node", "-e", "global.document={getElementById:()=>({})};" + script + setup + code + "})();"],
+                                capture_output=True, text=True, check=True)
+        return json.loads(result.stdout)
+
+    def test_month_view_filters_and_untrusted_titles_are_escaped(self):
+        data = self.execute_view("""
+          const run={id:42,run_number:42,status:"completed",conclusion:"failure",run_attempt:1,
+            created_at:"2026-11-15T10:00:00Z",first_started_at:"2026-11-15T10:00:00Z",
+            completed_at:"2026-11-15T11:00:00Z",duration_ms:3600000,runner_ms:7200000};
+          model={repository:"fixture/argon",builds:[{kind:"test",run,pr_number:7,jobs:[],artifacts:[]}],
+            selectedRunId:42,days:[{date:"2026-11-15",builds:1,test:1,release:0,legacy:0,failed:1}],
+            releases:[],open_prs:[{number:7,title:'<img src=x onerror=alert(1)>',html_url:'javascript:alert(1)',test_runs:[]}],
+            unreleased:{pr_count:0},window:{start:"2026-10-17",end:"2026-11-15"}};
+          renderModel();
+          const all=filteredBuilds().length;filters.kind="release";const release=filteredBuilds().length;
+          filters.kind="test";const test=filteredBuilds().length;
+          process.stdout.write(JSON.stringify({all,release,test,history:elements.history.innerHTML,
+            prs:elements['open-prs'].innerHTML,calendar:elements['month-grid'].innerHTML,
+            link:link('https://github.com/fixture/argon','Открыть')}));
+        """)
+        self.assertEqual((data["all"],data["release"],data["test"]),(1,0,1))
+        self.assertIn("Тестовая",data["history"])
+        self.assertIn("ОШИБКА",data["history"])
+        self.assertIn("&lt;img",data["prs"])
+        self.assertNotIn('href="javascript:',data["prs"])
+        self.assertNotIn("<img",data["prs"])
+        self.assertIn('data-day="2026-11-15"',data["calendar"])
+        self.assertIn('href="https://github.com',data["link"])
+
+    def test_active_duration_advances_after_last_snapshot_and_empty_month_is_valid(self):
+        data = self.execute_view("""
+          Date.now=()=>Date.parse("2026-11-15T12:00:00Z");
+          const duration=durationMs({status:"in_progress",first_started_at:"2026-11-15T10:00:00Z",
+            updated_at:"2026-11-15T10:10:00Z",duration_ms:600000});
+          model={repository:"fixture/argon",builds:[],days:[],releases:[],open_prs:[],unreleased:{}};
+          renderModel();
+          process.stdout.write(JSON.stringify({duration,empty:elements.history.innerHTML,expanded:elements.history.innerHTML.includes(' open')}));
+        """)
+        self.assertEqual(data["duration"],7200000)
+        self.assertIn("пока нет",data["empty"])
+        self.assertFalse(data["expanded"])
+
+
+    def test_builds_start_folded_and_render_details_only_when_opened(self):
+        data = self.execute_view("""
+          const run={id:42,run_number:42,status:"completed",conclusion:"success",created_at:"2026-11-15T10:00:00Z",duration_ms:3600000};
+          model={repository:"fixture/argon",builds:[{kind:"release",run,jobs:[],artifacts:[]}],days:[],releases:[],open_prs:[],unreleased:{}};
+          renderModel();
+          const folded=elements.history.innerHTML;
+          model.disclosures.set("build/42",true);renderModel();
+          const expanded=elements.history.innerHTML;
+          model.disclosures.set("build/42",false);renderModel();
+          process.stdout.write(JSON.stringify({folded,expanded,closed:elements.history.innerHTML}));
+        """)
+        self.assertIn('<details class="build-row"',data["folded"])
+        self.assertIn('<summary class="build-select"',data["folded"])
+        self.assertNotIn(' data-build-id="42" open',data["folded"])
+        self.assertNotIn("APK этой сборки",data["folded"])
+        self.assertIn(' data-build-id="42" open',data["expanded"])
+        self.assertIn("APK этой сборки",data["expanded"])
+        self.assertIn("Журнал сборки в GitHub",data["expanded"])
+        self.assertNotIn("APK этой сборки",data["closed"])
+
+    def test_disclosure_state_survives_background_refresh(self):
+        data = self.execute_view("""
+          const run={id:42,run_number:42,status:"completed",conclusion:"success",created_at:"2026-11-15T10:00:00Z"};
+          model={repository:"fixture/argon",builds:[{kind:"test",run,jobs:[],artifacts:[]}],days:[],releases:[],open_prs:[],unreleased:{}};
+          const node={dataset:{fold:"build/42"},open:true,addEventListener:()=>{}};
+          document.querySelectorAll=()=>[node];renderModel();
+          const saved=model.disclosures;
+          model={...normalizeSnapshot({...model,generated_at:"2026-11-15T12:00:00Z"}),disclosures:saved};
+          renderModel();
+          process.stdout.write(JSON.stringify({open:model.disclosures.get("build/42"),markup:elements.history.innerHTML}));
+        """)
+        self.assertTrue(data["open"])
+        self.assertIn(' data-build-id="42" open',data["markup"])
+
+    def test_release_and_pr_rows_are_closed_native_disclosures(self):
+        data = self.execute_view("""
+          model={repository:"fixture/argon",builds:[],days:[],
+            releases:[{id:1,tag_name:"v157-1",html_url:"https://example.invalid/release",assets:[]}],
+            open_prs:[{number:7,title:"Изменения",html_url:"https://example.invalid/pr/7",test_runs:[]}],unreleased:{}};
+          renderModel();process.stdout.write(JSON.stringify({releases:elements.releases.innerHTML,prs:elements['open-prs'].innerHTML}));
+        """)
+        self.assertIn('<details class="release-item"',data["releases"])
+        self.assertIn('<summary class="release-top"',data["releases"])
+        self.assertIn('<details class="pr-item"',data["prs"])
+        self.assertIn('<summary class="pr-summary"',data["prs"])
+        self.assertNotIn(' open',data["releases"])
+        self.assertNotIn(' open',data["prs"])
+        # Check the generated disclosure markup is balanced before a browser
+        # can silently repair it and move controls outside the clicked row.
+        from html.parser import HTMLParser
+        class Balanced(HTMLParser):
+            def __init__(self):super().__init__();self.stack=[]
+            def handle_starttag(self,tag,attrs):
+                if tag not in ("br","hr","img","input"):self.stack.append(tag)
+            def handle_endtag(self,tag):
+                if not self.stack or self.stack.pop()!=tag:raise AssertionError(tag)
+        for markup in data.values():
+            parser=Balanced();parser.feed(markup);self.assertEqual(parser.stack,[])

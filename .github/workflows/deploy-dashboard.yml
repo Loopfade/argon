@@ -2,7 +2,7 @@ name: Публикация панели Argon
 
 on:
   push:
-    branches: [main]
+    branches: [dashboard]
     paths:
       - '.github/workflows/deploy-dashboard.yml'
       - 'index.html'
@@ -12,25 +12,45 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: argon-pages
+  # A dispatch must not cancel the push job that requested it.
+  group: argon-pages-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
+  request-deploy:
+    name: Запросить публикацию панели через main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dashboard'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Запустить публикацию файлов dashboard в контексте main
+        id: dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh api --method POST "repos/$GH_REPO/actions/workflows/deploy-dashboard.yml/dispatches" -f ref=main
   deploy:
     name: Опубликовать сайт в GitHub Pages
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Получить исходники
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: dashboard
           persist-credentials: false
 
       - name: Настроить GitHub Pages

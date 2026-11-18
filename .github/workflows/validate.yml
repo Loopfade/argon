@@ -18,7 +18,8 @@ permissions:
   contents: read
 concurrency:
   group: validate-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Keep an expensive main cache warmup alive when another main push arrives.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   cleanup:
     name: Очистить кеши закрытых запросов на слияние
@@ -172,7 +173,6 @@ jobs:
           key: ${{ steps.changes.outputs.cache-prefix }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ steps.changes.outputs.cache-prefix }}-
-            ${{ steps.changes.outputs.legacy-cache-prefix }}-
           lookup-only: ${{ github.event_name != 'pull_request' }}
       - name: Выбрать проверку PR или заполнение отсутствующего кеша main
         id: cache_plan
@@ -182,6 +182,11 @@ jobs:
           MATCHED_CACHE_KEY: ${{ steps.compiler_cache.outputs.cache-matched-key }}
           CACHE_PREFIX: ${{ steps.changes.outputs.cache-prefix }}
         run: |
+          write=false
+          if [[ "$GITHUB_REF" == refs/heads/main && ( "$EVENT_NAME" == push || "$EVENT_NAME" == workflow_dispatch ) ]]; then
+            write=true
+          fi
+          echo "write=$write" >> "$GITHUB_OUTPUT"
           if [[ "$EVENT_NAME" == pull_request || "$MATCHED_CACHE_KEY" != "$CACHE_PREFIX-"* ]]; then
             echo 'compile=true' >> "$GITHUB_OUTPUT"
           else
@@ -244,7 +249,7 @@ jobs:
             '
       - name: Подготовить проверенный кеш к сохранению
         id: snapshot
-        if: steps.cold.outcome == 'success' || steps.warm.outcome == 'success'
+        if: steps.cache_plan.outputs.write == 'true' && (steps.cold.outcome == 'success' || steps.warm.outcome == 'success')
         run: |
           cache="$RUNNER_TEMP/argon-validation-ccache"
           next="$RUNNER_TEMP/argon-validation-ccache-next"
@@ -257,14 +262,14 @@ jobs:
           fi
       - name: Сохранить кеш проверочной компиляции
         id: save_cache
-        if: steps.snapshot.outcome == 'success'
+        if: steps.cache_plan.outputs.write == 'true' && steps.snapshot.outcome == 'success'
         continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/argon-validation-ccache
           key: ${{ steps.compiler_cache.outputs.cache-primary-key }}
       - name: Удалить старые версии и снимки после подтверждения нового кеша
-        if: (steps.save_cache.outcome == 'success' || steps.cache_plan.outputs.compile == 'false') && (github.ref == 'refs/heads/main' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: steps.cache_plan.outputs.write == 'true' && (steps.save_cache.outcome == 'success' || steps.cache_plan.outputs.compile == 'false')
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

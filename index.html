@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Argon CI Dashboard</title>
+  <title>Argon — сборки и релизы</title>
   <style>
     :root{
       --bg:#0d1117;--panel:#161b22;--panel2:#21262d;--border:#30363d;
@@ -136,6 +136,7 @@
     .card h3{margin:0 0 14px;font-size:17px}
     .kv{display:grid;grid-template-columns:1fr auto;gap:8px 12px;margin-top:8px}
     .kv .k{color:var(--muted)}
+    .artifacts li{overflow-wrap:anywhere}
     .artifacts{margin:8px 0 0;padding-left:18px}
     .artifact-size{color:var(--muted);margin-left:5px}
     .note{
@@ -165,70 +166,64 @@
       .step-status{display:none}
       .run{grid-template-columns:55px 1fr auto}.run-duration{display:none}
     }
+
+    :root{--blue:#70a7ff;--purple:#bb9aff;--panel:#151b25;--panel2:#202939;--border:#2d3748}
+    body{background:radial-gradient(ellipse at 70% 0,rgba(72,92,155,.1),transparent 40%),var(--bg)}
+    .head{gap:12px}.brand strong{letter-spacing:.12em;font-size:19px}.brand span{font-size:13px}
+    .intro{display:flex;gap:20px;justify-content:space-between;align-items:center;margin:30px 0 22px}
+    .intro h1{font-size:32px;line-height:1.2;margin:0 0 9px;letter-spacing:-.035em}.intro p{margin:0;color:var(--muted)}
+    .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--blue);margin-bottom:10px;font-weight:700}
+    .period{padding:10px 14px;border:1px solid var(--border);border-radius:10px;white-space:nowrap;font-size:12px;color:var(--muted)}
+    .overview-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:22px}
+    .overview-metrics .metric-value{font-size:25px;letter-spacing:-.035em}.overview-metrics .metric{padding:16px 14px;background:var(--panel)}
+    .metric-hint{color:var(--muted);font-size:11px;margin-top:5px;min-height:16px}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:25px 0 12px;flex-wrap:wrap}
+    .section-head h2{font-size:20px;margin:0;letter-spacing:-.02em}.section-head .meta{font-size:12px}
+    .month-card{padding:20px}.month-grid{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));gap:5px;margin:22px 0 14px}
+    .day{min-width:0;padding:0;border:1px solid var(--border);border-radius:5px;min-height:83px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;background:var(--bg);font-weight:400}
+    .day:hover,.day[aria-pressed=true]{border-color:var(--blue);background:rgba(112,167,255,.1)}
+    .day-bars{height:44px;display:flex;align-items:flex-end;gap:2px;width:70%;justify-content:center}.day-bar{width:40%;min-height:0;border-radius:2px 2px 0 0;background:var(--blue)}.day-bar.test{background:var(--purple)}
+    .day.failed{box-shadow:inset 0 2px var(--red)}.day-num{font-size:10px;color:var(--muted);padding-bottom:5px}
+    .legend{display:flex;gap:17px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+    .legend .date-reset{margin-left:auto;font-size:11px;padding:4px 8px}.type-tag{display:inline-flex;border-radius:5px;padding:3px 7px;font-size:10px;font-weight:700;letter-spacing:.03em;background:rgba(112,167,255,.12);color:var(--blue);white-space:nowrap}.type-tag.test{background:rgba(187,154,255,.12);color:var(--purple)}.type-tag.legacy{background:var(--panel2);color:var(--muted)}
+    .filters{display:flex;gap:5px;flex-wrap:wrap}.filter{font-size:12px;font-weight:500;padding:7px 10px;background:transparent}.filter[aria-pressed=true]{background:var(--panel2);border-color:var(--blue);color:var(--blue)}
+    .build-list{padding:0;overflow:hidden}.build-row{display:grid;grid-template-columns:minmax(0,1fr) 40px;border-top:1px solid var(--border)}.build-row:first-child{border-top:0}.build-row.selected{background:rgba(112,167,255,.06);box-shadow:inset 3px 0 var(--blue)}
+    .build-select{border:0;background:none;border-radius:0;width:100%;padding:16px 18px;display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(120px,1fr) 100px 100px;align-items:center;gap:18px;text-align:left;font-weight:400}.build-select:hover{background:rgba(255,255,255,.025)}
+    .build-name{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-weight:700}.build-sub{font-size:11px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.build-duration{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px}.build-status{font-size:11px;font-weight:700}
+    .build-link{display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted)}.stage-meter{height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin:7px 0 4px}.stage-meter span{display:block;height:100%;background:var(--blue)}.stage-count{font-size:11px;color:var(--muted)}
+    .empty{padding:28px 18px;color:var(--muted);font-size:13px;text-align:center}.load-more{width:100%;margin-top:10px;font-size:12px}.detail-panel{margin-top:22px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px}
+    .detail-panel h2{margin:0 0 6px;font-size:21px}.detail-heading{display:flex;gap:15px;justify-content:space-between;align-items:start}.detail-heading .pill{font-size:11px;padding:6px 10px}.detail-panel .pipeline{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:17px 0}.detail-panel .stage{padding:12px;background:var(--bg)}.stage-name{font-size:12px;min-height:32px}.stage-status{font-size:11px}.stage-time{font-size:16px}.stage-detail{min-height:30px;font-size:10px}
+    .detail-meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px}.detail-panel .metrics{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:16px}.detail-panel .metric-value{font-size:15px}.detail-panel .timeline{background:var(--bg);margin-top:14px}.architecture-grid{margin-top:14px}
+    .change-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}.change-grid h3{font-size:17px}.subtle{font-size:12px;color:var(--muted)}.diff-values{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0;font-size:13px}.add{color:var(--green)}.del{color:var(--red)}
+    .pr-item{padding:15px 0;border-top:1px solid var(--border)}.pr-item:first-child{border-top:0;padding-top:0}.pr-item h4{margin:0 0 7px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}.pr-item p{margin:6px 0;font-size:12px;color:var(--muted)}.pr-links{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:12px}.pr-state{font-size:11px;color:var(--muted)}
+    .release-list{display:grid;gap:12px}.release-item{padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}.release-top{display:flex;gap:15px;justify-content:space-between;align-items:start}.release-title{font-weight:700;font-size:16px}.pr-number{font-size:23px;line-height:1;font-weight:800;color:var(--blue);text-align:right;white-space:nowrap}.pr-number small{display:block;font-size:10px;margin-top:5px;color:var(--muted);font-weight:400}.downloads{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.download{font-size:11px;padding:5px 9px;border:1px solid var(--border);border-radius:6px}.pr-list{padding-left:19px;margin:10px 0;color:var(--muted);font-size:12px}.pr-list li{margin-top:5px}
+    .files{margin-top:12px;border-top:1px solid var(--border);font-size:12px}.files summary{cursor:pointer;padding-top:12px;color:var(--muted)}.file-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.file-path{font-family:ui-monospace,monospace;font-size:11px;overflow-wrap:anywhere}.file-stats{white-space:nowrap}.notice-small{padding:12px 0;color:var(--muted);font-size:12px}.detail-panel[hidden]{display:none}
+    @media(max-width:1050px){.overview-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.build-select{grid-template-columns:minmax(180px,1.5fr) minmax(100px,1fr) 95px}.build-status{display:none}.change-grid{grid-template-columns:1fr}.detail-panel .pipeline{grid-template-columns:repeat(3,minmax(0,1fr))}.day{min-height:75px}.month-grid{gap:3px}}
+    @media(max-width:620px){.wrap{padding:0 14px 30px}.head{padding:13px 14px}.brand strong{font-size:17px}.brand span{font-size:11px}.actions{gap:5px}.actions .button{display:none}button{padding:7px 10px}.intro{margin:23px 0 18px;align-items:start;flex-direction:column;gap:12px}.intro h1{font-size:28px}.intro p{font-size:12px}.period{font-size:11px;padding:6px 9px}.overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.overview-metrics .metric-value{font-size:23px}.overview-metrics .metric{padding:13px 12px}.metric-label{font-size:11px}.metric-hint{font-size:10px}.month-card{padding:14px}.month-grid{grid-template-columns:repeat(15,minmax(0,1fr));gap:4px;margin-top:14px}.day{min-height:65px}.day-bars{height:34px}.section-head h2{font-size:18px}.filters{width:100%}.filter{flex:1;padding:7px 6px;font-size:11px}.build-select{padding:14px 13px;grid-template-columns:minmax(0,1fr) 78px;gap:8px}.build-progress{grid-column:1;grid-row:2}.build-duration{grid-column:2;grid-row:1;font-size:11px;text-align:right}.build-status{display:block;grid-column:2;grid-row:2;text-align:right;font-size:10px}.build-row{grid-template-columns:minmax(0,1fr) 26px}.type-tag{font-size:9px}.build-name{font-size:12px;gap:6px}.detail-panel{padding:16px 12px}.detail-heading{display:block}.detail-heading .pill{margin-top:10px}.detail-panel .pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-panel .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-panel h2{font-size:18px}.stage-detail{min-height:0}.detail-meta{font-size:11px;gap:8px}.architecture-grid{gap:9px}.release-title{font-size:14px}.legend{gap:10px;font-size:10px}.pr-item h4{font-size:13px}.timeline{padding:10px}.step-name{white-space:normal}.step{font-size:11px}.kv{grid-template-columns:minmax(0,1fr) auto}.release-top{gap:8px}}
+
+    .section-collapse{margin-top:18px;border:1px solid var(--border);background:var(--panel);border-radius:12px;overflow:hidden}
+    .section-collapse>summary.section-head{margin:0;padding:16px 18px;list-style:none;cursor:pointer}
+    .section-collapse>summary h2{flex:1}.section-collapse>summary::after,.release-top::after,.pr-summary::after{content:"+";color:var(--muted);font-size:20px;font-weight:400}
+    .section-collapse[open]>summary::after,.release-item[open]>.release-top::after,.pr-item[open]>.pr-summary::after{content:"−"}
+    .section-content{padding:0 16px 16px}.section-collapse .month-card,.section-collapse .build-list{border:0;border-radius:0}
+    .section-collapse .month-card{padding-top:0}.build-filters{padding:0 16px 12px}.build-row{display:block}.build-select{list-style:none;cursor:pointer;position:relative;padding-right:42px}
+    .build-select::after{content:"+";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:20px}.build-row[open]>.build-select::after{content:"−"}
+    .build-select::-webkit-details-marker,.section-collapse>summary::-webkit-details-marker,.release-top::-webkit-details-marker,.pr-summary::-webkit-details-marker{display:none}
+    .build-row[open]{box-shadow:inset 3px 0 var(--blue)}.build-body>.detail-panel{margin:0;border:0;border-top:1px solid var(--border);border-radius:0;background:var(--bg)}
+    .release-top,.pr-summary{list-style:none;cursor:pointer}.release-top{align-items:center}.release-body{padding-top:12px}.pr-summary{display:flex;gap:12px;align-items:center}.pr-summary h4{flex:1;margin:0}.pr-body{padding-top:10px}
+    .release-list{padding:0 16px 16px}.section-collapse .load-more{margin:0;border-radius:0;border-width:1px 0 0}.build-actions{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}
   </style>
 </head>
 <body>
-<header>
-  <div class="head">
-    <div class="brand">
-      <strong>ARGON CI</strong>
-      <span>GitHub Actions dashboard</span>
-    </div>
-    <div class="actions">
-      <a class="button" href="https://github.com/Loopfade/argon/actions/workflows/build.yml">GitHub Actions</a>
-      <button id="refresh" type="button">Refresh</button>
-    </div>
-  </div>
-</header>
-
+<header><div class="head"><div class="brand"><strong>ARGON</strong><span>Сборки и релизы</span></div><div class="actions"><a class="button" href="https://github.com/Loopfade/argon/actions">Открыть GitHub</a><button id="refresh" type="button">Обновить</button></div></div></header>
 <main class="wrap">
-  <div class="grid">
-    <div>
-      <h2 class="section-title">Recent release builds</h2>
-      <section class="card history" id="history"><div class="run skeleton">Loading…</div></section>
-    </div>
-
-    <div>
-      <h2 class="section-title">Artifacts</h2>
-      <section class="card" id="artifacts-card">
-        <h3>Latest run artifacts</h3>
-        <div class="skeleton">Loading…</div>
-      </section>
-    </div>
-  </div>
-
-  <h2 class="section-title" id="timeline-title">Build timeline</h2>
-  <section class="timeline" id="timeline"><div class="skeleton">Loading…</div></section>
-
-  <h2 class="section-title" id="architecture-title">Architecture details</h2>
-  <section class="architecture-grid" id="architectures"></section>
-
-  <div class="grid">
-    <div>
-      <h2 class="section-title">Release</h2>
-      <section class="card" id="release-card">
-        <h3>Latest published release</h3>
-        <div class="skeleton">Loading…</div>
-      </section>
-    </div>
-
-    <div>
-      <h2 class="section-title">Dashboard</h2>
-      <section class="card">
-        <div class="kv">
-          <div class="k">Mode</div><div>Read-only</div>
-          <div class="k">Source</div><div>Published releases</div>
-          <div class="k">Snapshot</div><div>After release build</div>
-          <div class="k">Page refresh</div><div>1 minute</div>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <div class="note" id="notice">
-    This page reads a local dashboard snapshot. It cannot start, rerun or cancel builds.
-  </div>
-  <footer>Loopfade/argon · static GitHub Pages dashboard</footer>
+  <section class="intro"><div><div class="eyebrow">История разработки</div><h1>Сборки Argon за месяц</h1><p>От последнего APK до текущих PR: что собрано, что изменилось и сколько времени заняло.</p></div><div class="period" id="period">Последние 30 дней · Москва</div></section>
+  <section class="overview-metrics" id="overview-metrics" aria-label="Итоги за месяц"></section>
+  <details class="section-collapse" data-fold="activity"><summary class="section-head"><h2>Активность за 30 дней</h2><span class="meta" id="month-total"></span></summary><section class="card month-card"><div class="month-grid" id="month-grid" aria-label="Сборки по дням"></div><div class="legend"><span><i style="background:var(--blue)"></i>Релизные</span><span><i style="background:var(--purple)"></i>Тестовые</span><span><i style="background:var(--red)"></i>Были ошибки</span><button class="date-reset" id="date-reset" type="button" hidden>Все дни</button></div></section></details>
+  <details class="section-collapse" id="build-section" data-fold="builds"><summary class="section-head"><h2>Ход сборок</h2><span class="meta" id="build-count"></span></summary><div class="filters build-filters" id="filters" aria-label="Вид сборки"><button class="filter" data-filter="all" aria-pressed="true">Все</button><button class="filter" data-filter="release" aria-pressed="false">Релизные</button><button class="filter" data-filter="test" aria-pressed="false">Тестовые</button><button class="filter" data-filter="active" aria-pressed="false">В работе</button></div><section class="card build-list" id="history"><div class="empty">Загрузка сборок…</div></section><button class="load-more" id="load-more" type="button" hidden>Показать ещё</button></details>
+  <details class="section-collapse" data-fold="changes"><summary class="section-head"><h2>От релиза до текущего кода</h2><span class="meta" id="change-count"></span></summary><div class="change-grid section-content"><section class="card" id="unreleased"></section><section class="card"><h3>Открытые PR</h3><div id="open-prs"></div></section></div></details>
+  <details class="section-collapse" data-fold="releases"><summary class="section-head"><h2>Опубликованные APK</h2><span class="meta" id="release-count"></span></summary><section class="release-list" id="releases"></section></details>
+  <div class="note" id="notice" role="status">Загрузка данных…</div><footer>Loopfade/argon · Время по Москве · Длительность включает повторные попытки</footer>
 </main>
 
 <script>
@@ -248,8 +243,9 @@
   }
 
   function endTime(item) {
-    return ms(item && (item.completed_at || item.updated_at)) ||
-      ((item && item.status !== "completed") ? Date.now() : null);
+    if (item && item.completed_at) return ms(item.completed_at);
+    if (item && item.status !== "completed") return Date.now();
+    return ms(item && item.updated_at);
   }
 
   function startTime(item) {
@@ -257,7 +253,8 @@
   }
 
   function durationMs(item) {
-    if (item && Number.isFinite(item.duration_ms)) return item.duration_ms;
+    if (item && item.status === "completed" && Number.isFinite(item.duration_ms)) return item.duration_ms;
+    if (item && item.attempts) return item.attempts.reduce((sum, attempt) => sum + (durationMs(attempt) || 0), 0);
     const start = startTime(item);
     const end = endTime(item);
     if (start == null || end == null) return null;
@@ -271,37 +268,39 @@
     seconds -= hours * 3600;
     const minutes = Math.floor(seconds / 60);
     seconds -= minutes * 60;
-    if (hours) return hours + "h " + String(minutes).padStart(2,"0") + "m " + String(seconds).padStart(2,"0") + "s";
-    if (minutes) return minutes + "m " + String(seconds).padStart(2,"0") + "s";
-    return seconds + "s";
+    if (hours) return hours + " ч " + String(minutes).padStart(2,"0") + " мин " + String(seconds).padStart(2,"0") + " с";
+    if (minutes) return minutes + " мин " + String(seconds).padStart(2,"0") + " с";
+    return seconds + " с";
   }
 
   function formatBytes(bytes) {
     const value = Number(bytes || 0);
-    if (!value) return "0 B";
-    const units = ["B","KiB","MiB","GiB"];
+    if (!value) return "0 Б";
+    const units = ["Б","КиБ","МиБ","ГиБ"];
     const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
     return (value / Math.pow(1024,index)).toFixed(index < 2 ? 0 : 1) + " " + units[index];
   }
 
   function state(item) {
-    if (!item) return { key:"queued", label:"WAITING" };
+    if (!item) return { key:"queued", label:"ОЖИДАЕТ" };
     if (item.status !== "completed") {
       return item.status === "in_progress"
-        ? { key:"progress", label:"IN PROGRESS" }
-        : { key:"queued", label:String(item.status || "queued").toUpperCase() };
+        ? { key:"progress", label:"В РАБОТЕ" }
+        : { key:"queued", label:({queued:"В ОЧЕРЕДИ",waiting:"ОЖИДАЕТ",pending:"ОЖИДАЕТ",requested:"ЗАПРОШЕНО"})[item.status] || "ОЖИДАЕТ" };
     }
     const conclusion = item.conclusion || "completed";
     const map = {
-      success:["success","SUCCESS"],
-      failure:["failure","FAILED"],
-      cancelled:["cancelled","CANCELLED"],
-      skipped:["skipped","SKIPPED"],
-      neutral:["cancelled","NEUTRAL"],
-      timed_out:["failure","TIMED OUT"],
-      action_required:["failure","ACTION REQUIRED"]
+      success:["success","УСПЕШНО"],
+      failure:["failure","ОШИБКА"],
+      cancelled:["cancelled","ОТМЕНЕНО"],
+      skipped:["skipped","ПРОПУЩЕНО"],
+      neutral:["cancelled","БЕЗ РЕЗУЛЬТАТА"],
+      timed_out:["failure","ЛИМИТ ВРЕМЕНИ"],
+      action_required:["failure","ТРЕБУЕТ ВНИМАНИЯ"],
+      startup_failure:["failure","ОШИБКА ЗАПУСКА"],
+      stale:["cancelled","УСТАРЕЛО"]
     };
-    const pair = map[conclusion] || ["cancelled", conclusion.toUpperCase()];
+    const pair = map[conclusion] || ["cancelled", "ЗАВЕРШЕНО"];
     return { key:pair[0], label:pair[1] };
   }
 
@@ -316,24 +315,24 @@
   function timeAgo(value) {
     if (!value) return "—";
     const seconds = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
-    if (seconds < 60) return Math.floor(seconds) + "s ago";
-    if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
-    if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
-    return Math.floor(seconds / 86400) + "d ago";
+    if (seconds < 60) return Math.floor(seconds) + " с назад";
+    if (seconds < 3600) return Math.floor(seconds / 60) + " мин назад";
+    if (seconds < 86400) return Math.floor(seconds / 3600) + " ч назад";
+    return Math.floor(seconds / 86400) + " д назад";
   }
 
   function eventLabel(event) {
-    if (event === "workflow_dispatch") return "Manual release";
-    if (event === "push") return "Push validation";
-    if (event === "workflow_run") return "Prepared-image follow-up";
-    if (event === "pull_request") return "Pull request";
-    return event || "Unknown";
+    if (event === "workflow_dispatch") return "Ручная сборка";
+    if (event === "push") return "Проверка изменений";
+    if (event === "workflow_run") return "Продолжение сборки";
+    if (event === "pull_request") return "Запрос на слияние";
+    return event || "Неизвестно";
   }
 
   async function requestSnapshot() {
     const separator = DATA_URL.includes("?") ? "&" : "?";
     const response = await fetch(DATA_URL + separator + "t=" + Date.now(), { cache:"no-store" });
-    if (!response.ok) throw new Error("Dashboard snapshot HTTP " + response.status);
+    if (!response.ok) throw new Error("Ошибка загрузки данных: " + response.status);
     return response.json();
   }
 
@@ -341,7 +340,7 @@
     const find = (...prefixes) => jobs.find(job =>
       prefixes.some(prefix => job.name === prefix || job.name.startsWith(prefix + " /")));
     return {
-      gate: find("Подобрать совместимый подготовленный образ Chromium",
+      gate: find("Подобрать совместимый подготовленный образ Chromium", "Подготовить общий Docker-образ из коммита PR", "Подготовить общий Docker-образ main из коммита ветки",
         "Ensure compatible prepared Chromium image", "Require latest compatible prepared image"),
       arm64: find("Собрать и проверить arm64", "Build and verify arm64"),
       arm: find("Собрать и проверить arm", "Build and verify arm"),
@@ -374,11 +373,11 @@
     const parts = findJobs(jobs);
     const total = durationMs(latest);
     const items = [
-      ["Wall time", formatDuration(total)],
+      ["Общее время", formatDuration(total)],
       ["arm64-v8a", jobDuration(parts.arm64)],
       ["armeabi-v7a", jobDuration(parts.arm)],
-      ["Critical path", criticalPath(parts)],
-      ["Publish", jobDuration(parts.publish)]
+      ["Дольше всего", criticalPath(parts)],
+      ["Публикация", jobDuration(parts.publish)]
     ];
     $("metrics").innerHTML = items.map(item =>
       '<div class="metric"><div class="metric-label">' + esc(item[0]) +
@@ -386,17 +385,17 @@
     ).join("");
   }
 
-  function renderPipeline(latest, jobs) {
+  function renderPipeline(latest, jobs, isTest=false, target=$("pipeline")) {
     const parts = findJobs(jobs);
     const stages = [
-      ["Prepared image", parts.gate, "Compatibility gate"],
-      ["arm64-v8a", parts.arm64, "Build, sign and verify APK"],
-      ["armeabi-v7a", parts.arm, "Build, sign and verify APK"],
-      ["Publish", parts.publish, "Verify provenance and create release"],
-      ["Total", latest, "End-to-end wall time"]
+      ["Образ Chromium", parts.gate, "Подготовка совместимого образа"],
+      ["arm64-v8a", parts.arm64, "Сборка, подпись и проверка APK"],
+      ["armeabi-v7a", parts.arm, "Сборка, подпись и проверка APK"],
+      isTest ? ["Артефакты", latest, "Тестовая сборка без публикации релиза"] : ["Публикация", parts.publish, "Проверка и публикация APK"],
+      ["Вся сборка", latest, "От начала до завершения"]
     ];
 
-    $("pipeline").innerHTML = stages.map(row => {
+    const markup = stages.map(row => {
       const name=row[0], item=row[1], detail=row[2], s=state(item);
       return '<article class="stage">' +
         '<div class="stage-name"><span class="dot" style="background:var(--' +
@@ -407,22 +406,24 @@
         '<div class="stage-detail">' + esc(detail) + '</div>' +
       '</article>';
     }).join("");
+    if(target)target.innerHTML=markup;
+    return markup;
   }
 
-  function renderTimeline(latest, jobs) {
+  function renderTimeline(latest, jobs, target=$("timeline")) {
     const parts=findJobs(jobs);
     const runStart=startTime(latest);
     const runEnd=endTime(latest);
     const total=(runStart != null && runEnd != null) ? Math.max(1,runEnd-runStart) : 1;
 
     const rows = [
-      ["Prepared image", parts.gate],
+      ["Образ Chromium", parts.gate],
       ["arm64-v8a", parts.arm64],
       ["armeabi-v7a", parts.arm],
-      ["Publish", parts.publish]
+      ["Публикация", parts.publish]
     ].filter(row => row[1]);
 
-    $("timeline").innerHTML = rows.map(row => {
+    const markup = rows.map(row => {
       const name=row[0], item=row[1];
       const bars=jobAttempts(item).map(attempt => {
         const start=startTime(attempt), end=endTime(attempt);
@@ -430,7 +431,7 @@
         const width=(start == null || end == null) ? 0 :
           Math.max(.4,Math.min(100-left,((end-start)/total)*100));
         const status=state(attempt);
-        const title="Attempt " + (attempt.run_attempt || 1) + " · " + status.label +
+        const title="Попытка " + (attempt.run_attempt || 1) + " · " + status.label +
           " · " + formatDuration(durationMs(attempt));
         return '<div class="bar ' + esc(status.key) + '" title="' + esc(title) +
           '" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div>';
@@ -441,6 +442,8 @@
         '<div class="timeline-time">' + esc(formatDuration(durationMs(item))) + '</div>' +
       '</div>';
     }).join("");
+    if(target)target.innerHTML=markup;
+    return markup;
   }
 
   function jobAttempts(job) {
@@ -481,7 +484,7 @@
         completed_at:finish.completed_at}) : null;
     }).filter(value => value != null);
     return intervals.length ? intervals.reduce((total,value) => total + value,0)
-      : stepDuration(job,"Build, sign and verify APK");
+      : stepDuration(job,"Сборка, подпись и проверка APK");
   }
 
   function visibleSteps(job) {
@@ -494,7 +497,7 @@
     function flushSkipped() {
       if (skippedStart == null) return;
       output.push({
-        name:"Cache checkpoints " + skippedStart + (skippedEnd !== skippedStart ? "–" + skippedEnd : ""),
+        name:"Снимки кеша " + skippedStart + (skippedEnd !== skippedStart ? "–" + skippedEnd : ""),
         status:"completed", conclusion:"skipped", started_at:null, completed_at:null, synthetic:true
       });
       skippedStart=null; skippedEnd=null;
@@ -523,10 +526,10 @@
     return dedup;
   }
 
-  function renderArchitecture(name, job) {
+  function renderArchitecture(name, job, foldPrefix="") {
     if (!job) {
-      return '<details class="arch"><summary><div class="arch-title">' + esc(name) +
-        '</div><div class="arch-summary">Waiting</div></summary></details>';
+      return '<details class="arch" data-fold="'+esc(foldPrefix+'arch/'+name)+'"><summary><div class="arch-title">' + esc(name) +
+        '</div><div class="arch-summary">Ожидает</div></summary></details>';
     }
     const s=state(job);
     const stats=checkpointStats(job);
@@ -534,26 +537,26 @@
     const restore=stepDuration(job,"Restore compiler cache","Восстановить кеш компиляции");
     const attempts=jobAttempts(job);
 
-    return '<details class="arch">' +
+    return '<details class="arch" data-fold="'+esc(foldPrefix+'arch/'+name)+'">' +
       '<summary><div class="arch-title"><span class="dot" style="background:var(--' +
         (s.key === "success" ? "green" : s.key === "failure" ? "red" : s.key === "progress" ? "yellow" : "muted") +
         ')"></span>' + esc(name) + '</div>' +
         '<div class="arch-summary"><strong>' + esc(formatDuration(durationMs(job))) +
         '</strong> · ' + esc(s.label) + ' · ' + attempts.length +
-        (attempts.length === 1 ? ' attempt' : ' attempts') + '</div></summary>' +
+        ' ' + plural(attempts.length, 'попытка', 'попытки', 'попыток') + '</div></summary>' +
       '<div class="arch-body">' +
         '<div class="arch-metrics">' +
-          '<div class="mini">' + (stats.continuous ? 'Checkpoints' : 'Warm-up') + ' <strong>' + esc(stats.success) + '/' + esc(stats.total) + '</strong></div>' +
+          '<div class="mini">' + (stats.continuous ? 'Снимки кеша' : 'Прогрев') + ' <strong>' + esc(stats.success) + '/' + esc(stats.total) + '</strong></div>' +
           '<div class="mini">APK <strong>' + esc(formatDuration(apk)) + '</strong></div>' +
-          '<div class="mini">Cache restore <strong>' + esc(formatDuration(restore)) + '</strong></div>' +
+          '<div class="mini">Восстановление кеша <strong>' + esc(formatDuration(restore)) + '</strong></div>' +
         '</div>' +
         attempts.map(attempt => {
-          const heading='<div class="attempt-heading">Attempt ' + (attempt.run_attempt || 1) +
+          const heading='<div class="attempt-heading">Попытка ' + (attempt.run_attempt || 1) +
             ' · ' + esc(state(attempt).label) + ' · ' + esc(formatDuration(durationMs(attempt))) + '</div>';
           return heading + visibleSteps(attempt).map(step => {
             const ss=state(step);
             return '<div class="step">' +
-              '<div class="step-name" title="' + esc(step.name) + '">' + esc(step.name) + '</div>' +
+              '<div class="step-name" title="' + esc(step.name) + '">' + esc(translateStep(step.name)) + '</div>' +
               '<div class="step-status ' + statusTextClass(step) + '">' + esc(ss.label) + '</div>' +
               '<div class="step-time">' + esc(step.synthetic ? "—" : formatDuration(durationMs(step))) + '</div>' +
             '</div>';
@@ -569,133 +572,148 @@
       renderArchitecture("armeabi-v7a",parts.arm);
   }
 
-  function selectedBuild() {
-    if (!model || !model.builds || !model.builds.length) return null;
-    return model.builds.find(build => String(build.run.id) === String(model.selectedRunId)) ||
-      model.builds[0];
+
+  const filters={kind:"all",date:"",limit:20};
+  const dateFormat=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",timeZone:"Europe/Moscow"});
+  const timeFormat=new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Moscow"});
+  const dayKey=value => new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Moscow"}).format(new Date(value));
+  const dateText=value => value ? timeFormat.format(new Date(value)) : "—";
+  const dayText=value => value ? dateFormat.format(new Date(value+"T12:00:00+03:00")) : "—";
+  function link(url,label,cls="") {
+    if (!/^https:\/\//i.test(url || "")) return esc(label);
+    return '<a class="'+esc(cls)+'" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(label)+'</a>';
   }
-
-  function selectBuild(runId) {
-    if (!model || !model.builds.some(build => String(build.run.id) === String(runId))) return;
-    model.selectedRunId=String(runId);
-    renderModel();
+  function plural(n,one,few,many) {return n%10===1&&n%100!==11?one:n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?few:many;}
+  function kindLabel(build) {return ({release:"Релизная",test:"Тестовая",legacy:"Архивная"})[build.kind] || "Сборка";}
+  function translateStep(name) {
+    const labels={"Build, sign and verify APK":"Собрать, подписать и проверить APK","Start one uninterrupted APK build":"Запустить непрерывную сборку APK","Collect actual build result":"Получить результат сборки","Restore compiler cache":"Восстановить кеш компиляции","Save compiler cache":"Сохранить кеш компиляции","Inspect compiler cache and stop compilation":"Проверить кеш и остановить компиляцию","Upload verified APK and provenance":"Загрузить APK и данные о сборке"};
+    if (labels[name]) return labels[name];
+    return String(name).replace(/^Warm local compiler cache \(checkpoint (\d+)\/(\d+)\)$/,"Прогреть кеш (снимок $1/$2)")
+      .replace(/^Save compiler cache checkpoint (\d+)$/,"Сохранить снимок кеша $1")
+      .replace(/^Drop cache superseded by checkpoint (\d+)$/,"Удалить старый снимок кеша $1");
   }
-
-  function renderHistory(builds) {
-    const visible=(builds || []).slice(0,3);
-    $("history").innerHTML = visible.map(build => {
-      const run=build.run;
-      const s=state(run);
-      const selected=String(run.id) === String(model.selectedRunId);
-      return '<button type="button" class="run' + (selected ? ' selected' : '') +
-        '" data-run-id="' + esc(run.id) + '">' +
-        '<div class="run-num">#' + esc(run.run_number) + '</div>' +
-        '<div><strong>' + esc(eventLabel(run.event)) + '</strong><div class="run-kind">' +
-          esc((build.release && build.release.tag_name) || run.head_branch || "") + '</div></div>' +
-        '<div class="run-sha">' + esc((run.head_sha || "").slice(0,7)) + '</div>' +
-        '<div class="run-time">' + esc(timeAgo(run.updated_at || run.created_at)) + '</div>' +
-        '<div class="run-duration">' + esc(formatDuration(durationMs(run))) + '</div>' +
-        '<div class="run-status ' + statusTextClass(run) + '">' + esc(s.label) + '</div>' +
-      '</button>';
-    }).join("") || '<div class="run">No Build Argon runs found.</div>';
-
-    $("history").querySelectorAll("[data-run-id]").forEach(row => {
-      row.addEventListener("click", () => selectBuild(row.dataset.runId));
-    });
+  function progress(build) {
+    const jobs=(build.jobs || []).filter(j=>j.conclusion!=="skipped");
+    const finished=jobs.filter(j=>j.status==="completed").length;
+    return {finished,total:jobs.length,percent:jobs.length?Math.round(finished/jobs.length*100):0};
   }
-
-  function renderRelease(release) {
-    const box=$("release-card");
-    if (!release) {
-      box.innerHTML='<h3>Latest published release</h3><div class="meta">No published release yet.</div>';
-      return;
+  function filteredBuilds() {return (model?.builds || []).filter(b=>(filters.kind==="all" || b.kind===filters.kind || (filters.kind==="active" && b.run.status!=="completed")) && (!filters.date || dayKey(b.run.created_at)===filters.date));}
+  function disclosureState() {return model.disclosures ||= new Map();}
+  function openBuilds() {$("build-section").open=true;disclosureState().set("builds",true);}
+  function disclosureNodes(root=document) {return Array.from(root.querySelectorAll?.("details[data-fold]") || []);}
+  function rememberDisclosures() {for(const node of disclosureNodes())disclosureState().set(node.dataset.fold,node.open);}
+  function loadBuildBody(node) {
+    if(node.isConnected===false)return;
+    const body=node.querySelector("[data-build-body]");
+    const build=model.builds.find(b=>String(b.run.id)===node.dataset.buildId);
+    if(!body || !build || body.dataset.loaded)return;
+    body.innerHTML=buildDetails(build);body.dataset.loaded="true";restoreDisclosures(body);
+  }
+  function restoreDisclosures(root=document) {
+    for(const node of disclosureNodes(root)){
+      if(disclosureState().has(node.dataset.fold))node.open=disclosureState().get(node.dataset.fold);
+      if(node.open && node.dataset.buildId)loadBuildBody(node);
+      if(node.dataset.foldBound)continue;
+      node.dataset.foldBound="true";
+      node.addEventListener("toggle",()=>{
+        if(node.isConnected===false)return;
+        disclosureState().set(node.dataset.fold,node.open);
+        if(node.open && node.dataset.buildId)loadBuildBody(node);
+      });
     }
-    box.innerHTML='<h3><a href="' + esc(release.html_url) + '">' +
-      esc(release.name || release.tag_name) + '</a></h3>' +
-      '<div class="kv">' +
-        '<div class="k">Tag</div><div>' + esc(release.tag_name) + '</div>' +
-        '<div class="k">Published</div><div>' + esc(timeAgo(release.published_at)) + '</div>' +
-        '<div class="k">Assets</div><div>' + esc((release.assets || []).length) + '</div>' +
-      '</div>';
   }
-
-  function renderArtifacts(artifacts, run) {
-    const box=$("artifacts-card");
-    const list=artifacts && artifacts.artifacts ? artifacts.artifacts : [];
-    if (!list.length) {
-      box.innerHTML='<h3>Build #' + esc(run.run_number) + ' artifacts</h3><div class="meta">No artifacts available yet.</div>';
-      return;
-    }
-    box.innerHTML='<h3>Build #' + esc(run.run_number) + ' artifacts</h3><ul class="artifacts">' +
-      list.map(a => '<li>' + esc(a.name) + '<span class="artifact-size">' +
-        esc(formatBytes(a.size_in_bytes)) + '</span></li>').join("") +
-      '</ul><p><a href="' + esc(run.html_url) + '">Open run to download</a></p>';
+  function compactDuration(value) {if(value>=3600000)return Math.floor(value/3600000)+" ч "+Math.floor(value/60000)%60+" мин";return formatDuration(value);}
+  function metric(label,value,hint,runId=null) {return '<div class="metric"><div class="metric-label">'+esc(label)+'</div><div class="metric-value"'+(runId?' data-live-run="'+esc(runId)+'"':'')+'>'+esc(value)+'</div><div class="metric-hint">'+esc(hint || "")+'</div></div>';}
+  function renderOverview() {
+    const builds=model.builds, active=builds.filter(b=>b.run.status!=="completed").length;
+    const wall=builds.reduce((n,b)=>n+(durationMs(b.run)||0),0), runners=builds.reduce((n,b)=>n+(b.run.runner_ms||0),0);
+    $("overview-metrics").innerHTML=[
+      metric("Опубликовано релизов",(model.releases||[]).filter(r=>!model.window || r.published_at>=model.window.start).length,"APK для двух архитектур"),
+      metric("Тестовых сборок",builds.filter(b=>b.kind==="test").length,"сборки PR без релиза"),
+      metric("Сейчас в работе",active,builds.filter(b=>["failure","timed_out","startup_failure"].includes(b.run.conclusion)).length+" сборок с ошибкой за месяц"),
+      metric("Время сборок",compactDuration(wall),"сумма длительностей запусков"),
+      metric("Время исполнителей",compactDuration(runners),"ARM64, ARMv7 и другие задания"),
+      metric("PR после APK",model.unreleased?.pr_count ?? "—","в main, ещё не выпущены")].join("");
+    if(model.window) $("period").textContent=dayText(model.window.start)+" — "+dayText(model.window.end)+" · Москва";
+    $("month-total").textContent=builds.length+" запусков · "+builds.filter(b=>b.kind==="release").length+" релизных";
+    const max=Math.max(1,...(model.days||[]).map(d=>Math.max(d.release+d.legacy,d.test)));
+    $("month-grid").innerHTML=(model.days||[]).map(d=>'<button type="button" class="day'+(d.failed?' failed':'')+'" data-day="'+esc(d.date)+'" aria-pressed="'+(filters.date===d.date)+'" aria-label="'+esc(dayText(d.date)+": запусков "+d.builds+", релизных "+d.release+", тестовых "+d.test+", ошибок "+d.failed)+'" title="'+esc(dayText(d.date)+" · "+d.builds+" запусков")+'"><span class="day-bars"><span class="day-bar" style="height:'+((d.release+d.legacy)/max*100)+'%"></span><span class="day-bar test" style="height:'+(d.test/max*100)+'%"></span></span><span class="day-num">'+d.date.slice(-2)+'</span></button>').join("");
+    $("month-grid").querySelectorAll("[data-day]").forEach(button=>button.addEventListener("click",()=>{filters.date=filters.date===button.dataset.day?"":button.dataset.day;filters.limit=20;openBuilds();renderModel();}));
+    $("date-reset").hidden=!filters.date;
   }
-
-  function renderModel() {
-    if (!model) return;
-    const build=selectedBuild();
-    if (!build) return;
-    const run=build.run, jobs=build.jobs || [];
-    $("timeline-title").textContent="Build #" + run.run_number + " timeline";
-    $("architecture-title").textContent="Architecture details · #" + run.run_number;
-    renderHistory(model.builds);
-    renderTimeline(run,jobs);
-    renderArchitectures(jobs);
-    renderRelease(build.release || model.release);
-    renderArtifacts({artifacts:build.artifacts || []},run);
+  function renderHistory() {
+    const builds=filteredBuilds();
+    $("build-count").textContent=builds.length+" "+plural(builds.length,"сборка","сборки","сборок");
+    $("filters").querySelectorAll("[data-filter]").forEach(b=>b.setAttribute("aria-pressed",String(filters.kind===b.dataset.filter)));
+    $("history").innerHTML=builds.slice(0,filters.limit).map(b=>{
+      const r=b.run,p=progress(b),s=state(r),key="build/"+r.id,expanded=disclosureState().get(key)===true;
+      return '<details class="build-row" data-fold="'+esc(key)+'" data-build-id="'+esc(r.id)+'"'+(expanded?' open':'')+'><summary class="build-select" aria-label="'+esc(kindLabel(b)+" сборка №"+r.run_number+", "+s.label)+'"><div><div class="build-name"><span class="type-tag '+esc(b.kind)+'">'+esc(kindLabel(b))+'</span><span>№'+esc(r.run_number)+'</span>'+(b.pr_number?'<span>PR №'+esc(b.pr_number)+'</span>':'')+'</div><div class="build-sub">'+esc((b.release?.tag_name || b.baseline_tag || (b.kind==="test"?"Без публикации релиза":"APK ещё не опубликован"))+" · "+dateText(r.created_at))+'</div></div><div class="build-progress"><div class="stage-count">'+(p.total?'Завершено этапов: '+p.finished+' / '+p.total:'Ожидание заданий')+'</div><div class="stage-meter" role="progressbar" aria-label="Завершённые этапы" aria-valuenow="'+p.finished+'" aria-valuemax="'+(p.total||1)+'"><span style="width:'+p.percent+'%"></span></div></div><div class="build-duration" data-live-run="'+esc(r.id)+'">'+esc(formatDuration(durationMs(r)))+'</div><div class="build-status '+statusTextClass(r)+'">'+esc(s.label)+'</div></summary><div class="build-body" data-build-body'+(expanded?' data-loaded="true"':'')+'>'+ (expanded?buildDetails(b):'') +'</div></details>';
+    }).join("") || '<div class="empty">'+(filters.kind==="active"?'Сейчас нет активных сборок.':filters.date?'В этот день сборок не было.':'Сборок за выбранный период пока нет.')+'</div>';
+    $("load-more").hidden=builds.length<=filters.limit;
   }
-
+  function renderArtifacts(artifacts,run,target=$("artifacts-card")) {
+    const list=(artifacts.artifacts||[]).filter(a=>/^Argon-(arm64|arm)-/.test(a.name));
+    const markup='<h3>APK этой сборки</h3>'+(list.length?'<ul class="artifacts">'+list.map(a=>'<li>'+esc(a.name)+' <span class="artifact-size">'+esc(formatBytes(a.size_in_bytes))+(a.expired || (a.expires_at&&ms(a.expires_at)<Date.now())?' · срок хранения истёк':'')+'</span></li>').join("")+'</ul><p>'+link(run.html_url,"Открыть сборку и скачать APK")+'</p>':'<div class="subtle">Готовые артефакты APK пока отсутствуют. Успех сборки подтверждается отдельно от наличия файлов.</div>');
+    if(target)target.innerHTML=markup;
+    return markup;
+  }
+  function buildDetails(b) {
+    const r=b.run,p=progress(b),s=state(r),prefix="build/"+r.id+"/";
+    const metrics=metric("Вся сборка",formatDuration(durationMs(r)),"включая ожидание повторов",r.id)+metric("Работа исполнителей",formatDuration(r.runner_ms),"сумма заданий, без ожидания")+metric(b.kind==="test"?"PR для проверки":"Новых PR в APK",b.kind==="test"?(b.pr_number?'№'+b.pr_number:'—'):(b.pr_count ?? '—'),b.kind==="test"?'закреплённый коммит':b.baseline_tag || 'от предыдущего APK');
+    const parts=findJobs(b.jobs||[]);
+    return '<div class="detail-panel"><div class="detail-heading"><div><h2>'+esc(kindLabel(b)+" сборка №"+r.run_number)+'</h2><div class="subtle">'+esc((b.pr_number?"PR №"+b.pr_number+" · ":"")+(b.kind==="test"?"Отдельное тестовое приложение Argon Test":"Релизное приложение Argon"))+'</div></div><div class="pill status-'+esc(s.key)+'"><span class="dot"></span><span>'+esc(s.label)+'</span></div></div><div class="detail-meta">'+link(r.html_url,"Журнал сборки в GitHub")+'<span>Начало: '+esc(dateText(r.first_started_at||r.created_at))+'</span><span>Исходники: '+(b.source_sha?link('https://github.com/'+model.repository+'/commit/'+b.source_sha,b.source_sha.slice(0,8)):'не установлены')+'</span><span>Повторных попыток: '+Math.max(0,(r.run_attempt||1)-1)+'</span></div><div class="metrics">'+metrics+'</div><div class="pipeline">'+renderPipeline(r,b.jobs||[],b.kind==="test",null)+'</div><h3 class="section-title">Время этапов · завершено '+p.finished+' из '+p.total+'</h3><div class="timeline">'+renderTimeline(r,b.jobs||[],null)+'</div><h3 class="section-title">Архитектуры и попытки</h3><div class="architecture-grid">'+renderArchitecture("arm64-v8a",parts.arm64,prefix)+renderArchitecture("armeabi-v7a",parts.arm,prefix)+'</div><div class="card" style="margin-top:14px">'+renderArtifacts({artifacts:b.artifacts||[]},r,null)+'</div></div>';
+  }
+  function diffValues(diff) {
+    if(!diff) return '<p class="subtle">Сравнение исходников пока недоступно.</p>';
+    const files=diff.changed_files==null?'—':(diff.files_complete?'':'≥ ')+diff.changed_files;
+    return '<div class="diff-values"><span>'+esc(diff.commits??'—')+' коммитов</span><span>'+esc(files)+' файлов</span>'+(diff.additions!=null?'<span class="add">+'+esc(diff.additions)+'</span><span class="del">−'+esc(diff.deletions)+'</span>':'')+'</div>'+(!diff.files_complete&&diff.changed_files!=null?'<p class="subtle">Статистика строк показана по первым 300 файлам.</p>':'')+(diff.status==='diverged'?'<p class="subtle">Ветки разошлись: показан diff от общего предка.</p>':'');
+  }
+  function prsList(prs) {return prs?.length?'<ul class="pr-list">'+prs.map(p=>'<li>'+link(p.html_url,'#'+p.number+' '+p.title)+'</li>').join("")+'</ul>':'';}
+  function filesList(diff) {
+    if(!diff?.files?.length)return '';
+    return '<details class="files" data-fold="unreleased-files"><summary>Изменённые файлы ('+diff.files.length+(diff.files_complete?'':'+')+')</summary>'+diff.files.map(f=>'<div class="file-row"><span class="file-path">'+esc(f.filename)+(f.previous_filename?'<br>← '+esc(f.previous_filename):'')+'</span><span class="file-stats"><span class="add">+'+esc(f.additions||0)+'</span> <span class="del">−'+esc(f.deletions||0)+'</span></span></div>').join("")+'</details>';
+  }
+  function renderChanges() {
+    const u=model.unreleased||{},release=model.release;
+    $("unreleased").innerHTML='<h3>Что ещё не вошло в APK</h3><div class="subtle">'+(release?'После '+esc(release.tag_name):'Опубликованного APK пока нет')+'</div>'+diffValues(u.comparison)+(u.pr_count!=null?'<p><strong>'+esc(u.pr_count)+' PR</strong> уже слиты в main после этого APK.</p>':'')+prsList(u.included_prs)+(u.comparison?.html_url?'<div class="pr-links">'+link(u.comparison.html_url,'Открыть полный diff с main')+'</div>':'')+filesList(u.comparison);
+    $("open-prs").innerHTML=(model.open_prs||[]).map(pr=>{
+      const current=pr.test_runs?.find(t=>t.current),older=pr.test_runs?.length;
+      return '<details class="pr-item" data-fold="pr/'+esc(pr.number)+'"><summary class="pr-summary"><h4>'+esc('#'+pr.number+' '+pr.title)+'</h4></summary><div class="pr-body"><span class="pr-state">'+(pr.draft?'Черновик':'Открыт')+' · '+esc(pr.author||'')+' · '+esc(timeAgo(pr.updated_at))+'</span><div class="diff-values"><span>'+esc(pr.changed_files??'—')+' файлов в PR</span><span class="add">+'+esc(pr.additions??'—')+'</span><span class="del">−'+esc(pr.deletions??'—')+'</span></div><p>'+(current?'Тест текущего коммита: '+link(current.html_url,state(current).label):older?'Есть тест предыдущего коммита. Текущий ещё не собран.':'Тестовая сборка текущего коммита ещё не найдена.')+'</p><p>От опубликованного APK до ветки PR:</p>'+diffValues(pr.comparison)+'<div class="pr-links">'+link(pr.html_url,'Открыть PR в GitHub')+link(pr.html_url+'/files','Только изменения PR')+(pr.comparison?.html_url?link(pr.comparison.html_url,'Diff от APK'):'')+'</div></div></details>';
+    }).join("") || '<div class="subtle">Открытых PR в main сейчас нет.</div>';
+  }
+  function renderReleases() {
+    $("releases").innerHTML=(model.releases||[]).map(r=>'<details class="release-item" data-fold="release/'+esc(r.id||r.tag_name)+'"><summary class="release-top"><div><div class="release-title">'+esc(r.tag_name||r.name)+'</div><div class="subtle">'+esc(dateText(r.published_at))+' · '+(r.source_sha?link('https://github.com/'+model.repository+'/commit/'+r.source_sha,r.source_sha.slice(0,8)):'исходники не установлены')+'</div></div><div class="pr-number">'+esc(r.pr_count??'—')+'<small>'+ (r.initial_release?'PR в истории':'новых PR') +'</small></div></summary><div class="release-body"><div class="subtle" style="margin-top:10px">Подтверждённых слияний PR в истории: '+esc(r.total_pr_count??'—')+' слитых PR. Новые PR считаются от предыдущего доступного APK.</div>'+diffValues(r.comparison)+'<div class="downloads">'+link(r.html_url,'Релиз в GitHub','download')+(r.assets||[]).filter(a=>a.name.endsWith('.apk')).map(a=>link(a.browser_download_url,a.name.includes('arm64')?'Скачать ARM64':'Скачать ARMv7','download')).join('')+(r.comparison?.html_url?link(r.comparison.html_url,'Все изменения','download'):'')+'</div>'+(r.included_prs?.length?'<details class="files" data-fold="release-prs/'+esc(r.id||r.tag_name)+'"><summary>Какие PR вошли в релиз</summary>'+prsList(r.included_prs)+'</details>':'')+'</div></details>').join('') || '<div class="card empty">Опубликованных релизов пока нет.</div>';
+  }
+  function renderModel() {if(!model)return;rememberDisclosures();renderOverview();renderHistory();renderChanges();renderReleases();$("change-count").textContent=(model.unreleased?.pr_count ?? "—")+" PR в main · открытых PR: "+(model.open_prs||[]).length;$("release-count").textContent=(model.releases||[]).length+" "+plural((model.releases||[]).length,"релиз","релиза","релизов");restoreDisclosures();}
+  function normalizeSnapshot(snapshot) {
+    const builds=(snapshot.builds||[]).map(b=>({...b,kind:b.kind||'release'}));
+    return {...snapshot,repository:snapshot.repository||'Loopfade/argon',builds,releases:snapshot.releases||(snapshot.release?[snapshot.release]:[]),days:snapshot.days||[],open_prs:snapshot.open_prs||[]};
+  }
   async function loadDashboard() {
-    const refresh=$("refresh");
-    refresh.disabled=true;
-    refresh.textContent="Refreshing…";
-    $("notice").classList.remove("error");
+    const refresh=$("refresh");refresh.disabled=true;refresh.textContent="Обновляется…";
     try {
-      const snapshot=await requestSnapshot();
-      let builds=Array.isArray(snapshot.builds) ? snapshot.builds.slice(0,3) : [];
-      if (!builds.length) {
-        const runs=snapshot.runs || [];
-        const latest=snapshot.latest || runs[0];
-        if (latest) builds=[{
-          run:latest,
-          jobs:snapshot.jobs || [],
-          artifacts:snapshot.artifacts || []
-        }];
-      }
-      if (!builds.length) throw new Error("No Build Argon runs in dashboard snapshot.");
-
-      const previous=model && model.selectedRunId;
-      const selected=previous && builds.some(build => String(build.run.id) === String(previous))
-        ? String(previous) : String(builds[0].run.id);
-      model={
-        builds:builds,
-        selectedRunId:selected,
-        release:snapshot.release || null
-      };
-      renderModel();
-      const age=snapshot.generated_at ? timeAgo(snapshot.generated_at) : "unknown";
-      $("notice").textContent =
-        "Read-only dashboard snapshot generated by GitHub Actions " + age +
-        ". No browser GitHub API token is used, and this page cannot start, rerun or cancel builds.";
+      const snapshot=normalizeSnapshot(await requestSnapshot());
+      const disclosures=model?.disclosures || new Map();
+      model={...snapshot,disclosures};renderModel();
+      $("notice").classList.remove("error");
+      $("notice").textContent='Данные обновлены '+timeAgo(snapshot.generated_at)+'. Завершённые этапы показывают ход задания, а не процент компиляции. Время исполнителей суммируется отдельно от длительности сборок.'+(snapshot.window?.partial?' История запусков получена не полностью.':'')+(!snapshot.schema_version?' История за 30 дней обновляется.':'');
     } catch(error) {
+      $("notice").classList.add("error");$("notice").textContent='Не удалось обновить данные. Последняя доступная информация сохранена; попробуйте обновить страницу позже.';
       console.error(error);
-      $("notice").classList.add("error");
-      $("notice").textContent =
-        "Could not load dashboard-data.json: " + error.message +
-        ". The snapshot updater may still be publishing the latest data.";
-    } finally {
-      refresh.disabled=false;
-      refresh.textContent="Refresh";
-    }
+    } finally {refresh.disabled=false;refresh.textContent="Обновить";}
   }
-
   $("refresh").addEventListener("click",loadDashboard);
+  $("filters").querySelectorAll("[data-filter]").forEach(button=>button.addEventListener("click",()=>{filters.kind=button.dataset.filter;filters.limit=20;renderModel();}));
+  $("date-reset").addEventListener("click",()=>{filters.date="";renderModel();});
+  $("load-more").addEventListener("click",()=>{filters.limit+=20;renderModel();});
   loadDashboard();
   setInterval(loadDashboard,60*1000);
-  setInterval(() => {
-    const build=selectedBuild();
-    if (build && build.run.status !== "completed") renderModel();
+  setInterval(()=>{
+    if(!model)return;
+    document.querySelectorAll("[data-live-run]").forEach(element=>{
+      const build=model.builds.find(b=>String(b.run.id)===element.dataset.liveRun);
+      if(build&&build.run.status!=="completed")element.textContent=formatDuration(durationMs(build.run));
+    });
   },1000);
 })();
 </script>

@@ -11,6 +11,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import apply_external_navigation as patch
 from external_navigation_flow import OVERLAY, run_flow
 
+EXPLICIT_ACTIONS = (ROOT / "tests/fixtures/external_navigation/ExplicitActions.java.in").read_text()
+HELPER_API = (ROOT / "tests/fixtures/external_navigation/ExternalNavigationHelper.java.in").read_text()
+
 
 class ExternalNavigationTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("java"), "JDK required")
@@ -23,8 +26,12 @@ class ExternalNavigationTests(unittest.TestCase):
             patch.patch_delegate: "    /** Adds a window id to the intent, if necessary. */",
             patch.patch_handler: ('        targetIntent.removeExtra(EXTRA_BROWSER_FALLBACK_URL);\n'
                                  '        if (canLaunchExternalFallback) {\n'
-                                 '        Uri.Builder builder = new Uri.Builder().scheme("market").authority("details");'),
+                                 '        Uri.Builder builder = new Uri.Builder().scheme("market").authority("details");\n'
+                                 '    @Override\n    public void launchExternalApp(Intent intent, Context context) {'),
+            patch.patch_helper: HELPER_API,
             patch.patch_chrome_delegate: "    @Override\n    public boolean isApplicationInForeground() {",
+            patch.patch_context_menu_delegate: EXPLICIT_ACTIONS,
+            patch.patch_open_in_app: EXPLICIT_ACTIONS,
             patch.patch_menu: ('    <org.chromium.components.browser_ui.settings.ChromeBasePreference\n'
                                '        android:fragment="org.chromium.chrome.browser.homepage.settings.HomepageSettings"'),
             patch.patch_privacy_menu: patch.SECURITY_SECTION,
@@ -74,8 +81,12 @@ class ExternalNavigationTests(unittest.TestCase):
                     patch.patch_delegate: '    /** Adds a window id to the intent, if necessary. */',
                     patch.patch_handler: ('        targetIntent.removeExtra(EXTRA_BROWSER_FALLBACK_URL);\n'
                                          '        if (canLaunchExternalFallback) {\n'
-                                         '        Uri.Builder builder = new Uri.Builder().scheme("market").authority("details");'),
+                                         '        Uri.Builder builder = new Uri.Builder().scheme("market").authority("details");\n'
+                                         '    @Override\n    public void launchExternalApp(Intent intent, Context context) {'),
+                    patch.patch_helper: HELPER_API,
                     patch.patch_chrome_delegate: '    @Override\n    public boolean isApplicationInForeground() {',
+                    patch.patch_context_menu_delegate: EXPLICIT_ACTIONS,
+                    patch.patch_open_in_app: EXPLICIT_ACTIONS,
                     patch.patch_menu: (patch.LEGACY_MENU_ENTRY + '    <org.chromium.components.browser_ui.settings.ChromeBasePreference\n'
                                       '        android:fragment="org.chromium.chrome.browser.homepage.settings.HomepageSettings"'),
                     patch.patch_java_sources: 'chrome_java_ext_rel_path_sources = [',

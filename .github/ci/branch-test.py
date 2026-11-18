@@ -6,8 +6,11 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ".github/workflows/build-test-branch.yml"
@@ -125,13 +128,69 @@ def plan():
     emit(version_code=version)
 
 
+def collect():
+    """Verify both APKs from this run, including successful earlier attempts."""
+    sha = check_checkout()
+    run_id = positive_number(os.environ["GITHUB_RUN_ID"])
+    attempt = positive_number(os.environ["GITHUB_RUN_ATTEMPT"])
+    certificate = os.environ["BUILD_CERTIFICATE"]
+    if not re.fullmatch(r"[0-9a-f]{64}", certificate):
+        raise ValueError("Expected the planned release certificate")
+    pipeline = module("branch_test_pipeline", ".github/ci/full-build.py")
+    lock = json.loads((ROOT / "build-lock.json").read_text())
+    identity = pipeline.application_identity(lock, "release")
+    if identity.get("version_code") != 1000000000 + positive_number(os.environ["GITHUB_RUN_NUMBER"]):
+        raise ValueError("Test versionCode does not belong to this run")
+    matrix = json.loads(os.environ["TEST_BUILD_MATRIX"])["include"]
+    if (len(matrix) != 2 or {item["arch"] for item in matrix} != {"arm64", "arm"}):
+        raise ValueError("Expected both planned test architectures")
+    fingerprints = {item["arch"]: item["fingerprint"] for item in matrix}
+    prepared = pipeline.image_fingerprint()
+    pages = pipeline.api(f"actions/runs/{run_id}/artifacts?per_page=100", paginate=True)
+    artifacts = [item for page in pages for item in page["artifacts"]]
+    selected = {}
+    for arch in ("arm64", "arm"):
+        expected = pipeline.artifact_fingerprint(
+            sha, arch, "release", certificate, prepared, True, identity["version_code"])
+        if fingerprints[arch] != expected:
+            raise ValueError("Test artifact fingerprint changed after planning")
+        name = f"Argon-{arch}-{sha}-{expected}"
+        matches = [item for item in artifacts if item["name"] == name and not item["expired"]]
+        if len(matches) != 1:
+            raise ValueError(f"Expected exactly one available {arch} APK in this run")
+        selected[arch] = matches[0]
+        positive_number(str(selected[arch]["id"]))
+
+    jdk = Path(os.environ["JAVA_HOME"])
+    sdk = Path(os.environ.get("ANDROID_HOME") or os.environ["ANDROID_SDK_ROOT"])
+    # Verify the complete pair before exposing either output to upload-artifact.
+    # The immutable per-architecture build artifacts remain untouched.
+    with tempfile.TemporaryDirectory(prefix="argon-test-apks-") as temporary:
+        verified = {}
+        for arch, item in selected.items():
+            destination = Path(temporary) / arch
+            destination.mkdir()
+            payload = pipeline.extract_artifact(item["id"], destination)
+            verified[arch] = pipeline.verify_artifact(
+                payload, sha, arch, "release", fingerprints[arch], certificate, sdk, jdk)
+        for arch, directory in verified.items():
+            shutil.copytree(directory, ROOT / "artifacts" / pipeline.TARGET_ABIS[arch])
+
+    with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+        summary.write(f"## Оба тестовых APK для попытки №{attempt}\n\n"
+                      f"Коммит: `{sha}`. Проверены подпись, происхождение и контрольные суммы.\n\n"
+                      "Готовые файлы прикрепляются к этой попытке как "
+                      "`Argon-Test-arm64-v8a` и `Argon-Test-armeabi-v7a`. "
+                      "Повторная компиляция не выполняется.\n")
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("source", "plan"))
+    parser.add_argument("action", choices=("source", "plan", "collect"))
     args = parser.parse_args()
     try:
-        {"source": source, "plan": plan}[args.action]()
-    except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
+        {"source": source, "plan": plan, "collect": collect}[args.action]()
+    except (ValueError, KeyError, OSError, zipfile.BadZipFile, subprocess.CalledProcessError) as error:
         print(f"::error::{error}", file=sys.stderr)
         sys.exit(1)

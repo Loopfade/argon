@@ -1,5 +1,5 @@
 name: Сборка Argon test из PR (без публикации)
-run-name: Тестовая сборка Argon — PR №${{ inputs.pr_number }}
+run-name: Тестовая сборка Argon — PR №${{ inputs.pr_number }} · запуск №${{ github.run_number }}
 
 # Run on main to share compilation caches; compile the selected PR head SHA.
 on:
@@ -126,10 +126,53 @@ jobs:
       TITANIUM_RU_KEY_PASSWORD: ${{ secrets.TITANIUM_RU_KEY_PASSWORD }}
       TITANIUM_RU_KEY_ALIAS: ${{ secrets.TITANIUM_RU_KEY_ALIAS }}
 
+  collect:
+    name: Прикрепить оба готовых APK к текущей попытке
+    needs: [plan, build]
+    if: >-
+      always() && !cancelled() && needs.plan.result == 'success' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    env:
+      BUILD_SOURCE_SHA: ${{ needs.plan.outputs.sha }}
+      BUILD_CERTIFICATE: ${{ needs.plan.outputs.certificate }}
+      TEST_BUILD_MATRIX: ${{ needs.plan.outputs.matrix }}
+      ARGON_TEST_VERSION_CODE: ${{ needs.plan.outputs.version_code }}
+    steps:
+      - name: Получить закреплённые исходники тестовой сборки
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - name: Скачать и проверить оба APK из всех попыток этого запуска
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/ci/branch-test.py collect
+      - name: Прикрепить итоговый APK ARM64
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Argon-Test-arm64-v8a
+          path: artifacts/arm64-v8a/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+      - name: Прикрепить итоговый APK ARMv7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Argon-Test-armeabi-v7a
+          path: artifacts/armeabi-v7a/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
   cleanup:
     name: Сохранить текущий образ после завершения всех сборок
     continue-on-error: true
-    needs: [plan, image, build]
+    needs: [plan, image, build, collect]
     if: always() && !cancelled() && needs.image.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10

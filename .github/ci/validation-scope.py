@@ -89,8 +89,6 @@ def main():
         for key, value in selected.items():
             output.write(f"{key}={str(value).lower()}\n")
         output.write(f"cache-prefix={prefix}\n")
-        # Restore compatible v1 PR snapshots during the key-format migration.
-        output.write(f"legacy-cache-prefix=argon-ccache-validation-v1-{prefix.rsplit('-', 1)[1]}\n")
     print("Выбранные проверки: " + json.dumps(selected, ensure_ascii=False))
 
 

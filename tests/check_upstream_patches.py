@@ -45,10 +45,20 @@ from test_exit_navigation import verify_navigation_gate
 from test_exit_android_api import SETTINGS_API, verify_exit_android_api
 from test_exit_sad_tab import verify_sad_tab_source
 from test_user_agent_runtime import run_settings_flow
-from test_user_agent_renderer import verify_native_state, verify_client_hints
+from test_user_agent_renderer import (
+    VIEWPORT_IMPL as UA_VIEWPORT_IMPL,
+    verify_native_state, verify_client_hints, verify_viewport,
+)
 from user_agent_navigation_flow import (
     CONTROLLER_PATH as UA_NAVIGATION_IMPL,
     verify_upstream as verify_user_agent_navigation,
+)
+from user_agent_scale_flow import (
+    SCALE_API_PATHS, verify_upstream as verify_user_agent_scale,
+)
+from domain_settings_lists import (
+    UPSTREAM_PATHS as DOMAIN_SETTINGS_API_PATHS,
+    verify_upstream as verify_domain_settings_lists,
 )
 from app_identity_upstream import INPUT_PATHS as IDENTITY_PATHS, verify_upstream as verify_app_identity
 from external_navigation_flow import verify_upstream as verify_external_navigation
@@ -113,7 +123,9 @@ BASE_PATHS += (SETTINGS_API,)
 BASE_PATHS += tuple(path for path in dark_themes.INPUT_PATHS if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
-BASE_PATHS += tuple(path for path in (UA_NAVIGATION_IMPL,) if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in (UA_NAVIGATION_IMPL, UA_VIEWPORT_IMPL) if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in SCALE_API_PATHS if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in DOMAIN_SETTINGS_API_PATHS if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in homepage.INPUT_PATHS if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in (*external_navigation.INPUT_PATHS, *external_navigation.API_PATHS)
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
@@ -630,11 +642,17 @@ def main():
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
+        print(verify_domain_settings_lists(src))
+        print(verify_user_agent_scale(src))
         print(verify_user_agent_navigation(
             (src / user_agent.NAVIGATION_CONTROLLER).read_text(),
             (src / UA_NAVIGATION_IMPL).read_text()))
         print(run_settings_flow().strip())
         print(verify_native_state((src / user_agent.UA_UTILS).read_text()))
+        print(verify_viewport(
+            (src / user_agent.DESKTOP_UA).read_text(),
+            (src / user_agent.UA_UTILS).read_text(),
+            (src / UA_VIEWPORT_IMPL).read_text()))
         print(verify_client_hints(
             (src / user_agent.CLIENT_HINTS).read_text(),
             (src / user_agent.FRAME_FETCH).read_text(),

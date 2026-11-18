@@ -28,6 +28,17 @@ class ApkIdentityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "authority"):
             verify_manifest(text, self.identity, self.production)
 
+    def test_androidx_content_pip_still_rejects_shared_task_affinities(self):
+        scoped = self.package + ".androidx.core.pip.contentpip.isolated"
+        for legacy in (False, True):
+            source = manifest_dump(legacy=legacy)
+            verify_manifest(source, self.identity, self.production)
+            for affinity in ("androidx.core.pip.contentpip.isolated",
+                             self.production + ".androidx.core.pip.contentpip.isolated"):
+                with self.subTest(legacy=legacy, affinity=affinity), \
+                     self.assertRaisesRegex(ValueError, "taskAffinity"):
+                    verify_manifest(source.replace(scoped, affinity), self.identity, self.production)
+
     def test_duplicate_authority_is_rejected(self):
         text = manifest_dump().replace(f"{self.package}.ChromeBrowserProvider;", f"{self.package}.FileProvider;")
         with self.assertRaisesRegex(ValueError, "Duplicate"):
