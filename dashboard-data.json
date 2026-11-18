@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-18T16:24:30Z",
+  "generated_at": "2026-11-18T16:31:12Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -10,6 +10,1668 @@
     "partial": false
   },
   "builds": [
+    {
+      "kind": "release",
+      "run": {
+        "id": 44347986116,
+        "run_number": 17,
+        "event": "workflow_dispatch",
+        "status": "in_progress",
+        "conclusion": null,
+        "head_branch": "main",
+        "path": ".github/workflows/build-all.yml",
+        "display_title": "\u0420\u0435\u043b\u0438\u0437\u043d\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u0438\u0437 main",
+        "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+        "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116",
+        "created_at": "2026-11-18T16:30:18Z",
+        "updated_at": "2026-11-18T16:30:43Z",
+        "run_started_at": "2026-11-18T16:30:18Z",
+        "run_attempt": 1,
+        "first_started_at": "2026-11-18T16:30:18Z",
+        "completed_at": null,
+        "duration_ms": 54000,
+        "runner_ms": 46000
+      },
+      "jobs": [
+        {
+          "id": 134955545839,
+          "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0435 APK",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116/job/134955545839",
+          "started_at": "2026-11-18T16:30:22Z",
+          "completed_at": "2026-11-18T16:30:38Z",
+          "run_attempt": 1,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:30:22Z",
+              "completed_at": "2026-11-18T16:30:23Z"
+            },
+            {
+              "name": "\u041e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u044c \u0440\u0435\u043b\u0438\u0437\u043d\u044b\u0439 \u0437\u0430\u043f\u0443\u0441\u043a \u0432\u043d\u0435 main",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:30:23Z",
+              "completed_at": "2026-11-18T16:30:23Z"
+            },
+            {
+              "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:30:23Z",
+              "completed_at": "2026-11-18T16:30:30Z"
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e\u0431\u0435\u0438\u0445 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:30:30Z",
+              "completed_at": "2026-11-18T16:30:30Z"
+            },
+            {
+              "name": "\u0421\u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0435 APK",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:30:30Z",
+              "completed_at": "2026-11-18T16:30:36Z"
+            },
+            {
+              "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0439 APK ARM64 \u043a \u044d\u0442\u043e\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0443",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T16:30:36Z",
+              "completed_at": "2026-11-18T16:30:36Z"
+            },
+            {
+              "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0439 APK ARMv7 \u043a \u044d\u0442\u043e\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0443",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T16:30:36Z",
+              "completed_at": "2026-11-18T16:30:36Z"
+            },
+            {
+              "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-18T16:30:36Z",
+              "completed_at": "2026-11-18T16:30:37Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-18T16:30:37Z",
+              "completed_at": "2026-11-18T16:30:37Z"
+            }
+          ],
+          "duration_ms": 16000,
+          "attempts": [
+            {
+              "id": 134955545839,
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0435 APK",
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116/job/134955545839",
+              "started_at": "2026-11-18T16:30:22Z",
+              "completed_at": "2026-11-18T16:30:38Z",
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-18T16:30:22Z",
+                  "completed_at": "2026-11-18T16:30:23Z"
+                },
+                {
+                  "name": "\u041e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u044c \u0440\u0435\u043b\u0438\u0437\u043d\u044b\u0439 \u0437\u0430\u043f\u0443\u0441\u043a \u0432\u043d\u0435 main",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 2,
+                  "started_at": "2026-11-18T16:30:23Z",
+                  "completed_at": "2026-11-18T16:30:23Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-18T16:30:23Z",
+                  "completed_at": "2026-11-18T16:30:30Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e\u0431\u0435\u0438\u0445 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-18T16:30:30Z",
+                  "completed_at": "2026-11-18T16:30:30Z"
+                },
+                {
+                  "name": "\u0421\u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0435 APK",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-18T16:30:30Z",
+                  "completed_at": "2026-11-18T16:30:36Z"
+                },
+                {
+                  "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0439 APK ARM64 \u043a \u044d\u0442\u043e\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0443",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "number": 6,
+                  "started_at": "2026-11-18T16:30:36Z",
+                  "completed_at": "2026-11-18T16:30:36Z"
+                },
+                {
+                  "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0439 APK ARMv7 \u043a \u044d\u0442\u043e\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0443",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "number": 7,
+                  "started_at": "2026-11-18T16:30:36Z",
+                  "completed_at": "2026-11-18T16:30:36Z"
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 14,
+                  "started_at": "2026-11-18T16:30:36Z",
+                  "completed_at": "2026-11-18T16:30:37Z"
+                },
+                {
+                  "name": "Complete job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 15,
+                  "started_at": "2026-11-18T16:30:37Z",
+                  "completed_at": "2026-11-18T16:30:37Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 134955767010,
+          "name": "\u041f\u043e\u0434\u043e\u0431\u0440\u0430\u0442\u044c \u0441\u043e\u0432\u043c\u0435\u0441\u0442\u0438\u043c\u044b\u0439 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437 Chromium / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116/job/134955767010",
+          "started_at": "2026-11-18T16:30:42Z",
+          "completed_at": null,
+          "run_attempt": 1,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:30:43Z",
+              "completed_at": "2026-11-18T16:30:47Z"
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0439 \u043a\u043e\u043c\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 2,
+              "started_at": "2026-11-18T16:30:47Z",
+              "completed_at": "2026-11-18T16:30:47Z"
+            },
+            {
+              "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:30:47Z",
+              "completed_at": "2026-11-18T16:31:04Z"
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:31:04Z",
+              "completed_at": "2026-11-18T16:31:05Z"
+            },
+            {
+              "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0442\u0435\u0433 \u043e\u0431\u0440\u0430\u0437\u0430",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:31:05Z",
+              "completed_at": "2026-11-18T16:31:05Z"
+            },
+            {
+              "name": "\u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T16:31:05Z",
+              "completed_at": "2026-11-18T16:31:08Z"
+            },
+            {
+              "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+              "status": "in_progress",
+              "conclusion": null,
+              "number": 7,
+              "started_at": "2026-11-18T16:31:08Z",
+              "completed_at": null
+            },
+            {
+              "name": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u0441 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0449\u0438\u043c\u0438 \u0432\u0445\u043e\u0434\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 8,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
+              "status": "pending",
+              "conclusion": null,
+              "number": 9,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+              "status": "pending",
+              "conclusion": null,
+              "number": 10,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+              "status": "pending",
+              "conclusion": null,
+              "number": 11,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+              "status": "pending",
+              "conclusion": null,
+              "number": 12,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+              "status": "pending",
+              "conclusion": null,
+              "number": 13,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+              "status": "pending",
+              "conclusion": null,
+              "number": 24,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+              "status": "pending",
+              "conclusion": null,
+              "number": 25,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 26,
+              "started_at": null,
+              "completed_at": null
+            }
+          ],
+          "duration_ms": 0,
+          "attempts": [
+            {
+              "id": 134955767010,
+              "name": "\u041f\u043e\u0434\u043e\u0431\u0440\u0430\u0442\u044c \u0441\u043e\u0432\u043c\u0435\u0441\u0442\u0438\u043c\u044b\u0439 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437 Chromium / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116/job/134955767010",
+              "started_at": "2026-11-18T16:30:42Z",
+              "completed_at": null,
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-18T16:30:43Z",
+                  "completed_at": "2026-11-18T16:30:47Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0439 \u043a\u043e\u043c\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "number": 2,
+                  "started_at": "2026-11-18T16:30:47Z",
+                  "completed_at": "2026-11-18T16:30:47Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-18T16:30:47Z",
+                  "completed_at": "2026-11-18T16:31:04Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-18T16:31:04Z",
+                  "completed_at": "2026-11-18T16:31:05Z"
+                },
+                {
+                  "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0442\u0435\u0433 \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-18T16:31:05Z",
+                  "completed_at": "2026-11-18T16:31:05Z"
+                },
+                {
+                  "name": "\u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 6,
+                  "started_at": "2026-11-18T16:31:05Z",
+                  "completed_at": "2026-11-18T16:31:08Z"
+                },
+                {
+                  "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "number": 7,
+                  "started_at": "2026-11-18T16:31:08Z",
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u0441 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0449\u0438\u043c\u0438 \u0432\u0445\u043e\u0434\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 8,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 9,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 10,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 11,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 12,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 13,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 24,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 25,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 26,
+                  "started_at": null,
+                  "completed_at": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "attempts": [
+        {
+          "number": 1,
+          "run_started_at": "2026-11-18T16:30:18Z",
+          "conclusion": null,
+          "jobs": [
+            {
+              "id": 134955545839,
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0435 APK",
+              "status": "completed",
+              "conclusion": "success",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116/job/134955545839",
+              "started_at": "2026-11-18T16:30:22Z",
+              "completed_at": "2026-11-18T16:30:38Z",
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-18T16:30:22Z",
+                  "completed_at": "2026-11-18T16:30:23Z"
+                },
+                {
+                  "name": "\u041e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u044c \u0440\u0435\u043b\u0438\u0437\u043d\u044b\u0439 \u0437\u0430\u043f\u0443\u0441\u043a \u0432\u043d\u0435 main",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 2,
+                  "started_at": "2026-11-18T16:30:23Z",
+                  "completed_at": "2026-11-18T16:30:23Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-18T16:30:23Z",
+                  "completed_at": "2026-11-18T16:30:30Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e\u0431\u0435\u0438\u0445 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-18T16:30:30Z",
+                  "completed_at": "2026-11-18T16:30:30Z"
+                },
+                {
+                  "name": "\u0421\u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0435 APK",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-18T16:30:30Z",
+                  "completed_at": "2026-11-18T16:30:36Z"
+                },
+                {
+                  "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0439 APK ARM64 \u043a \u044d\u0442\u043e\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0443",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "number": 6,
+                  "started_at": "2026-11-18T16:30:36Z",
+                  "completed_at": "2026-11-18T16:30:36Z"
+                },
+                {
+                  "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u044b\u0439 APK ARMv7 \u043a \u044d\u0442\u043e\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0443",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "number": 7,
+                  "started_at": "2026-11-18T16:30:36Z",
+                  "completed_at": "2026-11-18T16:30:36Z"
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 14,
+                  "started_at": "2026-11-18T16:30:36Z",
+                  "completed_at": "2026-11-18T16:30:37Z"
+                },
+                {
+                  "name": "Complete job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 15,
+                  "started_at": "2026-11-18T16:30:37Z",
+                  "completed_at": "2026-11-18T16:30:37Z"
+                }
+              ]
+            },
+            {
+              "id": 134955767010,
+              "name": "\u041f\u043e\u0434\u043e\u0431\u0440\u0430\u0442\u044c \u0441\u043e\u0432\u043c\u0435\u0441\u0442\u0438\u043c\u044b\u0439 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437 Chromium / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116/job/134955767010",
+              "started_at": "2026-11-18T16:30:42Z",
+              "completed_at": null,
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-18T16:30:43Z",
+                  "completed_at": "2026-11-18T16:30:47Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0439 \u043a\u043e\u043c\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "number": 2,
+                  "started_at": "2026-11-18T16:30:47Z",
+                  "completed_at": "2026-11-18T16:30:47Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-18T16:30:47Z",
+                  "completed_at": "2026-11-18T16:31:04Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0445\u043e\u0434\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-18T16:31:04Z",
+                  "completed_at": "2026-11-18T16:31:05Z"
+                },
+                {
+                  "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0442\u0435\u0433 \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-18T16:31:05Z",
+                  "completed_at": "2026-11-18T16:31:05Z"
+                },
+                {
+                  "name": "\u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 6,
+                  "started_at": "2026-11-18T16:31:05Z",
+                  "completed_at": "2026-11-18T16:31:08Z"
+                },
+                {
+                  "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "number": 7,
+                  "started_at": "2026-11-18T16:31:08Z",
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u0441 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0449\u0438\u043c\u0438 \u0432\u0445\u043e\u0434\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 8,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 9,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 10,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 11,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 12,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 13,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 24,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 25,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 26,
+                  "started_at": null,
+                  "completed_at": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "artifacts": [],
+      "source_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "source_verified": true,
+      "pr_number": null,
+      "release": null,
+      "pr_count": 4,
+      "included_prs": [
+        {
+          "number": 90,
+          "title": "Chromium 157.0.8103.78, \u043f\u0430\u043d\u0435\u043b\u044c Argon \u0438 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a",
+          "html_url": "https://github.com/Loopfade/argon/pull/90",
+          "state": "closed",
+          "draft": false,
+          "created_at": "2026-11-15T17:02:36Z",
+          "updated_at": "2026-11-18T16:23:45Z",
+          "merged_at": "2026-11-18T16:23:42Z",
+          "head_sha": "2a26d83f171376e6a7603f7fac164c0b8f17250d",
+          "merge_commit_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+          "author": "Loopfade"
+        },
+        {
+          "number": 88,
+          "title": "\u0423\u043f\u0440\u043e\u0441\u0442\u0438\u0442\u044c \u0442\u0435\u0441\u0442\u043e\u0432\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443, \u0438\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443 APK \u0438 \u043e\u043f\u0442\u0438\u043c\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c CI",
+          "html_url": "https://github.com/Loopfade/argon/pull/88",
+          "state": "closed",
+          "draft": false,
+          "created_at": "2026-11-15T11:48:58Z",
+          "updated_at": "2026-11-15T16:43:48Z",
+          "merged_at": "2026-11-15T16:43:47Z",
+          "head_sha": "4b0f26085fee4bc91f4a5d06b38b871c5e809aae",
+          "merge_commit_sha": "fdf42014978d81d184b58571edde5ad6ec73042a",
+          "author": "Loopfade"
+        },
+        {
+          "number": 87,
+          "title": "\u0418\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0440\u0430\u0441\u0448\u0438\u0440\u0435\u043d\u0438\u044f \u0438 User-Agent, \u0440\u0430\u0437\u0434\u0435\u043b\u0438\u0442\u044c Test \u0438 \u0440\u0435\u043b\u0438\u0437 \u0441 \u043e\u0431\u0449\u0435\u0439 \u043f\u043e\u0434\u043f\u0438\u0441\u044c\u044e \u0438 \u043a\u0435\u0448\u0430\u043c\u0438 main",
+          "html_url": "https://github.com/Loopfade/argon/pull/87",
+          "state": "closed",
+          "draft": false,
+          "created_at": "2026-11-15T02:19:53Z",
+          "updated_at": "2026-11-15T11:38:02Z",
+          "merged_at": "2026-11-15T11:37:59Z",
+          "head_sha": "ccfc515d4c914ec8cef8e86e71aeeea146c52f11",
+          "merge_commit_sha": "8b18ca414226076f59db11af6c3644f0f7cf9583",
+          "author": "Loopfade"
+        },
+        {
+          "number": 86,
+          "title": "\u0418\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0441\u0435\u0440\u0442\u0438\u0444\u0438\u043a\u0430\u0442\u044b, User-Agent \u0438 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441 \u0433\u043b\u0430\u0432\u043d\u043e\u0439",
+          "html_url": "https://github.com/Loopfade/argon/pull/86",
+          "state": "closed",
+          "draft": false,
+          "created_at": "2026-11-14T11:00:56Z",
+          "updated_at": "2026-11-14T18:51:30Z",
+          "merged_at": "2026-11-14T18:51:28Z",
+          "head_sha": "29a261b42c5446b5f403a55cc085df602b6dd31b",
+          "merge_commit_sha": "77fbe5b11efe8e1e9b879ec0357f0c8045e5dbbb",
+          "author": "Loopfade"
+        }
+      ],
+      "comparison": {
+        "base_sha": "e81726175bea598c04fbcb62334b9f4d6bec9153",
+        "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+        "status": "ahead",
+        "html_url": "https://github.com/Loopfade/argon/compare/e81726175bea598c04fbcb62334b9f4d6bec9153...ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+        "commits": 38,
+        "commits_complete": true,
+        "files_complete": true,
+        "changed_files": 125,
+        "additions": 8432,
+        "deletions": 2775,
+        "files": [
+          {
+            "filename": ".github/ci/branch-test.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 196,
+            "deletions": 0
+          },
+          {
+            "filename": ".github/ci/check-prepared-inputs.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 8,
+            "deletions": 1
+          },
+          {
+            "filename": ".github/ci/continue-build.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 3,
+            "deletions": 1
+          },
+          {
+            "filename": ".github/ci/full-build.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 23,
+            "deletions": 13
+          },
+          {
+            "filename": ".github/ci/prune-compiler-cache.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 51,
+            "deletions": 4
+          },
+          {
+            "filename": ".github/ci/prune-prepared-images.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 2,
+            "deletions": 0
+          },
+          {
+            "filename": ".github/ci/run-in-build-container.sh",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 0
+          },
+          {
+            "filename": ".github/ci/test-domain-policy.sh",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 28,
+            "deletions": 5
+          },
+          {
+            "filename": ".github/ci/update-dashboard.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 323,
+            "deletions": 72
+          },
+          {
+            "filename": ".github/ci/validation-scope.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 96,
+            "deletions": 0
+          },
+          {
+            "filename": ".github/workflows/build-all-no-publish.yml",
+            "previous_filename": null,
+            "status": "removed",
+            "additions": 0,
+            "deletions": 133
+          },
+          {
+            "filename": ".github/workflows/build-all.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 14
+          },
+          {
+            "filename": ".github/workflows/build-chromium-image.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 15,
+            "deletions": 2
+          },
+          {
+            "filename": ".github/workflows/build-test-branch.yml",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 196,
+            "deletions": 0
+          },
+          {
+            "filename": ".github/workflows/build-unified-arch.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 29,
+            "deletions": 4
+          },
+          {
+            "filename": ".github/workflows/deploy-dashboard.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 32,
+            "deletions": 4
+          },
+          {
+            "filename": ".github/workflows/update-dashboard.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 8,
+            "deletions": 4
+          },
+          {
+            "filename": ".github/workflows/validate.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 137,
+            "deletions": 35
+          },
+          {
+            "filename": "README.md",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 45,
+            "deletions": 10
+          },
+          {
+            "filename": "build-lock.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 4,
+            "deletions": 4
+          },
+          {
+            "filename": "build.sh",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 8,
+            "deletions": 2
+          },
+          {
+            "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgent.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 54,
+            "deletions": 72
+          },
+          {
+            "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.css",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 40,
+            "deletions": 1
+          },
+          {
+            "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.js",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 125,
+            "deletions": 84
+          },
+          {
+            "filename": "chromium_overlay/chrome/browser/resources/argon_home/i18n.js",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 16,
+            "deletions": 3
+          },
+          {
+            "filename": "chromium_overlay/chrome/browser/resources/argon_home/index.html",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 12,
+            "deletions": 1
+          },
+          {
+            "filename": "chromium_overlay/chrome/browser/resources/argon_home/state.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          },
+          {
+            "filename": "chromium_overlay/net/cert/titanium_ru_constraints.h",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 28,
+            "deletions": 12
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_certificate_domains_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_external_navigation_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 11
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 14,
+            "deletions": 8
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_certificate_domains_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_external_navigation_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 11
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 14,
+            "deletions": 8
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java",
+            "previous_filename": null,
+            "status": "removed",
+            "additions": 0,
+            "deletions": 120
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigationPolicy.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 11,
+            "deletions": 2
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigationSettings.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 14,
+            "deletions": 7
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/media/ArgonBackgroundPlaybackSettings.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 2,
+            "deletions": 0
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 3,
+            "deletions": 0
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonUserAgentPreference.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 78,
+            "deletions": 21
+          },
+          {
+            "filename": "dashboard-data.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 790,
+            "deletions": 758
+          },
+          {
+            "filename": "docker/chromium/Dockerfile",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 9,
+            "deletions": 2
+          },
+          {
+            "filename": "docs/build-pipeline.md",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 231,
+            "deletions": 18
+          },
+          {
+            "filename": "docs/external-navigation.md",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 9,
+            "deletions": 7
+          },
+          {
+            "filename": "docs/user-agent.md",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 64,
+            "deletions": 0
+          },
+          {
+            "filename": "index.html",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 251,
+            "deletions": 233
+          },
+          {
+            "filename": "patch.sh",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 0
+          },
+          {
+            "filename": "scripts/apk_identity.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 133,
+            "deletions": 0
+          },
+          {
+            "filename": "scripts/apply_external_navigation.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 55,
+            "deletions": 4
+          },
+          {
+            "filename": "scripts/apply_scoped_ca.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 50,
+            "deletions": 14
+          },
+          {
+            "filename": "scripts/apply_user_agent.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 133,
+            "deletions": 181
+          },
+          {
+            "filename": "scripts/build_identity.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 57,
+            "deletions": 3
+          },
+          {
+            "filename": "scripts/release_policy.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 9,
+            "deletions": 0
+          },
+          {
+            "filename": "scripts/sign_and_verify.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 21,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/CMakeLists.txt",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 11,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/apk_identity_fixture.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 52,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/app_identity_upstream.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 53,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/check_upstream_patches.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 39,
+            "deletions": 23
+          },
+          {
+            "filename": "tests/domain_settings_lists.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 170,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/external_navigation_flow.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 59,
+            "deletions": 3
+          },
+          {
+            "filename": "tests/external_navigation_search.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 2,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/fixtures/browsing_data_period.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/fixtures/certificates/README.md",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 18,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/certificates/check_extra_constraints.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 53,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/certificates/multi-san.pem",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 20,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/external_navigation/ExplicitActions.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 141,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/external_navigation/ExternalNavigationHelper.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 33,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/settings/CertificateDomainsJni.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 25,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/settings/DomainListFlow.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 175,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/settings/containment_methods.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 143,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/LICENSE.chromium",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 27,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 278,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 294,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/navigation_controller_android.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 73,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/navigation_controller_impl.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 87,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/page_scale.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 151,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/web_contents_viewport.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 21,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/generate_scoped_ca_fixtures.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 35,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/homepage/add-shortcut-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 3,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/homepage/backgrounds-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 7,
+            "deletions": 7
+          },
+          {
+            "filename": "tests/homepage/browser-bookmarks-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 26,
+            "deletions": 9
+          },
+          {
+            "filename": "tests/homepage/consistency-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 16,
+            "deletions": 15
+          },
+          {
+            "filename": "tests/homepage/editing.test.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/homepage/native-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 9,
+            "deletions": 9
+          },
+          {
+            "filename": "tests/homepage/regressions-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 8,
+            "deletions": 7
+          },
+          {
+            "filename": "tests/homepage/settings-navigation.mjs",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 19,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/homepage/settings-ui-check.mjs",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 93,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/homepage/shortcut-scale-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 12,
+            "deletions": 11
+          },
+          {
+            "filename": "tests/homepage/site-icons-ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 2,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/homepage/ui-check.mjs",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 16,
+            "deletions": 13
+          },
+          {
+            "filename": "tests/java/ArgonExternalNavigationTest.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 101,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/java/ArgonUserAgentRuntimeTest.java",
+            "previous_filename": null,
+            "status": "removed",
+            "additions": 0,
+            "deletions": 151
+          },
+          {
+            "filename": "tests/java/ArgonUserAgentSettingsTest.java",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 100,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/java/ArgonUserAgentTest.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 57,
+            "deletions": 70
+          },
+          {
+            "filename": "tests/scoped_ca_test.cc",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 104,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/test_apk_identity.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 115,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_app_identity.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 81,
+            "deletions": 19
+          },
+          {
+            "filename": "tests/test_background_playback_settings.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_branch_test.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 286,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_build_continuation.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/test_build_stages.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 17,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/test_ci_cache.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 74,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/test_coarse_location.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 119,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_dashboard_rendering.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 116,
+            "deletions": 5
+          },
+          {
+            "filename": "tests/test_dashboard_snapshot.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 152,
+            "deletions": 56
+          },
+          {
+            "filename": "tests/test_domain_settings_lists.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 31,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_domain_validation_cache.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 91,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_external_navigation.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/test_full_build.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 24,
+            "deletions": 8
+          },
+          {
+            "filename": "tests/test_patch.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 3
+          },
+          {
+            "filename": "tests/test_prepared_image_cleanup.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 3,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/test_release_publishing.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 18,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/test_test_apk_collection.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 227,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_user_agent.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 83,
+            "deletions": 82
+          },
+          {
+            "filename": "tests/test_user_agent_navigation.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 52,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_user_agent_renderer.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 248,
+            "deletions": 145
+          },
+          {
+            "filename": "tests/test_user_agent_runtime.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 147,
+            "deletions": 195
+          },
+          {
+            "filename": "tests/test_user_agent_scale.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 46,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_validation_scope.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 106,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_workflow_execution.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 60,
+            "deletions": 11
+          },
+          {
+            "filename": "tests/test_workflow_localization.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
+            "deletions": 9
+          },
+          {
+            "filename": "tests/test_workflow_wiring.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 65,
+            "deletions": 11
+          },
+          {
+            "filename": "tests/user_agent_navigation_flow.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 71,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/user_agent_scale_flow.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 140,
+            "deletions": 0
+          },
+          {
+            "filename": "vanadium",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          }
+        ]
+      },
+      "baseline_tag": "v157.0.8103.38-4"
+    },
     {
       "kind": "test",
       "run": {
@@ -54878,26 +56540,46 @@
     ]
   },
   "latest": {
-    "id": 44167021648,
-    "run_number": 5,
+    "id": 44347986116,
+    "run_number": 17,
     "event": "workflow_dispatch",
-    "status": "completed",
-    "conclusion": "success",
+    "status": "in_progress",
+    "conclusion": null,
     "head_branch": "main",
-    "path": ".github/workflows/build-test-branch.yml",
-    "display_title": "\u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u2014 PR \u211690",
-    "head_sha": "fdf42014978d81d184b58571edde5ad6ec73042a",
-    "html_url": "https://github.com/Loopfade/argon/actions/runs/44167021648",
-    "created_at": "2026-11-17T20:13:33Z",
-    "updated_at": "2026-11-18T09:31:21Z",
-    "run_started_at": "2026-11-18T08:05:14Z",
-    "run_attempt": 3,
-    "first_started_at": "2026-11-17T20:13:33Z",
-    "completed_at": "2026-11-18T09:31:21Z",
-    "duration_ms": 47868000,
-    "runner_ms": 110585000
+    "path": ".github/workflows/build-all.yml",
+    "display_title": "\u0420\u0435\u043b\u0438\u0437\u043d\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u0438\u0437 main",
+    "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+    "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116",
+    "created_at": "2026-11-18T16:30:18Z",
+    "updated_at": "2026-11-18T16:30:43Z",
+    "run_started_at": "2026-11-18T16:30:18Z",
+    "run_attempt": 1,
+    "first_started_at": "2026-11-18T16:30:18Z",
+    "completed_at": null,
+    "duration_ms": 54000,
+    "runner_ms": 46000
   },
   "runs": [
+    {
+      "id": 44347986116,
+      "run_number": 17,
+      "event": "workflow_dispatch",
+      "status": "in_progress",
+      "conclusion": null,
+      "head_branch": "main",
+      "path": ".github/workflows/build-all.yml",
+      "display_title": "\u0420\u0435\u043b\u0438\u0437\u043d\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u0438\u0437 main",
+      "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "html_url": "https://github.com/Loopfade/argon/actions/runs/44347986116",
+      "created_at": "2026-11-18T16:30:18Z",
+      "updated_at": "2026-11-18T16:30:43Z",
+      "run_started_at": "2026-11-18T16:30:18Z",
+      "run_attempt": 1,
+      "first_started_at": "2026-11-18T16:30:18Z",
+      "completed_at": null,
+      "duration_ms": 54000,
+      "runner_ms": 46000
+    },
     {
       "id": 44167021648,
       "run_number": 5,
@@ -56343,11 +58025,11 @@
     },
     {
       "date": "2026-11-18",
-      "release": 0,
+      "release": 1,
       "test": 0,
       "legacy": 0,
       "failed": 0,
-      "builds": 0
+      "builds": 1
     }
   ],
   "comparison_cache": {
@@ -60462,6 +62144,935 @@
       "deletions": null,
       "files": []
     },
+    "e81726175bea598c04fbcb62334b9f4d6bec9153...ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007": {
+      "base_sha": "e81726175bea598c04fbcb62334b9f4d6bec9153",
+      "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/e81726175bea598c04fbcb62334b9f4d6bec9153...ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "commits": 38,
+      "commit_shas": [
+        "0a3a4287d2883cda17b77817ba2ca657ed5947b0",
+        "139fdbc284fddf282b188f2c834b4788a9cd4a99",
+        "1a900ac45f4bcf9932baf9734c1298578eadfc49",
+        "200ab090b543bf3825a482875d4b2aaf7c7de6ad",
+        "29a261b42c5446b5f403a55cc085df602b6dd31b",
+        "2a26d83f171376e6a7603f7fac164c0b8f17250d",
+        "32a41520664ef5baf2daac6bd996059cc1711da1",
+        "40fa7938013da1df1d07dc67a50b4ccfcfbb7d1f",
+        "4b0f26085fee4bc91f4a5d06b38b871c5e809aae",
+        "596c3f7ae99b4e553e6578c0cc64ddd0aa2ccd80",
+        "5c801971fcf6bf116bb846ed0f4d77a210c6232b",
+        "673d20bf3532d4c9d54c351752c2b1f012c71137",
+        "6903f000ca8c4fd93a3bfe208537eb692473e6ef",
+        "6a365e9721f2c3edfb5053d93478585504319d3d",
+        "77fbe5b11efe8e1e9b879ec0357f0c8045e5dbbb",
+        "79a2a9e612e517eb996c3d79c9600be562e964f1",
+        "7c5225e29b44c7757c34de8578e655a6ff5c5236",
+        "87db941f40e4f4d9421c419117e0f355117b4d5f",
+        "8b18ca414226076f59db11af6c3644f0f7cf9583",
+        "95af5d8831cccf2da40a0fceab36cf73f443639a",
+        "aafecb0690bc84b2286fbabffab114314ffb66b5",
+        "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+        "ac458b9c5821bace0fa8cdb811717b786ccf4aa7",
+        "ad8fb37f197d9ac8f2537c843ba2590e620785a2",
+        "ae217f170868f204d854b2e6dc2d2e7f45274be4",
+        "b62c5977b88aff8d5a6c5d216890c20c0f362754",
+        "bde250ae7c7d43a7a1827a44d07841132f6db7f4",
+        "c02bbc6bd69c67df09688ea62438058188a326d7",
+        "c072a56410dd74f069bb3a3a884f850fb854a220",
+        "ccfc515d4c914ec8cef8e86e71aeeea146c52f11",
+        "d454590949300bfe3931bb4464ff39db2dd7e05e",
+        "d46e48ca33cc3a7001076826e458c0a7739ee002",
+        "d5a2c2b9d8e73a3e8c63835c7f4f398474ab7fc0",
+        "da973b81412cc313ed242665f1fae3aaa94748c6",
+        "e6bd75fbf00255be83f5a2901de97aa056506ef6",
+        "f0b9c08f6cdc5d5d46a20019151f9209c4a6e457",
+        "f9a960e81e80871bd6a466f07bda1a089f35a709",
+        "fdf42014978d81d184b58571edde5ad6ec73042a"
+      ],
+      "commits_complete": true,
+      "files_complete": true,
+      "changed_files": 125,
+      "additions": 8432,
+      "deletions": 2775,
+      "files": [
+        {
+          "filename": ".github/ci/branch-test.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 196,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/ci/check-prepared-inputs.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 1
+        },
+        {
+          "filename": ".github/ci/continue-build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 3,
+          "deletions": 1
+        },
+        {
+          "filename": ".github/ci/full-build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 23,
+          "deletions": 13
+        },
+        {
+          "filename": ".github/ci/prune-compiler-cache.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 51,
+          "deletions": 4
+        },
+        {
+          "filename": ".github/ci/prune-prepared-images.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/ci/run-in-build-container.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/ci/test-domain-policy.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 28,
+          "deletions": 5
+        },
+        {
+          "filename": ".github/ci/update-dashboard.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 323,
+          "deletions": 72
+        },
+        {
+          "filename": ".github/ci/validation-scope.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 96,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/workflows/build-all-no-publish.yml",
+          "previous_filename": null,
+          "status": "removed",
+          "additions": 0,
+          "deletions": 133
+        },
+        {
+          "filename": ".github/workflows/build-all.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 14
+        },
+        {
+          "filename": ".github/workflows/build-chromium-image.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 15,
+          "deletions": 2
+        },
+        {
+          "filename": ".github/workflows/build-test-branch.yml",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 196,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/workflows/build-unified-arch.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 29,
+          "deletions": 4
+        },
+        {
+          "filename": ".github/workflows/deploy-dashboard.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 32,
+          "deletions": 4
+        },
+        {
+          "filename": ".github/workflows/update-dashboard.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 4
+        },
+        {
+          "filename": ".github/workflows/validate.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 137,
+          "deletions": 35
+        },
+        {
+          "filename": "README.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 45,
+          "deletions": 10
+        },
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 4
+        },
+        {
+          "filename": "build.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 2
+        },
+        {
+          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgent.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 54,
+          "deletions": 72
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.css",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 40,
+          "deletions": 1
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.js",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 125,
+          "deletions": 84
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/i18n.js",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 16,
+          "deletions": 3
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/index.html",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 12,
+          "deletions": 1
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/state.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "chromium_overlay/net/cert/titanium_ru_constraints.h",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 28,
+          "deletions": 12
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_certificate_domains_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_external_navigation_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 11
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 14,
+          "deletions": 8
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_certificate_domains_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_external_navigation_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 11
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 14,
+          "deletions": 8
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java",
+          "previous_filename": null,
+          "status": "removed",
+          "additions": 0,
+          "deletions": 120
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigationPolicy.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 11,
+          "deletions": 2
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigationSettings.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 14,
+          "deletions": 7
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/media/ArgonBackgroundPlaybackSettings.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 3,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonUserAgentPreference.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 78,
+          "deletions": 21
+        },
+        {
+          "filename": "dashboard-data.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 790,
+          "deletions": 758
+        },
+        {
+          "filename": "docker/chromium/Dockerfile",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 2
+        },
+        {
+          "filename": "docs/build-pipeline.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 231,
+          "deletions": 18
+        },
+        {
+          "filename": "docs/external-navigation.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 7
+        },
+        {
+          "filename": "docs/user-agent.md",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 64,
+          "deletions": 0
+        },
+        {
+          "filename": "index.html",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 251,
+          "deletions": 233
+        },
+        {
+          "filename": "patch.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "scripts/apk_identity.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 133,
+          "deletions": 0
+        },
+        {
+          "filename": "scripts/apply_external_navigation.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 55,
+          "deletions": 4
+        },
+        {
+          "filename": "scripts/apply_scoped_ca.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 50,
+          "deletions": 14
+        },
+        {
+          "filename": "scripts/apply_user_agent.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 133,
+          "deletions": 181
+        },
+        {
+          "filename": "scripts/build_identity.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 57,
+          "deletions": 3
+        },
+        {
+          "filename": "scripts/release_policy.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 0
+        },
+        {
+          "filename": "scripts/sign_and_verify.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 21,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/CMakeLists.txt",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 11,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/apk_identity_fixture.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 52,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/app_identity_upstream.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 53,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/check_upstream_patches.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 39,
+          "deletions": 23
+        },
+        {
+          "filename": "tests/domain_settings_lists.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 170,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/external_navigation_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 59,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/external_navigation_search.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/certificates/README.md",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 18,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/certificates/check_extra_constraints.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 53,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/certificates/multi-san.pem",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 20,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/external_navigation/ExplicitActions.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 141,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/external_navigation/ExternalNavigationHelper.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 33,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/settings/CertificateDomainsJni.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 25,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/settings/DomainListFlow.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 175,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/settings/containment_methods.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 143,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/LICENSE.chromium",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 27,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 278,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 294,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/navigation_controller_android.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 73,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/navigation_controller_impl.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 87,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/page_scale.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 151,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/web_contents_viewport.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 21,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/generate_scoped_ca_fixtures.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 35,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/homepage/add-shortcut-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 3,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/homepage/backgrounds-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 7,
+          "deletions": 7
+        },
+        {
+          "filename": "tests/homepage/browser-bookmarks-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 26,
+          "deletions": 9
+        },
+        {
+          "filename": "tests/homepage/consistency-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 16,
+          "deletions": 15
+        },
+        {
+          "filename": "tests/homepage/editing.test.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/homepage/native-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 9
+        },
+        {
+          "filename": "tests/homepage/regressions-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 7
+        },
+        {
+          "filename": "tests/homepage/settings-navigation.mjs",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 19,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/homepage/settings-ui-check.mjs",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 93,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/homepage/shortcut-scale-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 12,
+          "deletions": 11
+        },
+        {
+          "filename": "tests/homepage/site-icons-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/homepage/ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 16,
+          "deletions": 13
+        },
+        {
+          "filename": "tests/java/ArgonExternalNavigationTest.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 101,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/java/ArgonUserAgentRuntimeTest.java",
+          "previous_filename": null,
+          "status": "removed",
+          "additions": 0,
+          "deletions": 151
+        },
+        {
+          "filename": "tests/java/ArgonUserAgentSettingsTest.java",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 100,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/java/ArgonUserAgentTest.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 57,
+          "deletions": 70
+        },
+        {
+          "filename": "tests/scoped_ca_test.cc",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 104,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/test_apk_identity.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 115,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_app_identity.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 81,
+          "deletions": 19
+        },
+        {
+          "filename": "tests/test_background_playback_settings.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_branch_test.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 286,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_build_continuation.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_build_stages.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 17,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_ci_cache.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 74,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_coarse_location.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 119,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_dashboard_rendering.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 116,
+          "deletions": 5
+        },
+        {
+          "filename": "tests/test_dashboard_snapshot.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 152,
+          "deletions": 56
+        },
+        {
+          "filename": "tests/test_domain_settings_lists.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 31,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_domain_validation_cache.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 91,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_external_navigation.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/test_full_build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 24,
+          "deletions": 8
+        },
+        {
+          "filename": "tests/test_patch.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/test_prepared_image_cleanup.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 3,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_release_publishing.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 18,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_test_apk_collection.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 227,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 83,
+          "deletions": 82
+        },
+        {
+          "filename": "tests/test_user_agent_navigation.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 52,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_renderer.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 248,
+          "deletions": 145
+        },
+        {
+          "filename": "tests/test_user_agent_runtime.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 147,
+          "deletions": 195
+        },
+        {
+          "filename": "tests/test_user_agent_scale.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 46,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_validation_scope.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 106,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_workflow_execution.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 60,
+          "deletions": 11
+        },
+        {
+          "filename": "tests/test_workflow_localization.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
+          "deletions": 9
+        },
+        {
+          "filename": "tests/test_workflow_wiring.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 65,
+          "deletions": 11
+        },
+        {
+          "filename": "tests/user_agent_navigation_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 71,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_scale_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 140,
+          "deletions": 0
+        },
+        {
+          "filename": "vanadium",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        }
+      ]
+    },
     "e81726175bea598c04fbcb62334b9f4d6bec9153...f9a960e81e80871bd6a466f07bda1a089f35a709": {
       "base_sha": "e81726175bea598c04fbcb62334b9f4d6bec9153",
       "head_sha": "f9a960e81e80871bd6a466f07bda1a089f35a709",
@@ -64458,935 +67069,6 @@
           "status": "modified",
           "additions": 7,
           "deletions": 0
-        }
-      ]
-    },
-    "e81726175bea598c04fbcb62334b9f4d6bec9153...ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007": {
-      "base_sha": "e81726175bea598c04fbcb62334b9f4d6bec9153",
-      "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/e81726175bea598c04fbcb62334b9f4d6bec9153...ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "commits": 38,
-      "commit_shas": [
-        "0a3a4287d2883cda17b77817ba2ca657ed5947b0",
-        "139fdbc284fddf282b188f2c834b4788a9cd4a99",
-        "1a900ac45f4bcf9932baf9734c1298578eadfc49",
-        "200ab090b543bf3825a482875d4b2aaf7c7de6ad",
-        "29a261b42c5446b5f403a55cc085df602b6dd31b",
-        "2a26d83f171376e6a7603f7fac164c0b8f17250d",
-        "32a41520664ef5baf2daac6bd996059cc1711da1",
-        "40fa7938013da1df1d07dc67a50b4ccfcfbb7d1f",
-        "4b0f26085fee4bc91f4a5d06b38b871c5e809aae",
-        "596c3f7ae99b4e553e6578c0cc64ddd0aa2ccd80",
-        "5c801971fcf6bf116bb846ed0f4d77a210c6232b",
-        "673d20bf3532d4c9d54c351752c2b1f012c71137",
-        "6903f000ca8c4fd93a3bfe208537eb692473e6ef",
-        "6a365e9721f2c3edfb5053d93478585504319d3d",
-        "77fbe5b11efe8e1e9b879ec0357f0c8045e5dbbb",
-        "79a2a9e612e517eb996c3d79c9600be562e964f1",
-        "7c5225e29b44c7757c34de8578e655a6ff5c5236",
-        "87db941f40e4f4d9421c419117e0f355117b4d5f",
-        "8b18ca414226076f59db11af6c3644f0f7cf9583",
-        "95af5d8831cccf2da40a0fceab36cf73f443639a",
-        "aafecb0690bc84b2286fbabffab114314ffb66b5",
-        "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "ac458b9c5821bace0fa8cdb811717b786ccf4aa7",
-        "ad8fb37f197d9ac8f2537c843ba2590e620785a2",
-        "ae217f170868f204d854b2e6dc2d2e7f45274be4",
-        "b62c5977b88aff8d5a6c5d216890c20c0f362754",
-        "bde250ae7c7d43a7a1827a44d07841132f6db7f4",
-        "c02bbc6bd69c67df09688ea62438058188a326d7",
-        "c072a56410dd74f069bb3a3a884f850fb854a220",
-        "ccfc515d4c914ec8cef8e86e71aeeea146c52f11",
-        "d454590949300bfe3931bb4464ff39db2dd7e05e",
-        "d46e48ca33cc3a7001076826e458c0a7739ee002",
-        "d5a2c2b9d8e73a3e8c63835c7f4f398474ab7fc0",
-        "da973b81412cc313ed242665f1fae3aaa94748c6",
-        "e6bd75fbf00255be83f5a2901de97aa056506ef6",
-        "f0b9c08f6cdc5d5d46a20019151f9209c4a6e457",
-        "f9a960e81e80871bd6a466f07bda1a089f35a709",
-        "fdf42014978d81d184b58571edde5ad6ec73042a"
-      ],
-      "commits_complete": true,
-      "files_complete": true,
-      "changed_files": 125,
-      "additions": 8432,
-      "deletions": 2775,
-      "files": [
-        {
-          "filename": ".github/ci/branch-test.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 196,
-          "deletions": 0
-        },
-        {
-          "filename": ".github/ci/check-prepared-inputs.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 8,
-          "deletions": 1
-        },
-        {
-          "filename": ".github/ci/continue-build.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 3,
-          "deletions": 1
-        },
-        {
-          "filename": ".github/ci/full-build.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 23,
-          "deletions": 13
-        },
-        {
-          "filename": ".github/ci/prune-compiler-cache.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 51,
-          "deletions": 4
-        },
-        {
-          "filename": ".github/ci/prune-prepared-images.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 2,
-          "deletions": 0
-        },
-        {
-          "filename": ".github/ci/run-in-build-container.sh",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 0
-        },
-        {
-          "filename": ".github/ci/test-domain-policy.sh",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 28,
-          "deletions": 5
-        },
-        {
-          "filename": ".github/ci/update-dashboard.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 323,
-          "deletions": 72
-        },
-        {
-          "filename": ".github/ci/validation-scope.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 96,
-          "deletions": 0
-        },
-        {
-          "filename": ".github/workflows/build-all-no-publish.yml",
-          "previous_filename": null,
-          "status": "removed",
-          "additions": 0,
-          "deletions": 133
-        },
-        {
-          "filename": ".github/workflows/build-all.yml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 14
-        },
-        {
-          "filename": ".github/workflows/build-chromium-image.yml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 15,
-          "deletions": 2
-        },
-        {
-          "filename": ".github/workflows/build-test-branch.yml",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 196,
-          "deletions": 0
-        },
-        {
-          "filename": ".github/workflows/build-unified-arch.yml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 29,
-          "deletions": 4
-        },
-        {
-          "filename": ".github/workflows/deploy-dashboard.yml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 32,
-          "deletions": 4
-        },
-        {
-          "filename": ".github/workflows/update-dashboard.yml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 8,
-          "deletions": 4
-        },
-        {
-          "filename": ".github/workflows/validate.yml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 137,
-          "deletions": 35
-        },
-        {
-          "filename": "README.md",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 45,
-          "deletions": 10
-        },
-        {
-          "filename": "build-lock.json",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 4,
-          "deletions": 4
-        },
-        {
-          "filename": "build.sh",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 8,
-          "deletions": 2
-        },
-        {
-          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgent.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 54,
-          "deletions": 72
-        },
-        {
-          "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.css",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 40,
-          "deletions": 1
-        },
-        {
-          "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.js",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 125,
-          "deletions": 84
-        },
-        {
-          "filename": "chromium_overlay/chrome/browser/resources/argon_home/i18n.js",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 16,
-          "deletions": 3
-        },
-        {
-          "filename": "chromium_overlay/chrome/browser/resources/argon_home/index.html",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 12,
-          "deletions": 1
-        },
-        {
-          "filename": "chromium_overlay/chrome/browser/resources/argon_home/state.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 1
-        },
-        {
-          "filename": "chromium_overlay/net/cert/titanium_ru_constraints.h",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 28,
-          "deletions": 12
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_certificate_domains_strings.xml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 1
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_external_navigation_strings.xml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 11
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 14,
-          "deletions": 8
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_certificate_domains_strings.xml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 1
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_external_navigation_strings.xml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 11
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 14,
-          "deletions": 8
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java",
-          "previous_filename": null,
-          "status": "removed",
-          "additions": 0,
-          "deletions": 120
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigationPolicy.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 11,
-          "deletions": 2
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/externalnav/ArgonExternalNavigationSettings.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 14,
-          "deletions": 7
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/media/ArgonBackgroundPlaybackSettings.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 2,
-          "deletions": 0
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonCertificateDomainsSettings.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 3,
-          "deletions": 0
-        },
-        {
-          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/privacy/settings/ArgonUserAgentPreference.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 78,
-          "deletions": 21
-        },
-        {
-          "filename": "dashboard-data.json",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 790,
-          "deletions": 758
-        },
-        {
-          "filename": "docker/chromium/Dockerfile",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 9,
-          "deletions": 2
-        },
-        {
-          "filename": "docs/build-pipeline.md",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 231,
-          "deletions": 18
-        },
-        {
-          "filename": "docs/external-navigation.md",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 9,
-          "deletions": 7
-        },
-        {
-          "filename": "docs/user-agent.md",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 64,
-          "deletions": 0
-        },
-        {
-          "filename": "index.html",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 251,
-          "deletions": 233
-        },
-        {
-          "filename": "patch.sh",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 0
-        },
-        {
-          "filename": "scripts/apk_identity.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 133,
-          "deletions": 0
-        },
-        {
-          "filename": "scripts/apply_external_navigation.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 55,
-          "deletions": 4
-        },
-        {
-          "filename": "scripts/apply_scoped_ca.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 50,
-          "deletions": 14
-        },
-        {
-          "filename": "scripts/apply_user_agent.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 133,
-          "deletions": 181
-        },
-        {
-          "filename": "scripts/build_identity.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 57,
-          "deletions": 3
-        },
-        {
-          "filename": "scripts/release_policy.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 9,
-          "deletions": 0
-        },
-        {
-          "filename": "scripts/sign_and_verify.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 21,
-          "deletions": 2
-        },
-        {
-          "filename": "tests/CMakeLists.txt",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 11,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/apk_identity_fixture.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 52,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/app_identity_upstream.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 53,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/check_upstream_patches.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 39,
-          "deletions": 23
-        },
-        {
-          "filename": "tests/domain_settings_lists.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 170,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/external_navigation_flow.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 59,
-          "deletions": 3
-        },
-        {
-          "filename": "tests/external_navigation_search.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 2,
-          "deletions": 2
-        },
-        {
-          "filename": "tests/fixtures/browsing_data_period.json",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/fixtures/certificates/README.md",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 18,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/certificates/check_extra_constraints.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 53,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/certificates/multi-san.pem",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 20,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/external_navigation/ExplicitActions.java.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 141,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/external_navigation/ExternalNavigationHelper.java.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 33,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/settings/CertificateDomainsJni.java.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 25,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/settings/DomainListFlow.java.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 175,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/settings/containment_methods.java.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 143,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/LICENSE.chromium",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 27,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 278,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 294,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/navigation_controller_android.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 73,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/navigation_controller_impl.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 87,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/page_scale.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 151,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/fixtures/user_agent/web_contents_viewport.cc.in",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 21,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/generate_scoped_ca_fixtures.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 35,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/homepage/add-shortcut-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 3,
-          "deletions": 2
-        },
-        {
-          "filename": "tests/homepage/backgrounds-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 7,
-          "deletions": 7
-        },
-        {
-          "filename": "tests/homepage/browser-bookmarks-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 26,
-          "deletions": 9
-        },
-        {
-          "filename": "tests/homepage/consistency-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 16,
-          "deletions": 15
-        },
-        {
-          "filename": "tests/homepage/editing.test.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/homepage/native-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 9,
-          "deletions": 9
-        },
-        {
-          "filename": "tests/homepage/regressions-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 8,
-          "deletions": 7
-        },
-        {
-          "filename": "tests/homepage/settings-navigation.mjs",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 19,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/homepage/settings-ui-check.mjs",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 93,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/homepage/shortcut-scale-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 12,
-          "deletions": 11
-        },
-        {
-          "filename": "tests/homepage/site-icons-ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 2,
-          "deletions": 2
-        },
-        {
-          "filename": "tests/homepage/ui-check.mjs",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 16,
-          "deletions": 13
-        },
-        {
-          "filename": "tests/java/ArgonExternalNavigationTest.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 101,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/java/ArgonUserAgentRuntimeTest.java",
-          "previous_filename": null,
-          "status": "removed",
-          "additions": 0,
-          "deletions": 151
-        },
-        {
-          "filename": "tests/java/ArgonUserAgentSettingsTest.java",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 100,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/java/ArgonUserAgentTest.java",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 57,
-          "deletions": 70
-        },
-        {
-          "filename": "tests/scoped_ca_test.cc",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 104,
-          "deletions": 2
-        },
-        {
-          "filename": "tests/test_apk_identity.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 115,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_app_identity.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 81,
-          "deletions": 19
-        },
-        {
-          "filename": "tests/test_background_playback_settings.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_branch_test.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 286,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_build_continuation.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/test_build_stages.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 17,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/test_ci_cache.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 74,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/test_coarse_location.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 119,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_dashboard_rendering.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 116,
-          "deletions": 5
-        },
-        {
-          "filename": "tests/test_dashboard_snapshot.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 152,
-          "deletions": 56
-        },
-        {
-          "filename": "tests/test_domain_settings_lists.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 31,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_domain_validation_cache.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 91,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_external_navigation.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 2
-        },
-        {
-          "filename": "tests/test_full_build.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 24,
-          "deletions": 8
-        },
-        {
-          "filename": "tests/test_patch.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 3
-        },
-        {
-          "filename": "tests/test_prepared_image_cleanup.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 3,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/test_release_publishing.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 18,
-          "deletions": 1
-        },
-        {
-          "filename": "tests/test_test_apk_collection.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 227,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_user_agent.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 83,
-          "deletions": 82
-        },
-        {
-          "filename": "tests/test_user_agent_navigation.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 52,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_user_agent_renderer.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 248,
-          "deletions": 145
-        },
-        {
-          "filename": "tests/test_user_agent_runtime.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 147,
-          "deletions": 195
-        },
-        {
-          "filename": "tests/test_user_agent_scale.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 46,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_validation_scope.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 106,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/test_workflow_execution.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 60,
-          "deletions": 11
-        },
-        {
-          "filename": "tests/test_workflow_localization.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 13,
-          "deletions": 9
-        },
-        {
-          "filename": "tests/test_workflow_wiring.py",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 65,
-          "deletions": 11
-        },
-        {
-          "filename": "tests/user_agent_navigation_flow.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 71,
-          "deletions": 0
-        },
-        {
-          "filename": "tests/user_agent_scale_flow.py",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 140,
-          "deletions": 0
-        },
-        {
-          "filename": "vanadium",
-          "previous_filename": null,
-          "status": "modified",
-          "additions": 1,
-          "deletions": 1
         }
       ]
     }
