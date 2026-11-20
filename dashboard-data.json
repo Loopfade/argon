@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T19:51:03Z",
+  "generated_at": "2026-11-20T19:58:16Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,21 +58739,21 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T19:50:46Z",
+      "updated_at": "2026-11-20T19:57:30Z",
       "merged_at": null,
-      "head_sha": "1ec545e1b062716df87ff421341bc36fdba84a13",
-      "merge_commit_sha": "1964e2f39953061373d8279f51d84224caa0718f",
+      "head_sha": "d58487ce8b57de1cbb2b6b046776c5a7fa90cecc",
+      "merge_commit_sha": "05db8ef408f1679310a17987dc2bbd77db614ddd",
       "author": "Loopfade",
       "additions": 1173,
       "deletions": 62,
       "changed_files": 32,
-      "commits": 7,
+      "commits": 1,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "1ec545e1b062716df87ff421341bc36fdba84a13",
+        "head_sha": "d58487ce8b57de1cbb2b6b046776c5a7fa90cecc",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...1ec545e1b062716df87ff421341bc36fdba84a13",
-        "commits": 7,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d58487ce8b57de1cbb2b6b046776c5a7fa90cecc",
+        "commits": 1,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 32,
@@ -64975,20 +64975,14 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...1ec545e1b062716df87ff421341bc36fdba84a13": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d58487ce8b57de1cbb2b6b046776c5a7fa90cecc": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "1ec545e1b062716df87ff421341bc36fdba84a13",
+      "head_sha": "d58487ce8b57de1cbb2b6b046776c5a7fa90cecc",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...1ec545e1b062716df87ff421341bc36fdba84a13",
-      "commits": 7,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d58487ce8b57de1cbb2b6b046776c5a7fa90cecc",
+      "commits": 1,
       "commit_shas": [
-        "0c634bf5e7c18a43264a21af8b8feb2449469482",
-        "1ec545e1b062716df87ff421341bc36fdba84a13",
-        "49cabcd2ec344a74092c97a1f1a998b3df750691",
-        "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
-        "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
-        "d6edd53c288dafebca9879115236a4fa02f9cfea",
-        "eb2398ef8787e029c7490d8c06e121cb4fc4de34"
+        "d58487ce8b57de1cbb2b6b046776c5a7fa90cecc"
       ],
       "commits_complete": true,
       "files_complete": true,
