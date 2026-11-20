@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T15:59:29Z",
+  "generated_at": "2026-11-20T16:01:11Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58734,30 +58734,30 @@
   "open_prs": [
     {
       "number": 93,
-      "title": "\u0418\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0442\u0435\u0440\u044e \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u041f\u041a \u2192 \u043c\u043e\u0431\u0438\u043b\u044c\u043d\u0430\u044f \u043f\u0440\u0438 \u043d\u0435\u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d\u043d\u043e\u0439 \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438",
+      "title": "Chromium 158 \u0438 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u041f\u041a \u2194 \u043c\u043e\u0431\u0438\u043b\u044c\u043d\u0430\u044f (PR #93)",
       "html_url": "https://github.com/Loopfade/argon/pull/93",
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T15:58:56Z",
+      "updated_at": "2026-11-20T16:01:15Z",
       "merged_at": null,
-      "head_sha": "18aa471fa32f8ea46fd17d938221330d0ebfc303",
-      "merge_commit_sha": "c673630d1b0840ce3d05eb2a38a3e8efc706efc0",
+      "head_sha": "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
+      "merge_commit_sha": "85daf258bedbc2fdb731753c40f49bb7c1ed927a",
       "author": "Loopfade",
-      "additions": 600,
+      "additions": 657,
       "deletions": 26,
-      "changed_files": 18,
-      "commits": 46,
+      "changed_files": 19,
+      "commits": 47,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "18aa471fa32f8ea46fd17d938221330d0ebfc303",
+        "head_sha": "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...18aa471fa32f8ea46fd17d938221330d0ebfc303",
-        "commits": 46,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
+        "commits": 47,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 18,
-        "additions": 600,
+        "changed_files": 19,
+        "additions": 657,
         "deletions": 26,
         "files": [
           {
@@ -58780,6 +58780,13 @@
             "status": "modified",
             "additions": 28,
             "deletions": 2
+          },
+          {
+            "filename": "docs/chromium-158-upgrade.md",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 57,
+            "deletions": 0
           },
           {
             "filename": "docs/homepage.md",
@@ -64877,12 +64884,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...18aa471fa32f8ea46fd17d938221330d0ebfc303": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...36c20636d78e233912cc1ef8ebfb9c8c538f61d2": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "18aa471fa32f8ea46fd17d938221330d0ebfc303",
+      "head_sha": "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...18aa471fa32f8ea46fd17d938221330d0ebfc303",
-      "commits": 46,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
+      "commits": 47,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
@@ -64895,6 +64902,7 @@
         "204a1f7edc3bc4a5eb3f227bb20a8f3851af9f99",
         "34399709c60c3c2127860941f63235cfd64d625e",
         "34ed86ecbcef97fbcce09e78cb4bef14f40f106d",
+        "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
         "39a85ccce5751c8c8295d9c5cc4a7a4bbaf9b59f",
         "4463a66c5af3f5602f94a3cf6e96d6719de44b52",
         "46eea5a083791d318ceb3627019492a9bdb93c06",
@@ -64933,8 +64941,8 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 18,
-      "additions": 600,
+      "changed_files": 19,
+      "additions": 657,
       "deletions": 26,
       "files": [
         {
@@ -64957,6 +64965,13 @@
           "status": "modified",
           "additions": 28,
           "deletions": 2
+        },
+        {
+          "filename": "docs/chromium-158-upgrade.md",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 57,
+          "deletions": 0
         },
         {
           "filename": "docs/homepage.md",
