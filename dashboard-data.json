@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T16:01:11Z",
+  "generated_at": "2026-11-20T16:05:17Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T16:01:15Z",
+      "updated_at": "2026-11-20T16:05:00Z",
       "merged_at": null,
-      "head_sha": "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
-      "merge_commit_sha": "85daf258bedbc2fdb731753c40f49bb7c1ed927a",
+      "head_sha": "10088cfcb37e1d7666fdf9eafc037db7926c6518",
+      "merge_commit_sha": "dbc9aeb2af76c3cd9707016a8c0543b47a5548c2",
       "author": "Loopfade",
-      "additions": 657,
-      "deletions": 26,
-      "changed_files": 19,
-      "commits": 47,
+      "additions": 658,
+      "deletions": 27,
+      "changed_files": 20,
+      "commits": 48,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
+        "head_sha": "10088cfcb37e1d7666fdf9eafc037db7926c6518",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
-        "commits": 47,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...10088cfcb37e1d7666fdf9eafc037db7926c6518",
+        "commits": 48,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 19,
-        "additions": 657,
-        "deletions": 26,
+        "changed_files": 20,
+        "additions": 658,
+        "deletions": 27,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58822,6 +58822,13 @@
             "status": "modified",
             "additions": 113,
             "deletions": 6
+          },
+          {
+            "filename": "tests/fixtures/browsing_data_period.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
           },
           {
             "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
@@ -64884,15 +64891,16 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...36c20636d78e233912cc1ef8ebfb9c8c538f61d2": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...10088cfcb37e1d7666fdf9eafc037db7926c6518": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
+      "head_sha": "10088cfcb37e1d7666fdf9eafc037db7926c6518",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...36c20636d78e233912cc1ef8ebfb9c8c538f61d2",
-      "commits": 47,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...10088cfcb37e1d7666fdf9eafc037db7926c6518",
+      "commits": 48,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
+        "10088cfcb37e1d7666fdf9eafc037db7926c6518",
         "10792417d1fe9b5e2a706b1b3ec7073017cf4825",
         "1177f8ea0eae9e3c12c3c4c7f1dc802e1009c1be",
         "13ad490c4ee1dc734be9a15c3dab92f8babcef39",
@@ -64941,9 +64949,9 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 19,
-      "additions": 657,
-      "deletions": 26,
+      "changed_files": 20,
+      "additions": 658,
+      "deletions": 27,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -65007,6 +65015,13 @@
           "status": "modified",
           "additions": 113,
           "deletions": 6
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         },
         {
           "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
