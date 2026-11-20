@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T16:44:46Z",
+  "generated_at": "2026-11-20T16:47:05Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,25 +58739,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T16:44:45Z",
+      "updated_at": "2026-11-20T16:46:19Z",
       "merged_at": null,
-      "head_sha": "9ef2691e916972800484a5f01dca4e3bb64ddaba",
-      "merge_commit_sha": "69c7a9fb1ed4b450990f741dec71697f0fcd9b56",
+      "head_sha": "d9a411e4bf89e0509eafff600da54b06b5544560",
+      "merge_commit_sha": "17fb9ed670a8adbc9a38b34a91316fc0363d68bf",
       "author": "Loopfade",
-      "additions": 714,
+      "additions": 849,
       "deletions": 30,
-      "changed_files": 24,
-      "commits": 53,
+      "changed_files": 25,
+      "commits": 55,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "9ef2691e916972800484a5f01dca4e3bb64ddaba",
+        "head_sha": "d9a411e4bf89e0509eafff600da54b06b5544560",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9ef2691e916972800484a5f01dca4e3bb64ddaba",
-        "commits": 53,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d9a411e4bf89e0509eafff600da54b06b5544560",
+        "commits": 55,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 24,
-        "additions": 714,
+        "changed_files": 25,
+        "additions": 849,
         "deletions": 30,
         "files": [
           {
@@ -58859,6 +58859,13 @@
             "deletions": 0
           },
           {
+            "filename": "tests/fixtures/homepage/ToolbarCaptureM158Flow.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 69,
+            "deletions": 0
+          },
+          {
             "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
             "previous_filename": null,
             "status": "added",
@@ -58890,7 +58897,7 @@
             "filename": "tests/test_homepage_native.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 11,
+            "additions": 77,
             "deletions": 3
           },
           {
@@ -64919,13 +64926,14 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9ef2691e916972800484a5f01dca4e3bb64ddaba": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d9a411e4bf89e0509eafff600da54b06b5544560": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "9ef2691e916972800484a5f01dca4e3bb64ddaba",
+      "head_sha": "d9a411e4bf89e0509eafff600da54b06b5544560",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9ef2691e916972800484a5f01dca4e3bb64ddaba",
-      "commits": 53,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d9a411e4bf89e0509eafff600da54b06b5544560",
+      "commits": 55,
       "commit_shas": [
+        "02ab4ac71d0179bc6ea9e47d77a8bea7adb9eacf",
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
         "10088cfcb37e1d7666fdf9eafc037db7926c6518",
@@ -64977,13 +64985,14 @@
         "d3fb364241cc896a305fe66748a3099afd3e25e3",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
         "d8d75ba5456e332b843f871f6c46b31d43331816",
+        "d9a411e4bf89e0509eafff600da54b06b5544560",
         "dd60802788f21e3372801e0f8b71a50208d9cbd0",
         "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 24,
-      "additions": 714,
+      "changed_files": 25,
+      "additions": 849,
       "deletions": 30,
       "files": [
         {
@@ -65085,6 +65094,13 @@
           "deletions": 0
         },
         {
+          "filename": "tests/fixtures/homepage/ToolbarCaptureM158Flow.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 69,
+          "deletions": 0
+        },
+        {
           "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
           "previous_filename": null,
           "status": "added",
@@ -65116,7 +65132,7 @@
           "filename": "tests/test_homepage_native.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 11,
+          "additions": 77,
           "deletions": 3
         },
         {
