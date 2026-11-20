@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T15:40:46Z",
+  "generated_at": "2026-11-20T15:52:41Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T15:38:24Z",
+      "updated_at": "2026-11-20T15:52:28Z",
       "merged_at": null,
-      "head_sha": "b3fab6b12b1c2508502eafd7a16269a94219723a",
-      "merge_commit_sha": "e8a4423b8fd4187c5df658b361dd67b57e72e2b5",
+      "head_sha": "638a84e0df4ac92b726603c413f1df2c043cc05f",
+      "merge_commit_sha": "bb507a350e1cb02c895971560344ef1b3b1eaa98",
       "author": "Loopfade",
-      "additions": 501,
-      "deletions": 19,
-      "changed_files": 12,
-      "commits": 41,
+      "additions": 507,
+      "deletions": 25,
+      "changed_files": 14,
+      "commits": 42,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "b3fab6b12b1c2508502eafd7a16269a94219723a",
+        "head_sha": "638a84e0df4ac92b726603c413f1df2c043cc05f",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b3fab6b12b1c2508502eafd7a16269a94219723a",
-        "commits": 41,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...638a84e0df4ac92b726603c413f1df2c043cc05f",
+        "commits": 42,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 12,
-        "additions": 501,
-        "deletions": 19,
+        "changed_files": 14,
+        "additions": 507,
+        "deletions": 25,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58766,6 +58766,13 @@
             "status": "modified",
             "additions": 21,
             "deletions": 3
+          },
+          {
+            "filename": "build-lock.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 5,
+            "deletions": 5
           },
           {
             "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
@@ -58843,6 +58850,13 @@
             "status": "added",
             "additions": 131,
             "deletions": 0
+          },
+          {
+            "filename": "vanadium",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
           }
         ]
       },
@@ -64835,12 +64849,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b3fab6b12b1c2508502eafd7a16269a94219723a": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...638a84e0df4ac92b726603c413f1df2c043cc05f": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "b3fab6b12b1c2508502eafd7a16269a94219723a",
+      "head_sha": "638a84e0df4ac92b726603c413f1df2c043cc05f",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b3fab6b12b1c2508502eafd7a16269a94219723a",
-      "commits": 41,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...638a84e0df4ac92b726603c413f1df2c043cc05f",
+      "commits": 42,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
@@ -64858,6 +64872,7 @@
         "4b72c5047eac4f566eae1588bd44147230e33ed7",
         "55fbd845a0de018e09d1aaa63032c4c1da562bd3",
         "62634ce66aced99c94f3293b68eacd1dfe44a68d",
+        "638a84e0df4ac92b726603c413f1df2c043cc05f",
         "6a3a43802d14e9f628a1c5ffbc9b051ed5132070",
         "6f6b88e83aa370fd0bb9c5c0f7137d7fe81508f2",
         "77c18735089b89ec0a159b96e2d4f8ad9125ec60",
@@ -64886,9 +64901,9 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 12,
-      "additions": 501,
-      "deletions": 19,
+      "changed_files": 14,
+      "additions": 507,
+      "deletions": 25,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -64896,6 +64911,13 @@
           "status": "modified",
           "additions": 21,
           "deletions": 3
+        },
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 5
         },
         {
           "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
@@ -64973,6 +64995,13 @@
           "status": "added",
           "additions": 131,
           "deletions": 0
+        },
+        {
+          "filename": "vanadium",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         }
       ]
     },
