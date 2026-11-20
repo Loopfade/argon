@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T15:23:14Z",
+  "generated_at": "2026-11-20T15:31:21Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T15:23:04Z",
+      "updated_at": "2026-11-20T15:30:41Z",
       "merged_at": null,
-      "head_sha": "13ad490c4ee1dc734be9a15c3dab92f8babcef39",
-      "merge_commit_sha": "7b7b74203f6abfbe6d403954b5ea70318308df25",
+      "head_sha": "d8d75ba5456e332b843f871f6c46b31d43331816",
+      "merge_commit_sha": "cdade38a89211d1b6c27093c242667f47867d600",
       "author": "Loopfade",
-      "additions": 483,
-      "deletions": 17,
+      "additions": 487,
+      "deletions": 18,
       "changed_files": 12,
-      "commits": 33,
+      "commits": 34,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "13ad490c4ee1dc734be9a15c3dab92f8babcef39",
+        "head_sha": "d8d75ba5456e332b843f871f6c46b31d43331816",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...13ad490c4ee1dc734be9a15c3dab92f8babcef39",
-        "commits": 33,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d8d75ba5456e332b843f871f6c46b31d43331816",
+        "commits": 34,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 12,
-        "additions": 483,
-        "deletions": 17,
+        "additions": 487,
+        "deletions": 18,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58820,8 +58820,8 @@
             "filename": "tests/test_homepage_startup.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 2,
-            "deletions": 0
+            "additions": 6,
+            "deletions": 1
           },
           {
             "filename": "tests/test_user_agent_navigation.py",
@@ -64835,12 +64835,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...13ad490c4ee1dc734be9a15c3dab92f8babcef39": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d8d75ba5456e332b843f871f6c46b31d43331816": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "13ad490c4ee1dc734be9a15c3dab92f8babcef39",
+      "head_sha": "d8d75ba5456e332b843f871f6c46b31d43331816",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...13ad490c4ee1dc734be9a15c3dab92f8babcef39",
-      "commits": 33,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d8d75ba5456e332b843f871f6c46b31d43331816",
+      "commits": 34,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "10792417d1fe9b5e2a706b1b3ec7073017cf4825",
@@ -64873,14 +64873,15 @@
         "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
+        "d8d75ba5456e332b843f871f6c46b31d43331816",
         "dd60802788f21e3372801e0f8b71a50208d9cbd0",
         "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 12,
-      "additions": 483,
-      "deletions": 17,
+      "additions": 487,
+      "deletions": 18,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -64942,8 +64943,8 @@
           "filename": "tests/test_homepage_startup.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 2,
-          "deletions": 0
+          "additions": 6,
+          "deletions": 1
         },
         {
           "filename": "tests/test_user_agent_navigation.py",
