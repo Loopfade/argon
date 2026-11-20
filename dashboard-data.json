@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T16:43:54Z",
+  "generated_at": "2026-11-20T16:44:46Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T16:28:35Z",
+      "updated_at": "2026-11-20T16:44:45Z",
       "merged_at": null,
-      "head_sha": "49069f1582ab5235ddfe1946f13736926bbd3443",
-      "merge_commit_sha": "8dd9df627314bedaec57aea091d232fc18a63e57",
+      "head_sha": "9ef2691e916972800484a5f01dca4e3bb64ddaba",
+      "merge_commit_sha": "69c7a9fb1ed4b450990f741dec71697f0fcd9b56",
       "author": "Loopfade",
-      "additions": 684,
-      "deletions": 27,
-      "changed_files": 23,
-      "commits": 51,
+      "additions": 714,
+      "deletions": 30,
+      "changed_files": 24,
+      "commits": 53,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "49069f1582ab5235ddfe1946f13736926bbd3443",
+        "head_sha": "9ef2691e916972800484a5f01dca4e3bb64ddaba",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49069f1582ab5235ddfe1946f13736926bbd3443",
-        "commits": 51,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9ef2691e916972800484a5f01dca4e3bb64ddaba",
+        "commits": 53,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 23,
-        "additions": 684,
-        "deletions": 27,
+        "changed_files": 24,
+        "additions": 714,
+        "deletions": 30,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58862,7 +58862,7 @@
             "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
             "previous_filename": null,
             "status": "added",
-            "additions": 59,
+            "additions": 78,
             "deletions": 0
           },
           {
@@ -58885,6 +58885,13 @@
             "status": "modified",
             "additions": 13,
             "deletions": 0
+          },
+          {
+            "filename": "tests/test_homepage_native.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 11,
+            "deletions": 3
           },
           {
             "filename": "tests/test_homepage_startup.py",
@@ -64912,12 +64919,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49069f1582ab5235ddfe1946f13736926bbd3443": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9ef2691e916972800484a5f01dca4e3bb64ddaba": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "49069f1582ab5235ddfe1946f13736926bbd3443",
+      "head_sha": "9ef2691e916972800484a5f01dca4e3bb64ddaba",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49069f1582ab5235ddfe1946f13736926bbd3443",
-      "commits": 51,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9ef2691e916972800484a5f01dca4e3bb64ddaba",
+      "commits": 53,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
@@ -64955,6 +64962,7 @@
         "9b2b4340f06188f16b4343272074991a91442ef6",
         "9b3a181e48d2223c6482c855d1845ba51b5d0321",
         "9b6a262edc79951e126eee8faad08f33506a74b1",
+        "9ef2691e916972800484a5f01dca4e3bb64ddaba",
         "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
         "a50da16d5662766af9ac74fa21aa224b07022104",
         "a6c9bb3d81da9724b96f6dc98ec2809dfa06a898",
@@ -64966,6 +64974,7 @@
         "b8df509d130819206247df37e06b8833bcd7142a",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
         "d3756e5f05e099a6f538dd2c05c87c3b3e2eb73a",
+        "d3fb364241cc896a305fe66748a3099afd3e25e3",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
         "d8d75ba5456e332b843f871f6c46b31d43331816",
         "dd60802788f21e3372801e0f8b71a50208d9cbd0",
@@ -64973,9 +64982,9 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 23,
-      "additions": 684,
-      "deletions": 27,
+      "changed_files": 24,
+      "additions": 714,
+      "deletions": 30,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -65079,7 +65088,7 @@
           "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
           "previous_filename": null,
           "status": "added",
-          "additions": 59,
+          "additions": 78,
           "deletions": 0
         },
         {
@@ -65102,6 +65111,13 @@
           "status": "modified",
           "additions": 13,
           "deletions": 0
+        },
+        {
+          "filename": "tests/test_homepage_native.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 11,
+          "deletions": 3
         },
         {
           "filename": "tests/test_homepage_startup.py",
