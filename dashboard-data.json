@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T15:54:54Z",
+  "generated_at": "2026-11-20T15:59:29Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,25 +58739,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T15:53:58Z",
+      "updated_at": "2026-11-20T15:58:56Z",
       "merged_at": null,
-      "head_sha": "90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082",
-      "merge_commit_sha": "432ca90bbdd90329c00c0efde5a8c95eff088c54",
+      "head_sha": "18aa471fa32f8ea46fd17d938221330d0ebfc303",
+      "merge_commit_sha": "c673630d1b0840ce3d05eb2a38a3e8efc706efc0",
       "author": "Loopfade",
-      "additions": 519,
+      "additions": 600,
       "deletions": 26,
-      "changed_files": 15,
-      "commits": 43,
+      "changed_files": 18,
+      "commits": 46,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082",
+        "head_sha": "18aa471fa32f8ea46fd17d938221330d0ebfc303",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082",
-        "commits": 43,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...18aa471fa32f8ea46fd17d938221330d0ebfc303",
+        "commits": 46,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 15,
-        "additions": 519,
+        "changed_files": 18,
+        "additions": 600,
         "deletions": 26,
         "files": [
           {
@@ -58803,6 +58803,13 @@
             "deletions": 1
           },
           {
+            "filename": "scripts/apply_homepage.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 9,
+            "deletions": 0
+          },
+          {
             "filename": "scripts/apply_user_agent.py",
             "previous_filename": null,
             "status": "modified",
@@ -58817,6 +58824,13 @@
             "deletions": 2
           },
           {
+            "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 59,
+            "deletions": 0
+          },
+          {
             "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
             "previous_filename": null,
             "status": "modified",
@@ -58828,6 +58842,13 @@
             "previous_filename": null,
             "status": "modified",
             "additions": 38,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_homepage.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 13,
             "deletions": 0
           },
           {
@@ -64856,12 +64877,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...18aa471fa32f8ea46fd17d938221330d0ebfc303": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082",
+      "head_sha": "18aa471fa32f8ea46fd17d938221330d0ebfc303",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082",
-      "commits": 43,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...18aa471fa32f8ea46fd17d938221330d0ebfc303",
+      "commits": 46,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
@@ -64869,6 +64890,7 @@
         "1177f8ea0eae9e3c12c3c4c7f1dc802e1009c1be",
         "13ad490c4ee1dc734be9a15c3dab92f8babcef39",
         "14808cad841d9709381c08b2256eda9ee42ae6d3",
+        "18aa471fa32f8ea46fd17d938221330d0ebfc303",
         "1906789a0e73da1a49dedbb6011263231166af98",
         "204a1f7edc3bc4a5eb3f227bb20a8f3851af9f99",
         "34399709c60c3c2127860941f63235cfd64d625e",
@@ -64887,6 +64909,7 @@
         "8062091d7569118176ecfab814ade565c548e749",
         "8a70efe9496dffa317f9f2bdb1d706be9648478f",
         "90e1e1f854b28c9ea24c5b1b41dc5bff87bbf082",
+        "92d61cfecf275cda981eeab5775282519175d73c",
         "959eee6568693f5af287f490aceae656346086ea",
         "95b48a8cc59ffb7c4b100136435b4418a64f3fb1",
         "95d6d7ae53161143f01458ab6de91067db6f60ba",
@@ -64902,6 +64925,7 @@
         "b3fab6b12b1c2508502eafd7a16269a94219723a",
         "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
+        "d3756e5f05e099a6f538dd2c05c87c3b3e2eb73a",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
         "d8d75ba5456e332b843f871f6c46b31d43331816",
         "dd60802788f21e3372801e0f8b71a50208d9cbd0",
@@ -64909,8 +64933,8 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 15,
-      "additions": 519,
+      "changed_files": 18,
+      "additions": 600,
       "deletions": 26,
       "files": [
         {
@@ -64956,6 +64980,13 @@
           "deletions": 1
         },
         {
+          "filename": "scripts/apply_homepage.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 0
+        },
+        {
           "filename": "scripts/apply_user_agent.py",
           "previous_filename": null,
           "status": "modified",
@@ -64970,6 +65001,13 @@
           "deletions": 2
         },
         {
+          "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 59,
+          "deletions": 0
+        },
+        {
           "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
           "previous_filename": null,
           "status": "modified",
@@ -64981,6 +65019,13 @@
           "previous_filename": null,
           "status": "modified",
           "additions": 38,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_homepage.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 13,
           "deletions": 0
         },
         {
