@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T18:18:59Z",
+  "generated_at": "2026-11-20T18:37:32Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,25 +58739,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T18:18:16Z",
+      "updated_at": "2026-11-20T18:37:13Z",
       "merged_at": null,
-      "head_sha": "0c634bf5e7c18a43264a21af8b8feb2449469482",
-      "merge_commit_sha": "c1dc22c0658e9bf07acc717c0b4275a4eb013079",
+      "head_sha": "49cabcd2ec344a74092c97a1f1a998b3df750691",
+      "merge_commit_sha": "2f56cab9b82f59065149f6b9a6da4ebb8b1d935a",
       "author": "Loopfade",
-      "additions": 1138,
+      "additions": 1162,
       "deletions": 59,
-      "changed_files": 31,
-      "commits": 4,
+      "changed_files": 32,
+      "commits": 5,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "0c634bf5e7c18a43264a21af8b8feb2449469482",
+        "head_sha": "49cabcd2ec344a74092c97a1f1a998b3df750691",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0c634bf5e7c18a43264a21af8b8feb2449469482",
-        "commits": 4,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49cabcd2ec344a74092c97a1f1a998b3df750691",
+        "commits": 5,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 31,
-        "additions": 1138,
+        "changed_files": 32,
+        "additions": 1162,
         "deletions": 59,
         "files": [
           {
@@ -58766,6 +58766,13 @@
             "status": "modified",
             "additions": 21,
             "deletions": 3
+          },
+          {
+            "filename": ".github/workflows/argon-androidx-pin-probe.yml",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 24,
+            "deletions": 0
           },
           {
             "filename": "build-lock.json",
@@ -64968,22 +64975,23 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0c634bf5e7c18a43264a21af8b8feb2449469482": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49cabcd2ec344a74092c97a1f1a998b3df750691": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "0c634bf5e7c18a43264a21af8b8feb2449469482",
+      "head_sha": "49cabcd2ec344a74092c97a1f1a998b3df750691",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0c634bf5e7c18a43264a21af8b8feb2449469482",
-      "commits": 4,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49cabcd2ec344a74092c97a1f1a998b3df750691",
+      "commits": 5,
       "commit_shas": [
         "0c634bf5e7c18a43264a21af8b8feb2449469482",
+        "49cabcd2ec344a74092c97a1f1a998b3df750691",
         "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
         "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
         "d6edd53c288dafebca9879115236a4fa02f9cfea"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 31,
-      "additions": 1138,
+      "changed_files": 32,
+      "additions": 1162,
       "deletions": 59,
       "files": [
         {
@@ -64992,6 +65000,13 @@
           "status": "modified",
           "additions": 21,
           "deletions": 3
+        },
+        {
+          "filename": ".github/workflows/argon-androidx-pin-probe.yml",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 24,
+          "deletions": 0
         },
         {
           "filename": "build-lock.json",
