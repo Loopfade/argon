@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T15:34:31Z",
+  "generated_at": "2026-11-20T15:35:35Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T15:33:40Z",
+      "updated_at": "2026-11-20T15:35:19Z",
       "merged_at": null,
-      "head_sha": "46eea5a083791d318ceb3627019492a9bdb93c06",
-      "merge_commit_sha": "3308ead3432018a1022d3e0f160a3fb01cfff0fd",
+      "head_sha": "b3fab6b12b1c2508502eafd7a16269a94219723a",
+      "merge_commit_sha": "e8a4423b8fd4187c5df658b361dd67b57e72e2b5",
       "author": "Loopfade",
-      "additions": 492,
-      "deletions": 18,
+      "additions": 501,
+      "deletions": 19,
       "changed_files": 12,
-      "commits": 38,
+      "commits": 41,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "46eea5a083791d318ceb3627019492a9bdb93c06",
+        "head_sha": "b3fab6b12b1c2508502eafd7a16269a94219723a",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...46eea5a083791d318ceb3627019492a9bdb93c06",
-        "commits": 38,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b3fab6b12b1c2508502eafd7a16269a94219723a",
+        "commits": 41,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 12,
-        "additions": 492,
-        "deletions": 18,
+        "additions": 501,
+        "deletions": 19,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58799,7 +58799,7 @@
             "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
             "previous_filename": null,
             "status": "modified",
-            "additions": 29,
+            "additions": 36,
             "deletions": 2
           },
           {
@@ -58820,8 +58820,8 @@
             "filename": "tests/test_homepage_startup.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 6,
-            "deletions": 1
+            "additions": 8,
+            "deletions": 2
           },
           {
             "filename": "tests/test_user_agent_navigation.py",
@@ -64835,12 +64835,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...46eea5a083791d318ceb3627019492a9bdb93c06": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b3fab6b12b1c2508502eafd7a16269a94219723a": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "46eea5a083791d318ceb3627019492a9bdb93c06",
+      "head_sha": "b3fab6b12b1c2508502eafd7a16269a94219723a",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...46eea5a083791d318ceb3627019492a9bdb93c06",
-      "commits": 38,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b3fab6b12b1c2508502eafd7a16269a94219723a",
+      "commits": 41,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
@@ -64861,9 +64861,11 @@
         "6a3a43802d14e9f628a1c5ffbc9b051ed5132070",
         "6f6b88e83aa370fd0bb9c5c0f7137d7fe81508f2",
         "77c18735089b89ec0a159b96e2d4f8ad9125ec60",
+        "7c6b3d152c941068242841f5ff38900bf7a57283",
         "8062091d7569118176ecfab814ade565c548e749",
         "8a70efe9496dffa317f9f2bdb1d706be9648478f",
         "959eee6568693f5af287f490aceae656346086ea",
+        "95b48a8cc59ffb7c4b100136435b4418a64f3fb1",
         "95d6d7ae53161143f01458ab6de91067db6f60ba",
         "9b2b4340f06188f16b4343272074991a91442ef6",
         "9b3a181e48d2223c6482c855d1845ba51b5d0321",
@@ -64874,6 +64876,7 @@
         "aa3fda0b6fe8a9fbb14da46ab3b527992a1e3a19",
         "ac9b48802f36e3a96f4df886969f77460bd16198",
         "b1d947d162d35b6f7bf6354a88beda304968fd5a",
+        "b3fab6b12b1c2508502eafd7a16269a94219723a",
         "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
@@ -64884,8 +64887,8 @@
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 12,
-      "additions": 492,
-      "deletions": 18,
+      "additions": 501,
+      "deletions": 19,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -64926,7 +64929,7 @@
           "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
           "previous_filename": null,
           "status": "modified",
-          "additions": 29,
+          "additions": 36,
           "deletions": 2
         },
         {
@@ -64947,8 +64950,8 @@
           "filename": "tests/test_homepage_startup.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 6,
-          "deletions": 1
+          "additions": 8,
+          "deletions": 2
         },
         {
           "filename": "tests/test_user_agent_navigation.py",
