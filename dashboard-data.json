@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T18:16:06Z",
+  "generated_at": "2026-11-20T18:18:59Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T18:15:35Z",
+      "updated_at": "2026-11-20T18:18:16Z",
       "merged_at": null,
-      "head_sha": "d6edd53c288dafebca9879115236a4fa02f9cfea",
-      "merge_commit_sha": "730b340c650c2eaeece915c7b57ba1afad91ca23",
+      "head_sha": "0c634bf5e7c18a43264a21af8b8feb2449469482",
+      "merge_commit_sha": "c1dc22c0658e9bf07acc717c0b4275a4eb013079",
       "author": "Loopfade",
-      "additions": 986,
-      "deletions": 43,
-      "changed_files": 30,
-      "commits": 3,
+      "additions": 1138,
+      "deletions": 59,
+      "changed_files": 31,
+      "commits": 4,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "d6edd53c288dafebca9879115236a4fa02f9cfea",
+        "head_sha": "0c634bf5e7c18a43264a21af8b8feb2449469482",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d6edd53c288dafebca9879115236a4fa02f9cfea",
-        "commits": 3,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0c634bf5e7c18a43264a21af8b8feb2449469482",
+        "commits": 4,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 30,
-        "additions": 986,
-        "deletions": 43,
+        "changed_files": 31,
+        "additions": 1138,
+        "deletions": 59,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58785,8 +58785,15 @@
             "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
             "previous_filename": null,
             "status": "modified",
-            "additions": 39,
-            "deletions": 2
+            "additions": 103,
+            "deletions": 11
+          },
+          {
+            "filename": "chromium_overlay/chrome/browser/ui/webui/argon_home/argon_search_handler.cc",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 20,
+            "deletions": 5
           },
           {
             "filename": "docs/chromium-158-upgrade.md",
@@ -58799,7 +58806,7 @@
             "filename": "docs/homepage.md",
             "previous_filename": null,
             "status": "modified",
-            "additions": 15,
+            "additions": 37,
             "deletions": 0
           },
           {
@@ -58862,7 +58869,7 @@
             "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
             "previous_filename": null,
             "status": "modified",
-            "additions": 62,
+            "additions": 82,
             "deletions": 2
           },
           {
@@ -58925,8 +58932,8 @@
             "filename": "tests/test_homepage_startup.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 8,
-            "deletions": 2
+            "additions": 34,
+            "deletions": 4
           },
           {
             "filename": "tests/test_russian_translations.py",
@@ -64961,22 +64968,23 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d6edd53c288dafebca9879115236a4fa02f9cfea": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0c634bf5e7c18a43264a21af8b8feb2449469482": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "d6edd53c288dafebca9879115236a4fa02f9cfea",
+      "head_sha": "0c634bf5e7c18a43264a21af8b8feb2449469482",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d6edd53c288dafebca9879115236a4fa02f9cfea",
-      "commits": 3,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0c634bf5e7c18a43264a21af8b8feb2449469482",
+      "commits": 4,
       "commit_shas": [
+        "0c634bf5e7c18a43264a21af8b8feb2449469482",
         "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
         "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
         "d6edd53c288dafebca9879115236a4fa02f9cfea"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 30,
-      "additions": 986,
-      "deletions": 43,
+      "changed_files": 31,
+      "additions": 1138,
+      "deletions": 59,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -65003,8 +65011,15 @@
           "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
           "previous_filename": null,
           "status": "modified",
-          "additions": 39,
-          "deletions": 2
+          "additions": 103,
+          "deletions": 11
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/ui/webui/argon_home/argon_search_handler.cc",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 20,
+          "deletions": 5
         },
         {
           "filename": "docs/chromium-158-upgrade.md",
@@ -65017,7 +65032,7 @@
           "filename": "docs/homepage.md",
           "previous_filename": null,
           "status": "modified",
-          "additions": 15,
+          "additions": 37,
           "deletions": 0
         },
         {
@@ -65080,7 +65095,7 @@
           "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
           "previous_filename": null,
           "status": "modified",
-          "additions": 62,
+          "additions": 82,
           "deletions": 2
         },
         {
@@ -65143,8 +65158,8 @@
           "filename": "tests/test_homepage_startup.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 8,
-          "deletions": 2
+          "additions": 34,
+          "deletions": 4
         },
         {
           "filename": "tests/test_russian_translations.py",
