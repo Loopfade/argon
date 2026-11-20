@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T18:37:32Z",
+  "generated_at": "2026-11-20T18:38:46Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T18:37:13Z",
+      "updated_at": "2026-11-20T18:38:19Z",
       "merged_at": null,
-      "head_sha": "49cabcd2ec344a74092c97a1f1a998b3df750691",
-      "merge_commit_sha": "2f56cab9b82f59065149f6b9a6da4ebb8b1d935a",
+      "head_sha": "eb2398ef8787e029c7490d8c06e121cb4fc4de34",
+      "merge_commit_sha": "7b5b4f5150d133bef4bf07fdb3ac9c68b8b4253f",
       "author": "Loopfade",
-      "additions": 1162,
-      "deletions": 59,
+      "additions": 1144,
+      "deletions": 62,
       "changed_files": 32,
-      "commits": 5,
+      "commits": 6,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "49cabcd2ec344a74092c97a1f1a998b3df750691",
+        "head_sha": "eb2398ef8787e029c7490d8c06e121cb4fc4de34",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49cabcd2ec344a74092c97a1f1a998b3df750691",
-        "commits": 5,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...eb2398ef8787e029c7490d8c06e121cb4fc4de34",
+        "commits": 6,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 32,
-        "additions": 1162,
-        "deletions": 59,
+        "additions": 1144,
+        "deletions": 62,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58766,13 +58766,6 @@
             "status": "modified",
             "additions": 21,
             "deletions": 3
-          },
-          {
-            "filename": ".github/workflows/argon-androidx-pin-probe.yml",
-            "previous_filename": null,
-            "status": "added",
-            "additions": 24,
-            "deletions": 0
           },
           {
             "filename": "build-lock.json",
@@ -58857,6 +58850,13 @@
             "status": "modified",
             "additions": 116,
             "deletions": 7
+          },
+          {
+            "filename": "tests/check_background_playback_flow.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 6,
+            "deletions": 3
           },
           {
             "filename": "tests/fixtures/browsing_data_period.json",
@@ -64975,24 +64975,25 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49cabcd2ec344a74092c97a1f1a998b3df750691": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...eb2398ef8787e029c7490d8c06e121cb4fc4de34": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "49cabcd2ec344a74092c97a1f1a998b3df750691",
+      "head_sha": "eb2398ef8787e029c7490d8c06e121cb4fc4de34",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49cabcd2ec344a74092c97a1f1a998b3df750691",
-      "commits": 5,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...eb2398ef8787e029c7490d8c06e121cb4fc4de34",
+      "commits": 6,
       "commit_shas": [
         "0c634bf5e7c18a43264a21af8b8feb2449469482",
         "49cabcd2ec344a74092c97a1f1a998b3df750691",
         "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
         "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
-        "d6edd53c288dafebca9879115236a4fa02f9cfea"
+        "d6edd53c288dafebca9879115236a4fa02f9cfea",
+        "eb2398ef8787e029c7490d8c06e121cb4fc4de34"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 32,
-      "additions": 1162,
-      "deletions": 59,
+      "additions": 1144,
+      "deletions": 62,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -65000,13 +65001,6 @@
           "status": "modified",
           "additions": 21,
           "deletions": 3
-        },
-        {
-          "filename": ".github/workflows/argon-androidx-pin-probe.yml",
-          "previous_filename": null,
-          "status": "added",
-          "additions": 24,
-          "deletions": 0
         },
         {
           "filename": "build-lock.json",
@@ -65091,6 +65085,13 @@
           "status": "modified",
           "additions": 116,
           "deletions": 7
+        },
+        {
+          "filename": "tests/check_background_playback_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 6,
+          "deletions": 3
         },
         {
           "filename": "tests/fixtures/browsing_data_period.json",
