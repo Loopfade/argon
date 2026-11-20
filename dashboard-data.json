@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T14:34:54Z",
+  "generated_at": "2026-11-20T14:58:19Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,25 +58739,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T14:10:59Z",
+      "updated_at": "2026-11-20T14:58:15Z",
       "merged_at": null,
-      "head_sha": "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
-      "merge_commit_sha": "17be95ef40cebc8c2b7c714121b1ffb633244b4a",
+      "head_sha": "959eee6568693f5af287f490aceae656346086ea",
+      "merge_commit_sha": "d00076905469b11941386f113f8c90be0c4e289e",
       "author": "Loopfade",
-      "additions": 400,
+      "additions": 409,
       "deletions": 13,
       "changed_files": 8,
-      "commits": 21,
+      "commits": 23,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
+        "head_sha": "959eee6568693f5af287f490aceae656346086ea",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
-        "commits": 21,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...959eee6568693f5af287f490aceae656346086ea",
+        "commits": 23,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 8,
-        "additions": 400,
+        "additions": 409,
         "deletions": 13,
         "files": [
           {
@@ -58806,7 +58806,7 @@
             "filename": "tests/test_user_agent_renderer.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 41,
+            "additions": 50,
             "deletions": 1
           },
           {
@@ -58825,7 +58825,7 @@
           "status": "completed",
           "conclusion": "failure",
           "source_sha": "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
-          "current": true
+          "current": false
         },
         {
           "id": 44684120248,
@@ -64803,6 +64803,101 @@
           "previous_filename": null,
           "status": "modified",
           "additions": 7,
+          "deletions": 0
+        }
+      ]
+    },
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...959eee6568693f5af287f490aceae656346086ea": {
+      "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "head_sha": "959eee6568693f5af287f490aceae656346086ea",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...959eee6568693f5af287f490aceae656346086ea",
+      "commits": 23,
+      "commit_shas": [
+        "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
+        "10792417d1fe9b5e2a706b1b3ec7073017cf4825",
+        "1177f8ea0eae9e3c12c3c4c7f1dc802e1009c1be",
+        "14808cad841d9709381c08b2256eda9ee42ae6d3",
+        "1906789a0e73da1a49dedbb6011263231166af98",
+        "204a1f7edc3bc4a5eb3f227bb20a8f3851af9f99",
+        "34399709c60c3c2127860941f63235cfd64d625e",
+        "34ed86ecbcef97fbcce09e78cb4bef14f40f106d",
+        "55fbd845a0de018e09d1aaa63032c4c1da562bd3",
+        "6a3a43802d14e9f628a1c5ffbc9b051ed5132070",
+        "6f6b88e83aa370fd0bb9c5c0f7137d7fe81508f2",
+        "8a70efe9496dffa317f9f2bdb1d706be9648478f",
+        "959eee6568693f5af287f490aceae656346086ea",
+        "9b2b4340f06188f16b4343272074991a91442ef6",
+        "a50da16d5662766af9ac74fa21aa224b07022104",
+        "a6c9bb3d81da9724b96f6dc98ec2809dfa06a898",
+        "aa3fda0b6fe8a9fbb14da46ab3b527992a1e3a19",
+        "b1d947d162d35b6f7bf6354a88beda304968fd5a",
+        "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
+        "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
+        "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
+        "dd60802788f21e3372801e0f8b71a50208d9cbd0",
+        "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9"
+      ],
+      "commits_complete": true,
+      "files_complete": true,
+      "changed_files": 8,
+      "additions": 409,
+      "deletions": 13,
+      "files": [
+        {
+          "filename": ".github/ci/full-build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 19,
+          "deletions": 3
+        },
+        {
+          "filename": "docs/user-agent.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 3
+        },
+        {
+          "filename": "scripts/apply_user_agent.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 113,
+          "deletions": 6
+        },
+        {
+          "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 46,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_full_build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 35,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_navigation.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_renderer.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 50,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_user_agent_tab.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 131,
           "deletions": 0
         }
       ]
