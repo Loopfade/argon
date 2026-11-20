@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T17:51:10Z",
+  "generated_at": "2026-11-20T18:16:06Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T17:36:38Z",
+      "updated_at": "2026-11-20T18:15:35Z",
       "merged_at": null,
-      "head_sha": "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
-      "merge_commit_sha": "783ff48d48d94fe9cf62a8e58f47ece8fd738f2d",
+      "head_sha": "d6edd53c288dafebca9879115236a4fa02f9cfea",
+      "merge_commit_sha": "730b340c650c2eaeece915c7b57ba1afad91ca23",
       "author": "Loopfade",
-      "additions": 948,
-      "deletions": 39,
-      "changed_files": 28,
-      "commits": 2,
+      "additions": 986,
+      "deletions": 43,
+      "changed_files": 30,
+      "commits": 3,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
+        "head_sha": "d6edd53c288dafebca9879115236a4fa02f9cfea",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...bc4c9334d1c9181e2d91c6ad8c16300034c02349",
-        "commits": 2,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d6edd53c288dafebca9879115236a4fa02f9cfea",
+        "commits": 3,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 28,
-        "additions": 948,
-        "deletions": 39,
+        "changed_files": 30,
+        "additions": 986,
+        "deletions": 43,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58824,6 +58824,13 @@
             "deletions": 7
           },
           {
+            "filename": "scripts/apply_exit.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 17,
+            "deletions": 4
+          },
+          {
             "filename": "scripts/apply_homepage.py",
             "previous_filename": null,
             "status": "modified",
@@ -58884,6 +58891,13 @@
             "previous_filename": null,
             "status": "modified",
             "additions": 81,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_exit.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 21,
             "deletions": 0
           },
           {
@@ -64947,21 +64961,22 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...bc4c9334d1c9181e2d91c6ad8c16300034c02349": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d6edd53c288dafebca9879115236a4fa02f9cfea": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
+      "head_sha": "d6edd53c288dafebca9879115236a4fa02f9cfea",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...bc4c9334d1c9181e2d91c6ad8c16300034c02349",
-      "commits": 2,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d6edd53c288dafebca9879115236a4fa02f9cfea",
+      "commits": 3,
       "commit_shas": [
         "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
-        "bc4c9334d1c9181e2d91c6ad8c16300034c02349"
+        "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
+        "d6edd53c288dafebca9879115236a4fa02f9cfea"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 28,
-      "additions": 948,
-      "deletions": 39,
+      "changed_files": 30,
+      "additions": 986,
+      "deletions": 43,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -65027,6 +65042,13 @@
           "deletions": 7
         },
         {
+          "filename": "scripts/apply_exit.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 17,
+          "deletions": 4
+        },
+        {
           "filename": "scripts/apply_homepage.py",
           "previous_filename": null,
           "status": "modified",
@@ -65087,6 +65109,13 @@
           "previous_filename": null,
           "status": "modified",
           "additions": 81,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_exit.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 21,
           "deletions": 0
         },
         {
