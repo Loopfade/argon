@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T15:31:21Z",
+  "generated_at": "2026-11-20T15:34:31Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,32 +58739,32 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T15:30:41Z",
+      "updated_at": "2026-11-20T15:33:40Z",
       "merged_at": null,
-      "head_sha": "d8d75ba5456e332b843f871f6c46b31d43331816",
-      "merge_commit_sha": "cdade38a89211d1b6c27093c242667f47867d600",
+      "head_sha": "46eea5a083791d318ceb3627019492a9bdb93c06",
+      "merge_commit_sha": "3308ead3432018a1022d3e0f160a3fb01cfff0fd",
       "author": "Loopfade",
-      "additions": 487,
+      "additions": 492,
       "deletions": 18,
       "changed_files": 12,
-      "commits": 34,
+      "commits": 38,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "d8d75ba5456e332b843f871f6c46b31d43331816",
+        "head_sha": "46eea5a083791d318ceb3627019492a9bdb93c06",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d8d75ba5456e332b843f871f6c46b31d43331816",
-        "commits": 34,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...46eea5a083791d318ceb3627019492a9bdb93c06",
+        "commits": 38,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 12,
-        "additions": 487,
+        "additions": 492,
         "deletions": 18,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 19,
+            "additions": 21,
             "deletions": 3
           },
           {
@@ -58813,7 +58813,7 @@
             "filename": "tests/test_full_build.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 35,
+            "additions": 38,
             "deletions": 0
           },
           {
@@ -64835,14 +64835,15 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d8d75ba5456e332b843f871f6c46b31d43331816": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...46eea5a083791d318ceb3627019492a9bdb93c06": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "d8d75ba5456e332b843f871f6c46b31d43331816",
+      "head_sha": "46eea5a083791d318ceb3627019492a9bdb93c06",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d8d75ba5456e332b843f871f6c46b31d43331816",
-      "commits": 34,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...46eea5a083791d318ceb3627019492a9bdb93c06",
+      "commits": 38,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
+        "094ec795b7898178d15b128159680562302efc91",
         "10792417d1fe9b5e2a706b1b3ec7073017cf4825",
         "1177f8ea0eae9e3c12c3c4c7f1dc802e1009c1be",
         "13ad490c4ee1dc734be9a15c3dab92f8babcef39",
@@ -64852,6 +64853,8 @@
         "34399709c60c3c2127860941f63235cfd64d625e",
         "34ed86ecbcef97fbcce09e78cb4bef14f40f106d",
         "39a85ccce5751c8c8295d9c5cc4a7a4bbaf9b59f",
+        "4463a66c5af3f5602f94a3cf6e96d6719de44b52",
+        "46eea5a083791d318ceb3627019492a9bdb93c06",
         "4b72c5047eac4f566eae1588bd44147230e33ed7",
         "55fbd845a0de018e09d1aaa63032c4c1da562bd3",
         "62634ce66aced99c94f3293b68eacd1dfe44a68d",
@@ -64869,6 +64872,7 @@
         "a50da16d5662766af9ac74fa21aa224b07022104",
         "a6c9bb3d81da9724b96f6dc98ec2809dfa06a898",
         "aa3fda0b6fe8a9fbb14da46ab3b527992a1e3a19",
+        "ac9b48802f36e3a96f4df886969f77460bd16198",
         "b1d947d162d35b6f7bf6354a88beda304968fd5a",
         "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
@@ -64880,14 +64884,14 @@
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 12,
-      "additions": 487,
+      "additions": 492,
       "deletions": 18,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 19,
+          "additions": 21,
           "deletions": 3
         },
         {
@@ -64936,7 +64940,7 @@
           "filename": "tests/test_full_build.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 35,
+          "additions": 38,
           "deletions": 0
         },
         {
