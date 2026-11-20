@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T17:22:31Z",
+  "generated_at": "2026-11-20T17:30:38Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,26 +58739,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T17:04:54Z",
+      "updated_at": "2026-11-20T17:29:58Z",
       "merged_at": null,
-      "head_sha": "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
-      "merge_commit_sha": "7a3083aafa5745ef809e60f357124f841c9988e2",
+      "head_sha": "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
+      "merge_commit_sha": "783ff48d48d94fe9cf62a8e58f47ece8fd738f2d",
       "author": "Loopfade",
-      "additions": 851,
-      "deletions": 30,
-      "changed_files": 25,
-      "commits": 1,
+      "additions": 948,
+      "deletions": 39,
+      "changed_files": 28,
+      "commits": 2,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
+        "head_sha": "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
-        "commits": 1,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...bc4c9334d1c9181e2d91c6ad8c16300034c02349",
+        "commits": 2,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 25,
-        "additions": 851,
-        "deletions": 30,
+        "changed_files": 28,
+        "additions": 948,
+        "deletions": 39,
         "files": [
           {
             "filename": ".github/ci/full-build.py",
@@ -58785,7 +58785,7 @@
             "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
             "previous_filename": null,
             "status": "modified",
-            "additions": 28,
+            "additions": 39,
             "deletions": 2
           },
           {
@@ -58817,6 +58817,13 @@
             "deletions": 1
           },
           {
+            "filename": "res/translations/bundles.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 0,
+            "deletions": 7
+          },
+          {
             "filename": "scripts/apply_homepage.py",
             "previous_filename": null,
             "status": "modified",
@@ -58827,8 +58834,8 @@
             "filename": "scripts/apply_user_agent.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 113,
-            "deletions": 6
+            "additions": 116,
+            "deletions": 7
           },
           {
             "filename": "tests/fixtures/browsing_data_period.json",
@@ -58848,7 +58855,7 @@
             "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
             "previous_filename": null,
             "status": "modified",
-            "additions": 36,
+            "additions": 62,
             "deletions": 2
           },
           {
@@ -58876,7 +58883,7 @@
             "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
             "previous_filename": null,
             "status": "modified",
-            "additions": 46,
+            "additions": 81,
             "deletions": 0
           },
           {
@@ -58908,6 +58915,13 @@
             "deletions": 2
           },
           {
+            "filename": "tests/test_russian_translations.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 18,
+            "deletions": 0
+          },
+          {
             "filename": "tests/test_user_agent_navigation.py",
             "previous_filename": null,
             "status": "modified",
@@ -58927,6 +58941,13 @@
             "status": "added",
             "additions": 131,
             "deletions": 0
+          },
+          {
+            "filename": "tests/user_agent_navigation_flow.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 4,
+            "deletions": 1
           },
           {
             "filename": "vanadium",
@@ -64926,20 +64947,21 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...99d444cb50f435bf6c6516438d1da47a1bd0ccb9": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...bc4c9334d1c9181e2d91c6ad8c16300034c02349": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
+      "head_sha": "bc4c9334d1c9181e2d91c6ad8c16300034c02349",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
-      "commits": 1,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...bc4c9334d1c9181e2d91c6ad8c16300034c02349",
+      "commits": 2,
       "commit_shas": [
-        "99d444cb50f435bf6c6516438d1da47a1bd0ccb9"
+        "99d444cb50f435bf6c6516438d1da47a1bd0ccb9",
+        "bc4c9334d1c9181e2d91c6ad8c16300034c02349"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 25,
-      "additions": 851,
-      "deletions": 30,
+      "changed_files": 28,
+      "additions": 948,
+      "deletions": 39,
       "files": [
         {
           "filename": ".github/ci/full-build.py",
@@ -64966,7 +64988,7 @@
           "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
           "previous_filename": null,
           "status": "modified",
-          "additions": 28,
+          "additions": 39,
           "deletions": 2
         },
         {
@@ -64998,6 +65020,13 @@
           "deletions": 1
         },
         {
+          "filename": "res/translations/bundles.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 0,
+          "deletions": 7
+        },
+        {
           "filename": "scripts/apply_homepage.py",
           "previous_filename": null,
           "status": "modified",
@@ -65008,8 +65037,8 @@
           "filename": "scripts/apply_user_agent.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 113,
-          "deletions": 6
+          "additions": 116,
+          "deletions": 7
         },
         {
           "filename": "tests/fixtures/browsing_data_period.json",
@@ -65029,7 +65058,7 @@
           "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
           "previous_filename": null,
           "status": "modified",
-          "additions": 36,
+          "additions": 62,
           "deletions": 2
         },
         {
@@ -65057,7 +65086,7 @@
           "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
           "previous_filename": null,
           "status": "modified",
-          "additions": 46,
+          "additions": 81,
           "deletions": 0
         },
         {
@@ -65089,6 +65118,13 @@
           "deletions": 2
         },
         {
+          "filename": "tests/test_russian_translations.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 18,
+          "deletions": 0
+        },
+        {
           "filename": "tests/test_user_agent_navigation.py",
           "previous_filename": null,
           "status": "modified",
@@ -65108,6 +65144,13 @@
           "status": "added",
           "additions": 131,
           "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_navigation_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 1
         },
         {
           "filename": "vanadium",
