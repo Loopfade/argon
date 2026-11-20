@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T20:02:26Z",
+  "generated_at": "2026-11-20T20:22:32Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -29,8 +29,8 @@
         "run_attempt": 1,
         "first_started_at": "2026-11-20T20:01:35Z",
         "completed_at": null,
-        "duration_ms": 51000,
-        "runner_ms": 44000
+        "duration_ms": 1257000,
+        "runner_ms": 1250000
       },
       "jobs": [
         {
@@ -304,26 +304,26 @@
             },
             {
               "name": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u0441 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0449\u0438\u043c\u0438 \u0432\u0445\u043e\u0434\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 8,
               "started_at": "2026-11-20T20:02:30Z",
-              "completed_at": null
+              "completed_at": "2026-11-20T20:02:32Z"
             },
             {
               "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 9,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-20T20:02:32Z",
+              "completed_at": "2026-11-20T20:04:19Z"
             },
             {
               "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-              "status": "pending",
+              "status": "in_progress",
               "conclusion": null,
               "number": 10,
-              "started_at": null,
+              "started_at": "2026-11-20T20:04:19Z",
               "completed_at": null
             },
             {
@@ -347,6 +347,14 @@
               "status": "pending",
               "conclusion": null,
               "number": 13,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+              "status": "pending",
+              "conclusion": null,
+              "number": 23,
               "started_at": null,
               "completed_at": null
             },
@@ -445,26 +453,26 @@
                 },
                 {
                   "name": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u0441 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0449\u0438\u043c\u0438 \u0432\u0445\u043e\u0434\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 8,
                   "started_at": "2026-11-20T20:02:30Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-20T20:02:32Z"
                 },
                 {
                   "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 9,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-20T20:02:32Z",
+                  "completed_at": "2026-11-20T20:04:19Z"
                 },
                 {
                   "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 10,
-                  "started_at": null,
+                  "started_at": "2026-11-20T20:04:19Z",
                   "completed_at": null
                 },
                 {
@@ -488,6 +496,14 @@
                   "status": "pending",
                   "conclusion": null,
                   "number": 13,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 23,
                   "started_at": null,
                   "completed_at": null
                 },
@@ -694,26 +710,26 @@
                 },
                 {
                   "name": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u0441 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0449\u0438\u043c\u0438 \u0432\u0445\u043e\u0434\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 8,
                   "started_at": "2026-11-20T20:02:30Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-20T20:02:32Z"
                 },
                 {
                   "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 9,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-20T20:02:32Z",
+                  "completed_at": "2026-11-20T20:04:19Z"
                 },
                 {
                   "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 10,
-                  "started_at": null,
+                  "started_at": "2026-11-20T20:04:19Z",
                   "completed_at": null
                 },
                 {
@@ -737,6 +753,14 @@
                   "status": "pending",
                   "conclusion": null,
                   "number": 13,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 23,
                   "started_at": null,
                   "completed_at": null
                 },
@@ -59441,8 +59465,8 @@
     "run_attempt": 1,
     "first_started_at": "2026-11-20T20:01:35Z",
     "completed_at": null,
-    "duration_ms": 51000,
-    "runner_ms": 44000
+    "duration_ms": 1257000,
+    "runner_ms": 1250000
   },
   "runs": [
     {
@@ -59462,8 +59486,8 @@
       "run_attempt": 1,
       "first_started_at": "2026-11-20T20:01:35Z",
       "completed_at": null,
-      "duration_ms": 51000,
-      "runner_ms": 44000
+      "duration_ms": 1257000,
+      "runner_ms": 1250000
     },
     {
       "id": 44751395627,
