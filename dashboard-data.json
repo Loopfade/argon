@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T16:05:17Z",
+  "generated_at": "2026-11-20T16:25:13Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -58739,25 +58739,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T16:05:00Z",
+      "updated_at": "2026-11-20T16:24:38Z",
       "merged_at": null,
-      "head_sha": "10088cfcb37e1d7666fdf9eafc037db7926c6518",
-      "merge_commit_sha": "dbc9aeb2af76c3cd9707016a8c0543b47a5548c2",
+      "head_sha": "49069f1582ab5235ddfe1946f13736926bbd3443",
+      "merge_commit_sha": "8dd9df627314bedaec57aea091d232fc18a63e57",
       "author": "Loopfade",
-      "additions": 658,
+      "additions": 684,
       "deletions": 27,
-      "changed_files": 20,
-      "commits": 48,
+      "changed_files": 23,
+      "commits": 51,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "10088cfcb37e1d7666fdf9eafc037db7926c6518",
+        "head_sha": "49069f1582ab5235ddfe1946f13736926bbd3443",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...10088cfcb37e1d7666fdf9eafc037db7926c6518",
-        "commits": 48,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49069f1582ab5235ddfe1946f13736926bbd3443",
+        "commits": 51,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 20,
-        "additions": 658,
+        "changed_files": 23,
+        "additions": 684,
         "deletions": 27,
         "files": [
           {
@@ -58773,6 +58773,13 @@
             "status": "modified",
             "additions": 5,
             "deletions": 5
+          },
+          {
+            "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 11,
+            "deletions": 0
           },
           {
             "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
@@ -58831,11 +58838,25 @@
             "deletions": 1
           },
           {
+            "filename": "tests/fixtures/homepage/ArgonHomeBridgeFlow.java.in",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 8,
+            "deletions": 0
+          },
+          {
             "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
             "previous_filename": null,
             "status": "modified",
             "additions": 36,
             "deletions": 2
+          },
+          {
+            "filename": "tests/fixtures/homepage/NewTabPageDelegate.java.in",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 7,
+            "deletions": 0
           },
           {
             "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
@@ -64891,12 +64912,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...10088cfcb37e1d7666fdf9eafc037db7926c6518": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49069f1582ab5235ddfe1946f13736926bbd3443": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "10088cfcb37e1d7666fdf9eafc037db7926c6518",
+      "head_sha": "49069f1582ab5235ddfe1946f13736926bbd3443",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...10088cfcb37e1d7666fdf9eafc037db7926c6518",
-      "commits": 48,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...49069f1582ab5235ddfe1946f13736926bbd3443",
+      "commits": 51,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "094ec795b7898178d15b128159680562302efc91",
@@ -64914,11 +64935,13 @@
         "39a85ccce5751c8c8295d9c5cc4a7a4bbaf9b59f",
         "4463a66c5af3f5602f94a3cf6e96d6719de44b52",
         "46eea5a083791d318ceb3627019492a9bdb93c06",
+        "49069f1582ab5235ddfe1946f13736926bbd3443",
         "4b72c5047eac4f566eae1588bd44147230e33ed7",
         "55fbd845a0de018e09d1aaa63032c4c1da562bd3",
         "62634ce66aced99c94f3293b68eacd1dfe44a68d",
         "638a84e0df4ac92b726603c413f1df2c043cc05f",
         "6a3a43802d14e9f628a1c5ffbc9b051ed5132070",
+        "6b95fb0af45d13f818aca2a1a1d765f4d6c2ef75",
         "6f6b88e83aa370fd0bb9c5c0f7137d7fe81508f2",
         "77c18735089b89ec0a159b96e2d4f8ad9125ec60",
         "7c6b3d152c941068242841f5ff38900bf7a57283",
@@ -64940,6 +64963,7 @@
         "b1d947d162d35b6f7bf6354a88beda304968fd5a",
         "b3fab6b12b1c2508502eafd7a16269a94219723a",
         "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
+        "b8df509d130819206247df37e06b8833bcd7142a",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
         "d3756e5f05e099a6f538dd2c05c87c3b3e2eb73a",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
@@ -64949,8 +64973,8 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 20,
-      "additions": 658,
+      "changed_files": 23,
+      "additions": 684,
       "deletions": 27,
       "files": [
         {
@@ -64966,6 +64990,13 @@
           "status": "modified",
           "additions": 5,
           "deletions": 5
+        },
+        {
+          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 11,
+          "deletions": 0
         },
         {
           "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
@@ -65024,11 +65055,25 @@
           "deletions": 1
         },
         {
+          "filename": "tests/fixtures/homepage/ArgonHomeBridgeFlow.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 0
+        },
+        {
           "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
           "previous_filename": null,
           "status": "modified",
           "additions": 36,
           "deletions": 2
+        },
+        {
+          "filename": "tests/fixtures/homepage/NewTabPageDelegate.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 7,
+          "deletions": 0
         },
         {
           "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
