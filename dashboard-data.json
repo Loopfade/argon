@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T05:10:31Z",
+  "generated_at": "2026-11-20T05:16:04Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -54755,25 +54755,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T05:10:30Z",
+      "updated_at": "2026-11-20T05:13:35Z",
       "merged_at": null,
-      "head_sha": "8a70efe9496dffa317f9f2bdb1d706be9648478f",
-      "merge_commit_sha": "e181e5df681857b81de0a01dee11b2c32cfb4b8f",
+      "head_sha": "b1d947d162d35b6f7bf6354a88beda304968fd5a",
+      "merge_commit_sha": "47c4f3713f848c4e146d49761a17cd960755debd",
       "author": "Loopfade",
-      "additions": 331,
+      "additions": 337,
       "deletions": 10,
       "changed_files": 6,
-      "commits": 10,
+      "commits": 12,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "8a70efe9496dffa317f9f2bdb1d706be9648478f",
+        "head_sha": "b1d947d162d35b6f7bf6354a88beda304968fd5a",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...8a70efe9496dffa317f9f2bdb1d706be9648478f",
-        "commits": 10,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b1d947d162d35b6f7bf6354a88beda304968fd5a",
+        "commits": 12,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 6,
-        "additions": 331,
+        "additions": 337,
         "deletions": 10,
         "files": [
           {
@@ -54787,7 +54787,7 @@
             "filename": "scripts/apply_user_agent.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 111,
+            "additions": 115,
             "deletions": 6
           },
           {
@@ -54808,7 +54808,7 @@
             "filename": "tests/test_user_agent_renderer.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 39,
+            "additions": 41,
             "deletions": 1
           },
           {
@@ -60629,12 +60629,12 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...8a70efe9496dffa317f9f2bdb1d706be9648478f": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b1d947d162d35b6f7bf6354a88beda304968fd5a": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "8a70efe9496dffa317f9f2bdb1d706be9648478f",
+      "head_sha": "b1d947d162d35b6f7bf6354a88beda304968fd5a",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...8a70efe9496dffa317f9f2bdb1d706be9648478f",
-      "commits": 10,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...b1d947d162d35b6f7bf6354a88beda304968fd5a",
+      "commits": 12,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "10792417d1fe9b5e2a706b1b3ec7073017cf4825",
@@ -60645,12 +60645,14 @@
         "8a70efe9496dffa317f9f2bdb1d706be9648478f",
         "9b2b4340f06188f16b4343272074991a91442ef6",
         "aa3fda0b6fe8a9fbb14da46ab3b527992a1e3a19",
-        "b4ad257c23f7ca02505d39080cdea807ef56cf8b"
+        "b1d947d162d35b6f7bf6354a88beda304968fd5a",
+        "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
+        "d1fa1de2ecb86e7fbe3db0560981044599b4c776"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 6,
-      "additions": 331,
+      "additions": 337,
       "deletions": 10,
       "files": [
         {
@@ -60664,7 +60666,7 @@
           "filename": "scripts/apply_user_agent.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 111,
+          "additions": 115,
           "deletions": 6
         },
         {
@@ -60685,7 +60687,7 @@
           "filename": "tests/test_user_agent_renderer.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 39,
+          "additions": 41,
           "deletions": 1
         },
         {
