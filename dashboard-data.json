@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-20T11:08:48Z",
+  "generated_at": "2026-11-20T14:11:03Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -57708,25 +57708,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-20T11:08:42Z",
+      "updated_at": "2026-11-20T14:10:59Z",
       "merged_at": null,
-      "head_sha": "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
-      "merge_commit_sha": "a9bc3600ebcd5faa4f52909955a68074462372e9",
+      "head_sha": "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
+      "merge_commit_sha": "17be95ef40cebc8c2b7c714121b1ffb633244b4a",
       "author": "Loopfade",
-      "additions": 384,
+      "additions": 400,
       "deletions": 13,
       "changed_files": 8,
-      "commits": 19,
+      "commits": 21,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
+        "head_sha": "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d81130536d27ca68f7073b9dc41c25a8d4e0247b",
-        "commits": 19,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
+        "commits": 21,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 8,
-        "additions": 384,
+        "additions": 400,
         "deletions": 13,
         "files": [
           {
@@ -57747,7 +57747,7 @@
             "filename": "scripts/apply_user_agent.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 108,
+            "additions": 113,
             "deletions": 6
           },
           {
@@ -57782,7 +57782,7 @@
             "filename": "tests/test_user_agent_tab.py",
             "previous_filename": null,
             "status": "added",
-            "additions": 120,
+            "additions": 131,
             "deletions": 0
           }
         ]
@@ -63675,17 +63675,18 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d81130536d27ca68f7073b9dc41c25a8d4e0247b": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
+      "head_sha": "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...d81130536d27ca68f7073b9dc41c25a8d4e0247b",
-      "commits": 19,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9",
+      "commits": 21,
       "commit_shas": [
         "02fbcb0111ff6069ed214bb3a0568ccbc79c7330",
         "10792417d1fe9b5e2a706b1b3ec7073017cf4825",
         "1177f8ea0eae9e3c12c3c4c7f1dc802e1009c1be",
         "1906789a0e73da1a49dedbb6011263231166af98",
+        "204a1f7edc3bc4a5eb3f227bb20a8f3851af9f99",
         "34399709c60c3c2127860941f63235cfd64d625e",
         "34ed86ecbcef97fbcce09e78cb4bef14f40f106d",
         "55fbd845a0de018e09d1aaa63032c4c1da562bd3",
@@ -63700,12 +63701,13 @@
         "b4ad257c23f7ca02505d39080cdea807ef56cf8b",
         "d1fa1de2ecb86e7fbe3db0560981044599b4c776",
         "d81130536d27ca68f7073b9dc41c25a8d4e0247b",
-        "dd60802788f21e3372801e0f8b71a50208d9cbd0"
+        "dd60802788f21e3372801e0f8b71a50208d9cbd0",
+        "f1e33a1f9fcc8cefad0ad65100eedf5620fe21a9"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 8,
-      "additions": 384,
+      "additions": 400,
       "deletions": 13,
       "files": [
         {
@@ -63726,7 +63728,7 @@
           "filename": "scripts/apply_user_agent.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 108,
+          "additions": 113,
           "deletions": 6
         },
         {
@@ -63761,7 +63763,7 @@
           "filename": "tests/test_user_agent_tab.py",
           "previous_filename": null,
           "status": "added",
-          "additions": 120,
+          "additions": 131,
           "deletions": 0
         }
       ]
