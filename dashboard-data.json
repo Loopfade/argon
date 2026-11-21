@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-21T13:42:07Z",
+  "generated_at": "2026-11-21T14:14:34Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -29,8 +29,8 @@
         "run_attempt": 2,
         "first_started_at": "2026-11-21T07:04:22Z",
         "completed_at": null,
-        "duration_ms": 23865000,
-        "runner_ms": 47591000
+        "duration_ms": 25812000,
+        "runner_ms": 51485000
       },
       "jobs": [
         {
@@ -923,18 +923,18 @@
             },
             {
               "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 14,
               "started_at": "2026-11-21T13:00:24Z",
-              "completed_at": null
+              "completed_at": "2026-11-21T14:01:11Z"
             },
             {
               "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
-              "status": "pending",
+              "status": "in_progress",
               "conclusion": null,
               "number": 15,
-              "started_at": null,
+              "started_at": "2026-11-21T14:01:11Z",
               "completed_at": null
             },
             {
@@ -1468,18 +1468,18 @@
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 14,
                   "started_at": "2026-11-21T13:00:24Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-21T14:01:11Z"
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 15,
-                  "started_at": null,
+                  "started_at": "2026-11-21T14:01:11Z",
                   "completed_at": null
                 },
                 {
@@ -1738,18 +1738,18 @@
             },
             {
               "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 14,
               "started_at": "2026-11-21T13:00:34Z",
-              "completed_at": null
+              "completed_at": "2026-11-21T14:02:44Z"
             },
             {
               "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
-              "status": "pending",
+              "status": "in_progress",
               "conclusion": null,
               "number": 15,
-              "started_at": null,
+              "started_at": "2026-11-21T14:02:44Z",
               "completed_at": null
             },
             {
@@ -2283,18 +2283,18 @@
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 14,
                   "started_at": "2026-11-21T13:00:34Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-21T14:02:44Z"
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 15,
-                  "started_at": null,
+                  "started_at": "2026-11-21T14:02:44Z",
                   "completed_at": null
                 },
                 {
@@ -3670,18 +3670,18 @@
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 14,
                   "started_at": "2026-11-21T13:00:34Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-21T14:02:44Z"
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 15,
-                  "started_at": null,
+                  "started_at": "2026-11-21T14:02:44Z",
                   "completed_at": null
                 },
                 {
@@ -3938,18 +3938,18 @@
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 14,
                   "started_at": "2026-11-21T13:00:24Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-21T14:01:11Z"
                 },
                 {
                   "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 15,
-                  "started_at": null,
+                  "started_at": "2026-11-21T14:01:11Z",
                   "completed_at": null
                 },
                 {
@@ -66964,8 +66964,8 @@
     "run_attempt": 2,
     "first_started_at": "2026-11-21T07:04:22Z",
     "completed_at": null,
-    "duration_ms": 23865000,
-    "runner_ms": 47591000
+    "duration_ms": 25812000,
+    "runner_ms": 51485000
   },
   "runs": [
     {
@@ -66985,8 +66985,8 @@
       "run_attempt": 2,
       "first_started_at": "2026-11-21T07:04:22Z",
       "completed_at": null,
-      "duration_ms": 23865000,
-      "runner_ms": 47591000
+      "duration_ms": 25812000,
+      "runner_ms": 51485000
     },
     {
       "id": 44868529807,
@@ -67337,26 +67337,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-21T12:26:43Z",
+      "updated_at": "2026-11-21T14:14:09Z",
       "merged_at": null,
-      "head_sha": "1d30d5a893df5805e3b8098fcd93698c3b724348",
-      "merge_commit_sha": "6a37ee5298ec9e383af5ae2f0bd1aaaf5107c30d",
+      "head_sha": "72187948e9206d37849981a49f3fd20bfcf8bbbb",
+      "merge_commit_sha": "86aa5c4e87e571640eb095bf62897ab3f789b718",
       "author": "Loopfade",
-      "additions": 1345,
-      "deletions": 74,
-      "changed_files": 38,
-      "commits": 3,
+      "additions": 1497,
+      "deletions": 87,
+      "changed_files": 39,
+      "commits": 4,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "1d30d5a893df5805e3b8098fcd93698c3b724348",
+        "head_sha": "72187948e9206d37849981a49f3fd20bfcf8bbbb",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...1d30d5a893df5805e3b8098fcd93698c3b724348",
-        "commits": 3,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...72187948e9206d37849981a49f3fd20bfcf8bbbb",
+        "commits": 4,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 38,
-        "additions": 1345,
-        "deletions": 74,
+        "changed_files": 39,
+        "additions": 1497,
+        "deletions": 87,
         "files": [
           {
             "filename": ".github/ci/check-exit-dex.py",
@@ -67474,8 +67474,8 @@
             "filename": "tests/check_background_playback_flow.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 6,
-            "deletions": 3
+            "additions": 62,
+            "deletions": 16
           },
           {
             "filename": "tests/fixtures/apksigner-37-v3-certificate.txt",
@@ -67531,6 +67531,13 @@
             "previous_filename": null,
             "status": "modified",
             "additions": 81,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_background_dependency_fetch.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 96,
             "deletions": 0
           },
           {
@@ -74398,22 +74405,23 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...1d30d5a893df5805e3b8098fcd93698c3b724348": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...72187948e9206d37849981a49f3fd20bfcf8bbbb": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "1d30d5a893df5805e3b8098fcd93698c3b724348",
+      "head_sha": "72187948e9206d37849981a49f3fd20bfcf8bbbb",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...1d30d5a893df5805e3b8098fcd93698c3b724348",
-      "commits": 3,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...72187948e9206d37849981a49f3fd20bfcf8bbbb",
+      "commits": 4,
       "commit_shas": [
         "1d30d5a893df5805e3b8098fcd93698c3b724348",
         "69e0f0dfd9b23bcd44188f11c0f3c077c926c787",
+        "72187948e9206d37849981a49f3fd20bfcf8bbbb",
         "8f59d9de989d486f4e0e65d9460b10cea2b52ed7"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 38,
-      "additions": 1345,
-      "deletions": 74,
+      "changed_files": 39,
+      "additions": 1497,
+      "deletions": 87,
       "files": [
         {
           "filename": ".github/ci/check-exit-dex.py",
@@ -74531,8 +74539,8 @@
           "filename": "tests/check_background_playback_flow.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 6,
-          "deletions": 3
+          "additions": 62,
+          "deletions": 16
         },
         {
           "filename": "tests/fixtures/apksigner-37-v3-certificate.txt",
@@ -74588,6 +74596,13 @@
           "previous_filename": null,
           "status": "modified",
           "additions": 81,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_background_dependency_fetch.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 96,
           "deletions": 0
         },
         {
