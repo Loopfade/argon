@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
@@ -44,26 +45,68 @@ DEPENDENCIES = {
 }
 
 
+# The Chromium-pinned AndroidX snapshot may return 404 for individual
+# archives even though Chromium's README.chromium still names that build.
+# Keep the exact file SHA-256 and try another official location. The earlier
+# sources JAR has the same pinned digest, unlike the earlier AAR.
+PREFERENCE_SNAPSHOT_ROOT = (
+    "https://androidx.dev/snapshots/builds/16718948/artifacts/repository/")
+PREFERENCE_CI_ROOT = (
+    "https://ci.android.com/builds/submitted/16718948/androidx_snapshot/"
+    "latest/raw/repository/")
+PREVIOUS_PREFERENCE_SOURCES = (
+    "https://androidx.dev/snapshots/builds/16578329/artifacts/repository/"
+    "androidx/preference/preference/1.3.0-SNAPSHOT/"
+    "preference-1.3.0-20261012.201916-1-sources.jar")
+
+
+def dependency_urls(name, url):
+    urls = [url]
+    if name in ("preference.aar", "preference-sources.jar"):
+        if not url.startswith(PREFERENCE_SNAPSHOT_ROOT):
+            raise ValueError("AndroidX dependency URL differs from pinned Chromium")
+        urls.append(PREFERENCE_CI_ROOT + url[len(PREFERENCE_SNAPSHOT_ROOT):])
+        if name == "preference-sources.jar":
+            urls.append(PREVIOUS_PREFERENCE_SOURCES)
+    return urls
+
+
 def dependency(name):
     url, expected = DEPENDENCIES[name]
     path = CACHE / name
-    data = path.read_bytes() if path.exists() else None
-    if data is None or hashlib.sha256(data).hexdigest() != expected:
-        # AndroidX snapshot downloads occasionally stall on GitHub-hosted runners.
-        # Retain the SHA-256 pin and retry transient transport errors only.
+    if path.is_file():
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() == expected:
+            return path
+
+    failures = []
+    for candidate in dependency_urls(name, url):
+        # Never weaken the pin: a reachable file with unexpected contents
+        # is a hard error, not a reason to silently try a different version.
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(url, timeout=120) as response:
+                with urllib.request.urlopen(candidate, timeout=120) as response:
                     data = response.read()
-                break
-            except (OSError, TimeoutError):
+            except urllib.error.HTTPError as error:
+                failures.append(f"{candidate}: HTTP {error.code}")
+                if error.code == 404 or attempt == 2:
+                    break
+            except (OSError, TimeoutError) as error:
+                failures.append(f"{candidate}: {type(error).__name__}: {error}")
                 if attempt == 2:
-                    raise
-        if hashlib.sha256(data).hexdigest() != expected:
-            raise ValueError(f"Unexpected dependency contents: {name}")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-    return path
+                    break
+            else:
+                actual = hashlib.sha256(data).hexdigest()
+                if actual != expected:
+                    raise ValueError(
+                        f"Unexpected dependency contents: {name} from {candidate}; "
+                        f"expected SHA-256 {expected}, got {actual}")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+                return path
+    raise RuntimeError(
+        f"Could not download SHA-256-pinned dependency {name}; "
+        + "; ".join(failures))
 
 
 def verify_preference_pin():
