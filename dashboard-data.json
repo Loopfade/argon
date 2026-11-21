@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-21T16:06:41Z",
+  "generated_at": "2026-11-21T16:23:36Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -24,13 +24,13 @@
         "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
         "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610",
         "created_at": "2026-11-21T16:04:05Z",
-        "updated_at": "2026-11-21T16:04:44Z",
+        "updated_at": "2026-11-21T16:23:18Z",
         "run_started_at": "2026-11-21T16:04:05Z",
         "run_attempt": 1,
         "first_started_at": "2026-11-21T16:04:05Z",
         "completed_at": null,
-        "duration_ms": 156000,
-        "runner_ms": 149000
+        "duration_ms": 1171000,
+        "runner_ms": 1181000
       },
       "jobs": [
         {
@@ -239,11 +239,11 @@
         {
           "id": 136901543885,
           "name": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043e\u0431\u0449\u0438\u0439 Docker-\u043e\u0431\u0440\u0430\u0437 \u0438\u0437 \u043a\u043e\u043c\u043c\u0438\u0442\u0430 PR / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
-          "status": "in_progress",
-          "conclusion": null,
+          "status": "completed",
+          "conclusion": "success",
           "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136901543885",
           "started_at": "2026-11-21T16:04:43Z",
-          "completed_at": null,
+          "completed_at": "2026-11-21T16:23:15Z",
           "run_attempt": 1,
           "steps": [
             {
@@ -312,79 +312,95 @@
             },
             {
               "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 9,
               "started_at": "2026-11-21T16:05:12Z",
-              "completed_at": null
+              "completed_at": "2026-11-21T16:07:11Z"
             },
             {
               "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 10,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:07:11Z",
+              "completed_at": "2026-11-21T16:22:47Z"
             },
             {
               "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 11,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:22:47Z",
+              "completed_at": "2026-11-21T16:22:47Z"
             },
             {
               "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 12,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:22:47Z",
+              "completed_at": "2026-11-21T16:22:58Z"
             },
             {
               "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 13,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:22:58Z",
+              "completed_at": "2026-11-21T16:22:58Z"
+            },
+            {
+              "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-21T16:22:58Z",
+              "completed_at": "2026-11-21T16:23:00Z"
             },
             {
               "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 24,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:23:00Z",
+              "completed_at": "2026-11-21T16:23:11Z"
             },
             {
               "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 25,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:23:11Z",
+              "completed_at": "2026-11-21T16:23:12Z"
             },
             {
               "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 26,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-21T16:23:12Z",
+              "completed_at": "2026-11-21T16:23:12Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-21T16:23:12Z",
+              "completed_at": "2026-11-21T16:23:12Z"
             }
           ],
-          "duration_ms": 0,
+          "duration_ms": 1112000,
           "attempts": [
             {
               "id": 136901543885,
               "name": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043e\u0431\u0449\u0438\u0439 Docker-\u043e\u0431\u0440\u0430\u0437 \u0438\u0437 \u043a\u043e\u043c\u043c\u0438\u0442\u0430 PR / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136901543885",
               "started_at": "2026-11-21T16:04:43Z",
-              "completed_at": null,
+              "completed_at": "2026-11-21T16:23:15Z",
               "run_attempt": 1,
               "steps": [
                 {
@@ -453,14 +469,433 @@
                 },
                 {
                   "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 9,
                   "started_at": "2026-11-21T16:05:12Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-21T16:07:11Z"
                 },
                 {
                   "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 10,
+                  "started_at": "2026-11-21T16:07:11Z",
+                  "completed_at": "2026-11-21T16:22:47Z"
+                },
+                {
+                  "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 11,
+                  "started_at": "2026-11-21T16:22:47Z",
+                  "completed_at": "2026-11-21T16:22:47Z"
+                },
+                {
+                  "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 12,
+                  "started_at": "2026-11-21T16:22:47Z",
+                  "completed_at": "2026-11-21T16:22:58Z"
+                },
+                {
+                  "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 13,
+                  "started_at": "2026-11-21T16:22:58Z",
+                  "completed_at": "2026-11-21T16:22:58Z"
+                },
+                {
+                  "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 23,
+                  "started_at": "2026-11-21T16:22:58Z",
+                  "completed_at": "2026-11-21T16:23:00Z"
+                },
+                {
+                  "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 24,
+                  "started_at": "2026-11-21T16:23:00Z",
+                  "completed_at": "2026-11-21T16:23:11Z"
+                },
+                {
+                  "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 25,
+                  "started_at": "2026-11-21T16:23:11Z",
+                  "completed_at": "2026-11-21T16:23:12Z"
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 26,
+                  "started_at": "2026-11-21T16:23:12Z",
+                  "completed_at": "2026-11-21T16:23:12Z"
+                },
+                {
+                  "name": "Complete job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 27,
+                  "started_at": "2026-11-21T16:23:12Z",
+                  "completed_at": "2026-11-21T16:23:12Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 136906884601,
+          "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c arm64 / \u0421\u043e\u0431\u0440\u0430\u0442\u044c, \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c APK (arm64)",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136906884601",
+          "started_at": "2026-11-21T16:23:17Z",
+          "completed_at": null,
+          "run_attempt": 1,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-21T16:23:18Z",
+              "completed_at": "2026-11-21T16:23:19Z"
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0441\u0431\u043e\u0440\u043a\u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-21T16:23:19Z",
+              "completed_at": "2026-11-21T16:23:19Z"
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043b\u0438\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u043d\u0438\u043c\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-21T16:23:19Z",
+              "completed_at": "2026-11-21T16:23:19Z"
+            },
+            {
+              "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-21T16:23:19Z",
+              "completed_at": "2026-11-21T16:23:28Z"
+            },
+            {
+              "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043a\u0435\u0448 \u0434\u043b\u044f \u0432\u0435\u0440\u0441\u0438\u0438 Chromium \u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-21T16:23:28Z",
+              "completed_at": "2026-11-21T16:23:28Z"
+            },
+            {
+              "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435 GitHub",
+              "status": "in_progress",
+              "conclusion": null,
+              "number": 6,
+              "started_at": "2026-11-21T16:23:28Z",
+              "completed_at": null
+            },
+            {
+              "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+              "status": "pending",
+              "conclusion": null,
+              "number": 7,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437, \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 8,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 9,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043a\u0435\u0448\u0438 \u0441\u0442\u0430\u0440\u044b\u0445 \u0432\u0435\u0440\u0441\u0438\u0439 Chromium",
+              "status": "pending",
+              "conclusion": null,
+              "number": 10,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 11,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
+              "status": "pending",
+              "conclusion": null,
+              "number": 12,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043d\u0435\u043f\u0440\u0435\u0440\u044b\u0432\u043d\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443 APK",
+              "status": "pending",
+              "conclusion": null,
+              "number": 13,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 14,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 15,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0442\u0440\u0435\u0442\u0438\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 16,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0447\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 17,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u044f\u0442\u044b\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 18,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0414\u043e\u0436\u0434\u0430\u0442\u044c\u0441\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0440\u043e\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 19,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 20,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0441 \u043f\u043b\u0430\u043d\u043e\u043c \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 21,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443 \u043a\u0435\u0448\u0430 \u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044e",
+              "status": "pending",
+              "conclusion": null,
+              "number": 22,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0442\u043e\u0433\u043e\u0432\u044b\u0439 \u0441\u043d\u0438\u043c\u043e\u043a \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 23,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 24,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043f\u0435\u0440\u0435\u0434 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u0435\u043c \u0441\u0442\u0430\u0440\u044b\u0445 \u0441\u043d\u0438\u043c\u043a\u043e\u0432",
+              "status": "pending",
+              "conclusion": null,
+              "number": 25,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u0435\u0433\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 26,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f",
+              "status": "pending",
+              "conclusion": null,
+              "number": 27,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0443\u0447\u043d\u043e\u0439 \u0446\u0438\u043a\u043b \u043f\u043e\u0441\u043b\u0435 \u0442\u0430\u0439\u043c-\u0430\u0443\u0442\u0430 \u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u043c \u043a\u0435\u0448\u0435\u043c",
+              "status": "pending",
+              "conclusion": null,
+              "number": 28,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u0434\u0432\u0435\u0441\u0442\u0438 \u0438\u0442\u043e\u0433\u0438 \u0441\u0431\u043e\u0440\u043a\u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+              "status": "pending",
+              "conclusion": null,
+              "number": 29,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 \u043d\u0435\u043f\u043e\u043b\u043d\u044b\u0435 \u0438\u043b\u0438 \u043d\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0435 \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 30,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 60,
+              "started_at": null,
+              "completed_at": null
+            }
+          ],
+          "duration_ms": 0,
+          "attempts": [
+            {
+              "id": 136906884601,
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c arm64 / \u0421\u043e\u0431\u0440\u0430\u0442\u044c, \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c APK (arm64)",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136906884601",
+              "started_at": "2026-11-21T16:23:17Z",
+              "completed_at": null,
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-21T16:23:18Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0441\u0431\u043e\u0440\u043a\u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 2,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043b\u0438\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u043d\u0438\u043c\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:28Z"
+                },
+                {
+                  "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043a\u0435\u0448 \u0434\u043b\u044f \u0432\u0435\u0440\u0441\u0438\u0438 Chromium \u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-21T16:23:28Z",
+                  "completed_at": "2026-11-21T16:23:28Z"
+                },
+                {
+                  "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435 GitHub",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "number": 6,
+                  "started_at": "2026-11-21T16:23:28Z",
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 7,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437, \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 8,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 9,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043a\u0435\u0448\u0438 \u0441\u0442\u0430\u0440\u044b\u0445 \u0432\u0435\u0440\u0441\u0438\u0439 Chromium",
                   "status": "pending",
                   "conclusion": null,
                   "number": 10,
@@ -468,7 +903,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "name": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
                   "status": "pending",
                   "conclusion": null,
                   "number": 11,
@@ -476,7 +911,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+                  "name": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
                   "status": "pending",
                   "conclusion": null,
                   "number": 12,
@@ -484,7 +919,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043d\u0435\u043f\u0440\u0435\u0440\u044b\u0432\u043d\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443 APK",
                   "status": "pending",
                   "conclusion": null,
                   "number": 13,
@@ -492,7 +927,87 @@
                   "completed_at": null
                 },
                 {
-                  "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 14,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 15,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0442\u0440\u0435\u0442\u0438\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 16,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0447\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 17,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u044f\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 18,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0414\u043e\u0436\u0434\u0430\u0442\u044c\u0441\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0440\u043e\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 19,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 20,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0441 \u043f\u043b\u0430\u043d\u043e\u043c \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 21,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443 \u043a\u0435\u0448\u0430 \u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044e",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 22,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0442\u043e\u0433\u043e\u0432\u044b\u0439 \u0441\u043d\u0438\u043c\u043e\u043a \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 23,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
                   "status": "pending",
                   "conclusion": null,
                   "number": 24,
@@ -500,7 +1015,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "name": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043f\u0435\u0440\u0435\u0434 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u0435\u043c \u0441\u0442\u0430\u0440\u044b\u0445 \u0441\u043d\u0438\u043c\u043a\u043e\u0432",
                   "status": "pending",
                   "conclusion": null,
                   "number": 25,
@@ -508,10 +1023,573 @@
                   "completed_at": null
                 },
                 {
-                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "name": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u0435\u0433\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0438",
                   "status": "pending",
                   "conclusion": null,
                   "number": 26,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 27,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0443\u0447\u043d\u043e\u0439 \u0446\u0438\u043a\u043b \u043f\u043e\u0441\u043b\u0435 \u0442\u0430\u0439\u043c-\u0430\u0443\u0442\u0430 \u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u043c \u043a\u0435\u0448\u0435\u043c",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 28,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u0434\u0432\u0435\u0441\u0442\u0438 \u0438\u0442\u043e\u0433\u0438 \u0441\u0431\u043e\u0440\u043a\u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 29,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 \u043d\u0435\u043f\u043e\u043b\u043d\u044b\u0435 \u0438\u043b\u0438 \u043d\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0435 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 30,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 60,
+                  "started_at": null,
+                  "completed_at": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 136906884695,
+          "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c arm / \u0421\u043e\u0431\u0440\u0430\u0442\u044c, \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c APK (arm)",
+          "status": "in_progress",
+          "conclusion": null,
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136906884695",
+          "started_at": "2026-11-21T16:23:17Z",
+          "completed_at": null,
+          "run_attempt": 1,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-21T16:23:18Z",
+              "completed_at": "2026-11-21T16:23:19Z"
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0441\u0431\u043e\u0440\u043a\u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-21T16:23:19Z",
+              "completed_at": "2026-11-21T16:23:19Z"
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043b\u0438\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u043d\u0438\u043c\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-21T16:23:19Z",
+              "completed_at": "2026-11-21T16:23:19Z"
+            },
+            {
+              "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-21T16:23:19Z",
+              "completed_at": "2026-11-21T16:23:27Z"
+            },
+            {
+              "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043a\u0435\u0448 \u0434\u043b\u044f \u0432\u0435\u0440\u0441\u0438\u0438 Chromium \u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-21T16:23:27Z",
+              "completed_at": "2026-11-21T16:23:27Z"
+            },
+            {
+              "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435 GitHub",
+              "status": "in_progress",
+              "conclusion": null,
+              "number": 6,
+              "started_at": "2026-11-21T16:23:27Z",
+              "completed_at": null
+            },
+            {
+              "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+              "status": "pending",
+              "conclusion": null,
+              "number": 7,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437, \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 8,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 9,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043a\u0435\u0448\u0438 \u0441\u0442\u0430\u0440\u044b\u0445 \u0432\u0435\u0440\u0441\u0438\u0439 Chromium",
+              "status": "pending",
+              "conclusion": null,
+              "number": 10,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 11,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
+              "status": "pending",
+              "conclusion": null,
+              "number": 12,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043d\u0435\u043f\u0440\u0435\u0440\u044b\u0432\u043d\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443 APK",
+              "status": "pending",
+              "conclusion": null,
+              "number": 13,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 14,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 15,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0442\u0440\u0435\u0442\u0438\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 16,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0447\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 17,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u044f\u0442\u044b\u0439 \u0447\u0430\u0441",
+              "status": "pending",
+              "conclusion": null,
+              "number": 18,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0414\u043e\u0436\u0434\u0430\u0442\u044c\u0441\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0440\u043e\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 19,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 20,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0441 \u043f\u043b\u0430\u043d\u043e\u043c \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 21,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443 \u043a\u0435\u0448\u0430 \u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044e",
+              "status": "pending",
+              "conclusion": null,
+              "number": 22,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0442\u043e\u0433\u043e\u0432\u044b\u0439 \u0441\u043d\u0438\u043c\u043e\u043a \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 23,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 24,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043f\u0435\u0440\u0435\u0434 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u0435\u043c \u0441\u0442\u0430\u0440\u044b\u0445 \u0441\u043d\u0438\u043c\u043a\u043e\u0432",
+              "status": "pending",
+              "conclusion": null,
+              "number": 25,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u0435\u0433\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 26,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f",
+              "status": "pending",
+              "conclusion": null,
+              "number": 27,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0443\u0447\u043d\u043e\u0439 \u0446\u0438\u043a\u043b \u043f\u043e\u0441\u043b\u0435 \u0442\u0430\u0439\u043c-\u0430\u0443\u0442\u0430 \u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u043c \u043a\u0435\u0448\u0435\u043c",
+              "status": "pending",
+              "conclusion": null,
+              "number": 28,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u041f\u043e\u0434\u0432\u0435\u0441\u0442\u0438 \u0438\u0442\u043e\u0433\u0438 \u0441\u0431\u043e\u0440\u043a\u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+              "status": "pending",
+              "conclusion": null,
+              "number": 29,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 \u043d\u0435\u043f\u043e\u043b\u043d\u044b\u0435 \u0438\u043b\u0438 \u043d\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0435 \u0441\u0431\u043e\u0440\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 30,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+              "status": "pending",
+              "conclusion": null,
+              "number": 60,
+              "started_at": null,
+              "completed_at": null
+            }
+          ],
+          "duration_ms": 0,
+          "attempts": [
+            {
+              "id": 136906884695,
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c arm / \u0421\u043e\u0431\u0440\u0430\u0442\u044c, \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c APK (arm)",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136906884695",
+              "started_at": "2026-11-21T16:23:17Z",
+              "completed_at": null,
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-21T16:23:18Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0441\u0431\u043e\u0440\u043a\u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 2,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043b\u0438\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u043d\u0438\u043c\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:27Z"
+                },
+                {
+                  "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043a\u0435\u0448 \u0434\u043b\u044f \u0432\u0435\u0440\u0441\u0438\u0438 Chromium \u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-21T16:23:27Z",
+                  "completed_at": "2026-11-21T16:23:27Z"
+                },
+                {
+                  "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435 GitHub",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "number": 6,
+                  "started_at": "2026-11-21T16:23:27Z",
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 7,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437, \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 8,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 9,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043a\u0435\u0448\u0438 \u0441\u0442\u0430\u0440\u044b\u0445 \u0432\u0435\u0440\u0441\u0438\u0439 Chromium",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 10,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 11,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 12,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043d\u0435\u043f\u0440\u0435\u0440\u044b\u0432\u043d\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443 APK",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 13,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 14,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 15,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0442\u0440\u0435\u0442\u0438\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 16,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0447\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 17,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u044f\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 18,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0414\u043e\u0436\u0434\u0430\u0442\u044c\u0441\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0440\u043e\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 19,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 20,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0441 \u043f\u043b\u0430\u043d\u043e\u043c \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 21,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443 \u043a\u0435\u0448\u0430 \u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044e",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 22,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0442\u043e\u0433\u043e\u0432\u044b\u0439 \u0441\u043d\u0438\u043c\u043e\u043a \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 23,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 24,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043f\u0435\u0440\u0435\u0434 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u0435\u043c \u0441\u0442\u0430\u0440\u044b\u0445 \u0441\u043d\u0438\u043c\u043a\u043e\u0432",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 25,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u0435\u0433\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 26,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 27,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0443\u0447\u043d\u043e\u0439 \u0446\u0438\u043a\u043b \u043f\u043e\u0441\u043b\u0435 \u0442\u0430\u0439\u043c-\u0430\u0443\u0442\u0430 \u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u043c \u043a\u0435\u0448\u0435\u043c",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 28,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u0434\u0432\u0435\u0441\u0442\u0438 \u0438\u0442\u043e\u0433\u0438 \u0441\u0431\u043e\u0440\u043a\u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 29,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 \u043d\u0435\u043f\u043e\u043b\u043d\u044b\u0435 \u0438\u043b\u0438 \u043d\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0435 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 30,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 60,
                   "started_at": null,
                   "completed_at": null
                 }
@@ -629,11 +1707,11 @@
             {
               "id": 136901543885,
               "name": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043e\u0431\u0449\u0438\u0439 Docker-\u043e\u0431\u0440\u0430\u0437 \u0438\u0437 \u043a\u043e\u043c\u043c\u0438\u0442\u0430 PR / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136901543885",
               "started_at": "2026-11-21T16:04:43Z",
-              "completed_at": null,
+              "completed_at": "2026-11-21T16:23:15Z",
               "run_attempt": 1,
               "steps": [
                 {
@@ -702,14 +1780,170 @@
                 },
                 {
                   "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 9,
                   "started_at": "2026-11-21T16:05:12Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-21T16:07:11Z"
                 },
                 {
                   "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 10,
+                  "started_at": "2026-11-21T16:07:11Z",
+                  "completed_at": "2026-11-21T16:22:47Z"
+                },
+                {
+                  "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 11,
+                  "started_at": "2026-11-21T16:22:47Z",
+                  "completed_at": "2026-11-21T16:22:47Z"
+                },
+                {
+                  "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 12,
+                  "started_at": "2026-11-21T16:22:47Z",
+                  "completed_at": "2026-11-21T16:22:58Z"
+                },
+                {
+                  "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 13,
+                  "started_at": "2026-11-21T16:22:58Z",
+                  "completed_at": "2026-11-21T16:22:58Z"
+                },
+                {
+                  "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 23,
+                  "started_at": "2026-11-21T16:22:58Z",
+                  "completed_at": "2026-11-21T16:23:00Z"
+                },
+                {
+                  "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 24,
+                  "started_at": "2026-11-21T16:23:00Z",
+                  "completed_at": "2026-11-21T16:23:11Z"
+                },
+                {
+                  "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 25,
+                  "started_at": "2026-11-21T16:23:11Z",
+                  "completed_at": "2026-11-21T16:23:12Z"
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 26,
+                  "started_at": "2026-11-21T16:23:12Z",
+                  "completed_at": "2026-11-21T16:23:12Z"
+                },
+                {
+                  "name": "Complete job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 27,
+                  "started_at": "2026-11-21T16:23:12Z",
+                  "completed_at": "2026-11-21T16:23:12Z"
+                }
+              ]
+            },
+            {
+              "id": 136906884601,
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c arm64 / \u0421\u043e\u0431\u0440\u0430\u0442\u044c, \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c APK (arm64)",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136906884601",
+              "started_at": "2026-11-21T16:23:17Z",
+              "completed_at": null,
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-21T16:23:18Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0441\u0431\u043e\u0440\u043a\u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 2,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043b\u0438\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u043d\u0438\u043c\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:28Z"
+                },
+                {
+                  "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043a\u0435\u0448 \u0434\u043b\u044f \u0432\u0435\u0440\u0441\u0438\u0438 Chromium \u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-21T16:23:28Z",
+                  "completed_at": "2026-11-21T16:23:28Z"
+                },
+                {
+                  "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435 GitHub",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "number": 6,
+                  "started_at": "2026-11-21T16:23:28Z",
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 7,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437, \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 8,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 9,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043a\u0435\u0448\u0438 \u0441\u0442\u0430\u0440\u044b\u0445 \u0432\u0435\u0440\u0441\u0438\u0439 Chromium",
                   "status": "pending",
                   "conclusion": null,
                   "number": 10,
@@ -717,7 +1951,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
+                  "name": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
                   "status": "pending",
                   "conclusion": null,
                   "number": 11,
@@ -725,7 +1959,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
+                  "name": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
                   "status": "pending",
                   "conclusion": null,
                   "number": 12,
@@ -733,7 +1967,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043d\u0435\u043f\u0440\u0435\u0440\u044b\u0432\u043d\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443 APK",
                   "status": "pending",
                   "conclusion": null,
                   "number": 13,
@@ -741,7 +1975,87 @@
                   "completed_at": null
                 },
                 {
-                  "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 14,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 15,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0442\u0440\u0435\u0442\u0438\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 16,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0447\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 17,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u044f\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 18,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0414\u043e\u0436\u0434\u0430\u0442\u044c\u0441\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0440\u043e\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 19,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 20,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0441 \u043f\u043b\u0430\u043d\u043e\u043c \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 21,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443 \u043a\u0435\u0448\u0430 \u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044e",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 22,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0442\u043e\u0433\u043e\u0432\u044b\u0439 \u0441\u043d\u0438\u043c\u043e\u043a \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 23,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
                   "status": "pending",
                   "conclusion": null,
                   "number": 24,
@@ -749,7 +2063,7 @@
                   "completed_at": null
                 },
                 {
-                  "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
+                  "name": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043f\u0435\u0440\u0435\u0434 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u0435\u043c \u0441\u0442\u0430\u0440\u044b\u0445 \u0441\u043d\u0438\u043c\u043a\u043e\u0432",
                   "status": "pending",
                   "conclusion": null,
                   "number": 25,
@@ -757,10 +2071,310 @@
                   "completed_at": null
                 },
                 {
-                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "name": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u0435\u0433\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0438",
                   "status": "pending",
                   "conclusion": null,
                   "number": 26,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 27,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0443\u0447\u043d\u043e\u0439 \u0446\u0438\u043a\u043b \u043f\u043e\u0441\u043b\u0435 \u0442\u0430\u0439\u043c-\u0430\u0443\u0442\u0430 \u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u043c \u043a\u0435\u0448\u0435\u043c",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 28,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u0434\u0432\u0435\u0441\u0442\u0438 \u0438\u0442\u043e\u0433\u0438 \u0441\u0431\u043e\u0440\u043a\u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 29,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 \u043d\u0435\u043f\u043e\u043b\u043d\u044b\u0435 \u0438\u043b\u0438 \u043d\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0435 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 30,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 60,
+                  "started_at": null,
+                  "completed_at": null
+                }
+              ]
+            },
+            {
+              "id": 136906884695,
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c arm / \u0421\u043e\u0431\u0440\u0430\u0442\u044c, \u043f\u043e\u0434\u043f\u0438\u0441\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c APK (arm)",
+              "status": "in_progress",
+              "conclusion": null,
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610/job/136906884695",
+              "started_at": "2026-11-21T16:23:17Z",
+              "completed_at": null,
+              "run_attempt": 1,
+              "steps": [
+                {
+                  "name": "Set up job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 1,
+                  "started_at": "2026-11-21T16:23:18Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0436\u0438\u043c \u0441\u0431\u043e\u0440\u043a\u0438 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0442\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 2,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043b\u0438\u043c\u0438\u0442 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u043d\u0438\u043c\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 3,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:19Z"
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 4,
+                  "started_at": "2026-11-21T16:23:19Z",
+                  "completed_at": "2026-11-21T16:23:27Z"
+                },
+                {
+                  "name": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043a\u0435\u0448 \u0434\u043b\u044f \u0432\u0435\u0440\u0441\u0438\u0438 Chromium \u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 5,
+                  "started_at": "2026-11-21T16:23:27Z",
+                  "completed_at": "2026-11-21T16:23:27Z"
+                },
+                {
+                  "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435 GitHub",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "number": 6,
+                  "started_at": "2026-11-21T16:23:27Z",
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 7,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437, \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 8,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043f\u043e\u0434\u043f\u0438\u0441\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 9,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043a\u0435\u0448\u0438 \u0441\u0442\u0430\u0440\u044b\u0445 \u0432\u0435\u0440\u0441\u0438\u0439 Chromium",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 10,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 11,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u0435\u0448 \u0438 \u0441\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 12,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043d\u0435\u043f\u0440\u0435\u0440\u044b\u0432\u043d\u0443\u044e \u0441\u0431\u043e\u0440\u043a\u0443 APK",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 13,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u0435\u0440\u0432\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 14,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0432\u0442\u043e\u0440\u043e\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 15,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0442\u0440\u0435\u0442\u0438\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 16,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u0447\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 17,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0437\u0430 \u043f\u044f\u0442\u044b\u0439 \u0447\u0430\u0441",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 18,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0414\u043e\u0436\u0434\u0430\u0442\u044c\u0441\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e \u0441\u0440\u043e\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 19,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 20,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0441 \u043f\u043b\u0430\u043d\u043e\u043c \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 21,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443 \u043a\u0435\u0448\u0430 \u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044e",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 22,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0442\u043e\u0433\u043e\u0432\u044b\u0439 \u0441\u043d\u0438\u043c\u043e\u043a \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 23,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043a\u0435\u0448 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 24,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441\u0430 \u043f\u0435\u0440\u0435\u0434 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u0435\u043c \u0441\u0442\u0430\u0440\u044b\u0445 \u0441\u043d\u0438\u043c\u043a\u043e\u0432",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 25,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 APK \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043e \u0435\u0433\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 26,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u044f",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 27,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0440\u0443\u0447\u043d\u043e\u0439 \u0446\u0438\u043a\u043b \u043f\u043e\u0441\u043b\u0435 \u0442\u0430\u0439\u043c-\u0430\u0443\u0442\u0430 \u0441 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u043c \u043a\u0435\u0448\u0435\u043c",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 28,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u041f\u043e\u0434\u0432\u0435\u0441\u0442\u0438 \u0438\u0442\u043e\u0433\u0438 \u0441\u0431\u043e\u0440\u043a\u0438 \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u044b",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 29,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 \u043d\u0435\u043f\u043e\u043b\u043d\u044b\u0435 \u0438\u043b\u0438 \u043d\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0435 \u0441\u0431\u043e\u0440\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 30,
+                  "started_at": null,
+                  "completed_at": null
+                },
+                {
+                  "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
+                  "status": "pending",
+                  "conclusion": null,
+                  "number": 60,
                   "started_at": null,
                   "completed_at": null
                 }
@@ -770,6 +2384,14 @@
         }
       ],
       "artifacts": [
+        {
+          "id": 14715361017,
+          "name": "Loopfade~argon~PWSI0T.dockerbuild",
+          "size_in_bytes": 96828,
+          "expired": false,
+          "created_at": "2026-11-21T16:23:00Z",
+          "expires_at": "2027-02-19T16:04:06Z"
+        },
         {
           "id": 14714038310,
           "name": "argon-test-source",
@@ -68204,13 +69826,13 @@
     "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
     "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610",
     "created_at": "2026-11-21T16:04:05Z",
-    "updated_at": "2026-11-21T16:04:44Z",
+    "updated_at": "2026-11-21T16:23:18Z",
     "run_started_at": "2026-11-21T16:04:05Z",
     "run_attempt": 1,
     "first_started_at": "2026-11-21T16:04:05Z",
     "completed_at": null,
-    "duration_ms": 156000,
-    "runner_ms": 149000
+    "duration_ms": 1171000,
+    "runner_ms": 1181000
   },
   "runs": [
     {
@@ -68225,13 +69847,13 @@
       "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
       "html_url": "https://github.com/Loopfade/argon/actions/runs/44922503610",
       "created_at": "2026-11-21T16:04:05Z",
-      "updated_at": "2026-11-21T16:04:44Z",
+      "updated_at": "2026-11-21T16:23:18Z",
       "run_started_at": "2026-11-21T16:04:05Z",
       "run_attempt": 1,
       "first_started_at": "2026-11-21T16:04:05Z",
       "completed_at": null,
-      "duration_ms": 156000,
-      "runner_ms": 149000
+      "duration_ms": 1171000,
+      "runner_ms": 1181000
     },
     {
       "id": 44878506317,
