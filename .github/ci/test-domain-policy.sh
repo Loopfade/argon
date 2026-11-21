@@ -47,6 +47,7 @@ for arch in arm64 arm; do
     gn gen "$graph_out"
     ninja -C "$graph_out" -t query \
       obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
+      obj/chrome/browser/android/android/argon_exit.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_bookmarks_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o \
@@ -74,6 +75,7 @@ done
     obj/chrome/browser/ui/android/night_mode/java.javac.jar \
     "$rds_observer_object" \
     obj/chrome/browser/android/android/content_utils.o \
+    obj/chrome/browser/android/android/argon_exit.o \
     obj/components/embedder_support/user_agent/user_agent_utils.o \
     obj/content/browser/browser/client_hints.o \
     obj/content/browser/browser/render_process_host_impl.o \
@@ -88,6 +90,7 @@ echo "PASS: homepage WebUI controller, icon, search and theme handlers compiled"
 echo "PASS: ARMv7 ComputedStyle size assertion"
 echo "PASS: night mode Java module compiled"
 echo "PASS: RDS observer compiled against pinned Chromium native headers"
+echo "PASS: native Argon exit compiled against Chromium 158 per-profile archive API"
 echo "PASS: User-Agent navigation, scale restoration, subresources, renderer flags, JNI and browser Java compiled"
 
 # Use this PR's header/tests even when the image predates the PR.
