@@ -21,7 +21,29 @@ public class Handler {
   tasks.add(task); return true;
  }
  public void removeCallbacks(Runnable task) { tasks.remove(task); }
- public static void expire() { for (var task : new ArrayList<>(tasks)) task.run(); }
+ // A due Handler task leaves the queue before running; reposting schedules a new one.
+ public static void expire() {
+  for (var task : new ArrayList<>(tasks)) if (tasks.remove(task)) task.run();
+ }
+}''',
+    'org/chromium/base/Log.java': '''package org.chromium.base;
+import java.util.ArrayList;
+import java.util.Locale;
+public class Log {
+ public static final ArrayList<String> events = new ArrayList<>();
+ public static void i(String tag, String fmt, Object... args) {
+  events.add(tag + " " + String.format(Locale.ROOT, fmt, args));
+ }
+ public static void w(String tag, String fmt, Object... args) {
+  events.add(tag + " " + String.format(Locale.ROOT, fmt, args));
+ }
+}''',
+    'org/chromium/url/GURL.java': '''package org.chromium.url;
+public class GURL {
+ private final String scheme, host;
+ public GURL(String scheme, String host) { this.scheme=scheme; this.host=host; }
+ public String getScheme() { return scheme; }
+ public String getHost() { return host; }
 }''',
     'org/chromium/build/annotations/NullMarked.java': '''package org.chromium.build.annotations;
 public @interface NullMarked {}''',
@@ -47,11 +69,18 @@ import java.util.ArrayList;
 import org.chromium.content_public.browser.WebContents;
 public class Tab {
  public static class LoadUrlResult {}
- public boolean home=true, destroyed, error, hidden, incognito, extensionOverride;
+ public boolean home=true, destroyed, error, hidden, incognito, extensionOverride, loading;
+ public int reloads;
+ public void reload() { reloads++; }
  public WebContents contents = new WebContents();
  public final ArrayList<TabObserver> observers = new ArrayList<>();
  public boolean isDestroyed() { return destroyed; }
  public boolean isShowingErrorPage() { return error; }
+ public boolean isLoading() { return loading; }
+ public org.chromium.url.GURL getUrl() {
+  return home ? new org.chromium.url.GURL("chrome", "argon")
+              : new org.chromium.url.GURL("https", "private.example");
+ }
  public WebContents getWebContents() { return contents; }
  public void addObserver(TabObserver observer) { observers.add(observer); }
  public void removeObserver(TabObserver observer) { observers.remove(observer); }
@@ -89,8 +118,9 @@ def run_startup_flow(tab_observer_source=None):
                 'org.chromium.content_public.browser.NavigationHandle',
                 'org.chromium.ui.base.WindowAndroid', 'org.chromium.url.GURL'):
             package, simple = name.rsplit('.', 1)
-            sources[name.replace('.', '/') + '.java'] = (
-                f'package {package}; public class {simple} {{}}')
+            path = name.replace('.', '/') + '.java'
+            if path not in sources:
+                sources[path] = f'package {package}; public class {simple} {{}}'
         for name in (
                 'org.chromium.cc.input.BrowserControlsState',
                 'org.chromium.components.tabs.TabAlert',

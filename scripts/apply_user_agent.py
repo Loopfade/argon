@@ -21,9 +21,13 @@ PRIVACY_HOOKS = TITANIUM_CHROME_JAVA_SOURCES.parent / PRIVACY / "PrivacySettings
 UA_UTILS = Path("components/embedder_support/user_agent_utils.cc")
 UA_HEADER = UA_UTILS.with_suffix(".h")
 DESKTOP_UA = Path("chrome/browser/android/content/content_utils.cc")
+WEB_CONTENTS_IMPL = Path("content/browser/web_contents/web_contents_impl.cc")
 RENDER_PROCESS_HOST_IMPL = Path("content/browser/renderer_host/render_process_host_impl.cc")
 NAVIGATION_CONTROLLER = Path("content/browser/renderer_host/navigation_controller_android.cc")
 RENDER_FRAME = Path("content/renderer/render_frame_impl.cc")
+TAB_UTILS = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabUtils.java")
+TAB_IMPL = Path("chrome/android/java/src/org/chromium/chrome/browser/tab/TabImpl.java")
+RDS_OBSERVER = Path("chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.cc")
 DOCUMENT_STATE = Path("content/renderer/document_state.h")
 
 CLIENT_HINTS = Path("content/browser/client_hints/client_hints.cc")
@@ -31,10 +35,11 @@ FRAME_FETCH = Path("third_party/blink/renderer/core/loader/frame_fetch_context.c
 
 INPUT_PATHS = (
     ANDROID_GN, STARTUP, PRIVACY_HOOKS, UA_UTILS, UA_HEADER, DESKTOP_UA,
+    WEB_CONTENTS_IMPL,
     TITANIUM_CHROME_JAVA_SOURCES, TITANIUM_CHROME_RESOURCES,
     TITANIUM_PRIVACY_PREFERENCES, TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
     RENDER_PROCESS_HOST_IMPL, CLIENT_HINTS, FRAME_FETCH, NAVIGATION_CONTROLLER,
-    RENDER_FRAME, DOCUMENT_STATE,
+    RENDER_FRAME, DOCUMENT_STATE, TAB_UTILS, TAB_IMPL, RDS_OBSERVER,
 )
 
 
@@ -57,18 +62,144 @@ def patch_navigation_controller(source: str) -> str:
   // reload (or a previous call with reload_on_state_change=false) can leave the
   // current document using a different UA. In that case a repeated request must
   // reload, even though the entry already contains the requested flag.
+  //
+  // A pending navigation may also commit the opposite mode after this call.
+  // Even when the committed entry and visible document agree, an explicit
+  // request for their mode must replace a pending entry using the other UA.
+  // The earlier skip_on_initial_navigation guard already protects initial
+  // entries; if that flag is false, do not ignore a mismatching pending mode.
+  NavigationEntry* pending_entry = navigation_controller_->GetPendingEntry();
+  const bool pending_mode_matches =
+      !pending_entry || pending_entry->GetIsOverridingUserAgent() == enabled;
   if (entry->GetIsOverridingUserAgent() == enabled &&
-      (!reload_on_state_change || entry->IsInitialEntry() ||
-       navigation_controller_->frame_tree()
-               .root()
-               ->current_frame_host()
-               ->GetPage()
-               .is_overriding_user_agent() == enabled)) {
+      (!reload_on_state_change ||
+       (navigation_controller_->frame_tree()
+                    .root()
+                    ->current_frame_host()
+                    ->GetPage()
+                    .is_overriding_user_agent() == enabled &&
+        pending_mode_matches))) {
     return;
   }
 
   // Set the flag in the NavigationEntry.""")
     return source
+
+
+
+def patch_web_contents_inheritance(source: str) -> str:
+    """Keep new-tab UA selection synchronized when the override string is unchanged."""
+    return replace_once(source, """\
+  if (GetUserAgentOverride() == ua_override) {
+    return;
+  }
+""", """\
+  if (GetUserAgentOverride() == ua_override) {
+    // Desktop/mobile may change new-tab inheritance while the effective
+    // browser User-Agent string stays the same (notably for custom UA).
+    // Refresh delayed-load policy without an unnecessary renderer reload.
+    should_override_user_agent_in_new_tabs_ = override_in_new_tabs;
+    if (delayed_load_url_params_.get()) {
+      delayed_load_url_params_->override_user_agent =
+          override_in_new_tabs ? NavigationController::UA_OVERRIDE_TRUE
+                               : NavigationController::UA_OVERRIDE_FALSE;
+    }
+    return;
+  }
+""")
+
+
+def patch_tab_user_agent_utils(source: str) -> str:
+    """Use the same tab-scoped mode for WebContents, reloads and future loads."""
+    anchor = "import org.chromium.chrome.browser.media.MediaCaptureDevicesDispatcherAndroid;"
+    source = replace_once(source, anchor, anchor + """
+import org.chromium.chrome.browser.content.ContentUtils;""")
+    return replace_once(source, """\
+    public static void switchUserAgent(Tab tab, boolean switchToDesktop) {
+        final boolean reloadOnChange = !tab.isNativePage();
+        assumeNonNull(tab.getWebContents())
+                .getNavigationController()
+                .setUseDesktopUserAgent(
+                        switchToDesktop, reloadOnChange, /* skipOnInitialNavigation= */ true);
+    }
+""", """\
+    public static void switchUserAgent(Tab tab, boolean switchToDesktop) {
+        switchUserAgent(tab, switchToDesktop, /* explicitSelection= */ true);
+    }
+
+    public static void switchUserAgent(
+            Tab tab, boolean switchToDesktop, boolean explicitSelection) {
+        WebContents webContents = assumeNonNull(tab.getWebContents());
+        if (explicitSelection) {
+            // Keep a manual choice scoped to this tab, not the site's rule.
+            tab.setUserAgent(switchToDesktop ? TabUserAgent.DESKTOP : TabUserAgent.MOBILE);
+        } else if (tab.getUserAgent() == TabUserAgent.DESKTOP) {
+            // An automatic switch during a forum navigation must not invert
+            // the manually pinned desktop selection.
+            switchToDesktop = true;
+        } else if (tab.getUserAgent() == TabUserAgent.MOBILE) {
+            // Reconcile both the renderer override and navigation flag with
+            // the pinned mobile choice, even when an automatic caller supplies
+            // the opposite mode after a redirect/reload.
+            switchToDesktop = false;
+        }
+
+        // The navigation flag alone does not refresh an existing WebContents.
+        // This boolean controls new-tab UA inheritance, not the UA string
+        // ContentUtils constructs; keep it aligned with the selected mode.
+        ContentUtils.setUserAgentOverride(webContents, switchToDesktop);
+        webContents.getNavigationController()
+                .setUseDesktopUserAgent(
+                        switchToDesktop, !tab.isNativePage(),
+                        /* skipOnInitialNavigation= */ true);
+    }
+""")
+
+
+def patch_tab_user_agent_state(source: str) -> str:
+    source = replace_once(source, """\
+        boolean shouldRequestDesktopSite =
+                DesktopSiteUtils.shouldOverrideDesktopSite(mProfile, url, getContext());""", """\
+        // Explicit per-tab choices take precedence over the domain default
+        // when loading another URL or restoring the tab's persisted state.
+        boolean shouldRequestDesktopSite =
+                mUserAgent == TabUserAgent.DESKTOP
+                || (mUserAgent != TabUserAgent.MOBILE
+                        && DesktopSiteUtils.shouldOverrideDesktopSite(
+                                mProfile, url, getContext()));""")
+    return replace_once(source, """\
+        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent);""", """\
+        TabUtils.switchUserAgent(
+                this, /* switchToDesktop= */ !usingDesktopUserAgent,
+                /* explicitSelection= */ false);""")
+
+
+def patch_request_desktop_observer(source: str) -> str:
+    anchor = '#include "chrome/browser/content_settings/host_content_settings_map_factory.h"'
+    source = replace_once(source, anchor,
+                          '#include "chrome/browser/android/tab_android.h"\n' + anchor)
+    anchor = '#include "chrome/browser/profiles/profile.h"'
+    source = replace_once(source, anchor,
+                          anchor + '\n#include "chrome/browser/ui/android/tab_model/tab_model.h"')
+    anchor = """\
+  if (!navigation_handle->IsInOutermostMainFrame()) {
+    return;
+  }
+"""
+    return replace_once(source, anchor, anchor + """\
+
+  // A renderer-initiated navigation must not undo the explicit user choice
+  // saved on this tab. Default tabs still follow the ordinary site setting.
+  auto* tab = TabAndroid::FromWebContents(web_contents());
+  if (tab) {
+    const auto mode = static_cast<TabModel::TabUserAgent>(tab->GetUserAgent());
+    // UNSET is a legacy, uninitialized tab: it follows the site policy.
+    if (mode == TabModel::TabUserAgent::MOBILE ||
+        mode == TabModel::TabUserAgent::DESKTOP) {
+      return;
+    }
+  }
+""")
 
 
 def patch_document_scale_state(source: str) -> str:
@@ -238,9 +369,13 @@ std::optional<std::string> GetArgonUserAgentOverride(bool desktop) {
   }
 """)
 
+    sources[WEB_CONTENTS_IMPL] = patch_web_contents_inheritance(sources[WEB_CONTENTS_IMPL])
     sources[NAVIGATION_CONTROLLER] = patch_navigation_controller(sources[NAVIGATION_CONTROLLER])
     sources[DOCUMENT_STATE] = patch_document_scale_state(sources[DOCUMENT_STATE])
     sources[RENDER_FRAME] = patch_renderer_scale_state(sources[RENDER_FRAME])
+    sources[TAB_UTILS] = patch_tab_user_agent_utils(sources[TAB_UTILS])
+    sources[TAB_IMPL] = patch_tab_user_agent_state(sources[TAB_IMPL])
+    sources[RDS_OBSERVER] = patch_request_desktop_observer(sources[RDS_OBSERVER])
 
     for path, content in sources.items():
         (src / path).write_text(content)

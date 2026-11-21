@@ -177,13 +177,6 @@
     ]
   },
   {
-    "root": "components/media_router/browser/android/java/strings/android_chrome_media_router_strings.grd",
-    "catalog": "components/media_router/browser/android/java/strings/translations/android_chrome_media_router_strings_ru.xtb",
-    "sources": [
-      "components/media_router/browser/android/java/strings/android_chrome_media_router_strings.grd"
-    ]
-  },
-  {
     "root": "components/omnibox/resources/omnibox_pedal_synonyms.grd",
     "catalog": "components/omnibox/resources/translations/omnibox_pedal_synonyms_ru.xtb",
     "sources": [

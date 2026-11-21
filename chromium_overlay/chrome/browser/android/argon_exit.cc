@@ -190,12 +190,19 @@ void PrepareModels(bool close_tabs, bool recovery, base::OnceCallback<void(bool)
   // Hold Java references: closing an OTR model can remove native models from the list.
   using Model = std::pair<base::android::ScopedJavaGlobalRef<jobject>, bool>;
   std::vector<Model> models;
+  std::set<TabModel*> seen;
   for (TabModel* model : TabModelList::models()) {
+    seen.insert(model);
     models.emplace_back(base::android::ScopedJavaGlobalRef<jobject>(model->GetJavaObject()),
                         close_tabs && !recovery);
   }
-  if (TabModel* archived = TabModelList::GetArchivedTabModel()) {
-    models.emplace_back(base::android::ScopedJavaGlobalRef<jobject>(archived->GetJavaObject()), close_tabs);
+  // Chromium 158 stores archived models per profile, not in one global model.
+  // Include loaded regular and OTR profiles without preparing a model twice.
+  for (Profile* profile : Profiles()) {
+    TabModel* archived = TabModelList::GetArchivedTabModel(profile);
+    if (!archived || !seen.insert(archived).second) continue;
+    models.emplace_back(base::android::ScopedJavaGlobalRef<jobject>(archived->GetJavaObject()),
+                        close_tabs);
   }
   bool prepared = true;
   for (const auto& [model, close_model] : models) {

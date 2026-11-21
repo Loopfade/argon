@@ -75,10 +75,18 @@ def verify_toolbar_startup_source(source):
 def verify_toolbar_capture_source(source):
     from test_homepage import homepage
 
-    fixture = (FIXTURES / 'toolbar_capture.java.in').read_text()
+    # Chromium 158 delegates the public isDirty() to a two-argument helper.
+    # Verify BOTH methods and the readiness gate against the pinned upstream
+    # source; otherwise a changed public entrypoint would go unnoticed.
+    m158 = homepage.CAPTURE_M158_SIGNATURE in source
+    fixture_name = 'toolbar_capture_m158.java.in' if m158 else 'toolbar_capture.java.in'
+    fixture = (FIXTURES / fixture_name).read_text()
     reviewed = source.replace(homepage.CAPTURE_AFTER, homepage.CAPTURE_BEFORE, 1)
-    for signature in (homepage.CAPTURE_SIGNATURE,
-                      '        private boolean checkCaptureReadinessResult() {'):
+    signatures = [homepage.CAPTURE_SIGNATURE]
+    if m158:
+        signatures.append(homepage.CAPTURE_M158_SIGNATURE)
+    signatures.append('        private boolean checkCaptureReadinessResult() {')
+    for signature in signatures:
         if homepage.method_source(reviewed, signature) != homepage.method_source(fixture, signature):
             raise ValueError('Chromium toolbar capture changed; review the compositor regression')
 
@@ -692,6 +700,74 @@ public class ActivityTabProvider {
                     self.assertNotEqual(result.returncode, 0)
                     self.assertIn('java.lang.NullPointerException', result.stderr)
                     self.assertIn('java.util.Objects.requireNonNull', result.stderr)
+
+    def test_m158_capture_verifier_catches_public_private_and_readiness_drift(self):
+        from test_homepage import homepage
+
+        original = (FIXTURES / 'toolbar_capture_m158.java.in').read_text()
+        verify_toolbar_capture_source(original)
+        verify_toolbar_capture_source(homepage.patch_toolbar_capture(original))
+        verify_toolbar_capture_source((FIXTURES / 'toolbar_capture.java.in').read_text())
+        for before, after in (
+            ('return isDirty(super.isDirty(), /* allowInMotion= */ false);',
+             'return isDirty(super.isDirty(), /* allowInMotion= */ true);'),
+            ('if (!allowInMotion && mCompositorInMotionSupplier != null)',
+             'if (mCompositorInMotionSupplier != null)'),
+            ('if (!viewIsDirty)', 'if (viewIsDirty)'),
+            ('setDirtyRectEmpty();', '// dropped dirty-rect reset'),
+        ):
+            with self.subTest(before=before):
+                self.assertIn(before, original)
+                with self.assertRaisesRegex(ValueError, 'Chromium toolbar capture changed'):
+                    verify_toolbar_capture_source(original.replace(before, after, 1))
+
+    def test_m158_capture_preserves_webui_motion_and_native_boundaries(self):
+        from test_homepage import homepage
+
+        original = (FIXTURES / 'toolbar_capture_m158.java.in').read_text()
+        flow = (FIXTURES / 'ToolbarCaptureFlow.java.in').read_text()
+        # Only the M158 test host exposes the new allowInMotion entrypoint.
+        anchor = '    private boolean isCapturingDisabled() {'
+        self.assertEqual(flow.count(anchor), 1)
+        flow = flow.replace(anchor, '''    public boolean renderAllowInMotion(String livePixels) {
+        dirty = true;
+        if (!isDirty(super.isDirty(), /* allowInMotion= */ true)) return false;
+        bitmap = livePixels;
+        dirty = false;
+        return true;
+    }
+''' + anchor, 1)
+
+        for patched in (False, True):
+            with self.subTest(patched=patched), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                sources = dict(STUBS)
+                # The shared JNI stub references ArgonHomeBridge.Natives.
+                sources['org/chromium/chrome/browser/ntp/ArgonHomeBridge.java'] = BRIDGE.read_text()
+                sources['org/chromium/chrome/browser/omnibox/NewTabPageDelegate.java'] = (
+                    FIXTURES / 'NewTabPageDelegate.java.in').read_text()
+                capture = homepage.patch_toolbar_capture(original) if patched else original
+                sources['ToolbarCaptureFlow.java'] = flow.replace('ARGON_CAPTURE_METHODS', capture)
+                sources['ToolbarCaptureM158Flow.java'] = (
+                    FIXTURES / 'ToolbarCaptureM158Flow.java.in').read_text()
+                for name, content in sources.items():
+                    target = root / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(content)
+                compiled = subprocess.run(
+                    ['javac', '--release', '17', '-d', str(root),
+                     *map(str, root.rglob('*.java'))],
+                    capture_output=True, text=True)
+                self.assertEqual(compiled.returncode, 0, compiled.stderr)
+                result = subprocess.run(
+                    ['java', '-ea', '-cp', str(root), 'ToolbarCaptureM158Flow'],
+                    capture_output=True, text=True)
+                if patched:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('PASS: Chromium 158 capture entrypoints', result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('WebUI homepage must refresh its toolbar bitmap', result.stderr)
 
     def test_native_homepage_flow(self):
         from test_homepage import homepage

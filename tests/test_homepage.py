@@ -54,6 +54,19 @@ def snapshot(root):
 
 
 class HomepageTests(unittest.TestCase):
+    def test_m158_toolbar_capture_is_reviewed_and_idempotent(self):
+        # Chromium 158 moved the capture guard into the private two-arg
+        # helper. The public isDirty() no longer owns the constraint.
+        original = (FIXTURES / 'toolbar_capture_m158.java.in').read_text()
+        patched = homepage.patch_toolbar_capture(original)
+        self.assertIn(homepage.CAPTURE_AFTER, patched)
+        self.assertNotIn(homepage.CAPTURE_BEFORE, patched)
+        self.assertEqual(patched, homepage.patch_toolbar_capture(patched))
+        with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+            homepage.patch_toolbar_capture(original.replace(
+                'return checkCaptureReadinessResult();',
+                'return false;'))
+
     def test_changed_toolbar_shortcut_sources_reject_the_whole_patch(self):
         for path, before, after in (
             (homepage.TOOLBAR_PHONE, 'return !(isNtp && isSignInLevelUp);', 'return false;'),
