@@ -90,6 +90,22 @@ class BuildTargetsTests(unittest.TestCase):
         self.assertIsNotNone(loop)
         self.assertEqual(loop[1].split(), ["arm64", "arm"])
 
+    def test_rds_observer_is_queried_for_both_android_abis_and_compiled(self):
+        script = (ROOT / ".github/ci/test-domain-policy.sh").read_text()
+        target = ("obj/chrome/browser/content_settings/impl/"
+                  "request_desktop_site_web_contents_observer_android.o")
+        self.assertIn("rds_observer_object=" + target, script)
+        self.assertEqual(script.count('"$rds_observer_object"'), 2)
+
+        query_section, compile_section = script.split(
+            "# Compile the WebUI, theme and UA targets", 1)
+        self.assertIn("for arch in arm64 arm; do", query_section)
+        self.assertIn("ninja -C \"$graph_out\" -t query", query_section)
+        self.assertIn('"$rds_observer_object"', query_section)
+        self.assertIn("autoninja -C out/Argon-graph-arm", compile_section)
+        self.assertIn('"$rds_observer_object"', compile_section.split(
+            "# Use this PR's header/tests", 1)[0])
+
     def test_shell_rejects_invalid_architecture_before_preflight(self):
         for arch in ("riscv64", "x64", "x86", "x86_64"):
             with self.subTest(arch=arch):
