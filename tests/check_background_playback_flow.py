@@ -25,12 +25,15 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "org/chromium/chrome/browser/media/"
 OVERLAY = ROOT / "chromium_overlay/titanium/chromium_src/chrome/android/java"
 CACHE = ROOT / ".build/settings-upstream"
-PREFERENCE_URL = ("https://androidx.dev/snapshots/builds/16578329/artifacts/repository/"
+# Match the exact AndroidX Preference AAR from Chromium 158's pinned
+# third_party/androidx/committed/libs/androidx_preference_preference/README.chromium.
+# Its sources JAR matches the earlier snapshot byte-for-byte (same SHA-256).
+PREFERENCE_URL = ("https://androidx.dev/snapshots/builds/16718948/artifacts/repository/"
                   "androidx/preference/preference/1.3.0-SNAPSHOT/"
-                  "preference-1.3.0-20261012.201916-1")
+                  "preference-1.3.0-20261025.190601-1")
 DEPENDENCIES = {
     "preference.aar": (PREFERENCE_URL + ".aar",
-                       "f9d97336a7330318cf78173f9f8cf867715ee79a20a9ae308502e3bdaada0631"),
+                       "a1f9405cd648f2dcb56c6ae50bfaf3bb2dc0f7f8e70f8818655ace29193964e3"),
     "preference-sources.jar": (PREFERENCE_URL + "-sources.jar",
                                "80e89a8eaf2bc9c0fd52a3818815e59de891ef413433d81484359e084268d965"),
     # The standalone Android org.json implementation, rather than a fake store.

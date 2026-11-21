@@ -142,9 +142,27 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
            "PATH": str(jdk / "bin") + os.pathsep + os.environ.get("PATH", "")}
     verification = command([tools / "apksigner", "verify", "--verbose", "--print-certs", apk],
                            text=True, env=env)
-    signers = re.findall(r"^Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F:]+)$", verification, re.M)
-    if [value.replace(":", "").lower() for value in signers] != [signer]:
-        raise ValueError("APK signature does not match its certificate")
+    # apksigner 37 reports scheme-scoped signers (e.g. "V3.0 Signer:")
+    # instead of the legacy "Signer #1" prefix. Check every reported APK
+    # signer: a valid signature with an unexpected certificate is not reusable.
+    # Unknown scheme labels must not be silently dropped when another recognized
+    # signer is present: reject any digest-bearing line that we cannot parse.
+    digest_lines = [line.strip() for line in verification.splitlines()
+                    if "certificate SHA-256 digest:" in line]
+    pattern = re.compile(
+        r"(?:Signer #\d+|V\d+(?:\.\d+)? Signer):? certificate SHA-256 digest: ([0-9a-fA-F:]+)")
+    parsed = [pattern.fullmatch(line) for line in digest_lines]
+    if not digest_lines or any(match is None for match in parsed):
+        labels = [line.partition("certificate SHA-256 digest:")[0].strip()
+                  for line in digest_lines]
+        raise ValueError(
+            "APK signer certificate digest not recognized in apksigner output"
+            + (f" (labels: {labels!r})" if labels else " (no certificate digest lines)"))
+    signers = [match.group(1) for match in parsed]
+    actual = [value.replace(":", "").lower() for value in signers]
+    if any(value != signer for value in actual):
+        raise ValueError(
+            f"APK signature certificate mismatch: expected {signer}, got {actual}")
     subprocess.run([str(tools / "zipalign"), "-c", "-P", "16", "4", str(apk)], check=True)
     badging = command([tools / "aapt2", "dump", "badging", apk], text=True)
     if (not re.search(r"^package: name='" + re.escape(identity["application_id"]) + "'", badging, re.M)

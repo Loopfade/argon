@@ -67,6 +67,10 @@ HANDLER_DIGEST = 'a09ff3d96542b4a7087fb747068004690df572bec9d9de4997dcde4140934c
 RESOLVER_DIGEST = 'c8676f48d70c326f26086693906f9fd97473ced55a21ff3c80053613f06748d3'
 STARTUP_DIGEST = 'dd8b71b758badb1913eddd6142d58425bc3a0178d03c41143acd5a3c84e6bc37'
 CAPTURE_DIGEST = 'edcc5010cebdfdd9165831bb13dc8d3c12b27c21ea405e03ed548972ea8b8656'
+# Chromium 158 split isDirty() into a delegate and an in-motion-aware helper.
+# Patch the latter; both normal and in-motion captures use the same NTP guard.
+CAPTURE_M158_SIGNATURE = '        private boolean isDirty(boolean viewIsDirty, boolean allowInMotion) {'
+CAPTURE_M158_DIGEST = 'ce239f05c86a2bde1833fa9baaa97dcc9a7404a37b811acd0cbb82245e81db98'
 
 CAPTURE_BEFORE = '''                    boolean isNativePage = tab == null || tab.isNativePage();
                     if (!isNativePage && mConstraintsObserver.areControlsLocked()) {'''
@@ -307,6 +311,11 @@ def patch_android_resources(text):
 
 
 def patch_toolbar_capture(text):
+    # M158's public isDirty() delegates to this private method; the capture
+    # constraint lives in the private method, including in-motion snapshots.
+    if CAPTURE_M158_SIGNATURE in text:
+        return reviewed_method(text, CAPTURE_M158_SIGNATURE, CAPTURE_M158_DIGEST,
+                               CAPTURE_BEFORE, CAPTURE_AFTER)
     return reviewed_method(text, CAPTURE_SIGNATURE, CAPTURE_DIGEST,
                            CAPTURE_BEFORE, CAPTURE_AFTER)
 

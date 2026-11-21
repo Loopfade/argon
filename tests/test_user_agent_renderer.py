@@ -223,6 +223,25 @@ def patched_fixture():
             '  DCHECK(!navigation_state->WasWithinSameDocument());\n}\n' + methods(
                 (ROOT/'tests/fixtures/user_agent/page_scale.cc.in').read_text(),
                 ('bool RenderFrameImpl::ShouldUseUserAgentOverride() const',)),
+        patch.TAB_UTILS:
+            'import org.chromium.chrome.browser.media.MediaCaptureDevicesDispatcherAndroid;\n'
+            '    public static void switchUserAgent(Tab tab, boolean switchToDesktop) {\n'
+            '        final boolean reloadOnChange = !tab.isNativePage();\n'
+            '        assumeNonNull(tab.getWebContents())\n'
+            '                .getNavigationController()\n'
+            '                .setUseDesktopUserAgent(\n'
+            '                        switchToDesktop, reloadOnChange, /* skipOnInitialNavigation= */ true);\n'
+            '    }\n',
+        patch.TAB_IMPL:
+            '        boolean shouldRequestDesktopSite =\n'
+            '                DesktopSiteUtils.shouldOverrideDesktopSite(mProfile, url, getContext());\n'
+            '        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent);\n',
+        patch.RDS_OBSERVER:
+            '#include "chrome/browser/content_settings/host_content_settings_map_factory.h"\n'
+            '#include "chrome/browser/profiles/profile.h"\n'
+            '  if (!navigation_handle->IsInOutermostMainFrame()) {\n'
+            '    return;\n'
+            '  }\n',
         patch.DOCUMENT_STATE: 'class DocumentState {\n'
             '  bool is_overriding_user_agent() const { return is_overriding_user_agent_; }\n'
             '  void set_is_overriding_user_agent(bool state) {\n'
@@ -259,8 +278,38 @@ class UserAgentNativeTests(unittest.TestCase):
         script=(ROOT/'scripts/apply_user_agent.py').read_text()
         self.assertNotIn('UpdateArgonUserAgent(',script)
         self.assertNotIn('BarrierClosure(',script)
-        self.assertFalse(any(p.name=='TabImpl.java' for p in patch.INPUT_PATHS))
+        self.assertIn(patch.TAB_IMPL, patch.INPUT_PATHS)
         self.assertFalse((ROOT/'chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java').exists())
+
+    def test_tab_user_agent_override_and_site_observer(self):
+        sources = patched_fixture()
+        utils = sources[patch.TAB_UTILS]
+        tab = sources[patch.TAB_IMPL]
+        observer = sources[patch.RDS_OBSERVER]
+        # The explicit menu action must apply its per-tab choice before the
+        # navigation reload; automatic tab changes must not overwrite it.
+        manual_choice = 'tab.setUserAgent('
+        self.assertIn('switchToDesktop ? TabUserAgent.DESKTOP : TabUserAgent.MOBILE', utils)
+        override = 'ContentUtils.setUserAgentOverride(webContents, switchToDesktop);'
+        navigation = 'webContents.getNavigationController()'
+        self.assertIn('if (explicitSelection) {', utils)
+        self.assertLess(utils.index(manual_choice), utils.index(override))
+        self.assertLess(utils.index(override), utils.index(navigation))
+        # Automatic forum navigations must reconcile pinned UA modes before
+        # refreshing the WebContents override or starting a reload.
+        self.assertLess(utils.index('tab.getUserAgent() == TabUserAgent.DESKTOP'),
+                        utils.index(override))
+        self.assertLess(utils.index('tab.getUserAgent() == TabUserAgent.MOBILE'),
+                        utils.index(override))
+        self.assertIn('/* explicitSelection= */ false', tab)
+        self.assertIn('mUserAgent == TabUserAgent.DESKTOP', tab)
+        self.assertIn('mUserAgent != TabUserAgent.MOBILE', tab)
+        self.assertIn('TabAndroid::FromWebContents(web_contents())', observer)
+        self.assertIn('TabModel::TabUserAgent::MOBILE', observer)
+        self.assertIn('TabModel::TabUserAgent::DESKTOP', observer)
+        # DEFAULT and legacy UNSET still follow ordinary domain rules.
+        self.assertNotIn('mode == TabModel::TabUserAgent::UNSET', observer)
+        self.assertIn('if (tab) {', observer)
 
     def test_reject_stale_prepared_source(self):
         with tempfile.TemporaryDirectory() as directory:

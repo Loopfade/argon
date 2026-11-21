@@ -419,6 +419,17 @@ public final class ArgonHomeBridge {
             }
 
             @Override
+            public @Nullable View getSearchBoxView() {
+                // Chromium 158 uses the native NTP fakebox View for omnibox
+                // animations. Argon's fakebox lives in WebUI, not Android:
+                // never expose a stale native View while its home is active.
+                if (isHomeToolbarActive(currentTab.get()) || !hasNativeNtp.getAsBoolean()) {
+                    return null;
+                }
+                return fallback.getSearchBoxView();
+            }
+
+            @Override
             public int getSearchBoxBoundsVerticalInset() {
                 return current() != null || !hasNativeNtp.getAsBoolean()
                         ? 0 : fallback.getSearchBoxBoundsVerticalInset();

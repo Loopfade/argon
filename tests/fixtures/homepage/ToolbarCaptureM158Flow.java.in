@@ -1,0 +1,69 @@
+import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.tab.Tab;
+
+/** Run the pinned Chromium 158 public/private toolbar capture methods, with Android boundaries stubbed. */
+public class ToolbarCaptureM158Flow {
+    private static class Delegate implements NewTabPageDelegate {
+        boolean homepageVisible;
+        @Override public boolean isLocationBarShown() { return homepageVisible; }
+    }
+
+    private static void check(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+    }
+
+    public static void main(String[] args) {
+        Tab tab = new Tab();
+        Delegate delegate = new Delegate();
+        ToolbarCaptureFlow capture = new ToolbarCaptureFlow(tab, delegate, () -> false);
+
+        check(!capture.render("normal locked") && capture.unlockRequests() == 1,
+                "Ordinary pages must wait for controls to unlock");
+        delegate.homepageVisible = true;
+        check(capture.render("Argon WebUI: hidden")
+                        && "Argon WebUI: hidden".equals(capture.bitmap()),
+                "WebUI homepage must refresh its toolbar bitmap even while controls remain locked");
+        check(!capture.isDirty(), "Completed captures must clear the dirty state");
+
+        capture.snapshotSame(true);
+        check(!capture.render("unchanged"),
+                "Identical toolbar snapshots must retain Chromium suppression");
+        capture.snapshotSame(false);
+
+        capture.fullscreen(true);
+        check(!capture.render("fullscreen"), "Fullscreen must suppress toolbar capture");
+        capture.fullscreen(false);
+        capture.capturingDisabled(true);
+        check(!capture.render("disabled"), "Disabled capture must remain suppressed");
+        capture.capturingDisabled(false);
+
+        capture.moving(true);
+        check(!capture.render("normal motion"), "Normal captures must remain blocked in motion");
+        check(capture.renderAllowInMotion("pre-motion frame")
+                        && "pre-motion frame".equals(capture.bitmap()),
+                "Explicit allowInMotion must permit the initial pre-motion capture");
+        capture.moving(false);
+        check(capture.render("resting"), "Capture must resume when compositor motion ends");
+
+        delegate.homepageVisible = false;
+        check(!capture.render("normal locked after homepage"),
+                "Navigating away must restore ordinary locked-controls suppression");
+        tab.nativePage = true;
+        check(capture.render("native page"),
+                "Chromium native pages must retain their locked-controls exemption");
+        tab.nativePage = false;
+        capture.locked(false);
+        check(capture.render("ordinary unlocked"),
+                "Ordinary pages must capture when browser controls unlock");
+
+        capture.locked(true);
+        capture.pageLoad(true);
+        check(capture.render("page load"),
+                "Chromium must capture the page-load frame before controls unlock");
+        capture.pageLoad(false);
+        check(!capture.render("locked again"),
+                "Ordinary locked-controls suppression must resume after page load");
+
+        System.out.println("PASS: Chromium 158 capture entrypoints, WebUI, motion and restoration");
+    }
+}

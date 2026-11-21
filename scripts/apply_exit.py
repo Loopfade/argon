@@ -96,11 +96,24 @@ def patch_controller(text):
                 || {PACKAGE}.shouldPreserveTabs()) {{
     {before}
         }}''')
-    before = '''                MultiWindowUtils.isNewStartupWindowPolicyEnabled()
-                        || MultiWindowUtils.isRestoreOnStartupPrefSyncEnabled();'''
-    return replace(text, before, f'''                {PACKAGE}.isClosing()
+    # Chromium 158 renamed the restore-on-startup predicate. Keep the legacy
+    # form for pinned M157 fixtures and reject unreviewed future API changes.
+    policies = (
+        "isRestoreOnStartupPrefSupported",
+        "isRestoreOnStartupPrefSyncEnabled",
+    )
+    matches = []
+    for policy in policies:
+        before = f"""                MultiWindowUtils.isNewStartupWindowPolicyEnabled()
+                        || MultiWindowUtils.{policy}();"""
+        after = f"""                {PACKAGE}.isClosing()
                         || MultiWindowUtils.isNewStartupWindowPolicyEnabled()
-                        || MultiWindowUtils.isRestoreOnStartupPrefSyncEnabled();''')
+                        || MultiWindowUtils.{policy}();"""
+        if before in text or after in text:
+            matches.append((before, after))
+    if len(matches) != 1:
+        raise ValueError("Exit patch anchor changed: startup restore policy")
+    return replace(text, *matches[0])
 
 
 def patch_tab(text):

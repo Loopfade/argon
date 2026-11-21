@@ -1,5 +1,6 @@
 """Guard localized Android resources against stale text and broken placeholders."""
 import copy
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -41,6 +42,23 @@ class RussianTranslationTests(unittest.TestCase):
         self.mock_bundles = patch.object(localization, "russian_resource_bundles", return_value=[])
         self.mock_bundles.start()
         self.addCleanup(self.mock_bundles.stop)
+
+    def test_m158_catalog_omits_removed_media_router_resources(self):
+        # The M158 source tree no longer has browser/android/java/strings
+        # under components/media_router. Keep the surviving catalog coverage,
+        # but do not try to download a path removed from the pinned source.
+        bundles = json.loads((ROOT / "res/translations/bundles.json").read_text())
+        roots = [bundle["root"] for bundle in bundles]
+        self.assertEqual(len(roots), len(set(roots)))
+        self.assertNotIn(
+            "components/media_router/browser/android/java/strings/"
+            "android_chrome_media_router_strings.grd", roots)
+        self.assertFalse(any(
+            "/media_router/browser/android/java/strings/" in path
+            for bundle in bundles
+            for path in [bundle["root"], bundle["catalog"], *bundle["sources"]]))
+        self.assertIn("chrome/browser/ui/android/strings/android_chrome_strings.grd", roots)
+        self.assertIn("components/components_strings.grd", roots)
 
     def test_translations_preserve_existing_entries_and_are_idempotent(self):
         writes = localization.russian_translation_writes(self.src)
