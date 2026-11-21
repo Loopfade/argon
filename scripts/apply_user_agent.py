@@ -21,6 +21,7 @@ PRIVACY_HOOKS = TITANIUM_CHROME_JAVA_SOURCES.parent / PRIVACY / "PrivacySettings
 UA_UTILS = Path("components/embedder_support/user_agent_utils.cc")
 UA_HEADER = UA_UTILS.with_suffix(".h")
 DESKTOP_UA = Path("chrome/browser/android/content/content_utils.cc")
+WEB_CONTENTS_IMPL = Path("content/browser/web_contents/web_contents_impl.cc")
 RENDER_PROCESS_HOST_IMPL = Path("content/browser/renderer_host/render_process_host_impl.cc")
 NAVIGATION_CONTROLLER = Path("content/browser/renderer_host/navigation_controller_android.cc")
 RENDER_FRAME = Path("content/renderer/render_frame_impl.cc")
@@ -34,6 +35,7 @@ FRAME_FETCH = Path("third_party/blink/renderer/core/loader/frame_fetch_context.c
 
 INPUT_PATHS = (
     ANDROID_GN, STARTUP, PRIVACY_HOOKS, UA_UTILS, UA_HEADER, DESKTOP_UA,
+    WEB_CONTENTS_IMPL,
     TITANIUM_CHROME_JAVA_SOURCES, TITANIUM_CHROME_RESOURCES,
     TITANIUM_PRIVACY_PREFERENCES, TITANIUM_SEARCH_INDEX_PROVIDER_HOOKS,
     RENDER_PROCESS_HOST_IMPL, CLIENT_HINTS, FRAME_FETCH, NAVIGATION_CONTROLLER,
@@ -85,6 +87,28 @@ def patch_navigation_controller(source: str) -> str:
 
 
 
+def patch_web_contents_inheritance(source: str) -> str:
+    """Keep new-tab UA selection synchronized when the override string is unchanged."""
+    return replace_once(source, """\
+  if (GetUserAgentOverride() == ua_override) {
+    return;
+  }
+""", """\
+  if (GetUserAgentOverride() == ua_override) {
+    // Desktop/mobile may change new-tab inheritance while the effective
+    // browser User-Agent string stays the same (notably for custom UA).
+    // Refresh delayed-load policy without an unnecessary renderer reload.
+    should_override_user_agent_in_new_tabs_ = override_in_new_tabs;
+    if (delayed_load_url_params_.get()) {
+      delayed_load_url_params_->override_user_agent =
+          override_in_new_tabs ? NavigationController::UA_OVERRIDE_TRUE
+                               : NavigationController::UA_OVERRIDE_FALSE;
+    }
+    return;
+  }
+""")
+
+
 def patch_tab_user_agent_utils(source: str) -> str:
     """Use the same tab-scoped mode for WebContents, reloads and future loads."""
     anchor = "import org.chromium.chrome.browser.media.MediaCaptureDevicesDispatcherAndroid;"
@@ -114,14 +138,15 @@ import org.chromium.chrome.browser.content.ContentUtils;""")
             // the manually pinned desktop selection.
             switchToDesktop = true;
         } else if (tab.getUserAgent() == TabUserAgent.MOBILE) {
-            // Experiment: reconcile both the renderer override and navigation
-            // flag with the pinned mobile choice, even when an automatic
-            // caller supplies the opposite mode after a redirect/reload.
+            // Reconcile both the renderer override and navigation flag with
+            // the pinned mobile choice, even when an automatic caller supplies
+            // the opposite mode after a redirect/reload.
             switchToDesktop = false;
         }
 
-        // The native flag alone does not refresh the override cached by an
-        // existing WebContents. Install it before triggering its navigation.
+        // The navigation flag alone does not refresh an existing WebContents.
+        // This boolean controls new-tab UA inheritance, not the UA string
+        // ContentUtils constructs; keep it aligned with the selected mode.
         ContentUtils.setUserAgentOverride(webContents, switchToDesktop);
         webContents.getNavigationController()
                 .setUseDesktopUserAgent(
@@ -344,6 +369,7 @@ std::optional<std::string> GetArgonUserAgentOverride(bool desktop) {
   }
 """)
 
+    sources[WEB_CONTENTS_IMPL] = patch_web_contents_inheritance(sources[WEB_CONTENTS_IMPL])
     sources[NAVIGATION_CONTROLLER] = patch_navigation_controller(sources[NAVIGATION_CONTROLLER])
     sources[DOCUMENT_STATE] = patch_document_scale_state(sources[DOCUMENT_STATE])
     sources[RENDER_FRAME] = patch_renderer_scale_state(sources[RENDER_FRAME])

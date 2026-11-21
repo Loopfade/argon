@@ -149,10 +149,16 @@ def verify_artifact(root, sha, arch, mode, fingerprint, certificate, sdk, jdk):
     # signer is present: reject any digest-bearing line that we cannot parse.
     digest_lines = [line.strip() for line in verification.splitlines()
                     if "certificate SHA-256 digest:" in line]
+    # Source Stamp is a separate distribution certificate, not an APK signer.
+    # Only a fully recognized stamp is excluded; unknown labels fail closed.
+    stamp = re.compile(
+        r"Source Stamp Signer:? certificate SHA-256 digest: [0-9a-fA-F:]+")
+    signer_lines = [line for line in digest_lines if not stamp.fullmatch(line)]
     pattern = re.compile(
-        r"(?:Signer #\d+|V\d+(?:\.\d+)? Signer):? certificate SHA-256 digest: ([0-9a-fA-F:]+)")
-    parsed = [pattern.fullmatch(line) for line in digest_lines]
-    if not digest_lines or any(match is None for match in parsed):
+        r"(?:Signer #\d+|Signer \(minSdkVersion=\d+(?:, maxSdkVersion=\d+)?\)"
+        r"|V\d+(?:\.\d+)? Signer):? certificate SHA-256 digest: ([0-9a-fA-F:]+)")
+    parsed = [pattern.fullmatch(line) for line in signer_lines]
+    if not signer_lines or any(match is None for match in parsed):
         labels = [line.partition("certificate SHA-256 digest:")[0].strip()
                   for line in digest_lines]
         raise ValueError(

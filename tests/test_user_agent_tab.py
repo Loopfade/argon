@@ -42,6 +42,7 @@ class Tab {
 }
 class WebContents {
     NavigationController controller = new NavigationController();
+    boolean overrideInNewTabs;
     NavigationController getNavigationController(){return controller;}
 }
 class NavigationController {
@@ -62,7 +63,9 @@ class WebsitePreferenceBridge {
     }
 }
 class ContentUtils {
-    static void setUserAgentOverride(WebContents contents,boolean desktop){
+    static void setUserAgentOverride(WebContents contents,boolean overrideInNewTabs){
+        // Chromium's JNI boolean controls new-tab inheritance, not UA content.
+        contents.overrideInNewTabs=overrideInNewTabs;
         TestHarness.log.add("override");
     }
 }
@@ -74,6 +77,7 @@ class TestHarness {
         TabUtils.switchUserAgent(tab,desktop);
         check(tab.mode==expected);
         check(tab.web.controller.desktop==desktop && tab.web.controller.reload);
+        check(tab.web.overrideInNewTabs==desktop);
         check(log.equals(List.of("tab","override","navigation")));
     }
     public static void main(String[] args){
@@ -85,15 +89,18 @@ class TestHarness {
         TabUtils.switchUserAgent(tab,true,false);
         check(tab.mode==TabUserAgent.MOBILE);
         check(!tab.web.controller.desktop);
+        check(!tab.web.overrideInNewTabs);
         check(log.equals(List.of("override","navigation")));
         tab.mode=TabUserAgent.DESKTOP;log.clear();
         TabUtils.switchUserAgent(tab,false,false);
         check(tab.mode==TabUserAgent.DESKTOP);
         check(tab.web.controller.desktop);
+        check(tab.web.overrideInNewTabs);
         check(log.equals(List.of("override","navigation")));
         tab.mode=TabUserAgent.DEFAULT;log.clear();
         TabUtils.switchUserAgent(tab,false,false);
         check(!tab.web.controller.desktop);
+        check(!tab.web.overrideInNewTabs);
         check(tab.mode==TabUserAgent.DEFAULT);
         tab.nativePage=true;
         TabUtils.switchUserAgent(tab,true,false);

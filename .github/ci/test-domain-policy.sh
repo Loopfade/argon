@@ -72,6 +72,7 @@ done
     obj/content/browser/browser/client_hints.o \
     obj/content/browser/browser/render_process_host_impl.o \
     obj/content/browser/browser/navigation_controller_android.o \
+    obj/content/browser/browser/web_contents_impl.o \
     obj/content/renderer/renderer/render_frame_impl.o \
     obj/content/renderer/renderer/document_state.o \
     obj/third_party/blink/renderer/core/core/frame_fetch_context.o \

@@ -39,6 +39,11 @@ The independently pinned depot_tools revision is unchanged.
   compiler caches that depend on Chromium source inputs. Never relabel a
   Chromium 157 APK as a Chromium 158 test result.
 
+- The M158 DEX probe accepts either verified record support or explicit older
+  D8 record rejection while always validating the production exit DEX.
+- The UA patch updates `WebContentsImpl` new-tab inheritance even when the
+  desktop/mobile preset User-Agent string itself has not changed.
+
 ## Acceptance criteria
 
 1. `validate.yml` is green on the exact current PR head; review source-patch
