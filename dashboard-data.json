@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T06:29:47Z",
+  "generated_at": "2026-11-22T06:45:38Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -68004,26 +68004,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T06:29:28Z",
+      "updated_at": "2026-11-22T06:45:17Z",
       "merged_at": null,
-      "head_sha": "0ccf8470198151200937e2a04744fb5f0edae359",
-      "merge_commit_sha": "514f4e16de6c7b95cacd9271c87860a745e497d0",
+      "head_sha": "29760f9c01fedfacec167013ede400cda2edd538",
+      "merge_commit_sha": "2757e3f05688db67688d29d89b403901d3e75667",
       "author": "Loopfade",
-      "additions": 2037,
-      "deletions": 89,
-      "changed_files": 46,
+      "additions": 2112,
+      "deletions": 91,
+      "changed_files": 48,
       "commits": 1,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "0ccf8470198151200937e2a04744fb5f0edae359",
+        "head_sha": "29760f9c01fedfacec167013ede400cda2edd538",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0ccf8470198151200937e2a04744fb5f0edae359",
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...29760f9c01fedfacec167013ede400cda2edd538",
         "commits": 1,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 46,
-        "additions": 2037,
-        "deletions": 89,
+        "changed_files": 48,
+        "additions": 2112,
+        "deletions": 91,
         "files": [
           {
             "filename": ".github/ci/check-exit-dex.py",
@@ -68299,6 +68299,13 @@
             "deletions": 0
           },
           {
+            "filename": "tests/test_upstream_sources.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 67,
+            "deletions": 0
+          },
+          {
             "filename": "tests/test_user_agent_navigation.py",
             "previous_filename": null,
             "status": "modified",
@@ -68325,6 +68332,13 @@
             "status": "added",
             "additions": 225,
             "deletions": 0
+          },
+          {
+            "filename": "tests/upstream_sources.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 8,
+            "deletions": 2
           },
           {
             "filename": "tests/user_agent_navigation_flow.py",
@@ -75430,20 +75444,20 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0ccf8470198151200937e2a04744fb5f0edae359": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...29760f9c01fedfacec167013ede400cda2edd538": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "0ccf8470198151200937e2a04744fb5f0edae359",
+      "head_sha": "29760f9c01fedfacec167013ede400cda2edd538",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...0ccf8470198151200937e2a04744fb5f0edae359",
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...29760f9c01fedfacec167013ede400cda2edd538",
       "commits": 1,
       "commit_shas": [
-        "0ccf8470198151200937e2a04744fb5f0edae359"
+        "29760f9c01fedfacec167013ede400cda2edd538"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 46,
-      "additions": 2037,
-      "deletions": 89,
+      "changed_files": 48,
+      "additions": 2112,
+      "deletions": 91,
       "files": [
         {
           "filename": ".github/ci/check-exit-dex.py",
@@ -75719,6 +75733,13 @@
           "deletions": 0
         },
         {
+          "filename": "tests/test_upstream_sources.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 67,
+          "deletions": 0
+        },
+        {
           "filename": "tests/test_user_agent_navigation.py",
           "previous_filename": null,
           "status": "modified",
@@ -75745,6 +75766,13 @@
           "status": "added",
           "additions": 225,
           "deletions": 0
+        },
+        {
+          "filename": "tests/upstream_sources.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 2
         },
         {
           "filename": "tests/user_agent_navigation_flow.py",
