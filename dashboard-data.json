@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T14:35:22Z",
+  "generated_at": "2026-11-22T14:51:52Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -29,8 +29,8 @@
         "run_attempt": 1,
         "first_started_at": "2026-11-22T14:34:38Z",
         "completed_at": null,
-        "duration_ms": 44000,
-        "runner_ms": 38000
+        "duration_ms": 1034000,
+        "runner_ms": 1028000
       },
       "jobs": [
         {
@@ -312,50 +312,58 @@
             },
             {
               "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 9,
               "started_at": "2026-11-22T14:35:20Z",
-              "completed_at": null
+              "completed_at": "2026-11-22T14:37:28Z"
             },
             {
               "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "failure",
               "number": 10,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-22T14:37:28Z",
+              "completed_at": "2026-11-22T14:49:40Z"
             },
             {
               "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "skipped",
               "number": 11,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-22T14:49:40Z",
+              "completed_at": "2026-11-22T14:49:40Z"
             },
             {
               "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "skipped",
               "number": 12,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-22T14:49:40Z",
+              "completed_at": "2026-11-22T14:49:40Z"
             },
             {
               "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "skipped",
               "number": 13,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-22T14:49:40Z",
+              "completed_at": "2026-11-22T14:49:40Z"
+            },
+            {
+              "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-22T14:49:40Z",
+              "completed_at": "2026-11-22T14:49:42Z"
             },
             {
               "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-              "status": "pending",
+              "status": "in_progress",
               "conclusion": null,
               "number": 24,
-              "started_at": null,
+              "started_at": "2026-11-22T14:49:42Z",
               "completed_at": null
             },
             {
@@ -453,50 +461,58 @@
                 },
                 {
                   "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 9,
                   "started_at": "2026-11-22T14:35:20Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-22T14:37:28Z"
                 },
                 {
                   "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "failure",
                   "number": 10,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:37:28Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
                 },
                 {
                   "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "skipped",
                   "number": 11,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
                 },
                 {
                   "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "skipped",
                   "number": 12,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
                 },
                 {
                   "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "skipped",
                   "number": 13,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
+                },
+                {
+                  "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 23,
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:42Z"
                 },
                 {
                   "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 24,
-                  "started_at": null,
+                  "started_at": "2026-11-22T14:49:42Z",
                   "completed_at": null
                 },
                 {
@@ -702,50 +718,58 @@
                 },
                 {
                   "name": "\u041e\u0441\u0432\u043e\u0431\u043e\u0434\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e \u043d\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0435",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 9,
                   "started_at": "2026-11-22T14:35:20Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-22T14:37:28Z"
                 },
                 {
                   "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "failure",
                   "number": 10,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:37:28Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
                 },
                 {
                   "name": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u043d\u0435\u0438\u0437\u043c\u0435\u043d\u044f\u0435\u043c\u044b\u0439 digest \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043e\u0431\u0440\u0430\u0437\u0430",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "skipped",
                   "number": 11,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
                 },
                 {
                   "name": "\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043e\u0431\u0440\u0430\u0437",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "skipped",
                   "number": 12,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
                 },
                 {
                   "name": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u0441\u0432\u043e\u0434\u043a\u0443",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "skipped",
                   "number": 13,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:40Z"
+                },
+                {
+                  "name": "Post \u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0445 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u043e\u0432",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 23,
+                  "started_at": "2026-11-22T14:49:40Z",
+                  "completed_at": "2026-11-22T14:49:42Z"
                 },
                 {
                   "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-                  "status": "pending",
+                  "status": "in_progress",
                   "conclusion": null,
                   "number": 24,
-                  "started_at": null,
+                  "started_at": "2026-11-22T14:49:42Z",
                   "completed_at": null
                 },
                 {
@@ -770,6 +794,14 @@
         }
       ],
       "artifacts": [
+        {
+          "id": 14759097311,
+          "name": "Loopfade~argon~HNN7JN.dockerbuild",
+          "size_in_bytes": 57328,
+          "expired": false,
+          "created_at": "2026-11-22T14:49:42Z",
+          "expires_at": "2027-02-20T14:34:40Z"
+        },
         {
           "id": 14757729624,
           "name": "argon-test-source",
@@ -72274,8 +72306,8 @@
     "run_attempt": 1,
     "first_started_at": "2026-11-22T14:34:38Z",
     "completed_at": null,
-    "duration_ms": 44000,
-    "runner_ms": 38000
+    "duration_ms": 1034000,
+    "runner_ms": 1028000
   },
   "runs": [
     {
@@ -72295,8 +72327,8 @@
       "run_attempt": 1,
       "first_started_at": "2026-11-22T14:34:38Z",
       "completed_at": null,
-      "duration_ms": 44000,
-      "runner_ms": 38000
+      "duration_ms": 1034000,
+      "runner_ms": 1028000
     },
     {
       "id": 45011621035,
@@ -72687,26 +72719,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T14:32:08Z",
+      "updated_at": "2026-11-22T14:51:33Z",
       "merged_at": null,
-      "head_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
-      "merge_commit_sha": "9b43e5b957e69f4c3f2eed71c7d7565f5eb3b21e",
+      "head_sha": "da9f3b6afc39a038785bbe1a4dcdadf188a3251a",
+      "merge_commit_sha": "cbbae2ff16b3928e3d6db3543c19e7dce40f0cd9",
       "author": "Loopfade",
-      "additions": 4234,
-      "deletions": 147,
-      "changed_files": 73,
-      "commits": 3,
+      "additions": 4440,
+      "deletions": 176,
+      "changed_files": 79,
+      "commits": 4,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
+        "head_sha": "da9f3b6afc39a038785bbe1a4dcdadf188a3251a",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...6677cd26ed8dc9afe0c05fd897c92e39535f0576",
-        "commits": 3,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...da9f3b6afc39a038785bbe1a4dcdadf188a3251a",
+        "commits": 4,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 73,
-        "additions": 4234,
-        "deletions": 147,
+        "changed_files": 79,
+        "additions": 4440,
+        "deletions": 176,
         "files": [
           {
             "filename": ".github/ci/branch-test.py",
@@ -72737,6 +72769,13 @@
             "deletions": 2
           },
           {
+            "filename": ".github/ci/update-dashboard.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 52,
+            "deletions": 25
+          },
+          {
             "filename": ".github/workflows/build-chromium-image.yml",
             "previous_filename": null,
             "status": "modified",
@@ -72749,6 +72788,13 @@
             "status": "modified",
             "additions": 39,
             "deletions": 8
+          },
+          {
+            "filename": ".github/workflows/deploy-dashboard.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 12,
+            "deletions": 0
           },
           {
             "filename": "README.md",
@@ -72814,6 +72860,13 @@
             "deletions": 0
           },
           {
+            "filename": "docs/build-pipeline.md",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 3,
+            "deletions": 1
+          },
+          {
             "filename": "docs/chromium-158-upgrade.md",
             "previous_filename": null,
             "status": "added",
@@ -72833,6 +72886,13 @@
             "status": "modified",
             "additions": 30,
             "deletions": 6
+          },
+          {
+            "filename": "index.html",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
           },
           {
             "filename": "patch.sh",
@@ -72859,7 +72919,7 @@
             "filename": "scripts/apply_homepage.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 58,
+            "additions": 74,
             "deletions": 1
           },
           {
@@ -72929,7 +72989,7 @@
             "filename": "tests/fixtures/homepage/RestoreNavigationFlow.cc.in",
             "previous_filename": null,
             "status": "added",
-            "additions": 274,
+            "additions": 311,
             "deletions": 0
           },
           {
@@ -73049,6 +73109,20 @@
             "previous_filename": null,
             "status": "modified",
             "additions": 37,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_dashboard_rendering.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 43,
+            "deletions": 2
+          },
+          {
+            "filename": "tests/test_dashboard_snapshot.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 42,
             "deletions": 0
           },
           {
@@ -73228,7 +73302,7 @@
           "status": "in_progress",
           "conclusion": null,
           "source_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
-          "current": true
+          "current": false
         },
         {
           "id": 45011621035,
@@ -81297,6 +81371,579 @@
           "status": "modified",
           "additions": 7,
           "deletions": 0
+        }
+      ]
+    },
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...da9f3b6afc39a038785bbe1a4dcdadf188a3251a": {
+      "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "head_sha": "da9f3b6afc39a038785bbe1a4dcdadf188a3251a",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...da9f3b6afc39a038785bbe1a4dcdadf188a3251a",
+      "commits": 4,
+      "commit_shas": [
+        "4737e79529a4737d8652e7fff893a18dd347fd10",
+        "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
+        "b2f51d790c4e27f85c2b609ab951b071d1cbda6d",
+        "da9f3b6afc39a038785bbe1a4dcdadf188a3251a"
+      ],
+      "commits_complete": true,
+      "files_complete": true,
+      "changed_files": 79,
+      "additions": 4440,
+      "deletions": 176,
+      "files": [
+        {
+          "filename": ".github/ci/branch-test.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 158,
+          "deletions": 23
+        },
+        {
+          "filename": ".github/ci/check-exit-dex.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 22,
+          "deletions": 8
+        },
+        {
+          "filename": ".github/ci/full-build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 27,
+          "deletions": 3
+        },
+        {
+          "filename": ".github/ci/test-domain-policy.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 20,
+          "deletions": 2
+        },
+        {
+          "filename": ".github/ci/update-dashboard.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 52,
+          "deletions": 25
+        },
+        {
+          "filename": ".github/workflows/build-chromium-image.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/workflows/build-test-branch.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 39,
+          "deletions": 8
+        },
+        {
+          "filename": ".github/workflows/deploy-dashboard.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 12,
+          "deletions": 0
+        },
+        {
+          "filename": "README.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 2
+        },
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 5
+        },
+        {
+          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 11,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 105,
+          "deletions": 11
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/android/argon_exit.cc",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 2
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/ui/webui/argon_home/argon_search_handler.cc",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 20,
+          "deletions": 5
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_ids.xml",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 4,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "docs/build-pipeline.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 3,
+          "deletions": 1
+        },
+        {
+          "filename": "docs/chromium-158-upgrade.md",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 98,
+          "deletions": 0
+        },
+        {
+          "filename": "docs/homepage.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 57,
+          "deletions": 0
+        },
+        {
+          "filename": "docs/user-agent.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 30,
+          "deletions": 6
+        },
+        {
+          "filename": "index.html",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "patch.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 41,
+          "deletions": 1
+        },
+        {
+          "filename": "res/translations/bundles.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 0,
+          "deletions": 7
+        },
+        {
+          "filename": "scripts/apply_exit.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 17,
+          "deletions": 4
+        },
+        {
+          "filename": "scripts/apply_homepage.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 74,
+          "deletions": 1
+        },
+        {
+          "filename": "scripts/apply_user_agent.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 343,
+          "deletions": 10
+        },
+        {
+          "filename": "tests/check_background_playback_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 84,
+          "deletions": 17
+        },
+        {
+          "filename": "tests/check_homepage_upstream.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/check_upstream_patches.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 12,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/apksigner-37-v3-certificate.txt",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 3,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/homepage/ArgonHomeBridgeFlow.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 108,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/fixtures/homepage/NewTabPageDelegate.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 7,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/RestoreNavigationFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 311,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/ToolbarCaptureM158Flow.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 69,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/chrome_serialized_navigation_driver.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 79,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/serialized_navigation_builder.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 230,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 78,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/HistoryViewStateFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 105,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 81,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/ObserverFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 136,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 28,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/user_agent/desktop_site_menu.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 18,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/navigation_request_ua.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 40,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/request_desktop_observer.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 74,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/tab_creator.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 67,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/tab_user_agent_state.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 43,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/homepage_restore_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 50,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_background_dependency_fetch.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 210,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_branch_test.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 37,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_build_targets.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 37,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_dashboard_rendering.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 43,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/test_dashboard_snapshot.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 42,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_exit.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 21,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_exit_dex.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 44,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_full_build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 50,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_homepage.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 15,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_homepage_native.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 79,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/test_homepage_restore.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 29,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_homepage_startup.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 34,
+          "deletions": 4
+        },
+        {
+          "filename": "tests/test_russian_translations.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 18,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_test_apk_collection.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 226,
+          "deletions": 10
+        },
+        {
+          "filename": "tests/test_upstream_sources.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 67,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_history.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 22,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_navigation.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_observer.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 50,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_renderer.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 81,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/test_user_agent_scale.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_user_agent_tab.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 276,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_tab_state.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 25,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/upstream_sources.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/user_agent_history_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 47,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_navigation_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/user_agent_observer_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 44,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_scale_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/user_agent_tab_state_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 128,
+          "deletions": 0
+        },
+        {
+          "filename": "vanadium",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         }
       ]
     },
