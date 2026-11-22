@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T14:51:52Z",
+  "generated_at": "2026-11-22T14:53:09Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -16,21 +16,21 @@
         "id": 45033570396,
         "run_number": 13,
         "event": "workflow_dispatch",
-        "status": "in_progress",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "failure",
         "head_branch": "main",
         "path": ".github/workflows/build-test-branch.yml",
         "display_title": "\u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u2014 PR \u211693 \u00b7 \u0437\u0430\u043f\u0443\u0441\u043a \u211613",
         "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
         "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396",
         "created_at": "2026-11-22T14:34:38Z",
-        "updated_at": "2026-11-22T14:34:59Z",
+        "updated_at": "2026-11-22T14:52:55Z",
         "run_started_at": "2026-11-22T14:34:38Z",
         "run_attempt": 1,
         "first_started_at": "2026-11-22T14:34:38Z",
-        "completed_at": null,
-        "duration_ms": 1034000,
-        "runner_ms": 1028000
+        "completed_at": "2026-11-22T14:52:54Z",
+        "duration_ms": 1096000,
+        "runner_ms": 1090000
       },
       "jobs": [
         {
@@ -239,11 +239,11 @@
         {
           "id": 137242332261,
           "name": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043e\u0431\u0449\u0438\u0439 Docker-\u043e\u0431\u0440\u0430\u0437 \u0438\u0437 \u043a\u043e\u043c\u043c\u0438\u0442\u0430 PR / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
-          "status": "in_progress",
-          "conclusion": null,
+          "status": "completed",
+          "conclusion": "failure",
           "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137242332261",
           "started_at": "2026-11-22T14:34:59Z",
-          "completed_at": null,
+          "completed_at": "2026-11-22T14:52:54Z",
           "run_attempt": 1,
           "steps": [
             {
@@ -360,39 +360,47 @@
             },
             {
               "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 24,
               "started_at": "2026-11-22T14:49:42Z",
-              "completed_at": null
+              "completed_at": "2026-11-22T14:52:51Z"
             },
             {
               "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 25,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-22T14:52:51Z",
+              "completed_at": "2026-11-22T14:52:52Z"
             },
             {
               "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
-              "status": "pending",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "success",
               "number": 26,
-              "started_at": null,
-              "completed_at": null
+              "started_at": "2026-11-22T14:52:52Z",
+              "completed_at": "2026-11-22T14:52:52Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-22T14:52:52Z",
+              "completed_at": "2026-11-22T14:52:52Z"
             }
           ],
-          "duration_ms": 0,
+          "duration_ms": 1075000,
           "attempts": [
             {
               "id": 137242332261,
               "name": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043e\u0431\u0449\u0438\u0439 Docker-\u043e\u0431\u0440\u0430\u0437 \u0438\u0437 \u043a\u043e\u043c\u043c\u0438\u0442\u0430 PR / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "failure",
               "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137242332261",
               "started_at": "2026-11-22T14:34:59Z",
-              "completed_at": null,
+              "completed_at": "2026-11-22T14:52:54Z",
               "run_attempt": 1,
               "steps": [
                 {
@@ -509,29 +517,112 @@
                 },
                 {
                   "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 24,
                   "started_at": "2026-11-22T14:49:42Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-22T14:52:51Z"
                 },
                 {
                   "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 25,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:52:51Z",
+                  "completed_at": "2026-11-22T14:52:52Z"
                 },
                 {
                   "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 26,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:52:52Z",
+                  "completed_at": "2026-11-22T14:52:52Z"
+                },
+                {
+                  "name": "Complete job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 27,
+                  "started_at": "2026-11-22T14:52:52Z",
+                  "completed_at": "2026-11-22T14:52:52Z"
                 }
               ]
+            }
+          ]
+        },
+        {
+          "id": 137247327777,
+          "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0441\u043b\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0432\u0441\u0435\u0445 \u0441\u0431\u043e\u0440\u043e\u043a",
+          "status": "completed",
+          "conclusion": "skipped",
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247327777",
+          "started_at": "2026-11-22T14:52:54Z",
+          "completed_at": "2026-11-22T14:52:54Z",
+          "run_attempt": 1,
+          "steps": [],
+          "duration_ms": 0,
+          "attempts": [
+            {
+              "id": 137247327777,
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0441\u043b\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0432\u0441\u0435\u0445 \u0441\u0431\u043e\u0440\u043e\u043a",
+              "status": "completed",
+              "conclusion": "skipped",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247327777",
+              "started_at": "2026-11-22T14:52:54Z",
+              "completed_at": "2026-11-22T14:52:54Z",
+              "run_attempt": 1,
+              "steps": []
+            }
+          ]
+        },
+        {
+          "id": 137247327878,
+          "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c ${{ matrix.arch }}",
+          "status": "completed",
+          "conclusion": "skipped",
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247327878",
+          "started_at": "2026-11-22T14:52:54Z",
+          "completed_at": "2026-11-22T14:52:54Z",
+          "run_attempt": 1,
+          "steps": [],
+          "duration_ms": 0,
+          "attempts": [
+            {
+              "id": 137247327878,
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c ${{ matrix.arch }}",
+              "status": "completed",
+              "conclusion": "skipped",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247327878",
+              "started_at": "2026-11-22T14:52:54Z",
+              "completed_at": "2026-11-22T14:52:54Z",
+              "run_attempt": 1,
+              "steps": []
+            }
+          ]
+        },
+        {
+          "id": 137247328125,
+          "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u043e\u0431\u0430 \u0433\u043e\u0442\u043e\u0432\u044b\u0445 APK \u043a \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u043f\u043e\u043f\u044b\u0442\u043a\u0435",
+          "status": "completed",
+          "conclusion": "skipped",
+          "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247328125",
+          "started_at": "2026-11-22T14:52:54Z",
+          "completed_at": "2026-11-22T14:52:54Z",
+          "run_attempt": 1,
+          "steps": [],
+          "duration_ms": 0,
+          "attempts": [
+            {
+              "id": 137247328125,
+              "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u043e\u0431\u0430 \u0433\u043e\u0442\u043e\u0432\u044b\u0445 APK \u043a \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u043f\u043e\u043f\u044b\u0442\u043a\u0435",
+              "status": "completed",
+              "conclusion": "skipped",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247328125",
+              "started_at": "2026-11-22T14:52:54Z",
+              "completed_at": "2026-11-22T14:52:54Z",
+              "run_attempt": 1,
+              "steps": []
             }
           ]
         }
@@ -540,7 +631,7 @@
         {
           "number": 1,
           "run_started_at": "2026-11-22T14:34:38Z",
-          "conclusion": null,
+          "conclusion": "failure",
           "jobs": [
             {
               "id": 137242251687,
@@ -645,11 +736,11 @@
             {
               "id": 137242332261,
               "name": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043e\u0431\u0449\u0438\u0439 Docker-\u043e\u0431\u0440\u0430\u0437 \u0438\u0437 \u043a\u043e\u043c\u043c\u0438\u0442\u0430 PR / \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Chromium \u0438 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437 OCI",
-              "status": "in_progress",
-              "conclusion": null,
+              "status": "completed",
+              "conclusion": "failure",
               "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137242332261",
               "started_at": "2026-11-22T14:34:59Z",
-              "completed_at": null,
+              "completed_at": "2026-11-22T14:52:54Z",
               "run_attempt": 1,
               "steps": [
                 {
@@ -766,29 +857,70 @@
                 },
                 {
                   "name": "Post \u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c Docker Buildx",
-                  "status": "in_progress",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 24,
                   "started_at": "2026-11-22T14:49:42Z",
-                  "completed_at": null
+                  "completed_at": "2026-11-22T14:52:51Z"
                 },
                 {
                   "name": "Post \u0412\u043e\u0439\u0442\u0438 \u0432 \u0440\u0435\u0435\u0441\u0442\u0440 \u043a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440\u043e\u0432 GitHub",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 25,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:52:51Z",
+                  "completed_at": "2026-11-22T14:52:52Z"
                 },
                 {
                   "name": "Post \u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438",
-                  "status": "pending",
-                  "conclusion": null,
+                  "status": "completed",
+                  "conclusion": "success",
                   "number": 26,
-                  "started_at": null,
-                  "completed_at": null
+                  "started_at": "2026-11-22T14:52:52Z",
+                  "completed_at": "2026-11-22T14:52:52Z"
+                },
+                {
+                  "name": "Complete job",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "number": 27,
+                  "started_at": "2026-11-22T14:52:52Z",
+                  "completed_at": "2026-11-22T14:52:52Z"
                 }
               ]
+            },
+            {
+              "id": 137247327777,
+              "name": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u043e\u0431\u0440\u0430\u0437 \u043f\u043e\u0441\u043b\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u044f \u0432\u0441\u0435\u0445 \u0441\u0431\u043e\u0440\u043e\u043a",
+              "status": "completed",
+              "conclusion": "skipped",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247327777",
+              "started_at": "2026-11-22T14:52:54Z",
+              "completed_at": "2026-11-22T14:52:54Z",
+              "run_attempt": 1,
+              "steps": []
+            },
+            {
+              "id": 137247327878,
+              "name": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c ${{ matrix.arch }}",
+              "status": "completed",
+              "conclusion": "skipped",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247327878",
+              "started_at": "2026-11-22T14:52:54Z",
+              "completed_at": "2026-11-22T14:52:54Z",
+              "run_attempt": 1,
+              "steps": []
+            },
+            {
+              "id": 137247328125,
+              "name": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u043e\u0431\u0430 \u0433\u043e\u0442\u043e\u0432\u044b\u0445 APK \u043a \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u043f\u043e\u043f\u044b\u0442\u043a\u0435",
+              "status": "completed",
+              "conclusion": "skipped",
+              "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396/job/137247328125",
+              "started_at": "2026-11-22T14:52:54Z",
+              "completed_at": "2026-11-22T14:52:54Z",
+              "run_attempt": 1,
+              "steps": []
             }
           ]
         }
@@ -72293,42 +72425,42 @@
     "id": 45033570396,
     "run_number": 13,
     "event": "workflow_dispatch",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "head_branch": "main",
     "path": ".github/workflows/build-test-branch.yml",
     "display_title": "\u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u2014 PR \u211693 \u00b7 \u0437\u0430\u043f\u0443\u0441\u043a \u211613",
     "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
     "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396",
     "created_at": "2026-11-22T14:34:38Z",
-    "updated_at": "2026-11-22T14:34:59Z",
+    "updated_at": "2026-11-22T14:52:55Z",
     "run_started_at": "2026-11-22T14:34:38Z",
     "run_attempt": 1,
     "first_started_at": "2026-11-22T14:34:38Z",
-    "completed_at": null,
-    "duration_ms": 1034000,
-    "runner_ms": 1028000
+    "completed_at": "2026-11-22T14:52:54Z",
+    "duration_ms": 1096000,
+    "runner_ms": 1090000
   },
   "runs": [
     {
       "id": 45033570396,
       "run_number": 13,
       "event": "workflow_dispatch",
-      "status": "in_progress",
-      "conclusion": null,
+      "status": "completed",
+      "conclusion": "failure",
       "head_branch": "main",
       "path": ".github/workflows/build-test-branch.yml",
       "display_title": "\u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0441\u0431\u043e\u0440\u043a\u0430 Argon \u2014 PR \u211693 \u00b7 \u0437\u0430\u043f\u0443\u0441\u043a \u211613",
       "head_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
       "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396",
       "created_at": "2026-11-22T14:34:38Z",
-      "updated_at": "2026-11-22T14:34:59Z",
+      "updated_at": "2026-11-22T14:52:55Z",
       "run_started_at": "2026-11-22T14:34:38Z",
       "run_attempt": 1,
       "first_started_at": "2026-11-22T14:34:38Z",
-      "completed_at": null,
-      "duration_ms": 1034000,
-      "runner_ms": 1028000
+      "completed_at": "2026-11-22T14:52:54Z",
+      "duration_ms": 1096000,
+      "runner_ms": 1090000
     },
     {
       "id": 45011621035,
@@ -72719,7 +72851,7 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T14:51:33Z",
+      "updated_at": "2026-11-22T14:52:23Z",
       "merged_at": null,
       "head_sha": "da9f3b6afc39a038785bbe1a4dcdadf188a3251a",
       "merge_commit_sha": "cbbae2ff16b3928e3d6db3543c19e7dce40f0cd9",
@@ -73299,8 +73431,8 @@
         {
           "id": 45033570396,
           "html_url": "https://github.com/Loopfade/argon/actions/runs/45033570396",
-          "status": "in_progress",
-          "conclusion": null,
+          "status": "completed",
+          "conclusion": "failure",
           "source_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
           "current": false
         },
@@ -73620,7 +73752,7 @@
       "release": 0,
       "test": 2,
       "legacy": 0,
-      "failed": 0,
+      "failed": 1,
       "builds": 2
     }
   ],
