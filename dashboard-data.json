@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T07:00:13Z",
+  "generated_at": "2026-11-22T07:13:52Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -68004,25 +68004,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T06:59:34Z",
+      "updated_at": "2026-11-22T07:13:34Z",
       "merged_at": null,
-      "head_sha": "9cd1753fad911e06994755b3eb1c920b46a844bd",
-      "merge_commit_sha": "71d2dbfbcd57311bd73ba0bb74ce796da4b6514f",
+      "head_sha": "81c24e30e241d70dc213546a22d19d80d8badb4a",
+      "merge_commit_sha": "5fb79be112ec35b9134f5afbe5155495fb3283e6",
       "author": "Loopfade",
-      "additions": 2175,
+      "additions": 2248,
       "deletions": 92,
       "changed_files": 48,
       "commits": 1,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "9cd1753fad911e06994755b3eb1c920b46a844bd",
+        "head_sha": "81c24e30e241d70dc213546a22d19d80d8badb4a",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9cd1753fad911e06994755b3eb1c920b46a844bd",
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...81c24e30e241d70dc213546a22d19d80d8badb4a",
         "commits": 1,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 48,
-        "additions": 2175,
+        "additions": 2248,
         "deletions": 92,
         "files": [
           {
@@ -68148,7 +68148,7 @@
             "filename": "tests/check_background_playback_flow.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 72,
+            "additions": 84,
             "deletions": 17
           },
           {
@@ -68239,7 +68239,7 @@
             "filename": "tests/test_background_dependency_fetch.py",
             "previous_filename": null,
             "status": "added",
-            "additions": 149,
+            "additions": 210,
             "deletions": 0
           },
           {
@@ -75444,19 +75444,19 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9cd1753fad911e06994755b3eb1c920b46a844bd": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...81c24e30e241d70dc213546a22d19d80d8badb4a": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "9cd1753fad911e06994755b3eb1c920b46a844bd",
+      "head_sha": "81c24e30e241d70dc213546a22d19d80d8badb4a",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9cd1753fad911e06994755b3eb1c920b46a844bd",
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...81c24e30e241d70dc213546a22d19d80d8badb4a",
       "commits": 1,
       "commit_shas": [
-        "9cd1753fad911e06994755b3eb1c920b46a844bd"
+        "81c24e30e241d70dc213546a22d19d80d8badb4a"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 48,
-      "additions": 2175,
+      "additions": 2248,
       "deletions": 92,
       "files": [
         {
@@ -75582,7 +75582,7 @@
           "filename": "tests/check_background_playback_flow.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 72,
+          "additions": 84,
           "deletions": 17
         },
         {
@@ -75673,7 +75673,7 @@
           "filename": "tests/test_background_dependency_fetch.py",
           "previous_filename": null,
           "status": "added",
-          "additions": 149,
+          "additions": 210,
           "deletions": 0
         },
         {
