@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T06:48:40Z",
+  "generated_at": "2026-11-22T07:00:13Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -68004,26 +68004,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T06:46:25Z",
+      "updated_at": "2026-11-22T06:59:34Z",
       "merged_at": null,
-      "head_sha": "29760f9c01fedfacec167013ede400cda2edd538",
-      "merge_commit_sha": "2757e3f05688db67688d29d89b403901d3e75667",
+      "head_sha": "9cd1753fad911e06994755b3eb1c920b46a844bd",
+      "merge_commit_sha": "71d2dbfbcd57311bd73ba0bb74ce796da4b6514f",
       "author": "Loopfade",
-      "additions": 2112,
-      "deletions": 91,
+      "additions": 2175,
+      "deletions": 92,
       "changed_files": 48,
       "commits": 1,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "29760f9c01fedfacec167013ede400cda2edd538",
+        "head_sha": "9cd1753fad911e06994755b3eb1c920b46a844bd",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...29760f9c01fedfacec167013ede400cda2edd538",
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9cd1753fad911e06994755b3eb1c920b46a844bd",
         "commits": 1,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 48,
-        "additions": 2112,
-        "deletions": 91,
+        "additions": 2175,
+        "deletions": 92,
         "files": [
           {
             "filename": ".github/ci/check-exit-dex.py",
@@ -68148,8 +68148,8 @@
             "filename": "tests/check_background_playback_flow.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 62,
-            "deletions": 16
+            "additions": 72,
+            "deletions": 17
           },
           {
             "filename": "tests/check_upstream_patches.py",
@@ -68239,7 +68239,7 @@
             "filename": "tests/test_background_dependency_fetch.py",
             "previous_filename": null,
             "status": "added",
-            "additions": 96,
+            "additions": 149,
             "deletions": 0
           },
           {
@@ -75444,20 +75444,20 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...29760f9c01fedfacec167013ede400cda2edd538": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9cd1753fad911e06994755b3eb1c920b46a844bd": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "29760f9c01fedfacec167013ede400cda2edd538",
+      "head_sha": "9cd1753fad911e06994755b3eb1c920b46a844bd",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...29760f9c01fedfacec167013ede400cda2edd538",
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...9cd1753fad911e06994755b3eb1c920b46a844bd",
       "commits": 1,
       "commit_shas": [
-        "29760f9c01fedfacec167013ede400cda2edd538"
+        "9cd1753fad911e06994755b3eb1c920b46a844bd"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 48,
-      "additions": 2112,
-      "deletions": 91,
+      "additions": 2175,
+      "deletions": 92,
       "files": [
         {
           "filename": ".github/ci/check-exit-dex.py",
@@ -75582,8 +75582,8 @@
           "filename": "tests/check_background_playback_flow.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 62,
-          "deletions": 16
+          "additions": 72,
+          "deletions": 17
         },
         {
           "filename": "tests/check_upstream_patches.py",
@@ -75673,7 +75673,7 @@
           "filename": "tests/test_background_dependency_fetch.py",
           "previous_filename": null,
           "status": "added",
-          "additions": 96,
+          "additions": 149,
           "deletions": 0
         },
         {
