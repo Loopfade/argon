@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T09:05:27Z",
+  "generated_at": "2026-11-22T09:56:10Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -68004,7 +68004,7 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T09:05:10Z",
+      "updated_at": "2026-11-22T09:06:04Z",
       "merged_at": null,
       "head_sha": "2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
       "merge_commit_sha": "156ba4bedce96372d0399794b356fa6681bc9383",
