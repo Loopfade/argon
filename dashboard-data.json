@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T08:28:43Z",
+  "generated_at": "2026-11-22T09:05:27Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -68004,26 +68004,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T07:14:55Z",
+      "updated_at": "2026-11-22T09:05:10Z",
       "merged_at": null,
-      "head_sha": "81c24e30e241d70dc213546a22d19d80d8badb4a",
-      "merge_commit_sha": "5fb79be112ec35b9134f5afbe5155495fb3283e6",
+      "head_sha": "2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
+      "merge_commit_sha": "156ba4bedce96372d0399794b356fa6681bc9383",
       "author": "Loopfade",
-      "additions": 2248,
-      "deletions": 92,
-      "changed_files": 48,
-      "commits": 1,
+      "additions": 3003,
+      "deletions": 103,
+      "changed_files": 62,
+      "commits": 2,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "81c24e30e241d70dc213546a22d19d80d8badb4a",
+        "head_sha": "2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...81c24e30e241d70dc213546a22d19d80d8badb4a",
-        "commits": 1,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
+        "commits": 2,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 48,
-        "additions": 2248,
-        "deletions": 92,
+        "changed_files": 62,
+        "additions": 3003,
+        "deletions": 103,
         "files": [
           {
             "filename": ".github/ci/check-exit-dex.py",
@@ -68043,15 +68043,15 @@
             "filename": ".github/ci/test-domain-policy.sh",
             "previous_filename": null,
             "status": "modified",
-            "additions": 13,
+            "additions": 15,
             "deletions": 2
           },
           {
             "filename": "README.md",
             "previous_filename": null,
             "status": "modified",
-            "additions": 1,
-            "deletions": 1
+            "additions": 4,
+            "deletions": 2
           },
           {
             "filename": "build-lock.json",
@@ -68089,10 +68089,31 @@
             "deletions": 5
           },
           {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 0
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_ids.xml",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 4,
+            "deletions": 0
+          },
+          {
+            "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 0
+          },
+          {
             "filename": "docs/chromium-158-upgrade.md",
             "previous_filename": null,
             "status": "added",
-            "additions": 62,
+            "additions": 66,
             "deletions": 0
           },
           {
@@ -68106,8 +68127,8 @@
             "filename": "docs/user-agent.md",
             "previous_filename": null,
             "status": "modified",
-            "additions": 15,
-            "deletions": 3
+            "additions": 30,
+            "deletions": 6
           },
           {
             "filename": "patch.sh",
@@ -68141,8 +68162,8 @@
             "filename": "scripts/apply_user_agent.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 191,
-            "deletions": 7
+            "additions": 343,
+            "deletions": 10
           },
           {
             "filename": "tests/check_background_playback_flow.py",
@@ -68155,7 +68176,7 @@
             "filename": "tests/check_upstream_patches.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 4,
+            "additions": 9,
             "deletions": 0
           },
           {
@@ -68208,6 +68229,13 @@
             "deletions": 0
           },
           {
+            "filename": "tests/fixtures/user_agent/HistoryViewStateFlow.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 105,
+            "deletions": 0
+          },
+          {
             "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
             "previous_filename": null,
             "status": "modified",
@@ -68222,6 +68250,13 @@
             "deletions": 0
           },
           {
+            "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 28,
+            "deletions": 1
+          },
+          {
             "filename": "tests/fixtures/user_agent/desktop_site_menu.java.in",
             "previous_filename": null,
             "status": "added",
@@ -68229,10 +68264,31 @@
             "deletions": 0
           },
           {
+            "filename": "tests/fixtures/user_agent/navigation_request_ua.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 40,
+            "deletions": 0
+          },
+          {
             "filename": "tests/fixtures/user_agent/request_desktop_observer.cc.in",
             "previous_filename": null,
             "status": "added",
             "additions": 74,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/tab_creator.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 67,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/user_agent/tab_user_agent_state.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 43,
             "deletions": 0
           },
           {
@@ -68306,6 +68362,13 @@
             "deletions": 0
           },
           {
+            "filename": "tests/test_user_agent_history.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 22,
+            "deletions": 0
+          },
+          {
             "filename": "tests/test_user_agent_navigation.py",
             "previous_filename": null,
             "status": "modified",
@@ -68323,14 +68386,28 @@
             "filename": "tests/test_user_agent_renderer.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 71,
-            "deletions": 2
+            "additions": 81,
+            "deletions": 3
+          },
+          {
+            "filename": "tests/test_user_agent_scale.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
           },
           {
             "filename": "tests/test_user_agent_tab.py",
             "previous_filename": null,
             "status": "added",
-            "additions": 225,
+            "additions": 276,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/test_user_agent_tab_state.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 25,
             "deletions": 0
           },
           {
@@ -68339,6 +68416,13 @@
             "status": "modified",
             "additions": 8,
             "deletions": 2
+          },
+          {
+            "filename": "tests/user_agent_history_flow.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 47,
+            "deletions": 0
           },
           {
             "filename": "tests/user_agent_navigation_flow.py",
@@ -68352,6 +68436,20 @@
             "previous_filename": null,
             "status": "added",
             "additions": 44,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/user_agent_scale_flow.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 1
+          },
+          {
+            "filename": "tests/user_agent_tab_state_flow.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 128,
             "deletions": 0
           },
           {
@@ -75444,20 +75542,21 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...81c24e30e241d70dc213546a22d19d80d8badb4a": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...2cd11bfc1c80fcf01b62ef40f759db6a89baca86": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "81c24e30e241d70dc213546a22d19d80d8badb4a",
+      "head_sha": "2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...81c24e30e241d70dc213546a22d19d80d8badb4a",
-      "commits": 1,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
+      "commits": 2,
       "commit_shas": [
+        "2cd11bfc1c80fcf01b62ef40f759db6a89baca86",
         "81c24e30e241d70dc213546a22d19d80d8badb4a"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 48,
-      "additions": 2248,
-      "deletions": 92,
+      "changed_files": 62,
+      "additions": 3003,
+      "deletions": 103,
       "files": [
         {
           "filename": ".github/ci/check-exit-dex.py",
@@ -75477,15 +75576,15 @@
           "filename": ".github/ci/test-domain-policy.sh",
           "previous_filename": null,
           "status": "modified",
-          "additions": 13,
+          "additions": 15,
           "deletions": 2
         },
         {
           "filename": "README.md",
           "previous_filename": null,
           "status": "modified",
-          "additions": 1,
-          "deletions": 1
+          "additions": 4,
+          "deletions": 2
         },
         {
           "filename": "build-lock.json",
@@ -75523,10 +75622,31 @@
           "deletions": 5
         },
         {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_ids.xml",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 4,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
           "filename": "docs/chromium-158-upgrade.md",
           "previous_filename": null,
           "status": "added",
-          "additions": 62,
+          "additions": 66,
           "deletions": 0
         },
         {
@@ -75540,8 +75660,8 @@
           "filename": "docs/user-agent.md",
           "previous_filename": null,
           "status": "modified",
-          "additions": 15,
-          "deletions": 3
+          "additions": 30,
+          "deletions": 6
         },
         {
           "filename": "patch.sh",
@@ -75575,8 +75695,8 @@
           "filename": "scripts/apply_user_agent.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 191,
-          "deletions": 7
+          "additions": 343,
+          "deletions": 10
         },
         {
           "filename": "tests/check_background_playback_flow.py",
@@ -75589,7 +75709,7 @@
           "filename": "tests/check_upstream_patches.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 4,
+          "additions": 9,
           "deletions": 0
         },
         {
@@ -75642,6 +75762,13 @@
           "deletions": 0
         },
         {
+          "filename": "tests/fixtures/user_agent/HistoryViewStateFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 105,
+          "deletions": 0
+        },
+        {
           "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
           "previous_filename": null,
           "status": "modified",
@@ -75656,6 +75783,13 @@
           "deletions": 0
         },
         {
+          "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 28,
+          "deletions": 1
+        },
+        {
           "filename": "tests/fixtures/user_agent/desktop_site_menu.java.in",
           "previous_filename": null,
           "status": "added",
@@ -75663,10 +75797,31 @@
           "deletions": 0
         },
         {
+          "filename": "tests/fixtures/user_agent/navigation_request_ua.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 40,
+          "deletions": 0
+        },
+        {
           "filename": "tests/fixtures/user_agent/request_desktop_observer.cc.in",
           "previous_filename": null,
           "status": "added",
           "additions": 74,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/tab_creator.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 67,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/tab_user_agent_state.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 43,
           "deletions": 0
         },
         {
@@ -75740,6 +75895,13 @@
           "deletions": 0
         },
         {
+          "filename": "tests/test_user_agent_history.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 22,
+          "deletions": 0
+        },
+        {
           "filename": "tests/test_user_agent_navigation.py",
           "previous_filename": null,
           "status": "modified",
@@ -75757,14 +75919,28 @@
           "filename": "tests/test_user_agent_renderer.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 71,
-          "deletions": 2
+          "additions": 81,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/test_user_agent_scale.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         },
         {
           "filename": "tests/test_user_agent_tab.py",
           "previous_filename": null,
           "status": "added",
-          "additions": 225,
+          "additions": 276,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_tab_state.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 25,
           "deletions": 0
         },
         {
@@ -75773,6 +75949,13 @@
           "status": "modified",
           "additions": 8,
           "deletions": 2
+        },
+        {
+          "filename": "tests/user_agent_history_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 47,
+          "deletions": 0
         },
         {
           "filename": "tests/user_agent_navigation_flow.py",
@@ -75786,6 +75969,20 @@
           "previous_filename": null,
           "status": "added",
           "additions": 44,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_scale_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/user_agent_tab_state_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 128,
           "deletions": 0
         },
         {
