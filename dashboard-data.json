@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-22T14:09:56Z",
+  "generated_at": "2026-11-22T14:32:08Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -71365,32 +71365,32 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-22T14:09:30Z",
+      "updated_at": "2026-11-22T14:32:08Z",
       "merged_at": null,
-      "head_sha": "4737e79529a4737d8652e7fff893a18dd347fd10",
-      "merge_commit_sha": "3d68e9a8b874eaf212b3e0a110bd2148717f3026",
+      "head_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
+      "merge_commit_sha": "9b43e5b957e69f4c3f2eed71c7d7565f5eb3b21e",
       "author": "Loopfade",
-      "additions": 4134,
-      "deletions": 144,
+      "additions": 4234,
+      "deletions": 147,
       "changed_files": 73,
-      "commits": 2,
+      "commits": 3,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "4737e79529a4737d8652e7fff893a18dd347fd10",
+        "head_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...4737e79529a4737d8652e7fff893a18dd347fd10",
-        "commits": 2,
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...6677cd26ed8dc9afe0c05fd897c92e39535f0576",
+        "commits": 3,
         "commits_complete": true,
         "files_complete": true,
         "changed_files": 73,
-        "additions": 4134,
-        "deletions": 144,
+        "additions": 4234,
+        "deletions": 147,
         "files": [
           {
             "filename": ".github/ci/branch-test.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 154,
+            "additions": 158,
             "deletions": 23
           },
           {
@@ -71425,8 +71425,8 @@
             "filename": ".github/workflows/build-test-branch.yml",
             "previous_filename": null,
             "status": "modified",
-            "additions": 29,
-            "deletions": 7
+            "additions": 39,
+            "deletions": 8
           },
           {
             "filename": "README.md",
@@ -71495,7 +71495,7 @@
             "filename": "docs/chromium-158-upgrade.md",
             "previous_filename": null,
             "status": "added",
-            "additions": 86,
+            "additions": 98,
             "deletions": 0
           },
           {
@@ -71719,7 +71719,7 @@
             "filename": "tests/test_branch_test.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 2,
+            "additions": 37,
             "deletions": 0
           },
           {
@@ -71789,8 +71789,8 @@
             "filename": "tests/test_test_apk_collection.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 187,
-            "deletions": 8
+            "additions": 226,
+            "deletions": 10
           },
           {
             "filename": "tests/test_upstream_sources.py",
@@ -79440,27 +79440,28 @@
         }
       ]
     },
-    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...4737e79529a4737d8652e7fff893a18dd347fd10": {
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...6677cd26ed8dc9afe0c05fd897c92e39535f0576": {
       "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-      "head_sha": "4737e79529a4737d8652e7fff893a18dd347fd10",
+      "head_sha": "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...4737e79529a4737d8652e7fff893a18dd347fd10",
-      "commits": 2,
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...6677cd26ed8dc9afe0c05fd897c92e39535f0576",
+      "commits": 3,
       "commit_shas": [
         "4737e79529a4737d8652e7fff893a18dd347fd10",
+        "6677cd26ed8dc9afe0c05fd897c92e39535f0576",
         "b2f51d790c4e27f85c2b609ab951b071d1cbda6d"
       ],
       "commits_complete": true,
       "files_complete": true,
       "changed_files": 73,
-      "additions": 4134,
-      "deletions": 144,
+      "additions": 4234,
+      "deletions": 147,
       "files": [
         {
           "filename": ".github/ci/branch-test.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 154,
+          "additions": 158,
           "deletions": 23
         },
         {
@@ -79495,8 +79496,8 @@
           "filename": ".github/workflows/build-test-branch.yml",
           "previous_filename": null,
           "status": "modified",
-          "additions": 29,
-          "deletions": 7
+          "additions": 39,
+          "deletions": 8
         },
         {
           "filename": "README.md",
@@ -79565,7 +79566,7 @@
           "filename": "docs/chromium-158-upgrade.md",
           "previous_filename": null,
           "status": "added",
-          "additions": 86,
+          "additions": 98,
           "deletions": 0
         },
         {
@@ -79789,7 +79790,7 @@
           "filename": "tests/test_branch_test.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 2,
+          "additions": 37,
           "deletions": 0
         },
         {
@@ -79859,8 +79860,8 @@
           "filename": "tests/test_test_apk_collection.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 187,
-          "deletions": 8
+          "additions": 226,
+          "deletions": 10
         },
         {
           "filename": "tests/test_upstream_sources.py",
