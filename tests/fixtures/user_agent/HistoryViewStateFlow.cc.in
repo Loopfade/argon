@@ -1,0 +1,115 @@
+// Transport and serialization adapters; the patched NavigationRequest method
+// and viewport reset helper below are the production C++ implementations.
+#include <cassert>
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+#define CHECK(x) assert(x)
+#define BUILDFLAG(x) x
+#define IS_ANDROID 1
+namespace blink {
+namespace mojom {enum class NavigationType {HISTORY_DIFFERENT_DOCUMENT,HISTORY_SAME_DOCUMENT,RESTORE,RESTORE_WITH_POST,RELOAD,DIFFERENT_DOCUMENT};}
+struct ExplodedFrameState {
+ bool did_save_scroll_or_scale_state=true;
+ double page_scale_factor=2.5;
+ int scroll_offset=10,visual_viewport_scroll_offset=20,scroll_anchor_offset=30;
+ std::optional<std::u16string> scroll_anchor_selector=u"#field";
+ unsigned long scroll_anchor_simhash=42;
+ std::u16string url_string=u"https://example.test/form",state_object=u"state",document_state=u"typed text",http_body=u"POST=data";
+ long item_sequence_number=17,document_sequence_number=19;
+ std::vector<ExplodedFrameState> children;
+};
+struct ExplodedPageState {ExplodedFrameState top;std::vector<std::u16string> referenced_files{u"upload.txt"};};
+// Original entries and re-encoded request states are separate, as in Chromium.
+std::map<std::string,ExplodedPageState> states;int encodes=0;
+bool DecodePageState(const std::string& key,ExplodedPageState* state){
+ auto i=states.find(key);if(i==states.end())return false;*state=i->second;return true;
+}
+void EncodePageState(const ExplodedPageState& state,std::string* key){
+ *key="request-"+std::to_string(++encodes);states[*key]=state;
+}
+}
+namespace NavigationTypeUtils {bool IsHistory(blink::mojom::NavigationType t){return t==blink::mojom::NavigationType::HISTORY_DIFFERENT_DOCUMENT||t==blink::mojom::NavigationType::HISTORY_SAME_DOCUMENT;}}
+namespace net {
+struct HttpRequestHeaders {
+ static constexpr char kUserAgent[]="User-Agent";std::string value;
+ void AddHeadersFromString(const std::string& text){value=text;}
+ void SetHeader(const char*,const std::string& text){value=text;}
+ std::string ToString(){return value;}
+};
+}
+struct ClientHintsControllerDelegate {};
+struct BrowserContext {ClientHintsControllerDelegate* GetClientHintsControllerDelegate(){return nullptr;}};
+struct Controller {BrowserContext context;BrowserContext* GetBrowserContext(){return &context;}};
+struct Navigator {Controller controller_;Controller& controller(){return controller_;}};
+struct FrameTreeNode {Navigator navigator_;Navigator& navigator(){return navigator_;}};
+void UpdateNavigationRequestClientUaHeaders(int,ClientHintsControllerDelegate*,bool,FrameTreeNode*,net::HttpRequestHeaders*,int){}
+std::string ComputeUserAgentValue(const std::string& value){return value;}
+struct NavigationRequest {
+ bool is_synchronous_renderer_commit_=false,ua_change_requires_reload_=false;
+ bool main=true,same_document=false;
+ struct Commit {
+  bool is_overriding_user_agent=false;
+  std::string page_state="entry";
+  bool reset_history_view_state_for_user_agent_change=false;
+ } commit;
+ struct Common {blink::mojom::NavigationType navigation_type=blink::mojom::NavigationType::HISTORY_DIFFERENT_DOCUMENT;int url=0;} common;
+ struct Begin {std::string headers;} begin;
+ Commit* commit_params_=&commit;Common* common_params_=&common;Begin* begin_params_=&begin;
+ FrameTreeNode node;FrameTreeNode* frame_tree_node_=&node;
+ std::optional<std::string> request_headers_="cached";
+ bool IsInOutermostMainFrame(){return main;}bool IsSameDocument(){return same_document;}
+ bool is_overriding_user_agent(){return commit.is_overriding_user_agent;}
+ int GetTentativeOriginAtRequestTime(){return 0;}
+ std::string GetUserAgentOverride(){return commit.is_overriding_user_agent?"Desktop":"Mobile";}
+ void SetIsOverridingUserAgent(bool);
+};
+@RESET_HELPER@
+@NAVIGATION_METHOD@
+void AssertPreserved(const blink::ExplodedFrameState& frame){
+ assert(frame.url_string==u"https://example.test/form"&&frame.document_state==u"typed text");
+ assert(frame.state_object==u"state"&&frame.http_body==u"POST=data");
+ assert(frame.item_sequence_number==17&&frame.document_sequence_number==19);
+}
+int main(){
+ using Type=blink::mojom::NavigationType;
+ for(bool desktop:{false,true})for(Type type:{Type::HISTORY_DIFFERENT_DOCUMENT,Type::RESTORE,Type::RESTORE_WITH_POST,Type::RELOAD,Type::DIFFERENT_DOCUMENT}){
+  blink::states.clear();blink::encodes=0;
+  blink::ExplodedPageState old;old.top.children.emplace_back();blink::states["entry"]=old;
+  NavigationRequest request;request.commit.is_overriding_user_agent=!desktop;request.common.navigation_type=type;
+  request.SetIsOverridingUserAgent(desktop);
+  assert(request.commit.is_overriding_user_agent==desktop);
+  assert(!request.request_headers_&&request.begin.headers==(desktop?"Desktop":"Mobile"));
+  bool history=type==Type::HISTORY_DIFFERENT_DOCUMENT||type==Type::RESTORE||type==Type::RESTORE_WITH_POST;
+  assert(blink::encodes==(history?1:0));
+  assert(request.commit.reset_history_view_state_for_user_agent_change==history);
+  const auto& result=blink::states.at(request.commit.page_state);
+  AssertPreserved(result.top);AssertPreserved(result.top.children[0]);
+  assert(result.referenced_files==old.referenced_files);
+  for(const auto* frame:{&result.top,&result.top.children[0]}){
+   assert(frame->did_save_scroll_or_scale_state==!history);
+   assert(frame->page_scale_factor==(history?0:2.5));
+   assert(frame->scroll_offset==(history?0:10));
+   assert(frame->scroll_anchor_selector.has_value()==!history);
+  }
+  // A cancelled request cannot mutate the source entry or its saved zoom.
+  assert(blink::states.at("entry").top.page_scale_factor==2.5);
+  assert(blink::states.at("entry").top.did_save_scroll_or_scale_state);
+ }
+ for(int guard=0;guard<6;guard++){
+  blink::encodes=0;NavigationRequest request;
+  bool requested=true;
+  if(guard==0){request.commit.is_overriding_user_agent=true;}
+  if(guard==1){request.same_document=true;request.common.navigation_type=Type::HISTORY_SAME_DOCUMENT;}
+  if(guard==2){request.main=false;}
+  if(guard==3){request.commit.page_state="invalid";}
+  if(guard==4){request.is_synchronous_renderer_commit_=true;}
+  if(guard==5){
+   request.commit.is_overriding_user_agent=true;
+   blink::states["entry"].top.did_save_scroll_or_scale_state=false;
+  }
+  request.SetIsOverridingUserAgent(requested);assert(blink::encodes==0);
+  assert(!request.commit.reset_history_view_state_for_user_agent_change);
+ }
+}

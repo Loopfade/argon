@@ -16,6 +16,8 @@ CONFIGS = Path('chrome/browser/ui/webui/chrome_web_ui_configs.cc')
 GN = Path('chrome/browser/ui/webui/BUILD.gn')
 NATIVE_FACTORY = Path('chrome/android/java/src/org/chromium/chrome/browser/native_page/NativePageFactory.java')
 NATIVE_HANDLER = Path('chrome/browser/android/ntp/new_tab_page_url_handler.cc')
+SESSION_BUILDER = Path('components/sessions/content/content_serialized_navigation_builder.cc')
+SESSION_CONTROLLER = Path('content/browser/renderer_host/navigation_controller_impl.cc')
 URL_RESOLVER_FACTORY = Path('chrome/browser/url_constants/android/java/src/org/chromium/chrome/browser/url_constants/UrlConstantResolverFactory.java')
 TABBED_ACTIVITY = Path('chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java')
 TOOLBAR_MANAGER = Path('chrome/android/java/src/org/chromium/chrome/browser/toolbar/ToolbarManager.java')
@@ -31,7 +33,8 @@ APP_MENU = Path('chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode
 ANDROID_RESOURCES = Path('chrome/android/chrome_java_resources.gni')
 SHORTCUT_RESOURCES = tuple(Path('chrome/android/java/res') / locale / 'argon_home_strings.xml'
                            for locale in ('values', 'values-ru'))
-INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
+INPUT_PATHS = (CONFIGS, GN, NATIVE_FACTORY, NATIVE_HANDLER, SESSION_BUILDER, SESSION_CONTROLLER,
+               URL_RESOLVER_FACTORY, TABBED_ACTIVITY,
                TOOLBAR_MANAGER, TOOLBAR_CONTAINER, TOOLBAR_PHONE, NEW_TAB_BUTTON, JAVA_CATALOG, JNI_CATALOG,
                APP_MENU, ANDROID_RESOURCES)
 
@@ -59,6 +62,10 @@ SHORTCUT_MENU_ADDITION = '''
 
 FACTORY_SIGNATURE = '    private static boolean isChromePageUrlOverridden(GURL url, boolean isIncognito) {'
 HANDLER_SIGNATURE = 'bool HandleAndroidNativePageURL(GURL* url,'
+RESTORE_SIGNATURE = 'ContentSerializedNavigationBuilder::ToNavigationEntry('
+RESTORE_DIGEST = '77c7a31de2102cc73f0ad7ff3a3ce8d487e6aacde4abdaab5ab6d64629e36d04'
+RESTORE_LOAD_SIGNATURE = 'void NavigationControllerImpl::LoadIfNecessary() {'
+RESTORE_LOAD_DIGEST = '030a11b798b8aff6619fd4725788e0d5c708831a977a991a017331e861795e2b'
 RESOLVER_SIGNATURE = '    private static UrlConstantResolver buildOriginalResolver() {'
 STARTUP_SIGNATURE = '            if (!mPendingInitialTabCreation) {'
 CAPTURE_SIGNATURE = '        public boolean isDirty() {'
@@ -67,6 +74,10 @@ HANDLER_DIGEST = 'a09ff3d96542b4a7087fb747068004690df572bec9d9de4997dcde4140934c
 RESOLVER_DIGEST = 'c8676f48d70c326f26086693906f9fd97473ced55a21ff3c80053613f06748d3'
 STARTUP_DIGEST = 'dd8b71b758badb1913eddd6142d58425bc3a0178d03c41143acd5a3c84e6bc37'
 CAPTURE_DIGEST = 'edcc5010cebdfdd9165831bb13dc8d3c12b27c21ea405e03ed548972ea8b8656'
+# Chromium 158 split isDirty() into a delegate and an in-motion-aware helper.
+# Patch the latter; both normal and in-motion captures use the same NTP guard.
+CAPTURE_M158_SIGNATURE = '        private boolean isDirty(boolean viewIsDirty, boolean allowInMotion) {'
+CAPTURE_M158_DIGEST = 'ce239f05c86a2bde1833fa9baaa97dcc9a7404a37b811acd0cbb82245e81db98'
 
 CAPTURE_BEFORE = '''                    boolean isNativePage = tab == null || tab.isNativePage();
                     if (!isNativePage && mConstraintsObserver.areControlsLocked()) {'''
@@ -307,8 +318,105 @@ def patch_android_resources(text):
 
 
 def patch_toolbar_capture(text):
+    # M158's public isDirty() delegates to this private method; the capture
+    # constraint lives in the private method, including in-motion snapshots.
+    if CAPTURE_M158_SIGNATURE in text:
+        return reviewed_method(text, CAPTURE_M158_SIGNATURE, CAPTURE_M158_DIGEST,
+                               CAPTURE_BEFORE, CAPTURE_AFTER)
     return reviewed_method(text, CAPTURE_SIGNATURE, CAPTURE_DIGEST,
                            CAPTURE_BEFORE, CAPTURE_AFTER)
+
+
+def patch_session_restore(text):
+    url_before = '  GURL temporary_url = navigation->virtual_url_;'
+    url_after = url_before + '''
+#if BUILDFLAG(IS_ANDROID)
+  const bool is_ntp_alias =
+      temporary_url.host() == "newtab" &&
+      (temporary_url.SchemeIs("chrome") ||
+       temporary_url.SchemeIs("chrome-native"));
+  if (is_ntp_alias && temporary_url.SchemeIs("chrome-native") &&
+      !browser_context->IsOffTheRecord()) {
+    // ARGON: the policy and extension URL handlers recognize chrome://newtab
+    // only. Run them before falling back to Argon's built-in homepage.
+    GURL::Replacements replacements;
+    replacements.SetSchemeStr("chrome");
+    temporary_url = temporary_url.ReplaceComponents(replacements);
+  }
+#endif'''
+    # Restore passes FrameNavigationEntry::page_state() straight to the renderer.
+    # Updating the entry URL alone leaves that state pointing at the native NTP.
+    before = '''    const GURL rewritten_url = entry->GetURL();
+    entry->SetPageState(blink::PageState::CreateFromEncodedData(
+                            navigation->encoded_page_state_),
+                        restore_context);'''
+    after = '''    const GURL rewritten_url = entry->GetURL();
+    blink::PageState restored_state = blink::PageState::CreateFromEncodedData(
+        navigation->encoded_page_state_);
+#if BUILDFLAG(IS_ANDROID)
+    // ARGON: Android sanitizes saved NTPs to chrome-native://newtab/. Its
+    // PageState can overwrite the concrete NTP selected by the current
+    // profile's URL handlers. Repair the per-frame state before installing it;
+    // SetURL alone does not change the PageState sent during history restore.
+    // Only repair an NTP alias, preserving actual redirects, forms,
+    // POST bodies, child frames and history identifiers in every other case.
+    if (is_ntp_alias && !rewritten_url.is_empty() &&
+        rewritten_url != navigation->virtual_url_) {
+      blink::ExplodedPageState decoded;
+      if (blink::DecodePageState(navigation->encoded_page_state_, &decoded)) {
+        const GURL saved_url(decoded.top.url_string.value_or(std::u16string()));
+        if (saved_url == navigation->virtual_url_ || saved_url == temporary_url) {
+          decoded.top.url_string = base::UTF8ToUTF16(rewritten_url.spec());
+          std::string encoded;
+          blink::EncodePageState(decoded, &encoded);
+          restored_state = blink::PageState::CreateFromEncodedData(encoded);
+        }
+      }
+    }
+#endif
+    entry->SetPageState(restored_state, restore_context);'''
+    text = reviewed_method(text.replace(url_after, url_before, 1), RESTORE_SIGNATURE,
+                           RESTORE_DIGEST, before, after)
+    text = replace_once(text, url_before, url_after)
+    text = replace_once(text, '#include "base/containers/span.h"',
+                        '#include "base/containers/span.h"\n'
+                        '#include "base/strings/utf_string_conversions.h"\n'
+                        '#include "build/build_config.h"')
+    return replace_once(text, '#include "third_party/blink/public/common/page_state/page_state.h"',
+                        '#include "third_party/blink/public/common/page_state/page_state.h"\n'
+                        '#include "third_party/blink/public/common/page_state/page_state_serialization.h"')
+
+
+def patch_restored_home_load(text):
+    before = '''  UMA_HISTOGRAM_ENUMERATION("Navigation.LoadIfNecessaryType",
+                            needs_reload_type_);
+'''
+    after = before + '''
+#if BUILDFLAG(IS_ANDROID)
+  if (needs_reload_type_ == NeedsReloadType::kRestoreSession &&
+      !pending_entry_ && !entry_replaced_by_post_commit_error_ &&
+      !browser_context_->IsOffTheRecord()) {
+    const auto* entry = GetLastCommittedEntry();
+    if (entry->IsRestored() && !entry->GetHasPostData() &&
+        entry->GetURL() == GURL("chrome://argon/")) {
+      const GURL& virtual_url = entry->GetVirtualURL();
+      const bool is_ntp_alias = virtual_url == GURL("chrome://newtab/") ||
+                                virtual_url == GURL("chrome-native://newtab/");
+      if (is_ntp_alias || virtual_url == entry->GetURL()) {
+        // ARGON: reopen the built-in home through normal browser navigation
+        // so it gets a new document. Replace only the current history entry.
+        LoadURLParams params(is_ntp_alias ? GURL("chrome://newtab/")
+                                         : virtual_url);
+        params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+        params.should_replace_current_entry = true;
+        LoadURLWithParams(params);
+        return;
+      }
+    }
+  }
+#endif
+'''
+    return reviewed_method(text, RESTORE_LOAD_SIGNATURE, RESTORE_LOAD_DIGEST, before, after)
 
 
 def patch_phone_capture(text):
@@ -546,6 +654,8 @@ def resource_header(resources):
 def apply(src):
     transforms = [(CONFIGS, patch_configs), (GN, patch_gn),
                   (NATIVE_FACTORY, patch_factory), (NATIVE_HANDLER, patch_handler),
+                  (SESSION_BUILDER, patch_session_restore),
+                  (SESSION_CONTROLLER, patch_restored_home_load),
                   (URL_RESOLVER_FACTORY, patch_resolver_factory),
                   (TABBED_ACTIVITY, patch_activity), (APP_MENU, patch_app_menu),
                   (ANDROID_RESOURCES, patch_android_resources),

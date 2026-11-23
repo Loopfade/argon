@@ -24,10 +24,13 @@ class UserAgentScaleTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_mode_switch_resets_copied_scale_in_both_directions(self):
-        self.check_scenarios("switch", "redirect", "one_shot")
+        self.check_scenarios("switch", "redirect", "one_shot", "history_ua_change")
 
     def test_normal_reload_and_history_keep_user_zoom(self):
         self.check_scenarios("normal_reload", "history", "subframe", "remote")
+
+    def test_history_without_saved_view_state_does_not_force_a_reset(self):
+        self.check_scenarios("history_without_view_state")
 
     def test_abandoned_commit_and_cloned_document_do_not_reset_zoom(self):
         self.check_scenarios("cancel", "clone")

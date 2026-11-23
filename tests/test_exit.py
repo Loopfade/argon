@@ -47,6 +47,27 @@ class ExitTests(unittest.TestCase):
                 first = value
                 for transform in transforms: value = transform(value)
                 self.assertEqual(value, first)
+    def test_startup_restore_guard_works_on_chromium_157_and_158(self):
+        for policy in ("isRestoreOnStartupPrefSyncEnabled",
+                       "isRestoreOnStartupPrefSupported"):
+            with self.subTest(policy=policy):
+                source = ("""    public static void initialize() {
+        TabbedStartupCoordinator.onSessionTerminated(SessionStartupPolicy.RESTORE_ALL);
+        boolean removeTask =
+                MultiWindowUtils.isNewStartupWindowPolicyEnabled()
+                        || MultiWindowUtils.""" + policy + """();
+""")
+                patched = exit_patch.patch_controller(source)
+                self.assertEqual(patched.count(exit_patch.PACKAGE + '.isClosing()'), 2)
+                self.assertIn('MultiWindowUtils.' + policy + '();', patched)
+                self.assertEqual(exit_patch.patch_controller(patched), patched)
+
+        # A new Chromium API must not silently disable the explicit-exit guard.
+        with self.assertRaisesRegex(ValueError, "startup restore policy"):
+            exit_patch.patch_controller(
+                source.replace("isRestoreOnStartupPrefSupported",
+                               "isUnreviewedStartupPolicy"))
+
     @unittest.skipUnless(shutil.which('java'), 'JDK required')
     def test_production_transaction(self):
         compiler = ['javac'] if shutil.which('javac') else ['java', '-m', 'jdk.compiler/com.sun.tools.javac.Main']

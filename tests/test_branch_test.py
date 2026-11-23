@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -82,6 +83,8 @@ class BranchTestTests(unittest.TestCase):
 
     def test_missing_retry_snapshot_never_falls_back_to_a_new_pr_head(self):
         with patch.dict(os.environ, {**self.env, "GITHUB_RUN_ATTEMPT": "2"}), \
+             patch.object(branch, "module", return_value=pipeline), \
+             patch.object(branch, "artifact_inventory", return_value=[]), \
              patch.object(branch, "api") as api, self.assertRaises(FileNotFoundError):
             branch.source()
         api.assert_not_called()
@@ -179,6 +182,40 @@ class BranchTestTests(unittest.TestCase):
              patch.object(pipeline, "release_certificate", side_effect=ValueError("release key unavailable")), \
              self.assertRaisesRegex(ValueError, "release key unavailable"):
             branch.plan()
+
+    def test_staged_worker_uses_pinned_old_checkout_without_importing_its_legacy_helper(self):
+        checkout = self.root / "legacy-checkout"
+        ci = checkout / ".github/ci"
+        ci.mkdir(parents=True)
+        (ci / "branch-test.py").write_text('raise AssertionError("Legacy helper must not run")\n')
+        (ci / "full-build.py").write_text('''import json, os
+from pathlib import Path
+def plan(mode, *, source_sha, reuse):
+    Path(os.environ["PLAN_CAPTURE"]).write_text(json.dumps({
+        "mode": mode, "sha": source_sha, "reuse": reuse,
+        "version": os.environ["ARGON_TEST_VERSION_CODE"],
+        "checkout": str(Path(__file__).resolve().parents[2]),
+    }))
+''')
+        staged = self.root / "staged/argon-branch-test.py"
+        staged.parent.mkdir()
+        staged.write_bytes((ROOT / ".github/ci/branch-test.py").read_bytes())
+        binary = self.root / "bin/git"
+        binary.parent.mkdir()
+        binary.write_text(f'#!{sys.executable}\nimport os\nprint(os.environ["PINNED_TEST_SHA"])\n')
+        binary.chmod(0o755)
+        capture = self.root / "plan-capture.json"
+        env = {**os.environ, **self.env, "PINNED_TEST_SHA": self.sha,
+               "PLAN_CAPTURE": str(capture),
+               "PATH": str(binary.parent) + os.pathsep + os.environ["PATH"]}
+        result = subprocess.run([sys.executable, str(staged), "plan",
+                                 "--checkout-root", str(checkout)],
+                                env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(capture.read_text()), {
+            "mode": "release", "sha": self.sha, "reuse": False,
+            "version": "1000000017", "checkout": str(checkout),
+        })
 
     def test_single_worker_takes_pr_number_and_uses_release_key_without_publishing(self):
         worker = (ROOT / branch.WORKFLOW).read_text()

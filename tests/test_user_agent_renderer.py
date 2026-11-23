@@ -207,6 +207,10 @@ def patched_fixture():
         patch.UA_HEADER: 'std::optional<std::string> GetUserAgentFromCommandLine();',
         patch.UA_UTILS: 'std::string GetUserAgent() {\n}\nblink::UserAgentMetadata GetUserAgentMetadata(bool only_low_entropy_ch) {\n}',
         patch.DESKTOP_UA: '  constexpr char kLinuxInfoStr[]',
+        patch.WEB_CONTENTS_IMPL:
+            '  if (GetUserAgentOverride() == ua_override) {\n'
+            '    return;\n'
+            '  }\n',
         patch.TITANIUM_CHROME_JAVA_SOURCES: '  "java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderHooks.java",',
         patch.TITANIUM_CHROME_RESOURCES: '  "java/res/xml/privacy_preferences_ext.xml",',
         patch.TITANIUM_PRIVACY_PREFERENCES: '<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">\n'
@@ -217,12 +221,44 @@ def patched_fixture():
         patch.CLIENT_HINTS: '  if (!disable_due_to_custom_ua) {\n}',
         patch.FRAME_FETCH: '#include "base/feature_list.h"\n  std::optional<UserAgentMetadata> ua = GetUserAgentMetadata();',
         patch.NAVIGATION_CONTROLLER: (ROOT/'tests/fixtures/user_agent/navigation_controller_android.cc.in').read_text(),
-        patch.RENDER_FRAME: 'void RenderFrameImpl::CommitNavigationWithParams() {\n'
+        patch.RENDER_FRAME: '#include "third_party/blink/public/common/page_state/page_state.h"\n'
+            'void RenderFrameImpl::CommitNavigationWithParams() {\n'
             '  navigation_params->frame_load_type = load_type;\n}\n'
             'void RenderFrameImpl::DidCommitNavigation() {\n'
             '  DCHECK(!navigation_state->WasWithinSameDocument());\n}\n' + methods(
                 (ROOT/'tests/fixtures/user_agent/page_scale.cc.in').read_text(),
                 ('bool RenderFrameImpl::ShouldUseUserAgentOverride() const',)),
+        patch.TAB_UTILS:
+            'import org.chromium.chrome.browser.media.MediaCaptureDevicesDispatcherAndroid;\n'
+            '    public static void switchUserAgent(Tab tab, boolean switchToDesktop) {\n'
+            '        final boolean reloadOnChange = !tab.isNativePage();\n'
+            '        assumeNonNull(tab.getWebContents())\n'
+            '                .getNavigationController()\n'
+            '                .setUseDesktopUserAgent(\n'
+            '                        switchToDesktop, reloadOnChange, /* skipOnInitialNavigation= */ true);\n'
+            '    }\n',
+        patch.TAB_IMPL:
+            '    public void setUserAgent(@TabUserAgent int userAgent) {\n'
+            '        mUserAgent = userAgent;\n    }\n'
+            '        boolean shouldRequestDesktopSite =\n'
+            '                DesktopSiteUtils.shouldOverrideDesktopSite(mProfile, url, getContext());\n'
+            '        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent);\n',
+        patch.TAB_CREATOR: (ROOT/'tests/fixtures/user_agent/tab_creator.java.in').read_text(),
+        patch.TABBED_MENU: 'import org.chromium.chrome.browser.tab.Tab;\n'
+            + 'if (rdsListItem != null) modelList.add(rdsListItem);\n' * 2,
+        patch.CUSTOM_TAB_MENU: 'import org.chromium.chrome.browser.tab.Tab;\n'
+            + 'if (rdsListItem != null) modelList.add(rdsListItem);\n',
+        patch.NAVIGATION_REQUEST: (ROOT/'tests/fixtures/user_agent/navigation_request_ua.cc.in').read_text(),
+        patch.NAVIGATION_PARAMS: 'struct CommitNavigationParams {\n'
+            '  bool can_use_device_bound_session_js_api = false;\n};\n',
+        patch.CHROME_ACTIVITY:
+            (ROOT/'tests/fixtures/user_agent/desktop_site_menu.java.in').read_text(),
+        patch.RDS_OBSERVER:
+            '#include "chrome/browser/content_settings/host_content_settings_map_factory.h"\n'
+            '#include "chrome/browser/profiles/profile.h"\n'
+            '  if (!navigation_handle->IsInOutermostMainFrame()) {\n'
+            '    return;\n'
+            '  }\n',
         patch.DOCUMENT_STATE: 'class DocumentState {\n'
             '  bool is_overriding_user_agent() const { return is_overriding_user_agent_; }\n'
             '  void set_is_overriding_user_agent(bool state) {\n'
@@ -255,12 +291,56 @@ class UserAgentNativeTests(unittest.TestCase):
         sources=patched_fixture()
         self.assertIn('PASS:',verify_viewport(sources[patch.DESKTOP_UA],sources[patch.UA_UTILS],VIEWPORT_FIXTURE.read_text()))
 
-    def test_no_live_mutation_or_site_preference_rewrite(self):
+    def test_process_scope_and_no_site_preference_rewrite(self):
         script=(ROOT/'scripts/apply_user_agent.py').read_text()
         self.assertNotIn('UpdateArgonUserAgent(',script)
         self.assertNotIn('BarrierClosure(',script)
-        self.assertFalse(any(p.name=='TabImpl.java' for p in patch.INPUT_PATHS))
+        self.assertIn(patch.TAB_IMPL, patch.INPUT_PATHS)
         self.assertFalse((ROOT/'chromium_overlay/titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/base/ArgonUserAgentController.java').exists())
+
+    def test_web_contents_same_ua_updates_new_tab_inheritance(self):
+        sources = patched_fixture()
+        contents = sources[patch.WEB_CONTENTS_IMPL]
+        branch = contents.split('if (GetUserAgentOverride() == ua_override) {', 1)[1]
+        branch = branch.split('\n  }', 1)[0]
+        self.assertIn('should_override_user_agent_in_new_tabs_ = override_in_new_tabs;', branch)
+        self.assertIn('delayed_load_url_params_->override_user_agent =', branch)
+        self.assertIn('NavigationController::UA_OVERRIDE_FALSE', branch)
+        self.assertIn('NavigationController::UA_OVERRIDE_TRUE', branch)
+        self.assertLess(branch.index('should_override_user_agent_in_new_tabs_'),
+                        branch.index('return;'))
+        with self.assertRaises(ValueError):
+            patch.patch_web_contents_inheritance('class WebContentsImpl {}')
+
+    def test_tab_user_agent_override_and_site_observer(self):
+        sources = patched_fixture()
+        utils = sources[patch.TAB_UTILS]
+        tab = sources[patch.TAB_IMPL]
+        observer = sources[patch.RDS_OBSERVER]
+        # The explicit menu action must apply its per-tab choice before the
+        # navigation reload; automatic tab changes must not overwrite it.
+        manual_choice = 'tab.setUserAgent('
+        self.assertIn('switchToDesktop ? TabUserAgent.DESKTOP : TabUserAgent.MOBILE', utils)
+        override = 'ContentUtils.setUserAgentOverride(webContents, switchToDesktop);'
+        navigation = 'webContents.getNavigationController()'
+        self.assertIn('if (explicitSelection) {', utils)
+        self.assertLess(utils.index(manual_choice), utils.index(override))
+        self.assertLess(utils.index(override), utils.index(navigation))
+        # Automatic forum navigations must reconcile pinned UA modes before
+        # refreshing the WebContents override or starting a reload.
+        self.assertLess(utils.index('tab.getUserAgent() == TabUserAgent.DESKTOP'),
+                        utils.index(override))
+        self.assertLess(utils.index('tab.getUserAgent() == TabUserAgent.MOBILE'),
+                        utils.index(override))
+        self.assertIn('/* explicitSelection= */ false', tab)
+        self.assertIn('mUserAgent == TabUserAgent.DESKTOP', tab)
+        self.assertIn('mUserAgent != TabUserAgent.MOBILE', tab)
+        self.assertIn('TabAndroid::FromWebContents(web_contents())', observer)
+        self.assertIn('TabModel::TabUserAgent::MOBILE', observer)
+        self.assertIn('TabModel::TabUserAgent::DESKTOP', observer)
+        # DEFAULT and legacy UNSET still follow ordinary domain rules.
+        self.assertNotIn('mode == TabModel::TabUserAgent::UNSET', observer)
+        self.assertIn('if (tab) {', observer)
 
     def test_reject_stale_prepared_source(self):
         with tempfile.TemporaryDirectory() as directory:

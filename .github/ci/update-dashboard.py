@@ -90,6 +90,7 @@ def same_payload(left, right):
 RELEASE_WORKFLOWS = {".github/workflows/build-all.yml"}
 TEST_WORKFLOWS = {".github/workflows/build-test-branch.yml", ".github/workflows/build-test-main.yml"}
 LEGACY_WORKFLOWS = {".github/workflows/build.yml"}
+FINAL_TEST_APKS = {"Argon-Test-arm64-v8a", "Argon-Test-armeabi-v7a"}
 MOSCOW = ZoneInfo("Europe/Moscow")
 SHA = re.compile(r"[0-9a-f]{40}")
 
@@ -119,36 +120,65 @@ def test_source(repository, run, artifacts, jobs=None):
     # Read the pinned source JSON; never substitute today's PR head.
     source = next((a for a in artifacts if a["name"] == "argon-test-source" and not a.get("expired")), None)
     if source:
-        blob = subprocess.check_output(["gh", "api", f"repos/{repository}/actions/artifacts/{source['id']}/zip"])
-        with zipfile.ZipFile(io.BytesIO(blob)) as archive:
-            info = archive.getinfo("source.json")
-            if info.file_size > 16_384:
-                raise ValueError("Oversized test source snapshot")
-            data = json.loads(archive.read(info))
-        if (data.get("schema") != 1 or data.get("repository") != repository
-                or data.get("workflow") != ".github/workflows/build-test-branch.yml"
-                or data.get("run_id") != run["id"] or data.get("run_number") != run.get("run_number")
-                or not SHA.fullmatch(data.get("sha", ""))
-                or type(data.get("pr_number")) is not int or data["pr_number"] < 1):
-            raise ValueError("Unrelated test source snapshot")
-        return {"source_sha": data["sha"], "pr_number": data["pr_number"], "source_verified": True}
+        try:
+            blob = subprocess.check_output(["gh", "api", f"repos/{repository}/actions/artifacts/{source['id']}/zip"])
+        except subprocess.CalledProcessError:
+            pass  # The collector can remove the source archive after this listing.
+        else:
+            with zipfile.ZipFile(io.BytesIO(blob)) as archive:
+                info = archive.getinfo("source.json")
+                if info.file_size > 16_384:
+                    raise ValueError("Oversized test source snapshot")
+                data = json.loads(archive.read(info))
+            if (data.get("schema") != 1 or data.get("repository") != repository
+                    or data.get("workflow") != ".github/workflows/build-test-branch.yml"
+                    or data.get("run_id") != run["id"] or data.get("run_number") != run.get("run_number")
+                    or not SHA.fullmatch(data.get("sha", ""))
+                    or type(data.get("pr_number")) is not int or data["pr_number"] < 1):
+                raise ValueError("Unrelated test source snapshot")
+            return {"source_sha": data["sha"], "pr_number": data["pr_number"], "source_verified": True}
     sources = {m[1] for a in artifacts
                if (m := re.match(r"^Argon-(?:arm64|arm)-([0-9a-f]{40})-", a["name"]))}
-    if not sources and run.get("path") == ".github/workflows/build-test-main.yml":
-        plan = next((job for job in jobs or [] if job["name"] == "Проверить исходную ветку и закрепить коммит"), None)
+    if not sources:
+        path = run.get("path")
+        plan_name = None
+        if path == ".github/workflows/build-test-main.yml":
+            plan_name = "Проверить исходную ветку и закрепить коммит"
+        elif (path == ".github/workflows/build-test-branch.yml"
+              and any(item["name"] in FINAL_TEST_APKS for item in artifacts)):
+            plan_name = "Проверить PR и закрепить исходный коммит"
+        plan = next((job for job in jobs or [] if job["name"] == plan_name), None) if plan_name else None
         if plan:
-            log = subprocess.check_output(["gh", "api", f"repos/{repository}/actions/jobs/{plan['id']}/logs"], text=True)
-            sources = set(re.findall(r"BUILD_SOURCE_SHA:\s*([0-9a-f]{40})", log))
+            # This is the pinned value passed to the plan step, also available
+            # for completed runs whose final APKs predate embedded journals.
+            try:
+                log = subprocess.check_output(["gh", "api", f"repos/{repository}/actions/jobs/{plan['id']}/logs"], text=True)
+            except subprocess.CalledProcessError:
+                pass
+            else:
+                sources = set(re.findall(
+                    r"(?m)^(?:\S+Z)?[ \t]*BUILD_SOURCE_SHA:[ \t]*([0-9a-f]{40})[ \t\r]*$", log))
     title = re.search(r"PR[ №#]+([1-9][0-9]*)", run.get("display_title") or "")
     return {"source_sha": next(iter(sources)) if len(sources) == 1 else None,
             "pr_number": int(title[1]) if title else None, "source_verified": len(sources) == 1}
+
+
+def read_test_source(repository, run, artifacts, jobs):
+    try:
+        return test_source(repository, run, artifacts, jobs)
+    except (ValueError, OSError, KeyError, zipfile.BadZipFile, subprocess.CalledProcessError):
+        return {"source_sha": None, "pr_number": None, "source_verified": False}
 
 
 def collect_build(repository, raw_run, now, previous=None):
     if previous and all(previous["run"].get(k) == raw_run.get(k)
                         for k in ("id", "status", "conclusion", "run_attempt", "updated_at")) \
             and raw_run.get("status") == "completed":
-        return json.loads(json.dumps(previous))
+        cached = json.loads(json.dumps(previous))
+        if (cached.get("kind") == "test" and not cached.get("source_verified")
+                and any(item["name"] in FINAL_TEST_APKS for item in cached["artifacts"])):
+            cached.update(read_test_source(repository, raw_run, cached["artifacts"], cached["jobs"]))
+        return cached
     path = f"repos/{repository}/actions/runs/{raw_run['id']}"
     count = raw_run.get("run_attempt") or 1
     attempts = []
@@ -186,13 +216,10 @@ def collect_build(repository, raw_run, now, previous=None):
         kind = "dispatch"
     result = {"kind": kind, "run": run, "jobs": jobs, "attempts": attempts, "artifacts": artifacts}
     if kind == "test":
-        try:
-            if previous and previous.get("source_verified"):
-                result.update({k: previous.get(k) for k in ("source_sha", "pr_number", "source_verified")})
-            else:
-                result.update(test_source(repository, raw_run, artifacts, jobs))
-        except (ValueError, OSError, KeyError, zipfile.BadZipFile, subprocess.CalledProcessError):
-            result.update(source_sha=None, pr_number=None, source_verified=False)
+        if previous and previous.get("source_verified"):
+            result.update({k: previous.get(k) for k in ("source_sha", "pr_number", "source_verified")})
+        else:
+            result.update(read_test_source(repository, raw_run, artifacts, jobs))
     else:
         result.update(source_sha=raw_run.get("head_sha"), source_verified=True, pr_number=None)
     return result

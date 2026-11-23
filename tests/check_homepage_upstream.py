@@ -12,6 +12,8 @@ from test_homepage_bookmark_manager import BOOKMARK_MANAGER_APIS, verify_bookmar
 from test_homepage_bookmark_edit import BOOKMARK_EDIT_APIS, verify_bookmark_edit_api
 from test_homepage_shortcut import verify_shortcut_sources
 from test_homepage_startup import run_startup_flow
+from homepage_restore_flow import DRIVER as RESTORE_DRIVER, verify_upstream as verify_home_restore
+from homepage_restore_flow import run_restored_home_load
 from test_homepage_native import (
     DELEGATE_API, TOOLBAR_PHONE, PHONE_TOKEN, verify_delegate_api, verify_toolbar_scroll_source,
     URL_OVERRIDES, verify_url_override_api,
@@ -40,6 +42,7 @@ def main():
         return download(chromium_url(revision, path))
 
     verify_bookmark_webui_api(read(WEBUI_HANDLER))
+    print(verify_home_restore(read(homepage.SESSION_BUILDER), read(RESTORE_DRIVER)))
     print('PASS: production bookmark snapshot compiles with the pinned WebUI accessor')
     verify_bookmark_manager_api({path: read(path) for path in BOOKMARK_MANAGER_APIS})
     print('PASS: Android bookmark launcher uses the pinned profile and folder API')
@@ -82,6 +85,7 @@ def main():
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(value)
         homepage.apply(src)
+        print(run_restored_home_load((src / homepage.SESSION_CONTROLLER).read_text()).strip())
         before = {path: path.read_bytes() for path in src.rglob('*') if path.is_file()}
         homepage.apply(src)
         after = {path: path.read_bytes() for path in src.rglob('*') if path.is_file()}

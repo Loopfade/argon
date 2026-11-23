@@ -56,6 +56,10 @@ from user_agent_navigation_flow import (
 from user_agent_scale_flow import (
     SCALE_API_PATHS, verify_upstream as verify_user_agent_scale,
 )
+from test_user_agent_tab import verify_upstream as verify_user_agent_tab
+from user_agent_observer_flow import verify_upstream as verify_user_agent_observer
+from user_agent_tab_state_flow import BUILDER_API as UA_BUILDER_API, verify_upstream as verify_user_agent_tab_state
+from user_agent_history_flow import API as UA_HISTORY_API, verify_upstream as verify_user_agent_history
 from domain_settings_lists import (
     UPSTREAM_PATHS as DOMAIN_SETTINGS_API_PATHS,
     verify_upstream as verify_domain_settings_lists,
@@ -125,8 +129,11 @@ BASE_PATHS += tuple(path for path in user_agent.INPUT_PATHS
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in (UA_NAVIGATION_IMPL, UA_VIEWPORT_IMPL) if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in SCALE_API_PATHS if path not in BASE_PATHS)
+BASE_PATHS += (UA_HISTORY_API, UA_BUILDER_API)
 BASE_PATHS += tuple(path for path in DOMAIN_SETTINGS_API_PATHS if path not in BASE_PATHS)
-BASE_PATHS += tuple(path for path in homepage.INPUT_PATHS if path not in BASE_PATHS)
+BASE_PATHS += tuple(path for path in (*homepage.INPUT_PATHS,
+    Path('chrome/browser/sessions/chrome_serialized_navigation_driver.cc'))
+    if path not in BASE_PATHS)
 BASE_PATHS += tuple(path for path in (*external_navigation.INPUT_PATHS, *external_navigation.API_PATHS)
                     if not str(path).startswith("titanium/") and path not in BASE_PATHS)
 LINKER_HEADER = Path("base/android/linker/linker_jni.h")
@@ -642,6 +649,10 @@ def main():
         dark_themes.apply(src)
         patch.apply(src, product_name=False)
         user_agent.apply(src)
+        print(verify_user_agent_tab(src))
+        print(verify_user_agent_tab_state(src))
+        print(verify_user_agent_history(src))
+        print(verify_user_agent_observer((src / user_agent.RDS_OBSERVER).read_text()))
         print(verify_domain_settings_lists(src))
         print(verify_user_agent_scale(src))
         print(verify_user_agent_navigation(
