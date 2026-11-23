@@ -84,11 +84,79 @@ class BuildTargetsTests(unittest.TestCase):
         self.assertIn('cc_wrapper = "ccache"', args)
         self.assertNotIn('use_siso = true', args)
 
+    def test_local_network_gate_checks_the_result_of_vanadium_patches(self):
+        script = (ROOT / "patch.sh").read_text()
+        gate = script.split(
+            "# M158 local-network access permission gate, matching upstream Titanium.\n", 1
+        )[1].split("\n# crbug.com/406136787:", 1)[0]
+        original = """class PermissionUtil {
+    private static boolean isLocalNetworkAccessPermissionRequired() {
+        return true;
+    }
+}
+"""
+        updated = original.replace("return true;", "return Build.VERSION.SDK_INT >= 37;")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / ("components/permissions/android/java/src/org/chromium/"
+                           "components/permissions/PermissionUtil.java")
+            path.parent.mkdir(parents=True)
+            command = ["bash", "-euo", "pipefail", "-c", gate]
+            path.write_text(original)
+            for _ in range(2):
+                subprocess.run(command, cwd=root, check=True)
+                self.assertEqual(path.read_text(), updated)
+
+            changed = original.replace("return true;", "return false;")
+            path.write_text(changed)
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("review the local network permission gate after Vanadium patches",
+                          result.stderr)
+            self.assertEqual(path.read_text(), changed)
+
     def test_ci_preflight_checks_only_the_two_supported_android_targets(self):
         workflow = (ROOT / ".github/workflows/validate.yml").read_text()
         loop = re.search(r"for arch in ([^;\n]+); do", workflow)
         self.assertIsNotNone(loop)
         self.assertEqual(loop[1].split(), ["arm64", "arm"])
+
+    def test_rds_observer_is_queried_for_both_android_abis_and_compiled(self):
+        script = (ROOT / ".github/ci/test-domain-policy.sh").read_text()
+        target = ("obj/chrome/browser/content_settings/impl/"
+                  "request_desktop_site_web_contents_observer_android.o")
+        self.assertIn("rds_observer_object=" + target, script)
+        self.assertEqual(script.count('"$rds_observer_object"'), 2)
+
+        query_section, compile_section = script.split(
+            "# Compile the WebUI, theme and UA targets", 1)
+        self.assertIn("for arch in arm64 arm; do", query_section)
+        self.assertIn("ninja -C \"$graph_out\" -t query", query_section)
+        self.assertIn('"$rds_observer_object"', query_section)
+        self.assertIn("autoninja -C out/Argon-graph-arm", compile_section)
+        self.assertIn('"$rds_observer_object"', compile_section.split(
+            "# Use this PR's header/tests", 1)[0])
+
+    def test_argon_exit_archive_models_match_m158_profile_api(self):
+        source = (ROOT / "chromium_overlay/chrome/browser/android/argon_exit.cc").read_text()
+        models = source.split("void PrepareModels(", 1)[1].split("uint64_t RemovalMask(", 1)[0]
+        self.assertNotIn("GetArchivedTabModel()", models)
+        self.assertIn("for (Profile* profile : Profiles())", models)
+        self.assertIn("TabModelList::GetArchivedTabModel(profile)", models)
+        self.assertIn("seen.insert(model)", models)
+        self.assertIn("seen.insert(archived).second", models)
+        self.assertIn("close_tabs && !recovery", models)
+
+    def test_argon_exit_native_object_is_built_by_validation(self):
+        script = (ROOT / ".github/ci/test-domain-policy.sh").read_text()
+        obj = "obj/chrome/browser/android/android/argon_exit.o"
+        self.assertEqual(script.count(obj), 2)
+        query, compile_part = script.split(
+            "# Compile the WebUI, theme and UA targets", 1)
+        self.assertIn("for arch in arm64 arm; do", query)
+        self.assertIn(obj, query.split("ninja -C", 1)[1])
+        self.assertIn("autoninja -C out/Argon-graph-arm", compile_part)
+        self.assertIn(obj, compile_part.split("# Use this PR's header/tests", 1)[0])
 
     def test_shell_rejects_invalid_architecture_before_preflight(self):
         for arch in ("riscv64", "x64", "x86", "x86_64"):

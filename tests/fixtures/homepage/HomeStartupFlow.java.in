@@ -1,6 +1,7 @@
 package org.chromium.chrome.browser.ntp;
 
 import android.os.Handler;
+import org.chromium.base.Log;
 import org.chromium.chrome.browser.exit.ArgonExitCoordinator;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content_public.browser.WebContents;
@@ -11,6 +12,10 @@ final class HomeStartupFlow {
         if (!value) throw new AssertionError(message);
     }
     static void wait(Tab tab) { ArgonHomeStartup.waitForFirstFrame(tab, () -> callbacks++); }
+    static boolean logged(String event, String reason) {
+        return Log.events.stream().anyMatch(row ->
+                row.contains("event=" + event) && row.contains("reason=" + reason));
+    }
     static void idle() {
         check(Handler.tasks.isEmpty(), "startup timeout leaked");
     }
@@ -22,6 +27,11 @@ final class HomeStartupFlow {
         check(callbacks == 0, "WebContents attachment alone released the cover");
         ArgonHomeStartup.onFirstFrameReady(home.contents);
         check(callbacks == 1 && home.observers.isEmpty(), "paint did not release/clean up startup");
+        check(logged("wait", "first-frame")
+                && logged("firstFrameReady", "visual-state-success")
+                && logged("release", "frame-ready"), "normal startup diagnostic sequence missing");
+        check(Log.events.stream().anyMatch(row -> row.contains("url=chrome://argon/")),
+                "internal home origin is missing from diagnostics");
         idle();
 
         wait(home);
@@ -59,17 +69,111 @@ final class HomeStartupFlow {
             if (failure == 0) { tab.error = true; tab.changed(); }
             if (failure == 1) tab.crash();
             if (failure == 2) tab.destroy();
-            if (failure == 3) Handler.expire();
+            if (failure == 3) {
+                Handler.expire();
+                check(callbacks == before && tab.reloads == 1,
+                        "blank restored WebUI was exposed instead of retried");
+                Handler.expire();
+                check(tab.reloads == 1, "startup recovery reloaded more than once");
+                check(logged("timeout", "first-wait")
+                        && logged("reload", "missing-first-frame")
+                        && logged("retry-skipped", "retry-limit"),
+                        "bounded recovery diagnostic sequence missing");
+            }
             check(callbacks == before + 1 && tab.observers.isEmpty(),
                     "failed startup did not expose recovery UI and detach observers");
             ArgonHomeStartup.onFirstFrameReady(tab.contents);
             check(callbacks == before + 1, "late frame invoked startup callback twice"); idle();
         }
 
+        Tab slowHome = new Tab(); slowHome.loading = true;
+        int before = callbacks;
+        wait(slowHome); Handler.expire();
+        check(callbacks == before + 1 && slowHome.reloads == 0,
+                "slow active WebUI load was interrupted by a recovery reload");
+        check(logged("retry-skipped", "active-load"),
+                "active-load refusal was not logged");
+        idle();
+
+        Tab recovered = new Tab();
+        before = callbacks;
+        wait(recovered);
+        Handler.expire();
+        check(callbacks == before && recovered.reloads == 1,
+                "missing home frame did not trigger a bounded recovery");
+        ArgonHomeStartup.onFirstFrameReady(recovered.contents);
+        check(callbacks == before + 1, "recovered frame did not unblock startup");
+        idle();
+
+        Tab duplicated = new Tab();
+        before = callbacks;
+        wait(duplicated);
+        wait(duplicated);
+        Handler.expire();
+        check(duplicated.reloads == 1 && duplicated.loading && callbacks == before,
+                "shared recovery released a cover before a frame or reloaded twice");
+        ArgonHomeStartup.onFirstFrameReady(duplicated.contents);
+        check(callbacks == before + 2, "recovered frame lost launch callbacks");
+        idle();
+
+        Tab sharedTimeout = new Tab();
+        before = callbacks;
+        wait(sharedTimeout); wait(sharedTimeout);
+        Handler.expire();
+        check(sharedTimeout.reloads == 1 && callbacks == before,
+                "active shared retry released a cover on the first timeout");
+        Handler.expire();
+        check(sharedTimeout.reloads == 1 && callbacks == before + 2
+                        && sharedTimeout.observers.isEmpty(),
+                "failed shared recovery did not release both covers exactly once");
+        idle();
+
+        // A callback registered after another waiter starts recovery must join
+        // the same reload, even if its first deadline expires during loading.
+        Tab lateWaiter = new Tab();
+        before = callbacks;
+        wait(lateWaiter); Handler.expire();
+        wait(lateWaiter); Handler.expire();
+        check(lateWaiter.reloads == 1 && callbacks == before + 1
+                        && lateWaiter.observers.size() == 1,
+                "late waiter failed to join the active recovery reload");
+        ArgonHomeStartup.onFirstFrameReady(lateWaiter.contents);
+        check(callbacks == before + 2, "late waiter lost its frame callback");
+        idle();
+
+        // A later Home navigation in the *same* Tab must get a fresh bounded
+        // recovery attempt even if the previous startup never painted.
+        Tab repeated = new Tab();
+        before = callbacks;
+        wait(repeated);
+        Handler.expire();
+        check(repeated.reloads == 1 && callbacks == before,
+                "first blank startup did not attempt recovery");
+        Handler.expire();
+        check(callbacks == before + 1 && repeated.reloads == 1
+                        && repeated.observers.isEmpty(),
+                "first failed startup did not finish cleanly");
+        idle();
+        repeated.home = false; // Navigate away, then return to Home in this Tab.
+        repeated.home = true;
+        repeated.loading = false;
+        ArgonHomeStartup.reset(repeated.contents);
+        wait(repeated);
+        Handler.expire();
+        check(repeated.reloads == 2 && callbacks == before + 1,
+                "later Home navigation reused the stale per-Tab retry guard");
+        Handler.expire();
+        check(repeated.reloads == 2 && callbacks == before + 2
+                        && repeated.observers.isEmpty(),
+                "second startup reloaded more than once or lost its callback");
+        idle();
+
         ArgonExitCoordinator.blocking = true;
-        Tab recovery = new Tab(); int before = callbacks;
+        Tab recovery = new Tab(); before = callbacks;
         wait(recovery);
         check(callbacks == before + 1, "pending cleanup's status UI was hidden behind startup");
+        check(logged("bypass", "exit-blocked"),
+                "exit-recovery bypass was not logged");
         idle(); ArgonExitCoordinator.blocking = false;
 
         for (int other = 0; other < 4; other++) {
@@ -87,6 +191,8 @@ final class HomeStartupFlow {
         check(callbacks == before, "background state was confused with Exit");
         ArgonHomeStartup.onFirstFrameReady(background.contents);
         check(callbacks == before + 1, "background homepage did not acknowledge its frame"); idle();
+        check(Log.events.stream().noneMatch(row -> row.contains("private.example")),
+                "external browsing URL leaked into startup diagnostics");
         System.out.println("PASS: first frame, frozen/restored tabs, reload, windows, failures, recovery and background state");
     }
 }

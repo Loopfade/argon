@@ -137,6 +137,48 @@ class DashboardSnapshotTests(unittest.TestCase):
                 dashboard.test_source("fixture/argon", run, artifact)
         self.assertIsNone(dashboard.test_source("fixture/argon", run, [])["source_sha"])
 
+    def test_final_only_run_keeps_its_pinned_source_after_cleanup(self):
+        run = {"id": 42, "run_number": 9, "head_sha": "a" * 40,
+               "path": ".github/workflows/build-test-branch.yml",
+               "display_title": "Тестовая сборка Argon — PR №7 · запуск №9"}
+        artifacts = [{"id": id, "name": f"Argon-Test-{abi}", "expired": False}
+                     for id, abi in ((2, "arm64-v8a"), (3, "armeabi-v7a"))]
+        plan = job(4, "Проверить PR и закрепить исходный коммит", "01:00:00", "01:00:20")
+        log = f"2026-10-05T01:00:10.0000000Z   BUILD_SOURCE_SHA: {'b' * 40}\n"
+        with patch.object(dashboard.subprocess, "check_output", return_value=log) as read:
+            self.assertEqual(dashboard.test_source("fixture/argon", run, artifacts, [plan]),
+                             {"source_sha": "b" * 40, "pr_number": 7, "source_verified": True})
+        read.assert_called_once_with(["gh", "api", "repos/fixture/argon/actions/jobs/4/logs"], text=True)
+        # If the source ZIP is deleted between listing and download, this path
+        # must still resolve the same SHA without downloading either large APK.
+        source = {"id": 5, "name": "argon-test-source", "expired": False}
+        with patch.object(dashboard.subprocess, "check_output",
+                          side_effect=[dashboard.subprocess.CalledProcessError(1, "gh"), log]):
+            self.assertEqual(dashboard.test_source("fixture/argon", run, [source, *artifacts], [plan])["source_sha"],
+                             "b" * 40)
+
+    def test_cached_final_only_build_can_recover_unverified_source(self):
+        run = {"id": 42, "run_number": 9, "head_sha": "a" * 40,
+               "status": "completed", "conclusion": "success", "run_attempt": 1,
+               "updated_at": "2026-10-05T02:00:00Z", "path": ".github/workflows/build-test-branch.yml",
+               "display_title": "Тестовая сборка Argon — PR №7 · запуск №9"}
+        plan = job(4, "Проверить PR и закрепить исходный коммит", "01:00:00", "01:00:20")
+        cached = {"kind": "test", "run": run, "jobs": [plan],
+                  "source_sha": None, "source_verified": False,
+                  "artifacts": [{"id": 2, "name": "Argon-Test-arm64-v8a", "expired": False}]}
+        first = f"BUILD_SOURCE_SHA: {'b' * 40}\n"
+        conflicting = first + f"BUILD_SOURCE_SHA: {'c' * 40}\n"
+        with patch.object(dashboard, "api") as api, \
+             patch.object(dashboard.subprocess, "check_output", side_effect=[conflicting, first]):
+            bad = dashboard.collect_build("fixture/argon", run, self.now, cached)
+            self.assertIsNone(bad["source_sha"])
+            self.assertEqual(bad["pr_number"], 7)
+            good = dashboard.collect_build("fixture/argon", run, self.now, cached)
+            self.assertEqual(good["source_sha"], "b" * 40)
+            self.assertTrue(good["source_verified"])
+            self.assertIsNone(cached["source_sha"])
+            api.assert_not_called()
+
     def test_pr_count_uses_reachable_merge_commits_and_excludes_closed_unmerged_prs(self):
         values = monthly_fixture(self.now)
         merged = {"number": 7, "title": "Feature", "html_url": "https://example.invalid/pr/7", "merged_at": "2026-10-05T00:00:00Z", "merge_commit_sha": "a" * 40}

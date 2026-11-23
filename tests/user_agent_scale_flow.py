@@ -25,7 +25,8 @@ PINNED_METHODS = {
         "std::unique_ptr<blink::WebDocumentLoader::ExtraData> DocumentState::Clone()",),
 }
 SCENARIOS = ("switch", "redirect", "normal_reload", "history", "cancel",
-             "subframe", "clone", "remote", "one_shot")
+             "subframe", "clone", "remote", "one_shot", "history_ua_change",
+             "history_without_view_state")
 
 
 def scale_blocks(source):

@@ -1,0 +1,18 @@
+// Copyright 2026 The Chromium Authors
+// BSD-style license: see LICENSE.chromium.
+// Chromium 52bdd21723d5db0c9ab11716d38feac74828cf84 menu branch.
+import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
+        if (id == R.id.request_desktop_site_id || id == R.id.request_desktop_site_check_id) {
+            boolean usingDesktopUserAgent =
+                    webContents.getNavigationController().getUseDesktopUserAgent();
+            usingDesktopUserAgent = !usingDesktopUserAgent;
+            DesktopSiteUtils.setRequestDesktopSiteContentSettingsForUrl(
+                    currentProfile, currentTab.getUrl(), usingDesktopUserAgent);
+            // Use TabUtils.switchUserAgent() instead of Tab.reload(). Because we need to reload
+            // with LoadOriginalRequestURL. See http://crbug.com/40894824 for details.
+            TabUtils.switchUserAgent(currentTab, usingDesktopUserAgent);
+            TrackerFactory.getTrackerForProfile(currentProfile)
+                    .notifyEvent(EventConstants.APP_MENU_DESKTOP_SITE_EXCEPTION_ADDED);
+            RequestDesktopUtils.recordUserChangeUserAgent(usingDesktopUserAgent, getActivityTab());
+            return true;
+        }

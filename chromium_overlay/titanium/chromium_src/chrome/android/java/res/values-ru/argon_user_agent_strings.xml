@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="argon_user_agent_auto">Автоматический режим сайта</string>
     <string name="argon_user_agent_title">User-Agent</string>
     <string name="argon_user_agent_summary">%1$s</string>
     <string name="argon_user_agent_pending">Сейчас: %1$s. Сохранено: %2$s. Изменение применится после перезапуска браузера.</string>

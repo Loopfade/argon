@@ -57,6 +57,24 @@ def dex(src, jar, work, name):
     return result, output
 
 
+def verify_record_probe(result, output):
+    """Check the pinned D8 behavior without assuming every version rejects records."""
+    if result.returncode:
+        if 'Java records are not supported.' not in result.stdout:
+            raise ValueError('Unexpected DEX record probe failure:\n' + result.stdout)
+        return 'pinned Chromium DEX explicitly rejects Java records'
+
+    # M158 can accept this probe. Success counts only when D8 emits valid
+    # DEX with the expected class, not when it silently skips conversion.
+    with zipfile.ZipFile(output) as archive:
+        payloads = [archive.read(name) for name in archive.namelist()
+                    if name.endswith('.dex')]
+    if (not payloads or any(not payload.startswith(b'dex\n') for payload in payloads)
+            or not any(b'LRecordProbe;' in payload for payload in payloads)):
+        raise ValueError('DEX record probe succeeded without a valid RecordProbe class')
+    return 'pinned Chromium DEX accepts Java records and emits valid DEX'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--src', type=Path, required=True)
@@ -72,17 +90,13 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix='argon-exit-dex-') as directory:
         work = Path(directory)
-        # Prove the smoke check uses the same mode that rejected the APK, rather
-        # than silently accepting records with different desugaring settings.
+        # Probe pinned D8 with the same options as production. M158 may
+        # accept Java records even if an older Chromium build rejected them.
         probe = work / 'RecordProbe.java'
         probe.write_text('public record RecordProbe(int value) {}\n')
         jar = compile_jar(javac, probe, work, 'record-probe', src)
-        result, _ = dex(src, jar, work, 'record-probe')
-        if not result.returncode or 'Java records are not supported.' not in result.stdout:
-            raise ValueError('DEX regression probe did not reproduce the record rejection:\n'
-                             + result.stdout)
-        print('PASS: pinned Chromium DEX rejects records in min-API 29 intermediate mode',
-              flush=True)
+        result, output = dex(src, jar, work, 'record-probe')
+        print('PASS: ' + verify_record_probe(result, output), flush=True)
 
         jar = compile_jar(javac, FLOW, work, 'exit-flow', src)
         result, output = dex(src, jar, work, 'exit-flow')

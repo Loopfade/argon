@@ -310,6 +310,56 @@ with open(os.environ["CAPTURE_DOCKER"], "w") as output:
             self.assertEqual(self.verify(), self.root)
             align.assert_called_once()
 
+    def test_reused_apk_accepts_scheme_scoped_apksigner_certificates(self):
+        # Android build-tools 37 reports "V3.0 Signer:" rather than the older
+        # "Signer #1" line. Every reported signer must match the PEM, even
+        # if several signing schemes are present.
+        lock = self.fixture_artifact()
+        matching = self.certificate
+        wrong = "b" * 64
+        unknown = f"Unknown Rotated Signer: certificate SHA-256 digest: {matching}\n"
+        # Real signer-label excerpt from failed collect run #44684120248.
+        captured = (ROOT / "tests/fixtures/apksigner-37-v3-certificate.txt").read_text()
+        captured = captured.replace(
+            "f5037bdd1928852a0f3fcb685a7675944ccf7f5703072aabd74e6f4e5c15eda9",
+            matching)
+        reports = (
+            (captured, None),
+            (f"Verifies\nV3.0 Signer: certificate SHA-256 digest: {matching}\n", None),
+            (f"V2 Signer: certificate SHA-256 digest: {matching}\n"
+             f"V3.0 Signer: certificate SHA-256 digest: {matching}\n", None),
+            (f"V3.1 Signer: certificate SHA-256 digest: {matching}\n", None),
+            (f"Signer (minSdkVersion=28, maxSdkVersion=32) certificate SHA-256 digest: {matching}\n", None),
+            (f"Signer (minSdkVersion=33) certificate SHA-256 digest: {matching}\n", None),
+            (f"V3.0 Signer: certificate SHA-256 digest: {matching}\n"
+             "Source Stamp Signer: certificate SHA-256 digest: " + wrong + "\n", None),
+            ("Source Stamp Signer: certificate SHA-256 digest: " + wrong + "\n",
+             "APK signer certificate digest not recognized"),
+            (f"V3.0 Signer: certificate SHA-256 digest: {wrong}\n",
+             "APK signature certificate mismatch"),
+            (f"V2 Signer: certificate SHA-256 digest: {matching}\n"
+             f"V3.0 Signer: certificate SHA-256 digest: {wrong}\n",
+             "APK signature certificate mismatch"),
+            # A recognized matching signer cannot mask another signer format.
+            (f"V3.0 Signer: certificate SHA-256 digest: {matching}\n" + unknown,
+             "APK signer certificate digest not recognized"),
+            (unknown, "APK signer certificate digest not recognized"),
+            ("Verifies\nNumber of signers: 1\n",
+             "APK signer certificate digest not recognized"),
+        )
+        for report, expected_error in reports:
+            with self.subTest(report=report), \
+                 patch.object(pipeline, "signing_tools", return_value=Path("/tools")), \
+                 patch.object(pipeline, "command", side_effect=[
+                     report,
+                     f"package: name='{lock['application_id']}'\napplication-label:'Argon'\n"]), \
+                 patch.object(pipeline.subprocess, "run"):
+                if expected_error is None:
+                    self.assertEqual(self.verify(), self.root)
+                else:
+                    with self.assertRaisesRegex(ValueError, expected_error):
+                        self.verify()
+
     def test_reused_standalone_test_checks_actual_package_and_label(self):
         lock = self.fixture_artifact(mode="test", standalone_test=True)
         self.metadata["application_identity"] = pipeline.application_identity(

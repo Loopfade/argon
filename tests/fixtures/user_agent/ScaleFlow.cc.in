@@ -174,6 +174,10 @@ struct FrameLoader {
 struct RenderFrameImpl {
   LocalFrame* frame_;
   WebViewImpl* web_view;
+  struct CommitParams {
+    bool reset_history_view_state_for_user_agent_change = false;
+  } params;
+  CommitParams* commit_params = &params;
   WebViewImpl* GetWebView() const { return web_view; }
   bool ShouldUseUserAgentOverride() const;
   void Prepare(DocumentState* document_state, WebFrameLoadType load_type) {
@@ -194,8 +198,10 @@ struct Flow {
   Page page;
   WebViewImpl web{&page};
   FrameLoader history{&frame};
-  RenderFrameImpl renderer{&frame, &web};
+  RenderFrameImpl renderer{&frame, &web, {}, nullptr};
+  bool has_history_view_state = true;
   Flow() {
+    renderer.commit_params = &renderer.params;
     document.loader = &loader; frame.document = &document;
     frame.page = &page; page.frame = &frame; loader.state = &current;
   }
@@ -205,6 +211,7 @@ struct Flow {
     renderer.Prepare(&next, type);
     // At Blink commit the new HistoryItem contains the previous view state.
     loader.item.view_state = HistoryItem::ViewState{page.viewport.scale};
+    if (!has_history_view_state) loader.item.ClearViewState();
     loader.type = type;
     loader.state = &next;
     renderer.DidCommit(&next);
@@ -237,6 +244,32 @@ int main(int argc, char** argv) {
       EXPECT(f.page.viewport.resets == 4);
       f.Navigate(true, WebFrameLoadType::kReloadBypassingCache, .4f);
       EXPECT(f.page.viewport.scale == .4f && f.page.viewport.resets == 5);
+    } else if (scenario == "history_without_view_state") {
+      f.has_history_view_state = false;
+      for (bool desktop : {false, true}) {
+        for (auto type : {WebFrameLoadType::kBackForward, WebFrameLoadType::kRestore}) {
+          f.current.set_is_overriding_user_agent(desktop);
+          f.page.viewport.scale = 2.5f;
+          f.Navigate(desktop, type, .8f);
+          EXPECT(f.page.viewport.scale == 2.5f && f.page.viewport.resets == 0);
+        }
+      }
+    } else if (scenario == "history_ua_change") {
+      f.renderer.params.reset_history_view_state_for_user_agent_change = true;
+      for (bool desktop : {false, true}) {
+        for (auto type : {WebFrameLoadType::kBackForward, WebFrameLoadType::kRestore}) {
+          // The current/new documents have the same mode. The target entry
+          // used the opposite UA, so NavigationRequest cleared its viewport.
+          f.current.set_is_overriding_user_agent(desktop);
+          f.page.viewport.scale = 2.5f;
+          f.has_history_view_state = false;
+          const float initial = desktop ? .4f : .8f;
+          f.Navigate(desktop, type, initial);
+          EXPECT(f.page.viewport.scale == initial);
+          EXPECT(!f.loader.item.GetViewState());
+        }
+      }
+      EXPECT(f.page.viewport.resets == 4);
     } else if (scenario == "normal_reload" || scenario == "history") {
       for (bool desktop : {false, true}) {
         f.current.set_is_overriding_user_agent(desktop);

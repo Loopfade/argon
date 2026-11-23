@@ -652,7 +652,7 @@
     $("load-more").hidden=builds.length<=filters.limit;
   }
   function renderArtifacts(artifacts,run,target=$("artifacts-card")) {
-    const list=(artifacts.artifacts||[]).filter(a=>/^Argon-(arm64|arm)-/.test(a.name));
+    const list=(artifacts.artifacts||[]).filter(a=>/^Argon-(?:(?:arm64|arm)-|Test-(?:arm64-v8a|armeabi-v7a)$)/.test(a.name));
     const markup='<h3>APK этой сборки</h3>'+(list.length?'<ul class="artifacts">'+list.map(a=>'<li>'+esc(a.name)+' <span class="artifact-size">'+esc(formatBytes(a.size_in_bytes))+(a.expired || (a.expires_at&&ms(a.expires_at)<Date.now())?' · срок хранения истёк':'')+'</span></li>').join("")+'</ul><p>'+link(run.html_url,"Открыть сборку и скачать APK")+'</p>':'<div class="subtle">Готовые артефакты APK пока отсутствуют. Успех сборки подтверждается отдельно от наличия файлов.</div>');
     if(target)target.innerHTML=markup;
     return markup;
