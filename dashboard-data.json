@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-23T08:08:24Z",
+  "generated_at": "2026-11-23T11:12:38Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -83340,25 +83340,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-20T04:41:11Z",
-      "updated_at": "2026-11-23T04:52:05Z",
+      "updated_at": "2026-11-23T11:12:06Z",
       "merged_at": null,
-      "head_sha": "510da6a454c955e4f75c4f1f9fc610f89b812359",
-      "merge_commit_sha": "77c75ffdcc135a7feac808ab8ac8199f224801bf",
+      "head_sha": "dfcb64623c0b1d96456b166d3b638a5766281e7e",
+      "merge_commit_sha": "3f991c2763b2d7d81642a0ab4dcc38dfa059b162",
       "author": "Loopfade",
-      "additions": 4882,
+      "additions": 4899,
       "deletions": 202,
-      "changed_files": 83,
+      "changed_files": 84,
       "commits": 1,
       "comparison": {
         "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
-        "head_sha": "510da6a454c955e4f75c4f1f9fc610f89b812359",
+        "head_sha": "dfcb64623c0b1d96456b166d3b638a5766281e7e",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...510da6a454c955e4f75c4f1f9fc610f89b812359",
+        "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...dfcb64623c0b1d96456b166d3b638a5766281e7e",
         "commits": 1,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 83,
-        "additions": 4882,
+        "changed_files": 84,
+        "additions": 4899,
         "deletions": 202,
         "files": [
           {
@@ -83386,7 +83386,7 @@
             "filename": ".github/ci/test-domain-policy.sh",
             "previous_filename": null,
             "status": "modified",
-            "additions": 20,
+            "additions": 23,
             "deletions": 2
           },
           {
@@ -83775,6 +83775,13 @@
             "deletions": 0
           },
           {
+            "filename": "tests/test_domain_validation_cache.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 14,
+            "deletions": 0
+          },
+          {
             "filename": "tests/test_exit.py",
             "previous_filename": null,
             "status": "modified",
@@ -83951,7 +83958,7 @@
           "status": "completed",
           "conclusion": "success",
           "source_sha": "510da6a454c955e4f75c4f1f9fc610f89b812359",
-          "current": true
+          "current": false
         },
         {
           "id": 45054888460,
@@ -93803,6 +93810,611 @@
           "status": "modified",
           "additions": 7,
           "deletions": 0
+        }
+      ]
+    },
+    "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...dfcb64623c0b1d96456b166d3b638a5766281e7e": {
+      "base_sha": "ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007",
+      "head_sha": "dfcb64623c0b1d96456b166d3b638a5766281e7e",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/ab058d1e4ed8f7dc0a5a61eca94be4d15ba4e007...dfcb64623c0b1d96456b166d3b638a5766281e7e",
+      "commits": 1,
+      "commit_shas": [
+        "dfcb64623c0b1d96456b166d3b638a5766281e7e"
+      ],
+      "commits_complete": true,
+      "files_complete": true,
+      "changed_files": 84,
+      "additions": 4899,
+      "deletions": 202,
+      "files": [
+        {
+          "filename": ".github/ci/branch-test.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 158,
+          "deletions": 23
+        },
+        {
+          "filename": ".github/ci/check-exit-dex.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 22,
+          "deletions": 8
+        },
+        {
+          "filename": ".github/ci/full-build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 27,
+          "deletions": 3
+        },
+        {
+          "filename": ".github/ci/test-domain-policy.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 23,
+          "deletions": 2
+        },
+        {
+          "filename": ".github/ci/update-dashboard.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 52,
+          "deletions": 25
+        },
+        {
+          "filename": ".github/workflows/build-chromium-image.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/workflows/build-test-branch.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 39,
+          "deletions": 8
+        },
+        {
+          "filename": ".github/workflows/deploy-dashboard.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 12,
+          "deletions": 0
+        },
+        {
+          "filename": "README.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 2
+        },
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 5
+        },
+        {
+          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeBridge.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 11,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/chrome/android/java/src/org/chromium/chrome/browser/ntp/ArgonHomeStartup.java",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 105,
+          "deletions": 11
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/android/argon_exit.cc",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 9,
+          "deletions": 2
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.css",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/resources/argon_home/app.js",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 28,
+          "deletions": 11
+        },
+        {
+          "filename": "chromium_overlay/chrome/browser/ui/webui/argon_home/argon_search_handler.cc",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 23,
+          "deletions": 5
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values-ru/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_ids.xml",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 4,
+          "deletions": 0
+        },
+        {
+          "filename": "chromium_overlay/titanium/chromium_src/chrome/android/java/res/values/argon_user_agent_strings.xml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0
+        },
+        {
+          "filename": "docs/build-pipeline.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 3,
+          "deletions": 1
+        },
+        {
+          "filename": "docs/chromium-158-upgrade.md",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 98,
+          "deletions": 0
+        },
+        {
+          "filename": "docs/homepage.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 69,
+          "deletions": 6
+        },
+        {
+          "filename": "docs/user-agent.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 31,
+          "deletions": 6
+        },
+        {
+          "filename": "index.html",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "patch.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 52,
+          "deletions": 1
+        },
+        {
+          "filename": "res/translations/bundles.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 0,
+          "deletions": 7
+        },
+        {
+          "filename": "scripts/apply_exit.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 17,
+          "deletions": 4
+        },
+        {
+          "filename": "scripts/apply_homepage.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 111,
+          "deletions": 1
+        },
+        {
+          "filename": "scripts/apply_user_agent.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 346,
+          "deletions": 11
+        },
+        {
+          "filename": "tests/check_background_playback_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 84,
+          "deletions": 17
+        },
+        {
+          "filename": "tests/check_homepage_upstream.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/check_upstream_patches.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 12,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/apksigner-37-v3-certificate.txt",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 3,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/homepage/ArgonHomeBridgeFlow.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/HomeStartupFlow.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 108,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/fixtures/homepage/NewTabPageDelegate.java.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 7,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/RestoreNavigationFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 311,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/ToolbarCaptureM158Flow.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 69,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/chrome_serialized_navigation_driver.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 79,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/restored_navigation_controller.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 236,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/serialized_navigation_builder.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 230,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/homepage/toolbar_capture_m158.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 78,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/HistoryViewStateFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 115,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/NavigationFlow.cc.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 81,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/ObserverFlow.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 136,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/ScaleFlow.cc.in",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 34,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/fixtures/user_agent/desktop_site_menu.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 18,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/navigation_request_ua.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 40,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/request_desktop_observer.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 74,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/tab_creator.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 67,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/user_agent/tab_user_agent_state.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 43,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/homepage/native-ui-check.mjs",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 27,
+          "deletions": 8
+        },
+        {
+          "filename": "tests/homepage_restore_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 62,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_background_dependency_fetch.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 210,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_branch_test.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 37,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_build_targets.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 68,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_dashboard_rendering.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 43,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/test_dashboard_snapshot.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 42,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_domain_validation_cache.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 14,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_exit.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 21,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_exit_dex.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 44,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_full_build.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 50,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_homepage.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 17,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_homepage_native.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 79,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/test_homepage_restore.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 38,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_homepage_startup.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 34,
+          "deletions": 4
+        },
+        {
+          "filename": "tests/test_russian_translations.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 18,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_test_apk_collection.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 230,
+          "deletions": 10
+        },
+        {
+          "filename": "tests/test_upstream_sources.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 67,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_history.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 22,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_navigation.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_observer.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 50,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_renderer.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 83,
+          "deletions": 3
+        },
+        {
+          "filename": "tests/test_user_agent_scale.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_user_agent_tab.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 276,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/test_user_agent_tab_state.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 25,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/upstream_sources.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 2
+        },
+        {
+          "filename": "tests/user_agent_history_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 47,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_navigation_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/user_agent_observer_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 44,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/user_agent_scale_flow.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 2,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/user_agent_tab_state_flow.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 128,
+          "deletions": 0
+        },
+        {
+          "filename": "vanadium",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         }
       ]
     },
