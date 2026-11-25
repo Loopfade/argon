@@ -1,6 +1,7 @@
 """Keep source pins strict while retrying transient upstream failures."""
 import base64
 import binascii
+import http.client
 import io
 from contextlib import redirect_stdout
 import unittest
@@ -11,6 +12,17 @@ import upstream_sources as sources
 import check_upstream_patches as fixture_checker
 from threading import Lock
 from time import sleep as real_sleep
+
+
+class InterruptedResponse(io.BytesIO):
+    """A response opened successfully, but its body was interrupted in transit."""
+
+    def __init__(self, error):
+        super().__init__(b"partial source must not be accepted")
+        self.error = error
+
+    def read(self, *args, **kwargs):
+        raise self.error
 
 
 class UpstreamSourceTests(unittest.TestCase):
@@ -46,6 +58,61 @@ class UpstreamSourceTests(unittest.TestCase):
             self.assertEqual(request.call_count, 3)
             self.assertTrue(all(call.args[0] == url for call in request.call_args_list))
             self.assertEqual([call.args[0] for call in delay.call_args_list], [30, 2])
+
+    def test_partial_response_is_discarded_and_the_same_source_is_retried(self):
+        url = sources.chromium_url(self.revision, "DEPS")
+        for prefer_mirror in (False, True):
+            target = sources.chromium_mirror_url(url) if prefer_mirror else url
+            payload = b"complete pinned DEPS"
+            if not prefer_mirror:
+                payload = base64.b64encode(payload)
+            broken = InterruptedResponse(http.client.IncompleteRead(b"partial", 682323))
+            with self.subTest(prefer_mirror=prefer_mirror), \
+                    patch.object(sources.time, "sleep") as delay, \
+                    patch.object(sources.urllib.request, "urlopen", side_effect=[
+                        broken, io.BytesIO(payload)]) as request:
+                self.assertEqual(sources.download(url, prefer_mirror=prefer_mirror),
+                                 "complete pinned DEPS")
+                self.assertEqual([call.args[0] for call in request.call_args_list],
+                                 [target, target])
+                self.assertTrue(broken.closed)
+                delay.assert_called_once_with(1)
+
+    def test_exhausted_transport_errors_fall_back_to_the_same_pin(self):
+        url = sources.chromium_url(self.revision, "DEPS")
+        mirror = sources.chromium_mirror_url(url)
+        for error_type in (http.client.IncompleteRead, ConnectionResetError,
+                           http.client.RemoteDisconnected):
+            def error():
+                return (error_type(b"partial", 682323) if error_type is http.client.IncompleteRead
+                        else error_type("connection interrupted"))
+            responses = [InterruptedResponse(error()) for _ in range(3)]
+            with self.subTest(error=error_type.__name__), \
+                    patch.object(sources.time, "sleep") as delay, \
+                    redirect_stdout(io.StringIO()), \
+                    patch.object(sources.urllib.request, "urlopen", side_effect=[
+                        *responses, io.BytesIO(base64.b64encode(b"pinned DEPS"))]) as request:
+                self.assertEqual(sources.download(url, prefer_mirror=True), "pinned DEPS")
+                self.assertEqual([call.args[0] for call in request.call_args_list],
+                                 [mirror, mirror, mirror, url])
+                self.assertEqual([call.args[0] for call in delay.call_args_list], [1, 2])
+                self.assertTrue(all(response.closed for response in responses))
+
+    def test_partial_reads_on_both_origins_fail_after_bounded_retries(self):
+        url = sources.chromium_url(self.revision, "DEPS")
+        mirror = sources.chromium_mirror_url(url)
+        responses = [InterruptedResponse(http.client.IncompleteRead(b"partial", 682323))
+                     for _ in range(6)]
+        with patch.object(sources.time, "sleep") as delay, \
+                redirect_stdout(io.StringIO()), \
+                patch.object(sources.urllib.request, "urlopen", side_effect=responses) as request, \
+                self.assertRaises(http.client.IncompleteRead) as failure:
+            sources.download(url, prefer_mirror=True)
+        self.assertEqual([call.args[0] for call in request.call_args_list],
+                         [mirror] * 3 + [url] * 3)
+        self.assertEqual([call.args[0] for call in delay.call_args_list], [1, 2, 1, 2])
+        self.assertTrue(all(response.closed for response in responses))
+        self.assertIn("Upstream source URL: " + url, failure.exception.__notes__)
 
     def test_missing_files_and_exhausted_retries_remain_failures(self):
         url = sources.chromium_url(self.revision, "missing")

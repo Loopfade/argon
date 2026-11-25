@@ -36,6 +36,7 @@ sed -i 's|if (urlFromIntent == null) {|if (!android.webkit.URLUtil.isNetworkUrl(
 sed -i 's|static void maybeModifyCustomTabIntents(Intent intent) {|& if (!android.webkit.URLUtil.isNetworkUrl(IntentHandler.getUrlFromIntent(intent))) { return; }|' titanium/chromium_src/chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcherHooks.java # scheme guard
 sed -i 's|readBoolean(getSettingsPreferenceKey(moduleType), true)|readBoolean(getSettingsPreferenceKey(moduleType), !HomeModulesUtils.belongsToEducationalTipModule(moduleType))|' chrome/browser/magic_stack/android/java/src/org/chromium/chrome/browser/magic_stack/HomeModulesConfigManager.java # ntp
 sed -i 's|private static boolean verifyPackage(Context ctx, String pkgName, byte\[\] sha256CertDigestBytes) {|& if (true) return false; |' titanium/android_config/parser/java/src/app/titanium/config/TitaniumConfParser.java # config parser
+sed -i 's|static boolean isSupported() {|& if (android.os.Build.VERSION.SDK_INT < 31) return false;|;s|LocationManager locationManager, LocationListener listener) {|& if (android.os.Build.VERSION.SDK_INT < 31) return false;|' titanium/chromium_src/services/downstream/device/geolocation/android/java/src/org/chromium/device/geolocation/CoarseLocationRequests.java # api
 
 # sed -i 's|int ExpirationMilestoneForFlag(const char\* flag) {|int ExpirationMilestoneForFlag(const char* flag) { if ((true)) return -1;|' chrome/browser/unexpire_flags.cc
 for flag in "align-wakeups" "android-bottom-bar" "cct-open-in-browser-button-if-allowed-by-embedder" "darken-websites-checkbox-in-themes-setting" "enable-accessibility-sequential-focus" "enforce-incognito-isolation" "inline-pdf-v2" "jump-start-omnibox" "lock-controls-on-tablets-v2" "offline-auto-fetch" "use-fullscreen-insets-api"; do
@@ -170,8 +171,30 @@ sed -i 's|<item type="id" name="manage_all_windows_menu_id" />|&<item type="id" 
 sed -i 's|modelList.add(buildManageWindowsItem());$|&if (isIncognito \&\& MultiWindowUtils.isMultiInstanceApi31Enabled()) modelList.add(new ListItem(AppMenuHandler.AppMenuItemType.STANDARD, AppMenuItemUtils.buildModelForStandardMenuItem(mContext, getAppMenuItemTheme(), R.id.incognito_toggle_menu_id, R.string.accessibility_tabstrip_btn_incognito_toggle_incognito, R.drawable.ic_open_in_browser, false)));|' chrome/android/java/src/org/chromium/chrome/browser/tabbed_mode/TabbedAppMenuPropertiesDelegate.java # regular
 sed -i 's|if (id == R.id.manage_all_windows_menu_id) {|if (id == R.id.incognito_toggle_menu_id) { int w = MultiWindowUtils.getLastAccessedWindowIdExcludingSelf(mInstanceId, PersistedInstanceType.REGULAR); if (w != INVALID_WINDOW_ID) openWindow(w, NewWindowAppSource.WINDOW_MANAGER); else openNewWindow(false); return true; } &|' chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiInstanceManagerApi31.java # regular
 
+# M158 local-network access permission gate, matching upstream Titanium.
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("components/permissions/android/java/src/org/chromium/components/permissions/PermissionUtil.java")
+# Vanadium 0304 replaces the stock body before Argon patches the SDK gate.
+before = """    private static boolean isLocalNetworkAccessPermissionRequired() {
+        return true;
+    }"""
+after = before.replace("return true;", "return Build.VERSION.SDK_INT >= 37;")
+source = path.read_text()
+if source.count(before) == 1 and after not in source:
+    path.write_text(source.replace(before, after, 1))
+elif source.count(after) != 1 or before in source:
+    raise SystemExit("error: review the local network permission gate after Vanadium patches")
+PY
+
 # crbug.com/406136787: load unpacked
-sed -i 's|assert treeId.equals(documentId);|&\n if ("com.android.externalstorage.documents".equals(mAuthority)) { String fastId = mRelativePath.isEmpty() ? treeId : (treeId.endsWith(":") ? treeId + mRelativePath : treeId + "/" + mRelativePath); Uri fast = DocumentsContract.buildDocumentUriUsingTree(tree, fastId); return contentUriExists(fast) ? fast : null; }|' base/android/java/src/org/chromium/base/VirtualDocumentPath.java
+# Chromium 158 switched VirtualDocumentPath to ResolveResult/queryDocument.
+# Require the reviewed M158 anchor instead of silently dropping the workaround.
+grep -Fq 'ResolveResult current = queryDocument(tree, rootUri, null);' base/android/java/src/org/chromium/base/VirtualDocumentPath.java || {
+  echo 'error: Chromium 158 SAF queryDocument contract changed' >&2; exit 1;
+}
+sed -i 's|ResolveResult current = queryDocument(tree, rootUri, null);|if ("com.android.externalstorage.documents".equals(mAuthority) \&\& mRelativePath.length > 0) { String rel = String.join("/", mRelativePath); ResolveResult fast = queryDocument(tree, DocumentsContract.buildDocumentUriUsingTree(tree, mTreeId.endsWith(":") ? mTreeId + rel : mTreeId + "/" + rel), null); if (fast.status == FileError.FILE_OK) return fast; }\n&|' base/android/java/src/org/chromium/base/VirtualDocumentPath.java
 
 # crbug.com/445475304: incognito back
 sed -i 's|private void onTabChanged(@Nullable Tab tab) {|private void onTabChanged(@Nullable Tab tab) { if (tab != null \&\& tab.isIncognitoBranded()) { mSystemBackPressSupplier.set(true); return; }|' chrome/browser/back_press/android/java/src/org/chromium/chrome/browser/back_press/MinimizeAppAndCloseTabBackPressHandler.java
@@ -195,6 +218,35 @@ if [[ "$(sha256sum "$DIALOG_SOURCE" | awk '{print $1}')" != "$DIALOG_SOURCE_SHA2
     echo "error: extension install dialog source changed unexpectedly; refusing to continue" >&2
     exit 1
 fi
+
+
+# Chromium 158 browser tests hardcode extra locale paks (ar, he, en-GB,
+# es) which Argon's en-US/ru-only configuration does not generate. Keep the
+# browser-test assets limited to the two locales actually packaged by Argon.
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("chrome/test/BUILD.gn")
+source = path.read_text()
+old = """    foreach(_locale,
+            [
+              # RTL layout tests.
+              "ar",
+              "he",
+
+              # Default locale, plus en-GB as the "non-en-US" locale used by
+              # policy and management WebUI tests.
+              "en-US",
+              "en-GB",
+
+              # DevTools localization tests.
+              "es",
+            ]) {"""
+new = '    foreach(_locale, [ "en-US", "ru" ]) {'
+if source.count(old) != 1:
+    raise SystemExit("Unexpected Chromium browser-test locale target; review M158 GN inputs")
+path.write_text(source.replace(old, new, 1))
+PY
 
 export PATCHED=1
 

@@ -1,5 +1,6 @@
 """Fetch exact Chromium commits from Gitiles or the official GitHub mirror."""
 import base64
+import http.client
 import os
 from pathlib import PurePosixPath
 import re
@@ -10,6 +11,9 @@ import urllib.request
 
 CHROMIUM_SOURCE = "https://chromium.googlesource.com/chromium/src/+/"
 TRANSIENT_HTTP_ERRORS = {429, 500, 502, 503, 504}
+TRANSIENT_TRANSPORT_ERRORS = (
+    urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead,
+)
 
 
 def chromium_url(revision, path):
@@ -44,7 +48,7 @@ def download(url, *, prefer_mirror=False):
     except urllib.error.HTTPError as error:
         if error.code not in TRANSIENT_HTTP_ERRORS | {404}:
             raise
-    except (urllib.error.URLError, TimeoutError):
+    except TRANSIENT_TRANSPORT_ERRORS:
         pass
     print("::warning::Зеркало Chromium недоступно; используется Gitiles для того же SHA: "
           + url, flush=True)
@@ -75,7 +79,9 @@ def _download(url):
                 delay = max(delay, min(int(retry_after), 60))
             elif error.code == 429:
                 delay = 30
-        except (urllib.error.URLError, TimeoutError) as error:
+        except TRANSIENT_TRANSPORT_ERRORS as error:
+            # A response may open successfully and fail while reading its body.
+            # Discard partial bytes and retry a fresh request to the same pin.
             if attempt == 2:
                 error.add_note("Upstream source URL: " + url)
                 raise

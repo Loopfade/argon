@@ -15,6 +15,12 @@ GOOGLE_CHROME_SCHEME = '<data android:scheme="googlechrome" />'
 DISABLED_SCHEME = '{# Argon Test omits the production googlechrome URI scheme. #}'
 ORIGINAL_PACKAGE = '<original-package android:name="org.chromium.chrome" />'
 DISABLED_ORIGINAL = '{# Argon Test does not adopt an existing Chromium package. #}'
+CONTENT_PIP_ACTIVITY = "androidx.core.pip.contentpip.ContentPipInternalActivity"
+CONTENT_PIP_OVERRIDE = '''      {# Argon Test keeps AndroidX content PiP in its own task namespace. #}
+      <activity android:name="androidx.core.pip.contentpip.ContentPipInternalActivity"
+          android:taskAffinity="{{ manifest_package }}.androidx.core.pip.contentpip.isolated"
+          tools:replace="android:taskAffinity" />
+'''
 
 
 def application_identity(lock, mode, *, standalone_test=None):
@@ -75,6 +81,19 @@ def configure(src, output, arch, ccache, mode):
         raise ValueError("Duplicate original-package declaration")
     original = DISABLED_ORIGINAL if identity["variant"] == "standalone-test" else ORIGINAL_PACKAGE
     branded_manifest = branded_manifest.replace(ORIGINAL_PACKAGE, original).replace(DISABLED_ORIGINAL, original)
+    if branded_manifest.count(CONTENT_PIP_OVERRIDE) > 1:
+        raise ValueError("Duplicate standalone content PiP override")
+    branded_manifest = branded_manifest.replace(CONTENT_PIP_OVERRIDE, "")
+    if identity["variant"] == "standalone-test":
+        # AndroidX contributes a literal, globally shared task affinity through
+        # its library manifest. Override only that attribute in the main
+        # manifest, preserving the library's PiP flags and internal activity.
+        if (branded_manifest.count("    </application>") != 1
+                or 'xmlns:tools="http://schemas.android.com/tools"' not in branded_manifest
+                or CONTENT_PIP_ACTIVITY in branded_manifest):
+            raise ValueError("Review the Chromium application manifest for content PiP isolation")
+        branded_manifest = branded_manifest.replace("    </application>",
+                                                    CONTENT_PIP_OVERRIDE + "    </application>")
     # Validate both inputs before writing, and preserve timestamps on resumes.
     if branded != text:
         resource.write_text(branded)

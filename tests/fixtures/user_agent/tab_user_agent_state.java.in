@@ -1,0 +1,43 @@
+// Chromium 52bdd21723d5db0c9ab11716d38feac74828cf84.
+    public void setUserAgent(@TabUserAgent int userAgent) {
+        mUserAgent = userAgent;
+    }
+
+    @UserAgentOverrideOption int calculateUserAgentOverrideOption(
+            @JniType("GURL") @Nullable GURL url) {
+        WebContents webContents = getWebContents();
+        boolean currentRequestDesktopSite = TabUtils.isUsingDesktopUserAgent(webContents);
+        // INHERIT means use the same UA that was used last time.
+        @UserAgentOverrideOption int userAgentOverrideOption = UserAgentOverrideOption.INHERIT;
+
+        if (GURL.isEmptyOrInvalid(url) && webContents != null) {
+            url = webContents.getVisibleUrl();
+        }
+
+        boolean shouldRequestDesktopSite =
+                DesktopSiteUtils.shouldOverrideDesktopSite(mProfile, url, getContext());
+
+        if (shouldRequestDesktopSite != currentRequestDesktopSite) {
+            // The user is not forcing any mode and we determined that we need to
+            // change, therefore we are using TRUE or FALSE option. On Android TRUE mean
+            // override to Desktop user agent, while FALSE means go with Mobile version.
+            userAgentOverrideOption =
+                    shouldRequestDesktopSite
+                            ? UserAgentOverrideOption.TRUE
+                            : UserAgentOverrideOption.FALSE;
+        }
+        recordHistogramUseDesktopUserAgent(shouldRequestDesktopSite);
+        return userAgentOverrideOption;
+    }
+
+    private void switchUserAgentIfNeeded() {
+        if (calculateUserAgentOverrideOption(null) == UserAgentOverrideOption.INHERIT
+                || getWebContents() == null
+                || isClosing()
+                || isDestroyed()) {
+            return;
+        }
+        boolean usingDesktopUserAgent =
+                getWebContents().getNavigationController().getUseDesktopUserAgent();
+        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent);
+    }

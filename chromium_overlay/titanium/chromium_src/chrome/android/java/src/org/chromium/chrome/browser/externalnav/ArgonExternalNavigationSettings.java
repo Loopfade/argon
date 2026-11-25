@@ -26,7 +26,7 @@ import org.chromium.components.url_formatter.SchemeDisplay;
 import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.url.GURL;
 
-/** Settings > Privacy and security > Security > Open links in apps. The allow list starts empty. */
+/** Settings > Privacy and security > Security > Switching to apps. The allow list starts empty. */
 @NullMarked
 public final class ArgonExternalNavigationSettings extends ChromeBaseSettingsFragment {
     private final SettableMonotonicObservableSupplier<String> mTitle = ObservableSuppliers.createMonotonic();
@@ -101,12 +101,19 @@ public final class ArgonExternalNavigationSettings extends ChromeBaseSettingsFra
             });
             sites.addPreference(row);
         }
-        Preference help = new Preference(requireContext());
-        help.setSelectable(false);
-        help.setSummary(getString(policy.getSites().isEmpty()
-                ? R.string.argon_external_empty : R.string.argon_external_saved_list)
-                + "\n\n" + getString(R.string.argon_external_details));
-        screen.addPreference(help);
+        // Keep each explanation short enough for the preference summary layout.
+        for (int explanation : new int[] {
+                policy.getSites().isEmpty()
+                        ? R.string.argon_external_empty : R.string.argon_external_saved_list,
+                R.string.argon_external_details, R.string.argon_external_actions,
+                R.string.argon_external_scope}) {
+            Preference help = new Preference(requireContext());
+            help.setSelectable(false);
+            help.setSummary(explanation);
+            screen.addPreference(help);
+        }
+        // Replacing the screen also invalidates the host's position-based styles.
+        notifyPreferencesUpdated();
     }
 
     private static String displayHost(String host) {

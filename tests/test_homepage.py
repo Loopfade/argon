@@ -39,6 +39,8 @@ def input_tree(root):
             + (FIXTURES / 'toolbar_phone_capture.java.in').read_text()
             + (FIXTURES / 'toolbar_shortcut.java.in').read_text(),
         homepage.NEW_TAB_BUTTON: (FIXTURES / 'new_tab_button.java.in').read_text(),
+        homepage.SESSION_BUILDER: (FIXTURES / 'serialized_navigation_builder.cc.in').read_text(),
+        homepage.SESSION_CONTROLLER: (FIXTURES / 'restored_navigation_controller.cc.in').read_text(),
         homepage.JAVA_CATALOG: '  "java/src/org/chromium/chrome/browser/ntp/NewTabPage.java",\n',
         homepage.JNI_CATALOG: '  generate_jni("chrome_jni_headers") {\n    sources = [\n    ]\n  }\n',
     }
@@ -54,6 +56,19 @@ def snapshot(root):
 
 
 class HomepageTests(unittest.TestCase):
+    def test_m158_toolbar_capture_is_reviewed_and_idempotent(self):
+        # Chromium 158 moved the capture guard into the private two-arg
+        # helper. The public isDirty() no longer owns the constraint.
+        original = (FIXTURES / 'toolbar_capture_m158.java.in').read_text()
+        patched = homepage.patch_toolbar_capture(original)
+        self.assertIn(homepage.CAPTURE_AFTER, patched)
+        self.assertNotIn(homepage.CAPTURE_BEFORE, patched)
+        self.assertEqual(patched, homepage.patch_toolbar_capture(patched))
+        with self.assertRaisesRegex(ValueError, 'Chromium method changed'):
+            homepage.patch_toolbar_capture(original.replace(
+                'return checkCaptureReadinessResult();',
+                'return false;'))
+
     def test_changed_toolbar_shortcut_sources_reject_the_whole_patch(self):
         for path, before, after in (
             (homepage.TOOLBAR_PHONE, 'return !(isNtp && isSignInLevelUp);', 'return false;'),
@@ -95,7 +110,8 @@ class HomepageTests(unittest.TestCase):
 
     def test_changed_toolbar_or_source_catalog_rejects_the_whole_patch(self):
         for path in (homepage.TOOLBAR_MANAGER, homepage.JAVA_CATALOG, homepage.JNI_CATALOG,
-                     homepage.APP_MENU, homepage.ANDROID_RESOURCES):
+                     homepage.APP_MENU, homepage.ANDROID_RESOURCES, homepage.SESSION_BUILDER,
+                     homepage.SESSION_CONTROLLER):
             with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
                 src = Path(directory)
                 input_tree(src)

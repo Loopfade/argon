@@ -51,7 +51,9 @@ public class ArgonHomeBridgeFlow {
 
     private static class Fallback implements NewTabPageDelegate {
         boolean visible;
+        final View nativeSearchBox = new View();
         int attaches, alphas;
+        @Override public View getSearchBoxView() { return nativeSearchBox; }
         @Override public boolean isCurrentlyVisible() { return visible; }
         @Override public boolean isLocationBarShown() { return visible; }
         @Override public boolean hasCompletedFirstLayout() { return visible; }
@@ -77,6 +79,8 @@ public class ArgonHomeBridgeFlow {
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
                 && !delegate.hasCompletedFirstLayout(),
                 "Home must hide the native omnibox before JNI registration and first layout");
+        check(delegate.getSearchBoxView() == null,
+                "Pending WebUI must not expose Chromium's native NTP fakebox View");
         for (String url : List.of("chrome://newtab/", "chrome-native://newtab/", "chrome://argon/")) {
             tab.url = new GURL(url);
             check(delegate.isLocationBarShown(), "Unmeasured home alias must hide the omnibox: " + url);
@@ -132,6 +136,8 @@ public class ArgonHomeBridgeFlow {
         layout(page, 0f);
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
                 && delegate.hasCompletedFirstLayout(), "Measured fakebox must become the NTP delegate");
+        check(delegate.getSearchBoxView() == null,
+                "Renderer fakebox has CSS geometry, not a native Android View");
         check(activity.toolbar.refreshes == refreshesBeforeLayout + 1, "First layout must refresh native toolbar");
         check(capture.render("DuckDuckGo:hidden") && "DuckDuckGo:hidden".equals(capture.bitmap()),
                 "Measured WebUI fakebox must replace the stale visible omnibox bitmap while controls stay locked");
@@ -279,6 +285,8 @@ public class ArgonHomeBridgeFlow {
         delegate.setSearchBoxScrollListener(scrolls::add);
         check(delegate.isCurrentlyVisible() && delegate.isLocationBarShown()
                 && fallback.attaches>0, "Native fallback delegate must still work");
+        check(delegate.getSearchBoxView() == fallback.nativeSearchBox,
+                "Native NTP must expose its own View to Chromium 158 omnibox animations");
         System.out.println("PASS: native homepage focus, restoration, geometry and lifecycle");
     }
 }

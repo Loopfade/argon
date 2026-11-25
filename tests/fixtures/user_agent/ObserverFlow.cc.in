@@ -1,0 +1,136 @@
+// Android, settings and metrics boundaries for the real pinned observer method.
+#include <cassert>
+#include <iostream>
+#include <string>
+
+constexpr int CONTENT_SETTING_ALLOW = 1;
+using ContentSetting = int;
+struct GURL {};
+struct ContentSettingsType { static constexpr int REQUEST_DESKTOP_SITE = 1; };
+namespace content_settings {
+struct Pattern { bool MatchesAllHosts() const { return true; } };
+struct SettingInfo { Pattern primary_pattern; };
+}
+struct SettingsMap {
+  bool desktop;
+  int reads = 0;
+  int GetContentSetting(const GURL&, const GURL&, int, content_settings::SettingInfo*) {
+    ++reads;
+    return desktop ? CONTENT_SETTING_ALLOW : 2;
+  }
+};
+struct PrefService { bool GetBoolean(const char*) const { return false; } };
+namespace prefs { constexpr char kDesktopSiteWindowSettingEnabled[] = ""; }
+namespace switches { constexpr char kRequestDesktopSites[] = ""; }
+namespace base {
+struct CommandLine {
+  static CommandLine* ForCurrentProcess() { static CommandLine c; return &c; }
+  bool HasSwitch(const char*) const { return false; }
+};
+namespace android::device_info { bool is_automotive() { return false; } }
+}
+struct TabModel { enum class TabUserAgent { DEFAULT, MOBILE, DESKTOP, UNSET }; };
+struct WebContents {
+  struct Bounds {
+    struct Size { int width() const { return 900; } };
+    Size size() const { return {}; }
+  };
+  Bounds GetContainerBounds() const { return {}; }
+};
+struct TabAndroid {
+  TabModel::TabUserAgent mode;
+  int GetUserAgent() const { return static_cast<int>(mode); }
+  static TabAndroid* current;
+  static TabAndroid* FromWebContents(WebContents*) { return current; }
+};
+TabAndroid* TabAndroid::current = nullptr;
+namespace content {
+constexpr int kAndroidMinimumTabletWidthDp = 600;
+struct RenderFrameHost {
+  RenderFrameHost* GetOutermostMainFrame() { return this; }
+  const GURL& GetLastCommittedURL() const { static GURL url; return url; }
+};
+struct NavigationHandle {
+  bool overriding;
+  bool renderer = true;
+  bool outermost = true;
+  int writes = 0;
+  bool IsInOutermostMainFrame() const { return outermost; }
+  RenderFrameHost* GetParentFrameOrOuterDocument() { return nullptr; }
+  const GURL& GetURL() const { static GURL url; return url; }
+  bool IsRendererInitiated() const { return renderer; }
+  void SetIsOverridingUserAgent(bool value) { overriding = value; ++writes; }
+  bool IsInPrimaryMainFrame() const { return outermost; }
+  int GetNavigationId() const { return 1; }
+};
+}
+namespace rds_web_contents_observer {
+enum class UserAgentRequestType { RequestDesktop, RequestMobile };
+}
+namespace ukm {
+using SourceId = int;
+enum class SourceIdType { NAVIGATION_ID };
+int ConvertToSourceId(int id, SourceIdType) { return id; }
+struct UkmRecorder { static void* Get() { return nullptr; } };
+namespace builders {
+struct Android_NonDefaultRdsPageLoad {
+  explicit Android_NonDefaultRdsPageLoad(int) {}
+  Android_NonDefaultRdsPageLoad& SetUserAgentType(int) { return *this; }
+  void Record(void*) {}
+};
+}
+}
+struct RequestDesktopSiteWebContentsObserverAndroid {
+  SettingsMap* host_content_settings_map_;
+  PrefService* pref_service_;
+  WebContents* web_contents() { static WebContents c; return &c; }
+  bool ShouldAllowOnExternalDisplay(bool) const { return false; }
+  void DidStartNavigation(content::NavigationHandle*);
+};
+
+@OBSERVER_METHOD@
+
+int main(int argc, char** argv) {
+  assert(argc == 2);
+  std::string scenario = argv[1];
+  using Mode = TabModel::TabUserAgent;
+  for (bool desktop : {false, true}) {
+    for (bool renderer : {false, true}) {
+      PrefService prefs;
+      SettingsMap settings{desktop};
+      RequestDesktopSiteWebContentsObserverAndroid observer{&settings, &prefs};
+      TabAndroid tab{desktop ? Mode::DESKTOP : Mode::MOBILE};
+      TabAndroid::current = &tab;
+      // A history entry, including a browser-initiated Back/Forward, carries
+      // the flag saved before the explicit desktop/mobile choice was made.
+      content::NavigationHandle navigation{!desktop, renderer};
+      if (scenario == "history") {
+        // A contradictory site exception must not win over the tab either.
+        settings.desktop = !desktop;
+        observer.DidStartNavigation(&navigation);
+        assert(navigation.overriding == desktop);
+        assert(navigation.writes == 1 && settings.reads == 0);
+      } else if (scenario == "site_defaults") {
+        for (Mode mode : {Mode::DEFAULT, Mode::UNSET}) {
+          tab.mode = mode;
+          navigation = {!desktop, renderer};
+          observer.DidStartNavigation(&navigation);
+          assert(navigation.overriding == (renderer ? desktop : !desktop));
+          assert(navigation.writes == (renderer ? 1 : 0));
+        }
+        TabAndroid::current = nullptr;
+        navigation = {!desktop, renderer};
+        observer.DidStartNavigation(&navigation);
+        assert(navigation.overriding == (renderer ? desktop : !desktop));
+      } else if (scenario == "subframes") {
+        navigation.outermost = false;
+        observer.DidStartNavigation(&navigation);
+        assert(navigation.overriding == !desktop);
+        assert(navigation.writes == 0 && settings.reads == 0);
+      } else {
+        return 2;
+      }
+    }
+  }
+  std::cout << "PASS: " << scenario << '\n';
+}

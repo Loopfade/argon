@@ -1,4 +1,6 @@
 .argon-home-starting body{visibility:hidden}
+.argon-search-loading #search-form,.argon-search-loading #settings-button,
+.argon-bookmarks-loading .bookmark-actions,.argon-bookmarks-loading #settings-button{visibility:hidden}
 .bookmark-notice{grid-column:1/-1;font-size:12px;line-height:1.6;color:var(--secondary)}
 .bookmark-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-left:auto}
 .bookmark-action{width:44px;height:44px;flex:0 0 44px;padding:0;display:grid;place-items:center;border-radius:12px;color:var(--secondary)}

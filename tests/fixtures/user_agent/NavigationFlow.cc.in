@@ -118,6 +118,7 @@ struct NavigationControllerImpl {
   FrameTree* frame_tree_ = &tree_;
   std::vector<int> pending_entry_refs_;
   NavigationEntry* GetLastCommittedEntry() { return has_entry ? &entry : nullptr; }
+  NavigationEntry* GetPendingEntry() { return pending_entry_.pointer; }
   bool in_navigate_to_pending_entry() { return in_navigate_to_pending_entry_; }
   FrameTree& frame_tree() { return tree_; }
   Preferences* delegate() { return &prefs; }
@@ -238,6 +239,83 @@ void Deferred(bool synchronous_latest) {
   }
 }
 
+
+void PendingOppositeMode() {
+  // An in-flight navigation can commit the other UA, even though the current
+  // document and the committed history entry already match the requested mode.
+  // Without replacing that pending entry, the user's selection is lost.
+  for (bool requested_desktop : {false, true}) {
+    NavigationControllerImpl controller;
+    controller.entry.overriding = requested_desktop;
+    controller.tree_.node.host.page.overriding = requested_desktop;
+    NavigationEntry* pending = new NavigationEntry(controller.entry);
+    pending->overriding = !requested_desktop;
+    controller.pending_entry_.pointer = pending;
+    controller.pending_entry_.owned = true;
+    controller.pending_entry_index_ = -1;
+
+    NavigationControllerAndroid android(&controller);
+    EXPECT(android.GetUseDesktopUserAgent(nullptr) == requested_desktop);
+    android.SetUseDesktopUserAgent(nullptr, requested_desktop, true, true);
+    EXPECT(controller.Requests() == 1);
+    controller.Commit();
+    EXPECT(controller.PageMode() == requested_desktop);
+  }
+}
+
+void PendingSameMode() {
+  // No new request is needed if both the current and pending documents use
+  // the selected UA. This avoids an unnecessary reload loop.
+  for (bool requested_desktop : {false, true}) {
+    NavigationControllerImpl controller;
+    controller.entry.overriding = requested_desktop;
+    controller.tree_.node.host.page.overriding = requested_desktop;
+    NavigationEntry* pending = new NavigationEntry(controller.entry);
+    controller.pending_entry_.pointer = pending;
+    controller.pending_entry_.owned = true;
+    controller.pending_entry_index_ = -1;
+    NavigationControllerAndroid android(&controller);
+    android.SetUseDesktopUserAgent(nullptr, requested_desktop, true, true);
+    EXPECT(controller.Requests() == 0);
+    EXPECT(controller.pending_entry_.pointer == pending);
+    controller.DiscardPendingEntry(false);
+  }
+}
+
+void PendingInitialEntry() {
+  // Preserve Chromium's safety guard for initial NavigationEntries when the
+  // caller requests it, but honor an explicit (skip=false) mode selection.
+  // Both the committed entry and visible page already match the selection;
+  // an opposite pending entry must not silently undo it.
+  for (bool requested_desktop : {false, true}) {
+    for (bool skip_initial : {true, false}) {
+      NavigationControllerImpl controller;
+      controller.entry.initial = true;
+      controller.entry.overriding = requested_desktop;
+      controller.tree_.node.host.page.overriding = requested_desktop;
+      NavigationEntry* pending = new NavigationEntry(controller.entry);
+      pending->overriding = !requested_desktop;
+      controller.pending_entry_.pointer = pending;
+      controller.pending_entry_.owned = true;
+      controller.pending_entry_index_ = -1;
+
+      NavigationControllerAndroid android(&controller);
+      android.SetUseDesktopUserAgent(nullptr, requested_desktop,
+                                     /*reload_on_state_change=*/true,
+                                     skip_initial);
+      if (skip_initial) {
+        EXPECT(controller.Requests() == 0);
+        EXPECT(controller.pending_entry_.pointer == pending);
+        controller.DiscardPendingEntry(false);
+      } else {
+        EXPECT(controller.Requests() == 1);
+        controller.Commit();
+        EXPECT(controller.PageMode() == requested_desktop);
+      }
+    }
+  }
+}
+
 void Guards() {
   NavigationControllerImpl controller;
   NavigationControllerAndroid android(&controller);
@@ -263,6 +341,9 @@ int main(int argc, char** argv) {
     const std::string scenario = argv[1];
     if (scenario == "cycles") Cycles();
     else if (scenario == "guards") Guards();
+    else if (scenario == "pending_opposite") PendingOppositeMode();
+    else if (scenario == "pending_same") PendingSameMode();
+    else if (scenario == "pending_initial") PendingInitialEntry();
     else if (scenario == "deferred") Deferred(false);
     else if (scenario == "superseded") Deferred(true);
     else if (scenario == "retry") {

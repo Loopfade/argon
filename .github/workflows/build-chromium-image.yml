@@ -90,6 +90,8 @@ jobs:
         id: build
         if: steps.existing.outputs.exists != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: ${{ inputs.source_sha == '' && 'true' || 'false' }}
         with:
           context: .
           file: docker/chromium/Dockerfile

@@ -1,0 +1,67 @@
+// Chromium 52bdd21723d5db0c9ab11716d38feac74828cf84.
+    public @Nullable Tab createTabWithWebContents(
+            @Nullable Tab parent,
+            boolean shouldPin,
+            WebContents webContents,
+            @TabLaunchType int type,
+            int suggestedPosition,
+            CompletableFuture<Boolean> futureAddTabToModel) {
+        if (mTabModel == null || mOrderController == null) return null;
+        assert webContents != null;
+
+        // The parent tab was already closed. Do not open child tabs.
+        int parentId = parent != null ? parent.getId() : Tab.INVALID_TAB_ID;
+        if (mTabModel.isClosurePending(parentId)) return null;
+
+        // Measure tab creation duration for different launch types to understand tab creation
+        // performance using an existing WebContents.
+        try (TraceEvent te = TraceEvent.scoped("ChromeTabCreator.createTabWithWebContents")) {
+            final int position = evaluateNewTabPosition(suggestedPosition, parentId);
+            Profile tabProfile = assumeNonNull(Profile.fromWebContents(webContents));
+
+            boolean openInForeground = mOrderController.willOpenInForeground(type, mIncognito);
+            TabDelegateFactory delegateFactory =
+                    parent == null ? createDefaultTabDelegateFactory() : null;
+            Tab tab;
+            @TabCreationState int creationState;
+            if (webContents.getMainFrame() == null
+                    || !webContents.getMainFrame().isRenderFrameLive()) {
+                // The webContents may not have a renderer. Treat it as FROZEN_FOR_LAZY_LOAD
+                // so that the TabStateAttribute forces an immediate write.
+                tab =
+                        TabBuilder.createLazyTabWithWebContents(tabProfile)
+                                .setParent(parent)
+                                .setWindow(mNativeWindow)
+                                .setLaunchType(type)
+                                .setWebContents(webContents)
+                                .setDelegateFactory(delegateFactory)
+                                .setInitiallyHidden(!openInForeground)
+                                .setInitialPinState(shouldPin)
+                                .build();
+                creationState = TabCreationState.FROZEN_FOR_LAZY_LOAD;
+            } else {
+                tab =
+                        TabBuilder.createLiveTab(tabProfile, !openInForeground)
+                                .setParent(parent)
+                                .setWindow(mNativeWindow)
+                                .setLaunchType(type)
+                                .setWebContents(webContents)
+                                .setDelegateFactory(delegateFactory)
+                                .setInitiallyHidden(!openInForeground)
+                                .setInitialPinState(shouldPin)
+                                .build();
+                creationState =
+                        openInForeground
+                                ? TabCreationState.LIVE_IN_FOREGROUND
+                                : TabCreationState.LIVE_IN_BACKGROUND;
+            }
+            futureAddTabToModel.thenAccept(
+                    addTabToModel -> {
+                        if (addTabToModel) {
+                            assumeNonNull(mTabModel);
+                            mTabModel.addTab(tab, position, type, creationState);
+                        }
+                    });
+            return tab;
+        }
+    }

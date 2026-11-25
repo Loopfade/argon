@@ -31,6 +31,13 @@ python3 "$ROOT/.github/ci/check-domain-test-inputs.py" \
 # Exercise actual D8 packaging without starting a cold Android target build.
 python3 "$ROOT/.github/ci/check-exit-dex.py" --src "$src"
 
+# This modified native observer belongs to //chrome/browser/content_settings:impl.
+# Query its generated object on both ABIs; compile it on ARMv7 below.
+rds_observer_object=obj/chrome/browser/content_settings/impl/request_desktop_site_web_contents_observer_android.o
+# Compile the translation units for NTP state decoding and initial navigation.
+session_restore_object=obj/components/sessions/sessions/content_serialized_navigation_builder.o
+navigation_controller_object=obj/content/browser/browser/navigation_controller_impl.o
+
 # Validate the full Android graphs for both APK architectures before narrowing
 # the host-test graph. Query the same explicit JNI, Java and APK targets used by
 # build.sh; missing targets must fail validation before the manual build starts.
@@ -43,11 +50,16 @@ for arch in arm64 arm; do
     gn gen "$graph_out"
     ninja -C "$graph_out" -t query \
       obj/chrome/browser/android/android/argon_certificate_domains_settings.o \
+      obj/chrome/browser/android/android/argon_exit.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_home_ui.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_bookmarks_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_icon_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_theme_handler.o \
       obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \
+      "$rds_observer_object" \
+      "$session_restore_object" \
+      "$navigation_controller_object" \
+      obj/content/browser/browser/navigation_request.o \
       chrome_java chrome_public_apk > "$graph_out/argon-targets.txt"
   )
   echo "PASS: $arch Android graph contains the production JNI, Java and APK targets"
@@ -55,7 +67,8 @@ for arch in arm64 arm; do
 done
 
 # Compile the WebUI, theme and UA targets with the production toolchain: ARMv7 layout,
-# navigation/subresource UA-CH, ContentUtils JNI and complete browser Java sources.
+# navigation/subresource UA-CH, viewport scale restoration, RDS observer,
+# ContentUtils JNI and complete browser Java sources.
 (
   cd "$src"
   autoninja -C out/Argon-graph-arm -j 4 \
@@ -66,18 +79,29 @@ done
     obj/chrome/browser/ui/webui/argon_home/argon_home/argon_search_handler.o \
     obj/third_party/blink/renderer/core/core/computed_style.o \
     obj/chrome/browser/ui/android/night_mode/java.javac.jar \
+    "$rds_observer_object" \
+    "$session_restore_object" \
+    "$navigation_controller_object" \
     obj/chrome/browser/android/android/content_utils.o \
+    obj/chrome/browser/android/android/argon_exit.o \
     obj/components/embedder_support/user_agent/user_agent_utils.o \
     obj/content/browser/browser/client_hints.o \
     obj/content/browser/browser/render_process_host_impl.o \
     obj/content/browser/browser/navigation_controller_android.o \
+    obj/content/browser/browser/navigation_request.o \
+    obj/content/browser/browser/web_contents_impl.o \
+    obj/content/renderer/renderer/render_frame_impl.o \
+    obj/content/renderer/renderer/document_state.o \
     obj/third_party/blink/renderer/core/core/frame_fetch_context.o \
     chrome_java
 )
 echo "PASS: homepage WebUI controller, icon, search and theme handlers compiled"
+echo "PASS: restored NTP builder and navigation controller compiled"
 echo "PASS: ARMv7 ComputedStyle size assertion"
 echo "PASS: night mode Java module compiled"
-echo "PASS: User-Agent navigation, subresources, renderer flags, JNI and browser Java compiled"
+echo "PASS: RDS observer compiled against pinned Chromium native headers"
+echo "PASS: native Argon exit compiled against Chromium 158 per-profile archive API"
+echo "PASS: User-Agent navigation, scale restoration, subresources, renderer flags, JNI and browser Java compiled"
 
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert" "$src/chrome/browser/net"

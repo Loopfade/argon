@@ -1,0 +1,327 @@
+// Host adapters for the actual Chromium functions inserted below. Layout,
+// compositor scheduling and document transport are simulated; this does not
+// render a web page or replace an Android APK test.
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+
+#define EXPECT(value) do { if (!(value)) throw std::runtime_error(#value); } while (false)
+#define BUILDFLAG(name) name
+#define IS_ANDROID 1
+#define DCHECK(value) EXPECT(value)
+
+enum class WebFrameLoadType {
+  kStandard, kReload, kReloadBypassingCache, kReplaceCurrentItem, kBackForward, kRestore
+};
+bool IsBackForwardOrRestore(WebFrameLoadType t) {
+  return t == WebFrameLoadType::kBackForward || t == WebFrameLoadType::kRestore;
+}
+bool IsReloadLoadType(WebFrameLoadType t) {
+  return t == WebFrameLoadType::kReload || t == WebFrameLoadType::kReloadBypassingCache;
+}
+namespace mojom::blink {
+enum class ScrollRestorationType { kAuto, kManual };
+enum class ScrollBehavior { kAuto };
+enum class ScrollType { kProgrammatic };
+}
+namespace cc { enum class ScrollSourceType { kAbsoluteScroll }; }
+struct DocumentState;
+namespace blink {
+struct WebDocumentLoader {
+  struct ExtraData { virtual ~ExtraData() = default; };
+  DocumentState* state = nullptr;
+  ExtraData* GetExtraData() const;
+};
+}
+using WebDocumentLoader = blink::WebDocumentLoader;
+struct DocumentState : blink::WebDocumentLoader::ExtraData {
+  @STATE_PUBLIC@
+  @STATE_PRIVATE@
+  bool data_request = false;
+  std::string data;
+  int request = -1;
+  static DocumentState* FromDocumentLoader(WebDocumentLoader* loader) {
+    return static_cast<DocumentState*>(loader->GetExtraData());
+  }
+  void set_was_load_data_with_base_url_request(bool v) { data_request = v; }
+  void set_data_url(const std::string& v) { data = v; }
+  void set_request_id(int v) { request = v; }
+  // Match the private fields referenced by the actual Clone() implementation.
+  bool& was_load_data_with_base_url_request_ = data_request;
+  std::string& data_url_ = data;
+  int& request_id_ = request;
+  std::unique_ptr<blink::WebDocumentLoader::ExtraData> Clone();
+};
+blink::WebDocumentLoader::ExtraData* blink::WebDocumentLoader::GetExtraData() const {
+  return state;
+}
+struct HistoryItem {
+  struct ViewState { float page_scale_factor = 1.f; };
+  std::optional<ViewState> view_state;
+  const std::optional<ViewState>& GetViewState() const { return view_state; }
+  void ClearViewState() { view_state.reset(); }
+  mojom::blink::ScrollRestorationType ScrollRestorationType() const {
+    return mojom::blink::ScrollRestorationType::kAuto;
+  }
+};
+struct DocumentLoader : WebDocumentLoader {
+  HistoryItem item;
+  WebFrameLoadType type = WebFrameLoadType::kReload;
+  HistoryItem* GetHistoryItem() { return &item; }
+  bool NavigationScrollAllowed() const { return true; }
+  WebFrameLoadType LoadType() const { return type; }
+};
+struct ViewportData { int GetViewportDescription() { return 0; } };
+struct Document {
+  DocumentLoader* loader = nullptr;
+  ViewportData viewport_data;
+  DocumentLoader* Loader() { return loader; }
+  bool IsInitialEmptyDocument() const { return false; }
+  ViewportData& GetViewportData() { return viewport_data; }
+};
+struct ScrollOffset { bool zero = false; bool IsZero() const { return zero; } };
+struct ScrollableArea {
+  ScrollOffset offset;
+  std::optional<float> pending_scale;
+  ScrollOffset GetScrollOffset() const { return offset; }
+  void SetScrollOffset(ScrollOffset, mojom::blink::ScrollType, cc::ScrollSourceType) {
+    offset.zero = true;
+  }
+  void SetPendingHistoryRestoreScrollOffset(const HistoryItem::ViewState& v,
+      bool, mojom::blink::ScrollBehavior) { pending_scale = v.page_scale_factor; }
+};
+struct LocalFrameView {
+  ScrollableArea area;
+  ScrollableArea* LayoutViewport() { return &area; }
+  ScrollableArea* GetScrollableArea() { return &area; }
+  void ScheduleAnimation() {}
+};
+struct Page;
+struct FrameWidget { void SetPageScaleStateAndLimits(float, bool, float, float) {} };
+struct LocalFrame {
+  Page* page = nullptr;
+  Document* document = nullptr;
+  LocalFrameView view;
+  FrameWidget widget;
+  bool remote = false, outermost = true;
+  bool IsWebRemoteFrame() const { return remote; }
+  bool IsLocalFrame() const { return !remote; }
+  bool IsOutermostMainFrame() const { return outermost; }
+  bool IsAttached() const { return true; }
+  LocalFrame* ToWebLocalFrame() { return this; }
+  DocumentLoader* GetDocumentLoader() const { return document ? document->Loader() : nullptr; }
+  Document* GetDocument() { return document; }
+  LocalFrame* GetFrame() { return this; }
+  FrameWidget* FrameWidgetImpl() { return &widget; }
+  Page* GetPage() { return page; }
+  LocalFrameView* View() { return &view; }
+};
+using WebLocalFrame = LocalFrame;
+template <class T> T* DynamicTo(T* value) { return value && value->IsLocalFrame() ? value : nullptr; }
+struct VisualViewport {
+  float scale = .4f;
+  int resets = 0;
+  void Reset() { scale = 1.f; ++resets; }
+  float Scale() const { return scale; }
+  bool IsPinchGestureActive() const { return false; }
+};
+struct Page {
+  LocalFrame* frame = nullptr;
+  VisualViewport viewport;
+  LocalFrame* MainFrame() { return frame; }
+  LocalFrame* DeprecatedLocalMainFrame() { return frame; }
+  VisualViewport& GetVisualViewport() { return viewport; }
+};
+struct PageScaleConstraintsSet {
+  struct { float initial_scale = 1.f, minimum_scale = .25f, maximum_scale = 5.f; } final;
+  bool needs_reset = false;
+  void SetNeedsReset(bool v) { needs_reset = v; }
+  bool NeedsReset() const { return needs_reset; }
+  auto& FinalConstraints() { return final; }
+  void ComputeFinalConstraints() {}
+};
+struct WebViewImpl {
+  Page* page;
+  explicit WebViewImpl(Page* value) : page(value) {}
+  PageScaleConstraintsSet constraints;
+  bool does_composite_ = false;
+  bool last_page_lifecycle_state_update_restored_from_bfcache_ = false;
+  LocalFrame* MainFrame() { return page->MainFrame(); }
+  LocalFrame* MainFrameImpl() { return page->MainFrame(); }
+  Page* GetPage() { return page; }
+  PageScaleConstraintsSet& GetPageScaleConstraintsSet() { return constraints; }
+  float PageScaleFactor() const { return page->viewport.scale; }
+  float MinimumPageScaleFactor() const { return constraints.final.minimum_scale; }
+  float MaximumPageScaleFactor() const { return constraints.final.maximum_scale; }
+  void SetPageScaleFactor(float v) {
+    page->viewport.scale = std::clamp(v, MinimumPageScaleFactor(), MaximumPageScaleFactor());
+  }
+  void UpdatePageDefinedViewportConstraints(int) {}
+  void ResetScrollAndScaleState();
+  void RefreshPageScaleFactor();
+};
+struct FrameLoader {
+  LocalFrame* frame_;
+  DocumentLoader* GetDocumentLoader() { return frame_->GetDocumentLoader(); }
+  static bool NeedsHistoryItemRestore(WebFrameLoadType);
+  void RestoreScrollPositionAndViewState();
+  void RestoreScrollPositionAndViewState(WebFrameLoadType, const HistoryItem::ViewState&,
+      mojom::blink::ScrollRestorationType, mojom::blink::ScrollBehavior);
+};
+struct RenderFrameImpl {
+  LocalFrame* frame_;
+  WebViewImpl* web_view;
+  struct CommitParams {
+    bool reset_history_view_state_for_user_agent_change = false;
+  } params;
+  CommitParams* commit_params = &params;
+  WebViewImpl* GetWebView() const { return web_view; }
+  bool ShouldUseUserAgentOverride() const;
+  void Prepare(DocumentState* document_state, WebFrameLoadType load_type) {
+    @PREPARE_SCALE@
+  }
+  void DidCommit(DocumentState* document_state) {
+    @COMMIT_SCALE@
+  }
+};
+
+@PRODUCTION_METHODS@
+
+struct Flow {
+  DocumentState current;
+  DocumentLoader loader;
+  Document document;
+  LocalFrame frame;
+  Page page;
+  WebViewImpl web{&page};
+  FrameLoader history{&frame};
+  RenderFrameImpl renderer{&frame, &web, {}, nullptr};
+  bool has_history_view_state = true;
+  Flow() {
+    renderer.commit_params = &renderer.params;
+    document.loader = &loader; frame.document = &document;
+    frame.page = &page; page.frame = &frame; loader.state = &current;
+  }
+  void Navigate(bool desktop, WebFrameLoadType type, float initial) {
+    DocumentState next;
+    next.set_is_overriding_user_agent(desktop);
+    renderer.Prepare(&next, type);
+    // At Blink commit the new HistoryItem contains the previous view state.
+    loader.item.view_state = HistoryItem::ViewState{page.viewport.scale};
+    if (!has_history_view_state) loader.item.ClearViewState();
+    loader.type = type;
+    loader.state = &next;
+    renderer.DidCommit(&next);
+    history.RestoreScrollPositionAndViewState();
+    auto& pending = frame.view.area.pending_scale;
+    if (pending) { page.viewport.scale = *pending; pending.reset(); }
+    web.constraints.final.initial_scale = initial;
+    web.RefreshPageScaleFactor();
+    current.set_is_overriding_user_agent(desktop);
+    loader.state = &current;
+  }
+};
+
+int main(int argc, char** argv) {
+  try {
+    EXPECT(argc == 2);
+    const std::string scenario = argv[1];
+    Flow f;
+    if (scenario == "switch" || scenario == "redirect") {
+      const auto type = scenario == "switch" ? WebFrameLoadType::kReload
+                                             : WebFrameLoadType::kReplaceCurrentItem;
+      for (bool desktop : {true, false, true, false}) {
+        // The current scale is valid in both modes, so clamping cannot fix it.
+        const float initial = desktop ? .4f : .8f;
+        f.page.viewport.scale = 2.f;  // Include manual pinch zoom before switching.
+        f.Navigate(desktop, type, initial);
+        EXPECT(f.page.viewport.scale == initial);
+        EXPECT(!f.loader.item.GetViewState());
+      }
+      EXPECT(f.page.viewport.resets == 4);
+      f.Navigate(true, WebFrameLoadType::kReloadBypassingCache, .4f);
+      EXPECT(f.page.viewport.scale == .4f && f.page.viewport.resets == 5);
+    } else if (scenario == "history_without_view_state") {
+      f.has_history_view_state = false;
+      for (bool desktop : {false, true}) {
+        for (auto type : {WebFrameLoadType::kBackForward, WebFrameLoadType::kRestore}) {
+          f.current.set_is_overriding_user_agent(desktop);
+          f.page.viewport.scale = 2.5f;
+          f.Navigate(desktop, type, .8f);
+          EXPECT(f.page.viewport.scale == 2.5f && f.page.viewport.resets == 0);
+        }
+      }
+    } else if (scenario == "history_ua_change") {
+      f.renderer.params.reset_history_view_state_for_user_agent_change = true;
+      for (bool desktop : {false, true}) {
+        for (auto type : {WebFrameLoadType::kBackForward, WebFrameLoadType::kRestore}) {
+          // The current/new documents have the same mode. The target entry
+          // used the opposite UA, so NavigationRequest cleared its viewport.
+          f.current.set_is_overriding_user_agent(desktop);
+          f.page.viewport.scale = 2.5f;
+          f.has_history_view_state = false;
+          const float initial = desktop ? .4f : .8f;
+          f.Navigate(desktop, type, initial);
+          EXPECT(f.page.viewport.scale == initial);
+          EXPECT(!f.loader.item.GetViewState());
+        }
+      }
+      EXPECT(f.page.viewport.resets == 4);
+    } else if (scenario == "normal_reload" || scenario == "history") {
+      for (bool desktop : {false, true}) {
+        f.current.set_is_overriding_user_agent(desktop);
+        f.page.viewport.scale = 2.5f;
+        if (scenario == "normal_reload") {
+          f.Navigate(desktop, WebFrameLoadType::kReload, .8f);
+          EXPECT(f.page.viewport.scale == 2.5f);
+          f.Navigate(desktop, WebFrameLoadType::kReloadBypassingCache, .8f);
+        } else {
+          f.Navigate(!desktop, WebFrameLoadType::kBackForward, .8f);
+          f.Navigate(desktop, WebFrameLoadType::kRestore, .8f);
+        }
+        EXPECT(f.page.viewport.scale == 2.5f && f.page.viewport.resets == 0);
+      }
+    } else if (scenario == "cancel") {
+      for (bool desktop : {false, true}) {
+        f.current.set_is_overriding_user_agent(desktop);
+        f.page.viewport.scale = 1.7f;
+        { DocumentState abandoned; abandoned.set_is_overriding_user_agent(!desktop);
+          f.renderer.Prepare(&abandoned, WebFrameLoadType::kReload); }
+        EXPECT(f.page.viewport.scale == 1.7f && f.page.viewport.resets == 0);
+        EXPECT(f.current.is_overriding_user_agent() == desktop);
+      }
+    } else if (scenario == "subframe") {
+      f.frame.outermost = false;
+      f.Navigate(true, WebFrameLoadType::kReload, .8f);
+      EXPECT(f.page.viewport.scale == .4f && f.page.viewport.resets == 0);
+    } else if (scenario == "clone") {
+      f.current.set_is_overriding_user_agent(true);
+      f.current.set_reset_scroll_and_scale_state(true);
+      auto clone = f.current.Clone();
+      auto* state = static_cast<DocumentState*>(clone.get());
+      EXPECT(state->is_overriding_user_agent());
+      EXPECT(!state->TakeResetScrollAndScaleState());
+      EXPECT(f.current.TakeResetScrollAndScaleState());
+      EXPECT(!f.current.TakeResetScrollAndScaleState());
+    } else if (scenario == "remote") {
+      f.frame.remote = true;
+      EXPECT(!f.renderer.ShouldUseUserAgentOverride());
+      DocumentState next; next.set_is_overriding_user_agent(false);
+      f.renderer.Prepare(&next, WebFrameLoadType::kReload);
+      EXPECT(!next.TakeResetScrollAndScaleState());
+    } else if (scenario == "one_shot") {
+      DocumentState next; next.set_is_overriding_user_agent(true);
+      f.renderer.Prepare(&next, WebFrameLoadType::kReload);
+      f.loader.state = &next;
+      f.renderer.DidCommit(&next);
+      EXPECT(f.page.viewport.resets == 1);
+      f.page.viewport.scale = 2.f;
+      f.renderer.DidCommit(&next);
+      EXPECT(f.page.viewport.scale == 2.f && f.page.viewport.resets == 1);
+    } else throw std::runtime_error("Unknown scenario");
+    std::cout << "PASS: " << scenario << '\n';
+  } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
+}
