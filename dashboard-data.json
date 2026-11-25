@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-25T08:01:31Z",
+  "generated_at": "2026-11-25T08:02:56Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -87775,39 +87775,46 @@
   ],
   "open_prs": [
     {
-      "number": 97,
-      "title": "Merge upstream Titanium (4 commits)",
-      "html_url": "https://github.com/Loopfade/argon/pull/97",
+      "number": 98,
+      "title": "Merge Titanium upstream and align Chromium 158.0.8127.92",
+      "html_url": "https://github.com/Loopfade/argon/pull/98",
       "state": "open",
       "draft": false,
-      "created_at": "2026-11-25T08:01:07Z",
-      "updated_at": "2026-11-25T08:01:07Z",
+      "created_at": "2026-11-25T08:02:24Z",
+      "updated_at": "2026-11-25T08:02:24Z",
       "merged_at": null,
-      "head_sha": "124ac01c99f174acc8477711f132cf7c3d52d720",
-      "merge_commit_sha": null,
+      "head_sha": "ac930d7788cef4411bc51df314739f5dd3075fcf",
+      "merge_commit_sha": "8b30a1ee65f0a7a0e768e6cb02faad2edcc34c5c",
       "author": "Loopfade",
-      "additions": 7,
-      "deletions": 3,
-      "changed_files": 2,
-      "commits": 4,
+      "additions": 9,
+      "deletions": 6,
+      "changed_files": 3,
+      "commits": 5,
       "comparison": {
         "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-        "head_sha": "124ac01c99f174acc8477711f132cf7c3d52d720",
-        "status": "diverged",
-        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...124ac01c99f174acc8477711f132cf7c3d52d720",
-        "commits": 4,
+        "head_sha": "ac930d7788cef4411bc51df314739f5dd3075fcf",
+        "status": "ahead",
+        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...ac930d7788cef4411bc51df314739f5dd3075fcf",
+        "commits": 5,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 2,
-        "additions": 7,
-        "deletions": 3,
+        "changed_files": 3,
+        "additions": 9,
+        "deletions": 6,
         "files": [
+          {
+            "filename": "build-lock.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 4,
+            "deletions": 4
+          },
           {
             "filename": "patch.sh",
             "previous_filename": null,
             "status": "modified",
-            "additions": 6,
-            "deletions": 2
+            "additions": 4,
+            "deletions": 1
           },
           {
             "filename": "vanadium",
@@ -98440,30 +98447,38 @@
         }
       ]
     },
-    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...124ac01c99f174acc8477711f132cf7c3d52d720": {
+    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...ac930d7788cef4411bc51df314739f5dd3075fcf": {
       "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-      "head_sha": "124ac01c99f174acc8477711f132cf7c3d52d720",
-      "status": "diverged",
-      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...124ac01c99f174acc8477711f132cf7c3d52d720",
-      "commits": 4,
+      "head_sha": "ac930d7788cef4411bc51df314739f5dd3075fcf",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...ac930d7788cef4411bc51df314739f5dd3075fcf",
+      "commits": 5,
       "commit_shas": [
         "124ac01c99f174acc8477711f132cf7c3d52d720",
         "9b3a181e48d2223c6482c855d1845ba51b5d0321",
         "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
+        "ac930d7788cef4411bc51df314739f5dd3075fcf",
         "cbed49d59c118e9d4403591fa426a45ad7d18d78"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 2,
-      "additions": 7,
-      "deletions": 3,
+      "changed_files": 3,
+      "additions": 9,
+      "deletions": 6,
       "files": [
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 4
+        },
         {
           "filename": "patch.sh",
           "previous_filename": null,
           "status": "modified",
-          "additions": 6,
-          "deletions": 2
+          "additions": 4,
+          "deletions": 1
         },
         {
           "filename": "vanadium",
