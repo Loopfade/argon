@@ -1,0 +1,40 @@
+// Chromium 52bdd21723d5db0c9ab11716d38feac74828cf84.
+#include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+// Computes the value that should be set for the User-Agent header, if
+// `user_agent_override` is non-empty, `user_agent_override` is returned as the
+// header value.
+std::string ComputeUserAgentValue(const std::string& user_agent_override) { return user_agent_override; }
+void NavigationRequest::SetIsOverridingUserAgent(bool override_ua) {
+  // Only add specific headers when creating a NavigationRequest before the
+  // network request is made, not at commit time.
+  if (is_synchronous_renderer_commit_) {
+    return;
+  }
+
+  // This code assumes it is only called from DidStartNavigation().
+  CHECK(!ua_change_requires_reload_);
+
+  commit_params_->is_overriding_user_agent = override_ua;
+  // The new document, created by this navigation, will be honoring the new
+  // value. It will be reflected into its NavigationEntry's when committing the
+  // new document at DidCommitNavigation time.
+
+  net::HttpRequestHeaders headers;
+  headers.AddHeadersFromString(begin_params_->headers);
+  BrowserContext* browser_context =
+      frame_tree_node_->navigator().controller().GetBrowserContext();
+  ClientHintsControllerDelegate* client_hints_delegate =
+      browser_context->GetClientHintsControllerDelegate();
+  if (client_hints_delegate) {
+    UpdateNavigationRequestClientUaHeaders(
+        GetTentativeOriginAtRequestTime(), client_hints_delegate,
+        is_overriding_user_agent(), frame_tree_node_, &headers,
+        common_params_->url);
+  }
+  headers.SetHeader(net::HttpRequestHeaders::kUserAgent,
+                    ComputeUserAgentValue(GetUserAgentOverride()));
+  begin_params_->headers = headers.ToString();
+  // |request_headers_| comes from |begin_params_|. Clear |request_headers_| now
+  // so that if |request_headers_| are needed, they will be updated.
+  request_headers_.reset();
+}

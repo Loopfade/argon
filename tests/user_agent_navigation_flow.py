@@ -17,7 +17,10 @@ CONTROLLER_METHODS = (
     "void NavigationControllerImpl::LoadOriginalRequestURL(",
     "void NavigationControllerImpl::DiscardPendingEntry(",
 )
-SCENARIOS = ("cycles", "guards", "retry", "no_reload", "deferred", "superseded")
+SCENARIOS = (
+    "cycles", "guards", "retry", "no_reload", "deferred", "superseded",
+    "pending_opposite", "pending_same", "pending_initial",
+)
 
 
 def methods(source, names):

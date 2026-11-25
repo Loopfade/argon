@@ -15,6 +15,7 @@
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_util.h"
@@ -274,9 +275,19 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
   }
 
   void HomeReady(const base::ListValue& args) {
-    if (!args.empty() || !IsJavascriptAllowed() || bridge_.is_null()) return;
+    if (!args.empty()) return;
+    // The first themed frame can arrive before the search service sends state.
+    AllowJavascript();
+    if (bridge_.is_null()) {
+      VLOG(1) << "ArgonHome: home-ready ignored (bridge unavailable)";
+      return;
+    }
     auto* frame = web_ui()->GetWebContents()->GetPrimaryMainFrame();
-    if (!frame) return;
+    if (!frame) {
+      LOG(WARNING) << "ArgonHome: home-ready missing primary frame";
+      return;
+    }
+    VLOG(1) << "ArgonHome: home-ready scheduling visual-state callback";
     // Wait for the configured DOM to reach a renderer frame before releasing
     // Android's launch cover. Stop() invalidates callbacks from old documents.
     frame->InsertVisualStateCallback(base::BindOnce(
@@ -298,10 +309,17 @@ class ArgonSearchHandler final : public content::WebUIMessageHandler,
   }
 
   void OnFirstFrameReady(bool success) {
-    if (success && IsJavascriptAllowed() && !bridge_.is_null()) {
-      Java_ArgonHomeBridge_onFirstFrameReady(
-          base::android::AttachCurrentThread(), bridge_);
+    if (!success) {
+      LOG(WARNING) << "ArgonHome: visual-state callback failed";
+      return;
     }
+    if (!IsJavascriptAllowed() || bridge_.is_null()) {
+      VLOG(1) << "ArgonHome: visual-state callback ignored after detach";
+      return;
+    }
+    VLOG(1) << "ArgonHome: firstFrameReady";
+    Java_ArgonHomeBridge_onFirstFrameReady(
+        base::android::AttachCurrentThread(), bridge_);
   }
 
   raw_ptr<TemplateURLService> service_ = nullptr;

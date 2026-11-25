@@ -16,6 +16,16 @@ export async function checkNativeSearch(browser, base, errors, out) {
         "}",
       ].join('\n'),
     }));
+    await context.route('**/browser-bookmarks.js',route=>route.fulfill({
+      contentType:'text/javascript',
+      body:[
+        "export * from './browser-bookmarks-production.js';",
+        "import {connectBrowserBookmarks as connect} from './browser-bookmarks-production.js';",
+        "export function connectBrowserBookmarks(onState) {",
+        "  return connect(onState,globalThis.argonNativeFixture.bindings);",
+        "}",
+      ].join('\n'),
+    }));
     const original={schemaVersion:2,theme:'amoled',engine:'duck',customEngines:[],
       showLabels:true,newTab:true,density:'compact',
       background:{source:'custom',image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII='},
@@ -40,7 +50,7 @@ export async function checkNativeSearch(browser, base, errors, out) {
         send(name,args){
           f.calls.push([name,...args]);
           if(name==='argonHomeReady')f.readyFrames.push({
-            provider:document.querySelector('#selected-engine-name').textContent,
+            searchVisibility:getComputedStyle(document.querySelector('#search-form')).visibility,
             theme:document.documentElement.dataset.theme,
             visibility:getComputedStyle(document.body).visibility,
             background:!document.querySelector('#home-background').hidden,
@@ -54,6 +64,10 @@ export async function checkNativeSearch(browser, base, errors, out) {
         async sendWithPromise(name,...args){
           f.calls.push([name,...args]);
           if(name==='getArgonSearchState'){await startup;return structuredClone(f.state);}
+          if(name==='getArgonBookmarks'){
+            await startup;
+            return {available:false,ready:false,canEdit:false,revision:1,roots:[]};
+          }
           if(name==='focusArgonOmnibox'){
             if(f.blocked)return false;
             f.emit('argon-search-box-state',{alpha:0,focused:true});
@@ -69,6 +83,8 @@ export async function checkNativeSearch(browser, base, errors, out) {
           throw Error('Unexpected native message: '+name);
         },
       };
+      window.chrome ??= {};
+      window.chrome.send=f.bindings.send;
     },original);
     const page=await context.newPage();
     page.on('pageerror',error=>errors.push(error.message));
@@ -79,23 +95,26 @@ export async function checkNativeSearch(browser, base, errors, out) {
     const focusCount=number=>page.waitForFunction(count=>window.argonNativeFixture.calls
       .filter(call=>call[0]==='focusArgonOmnibox').length>=count,number);
     await page.goto(base);
-    assert.equal(await page.locator('body').evaluate(node=>getComputedStyle(node).visibility),'hidden',
-      'Saved DuckDuckGo provider must not be painted before the browser replies with Google');
+    await page.waitForFunction(()=>window.argonNativeFixture.readyFrames.length>0,null,{timeout:3000});
+    const startupRequests=await native(()=>window.argonNativeFixture.calls.map(([name])=>name));
+    assert(startupRequests.includes('getArgonSearchState')&&startupRequests.includes('getArgonBookmarks'));
+    assert.deepEqual(await native(()=>window.argonNativeFixture.readyFrames[0]),
+      {searchVisibility:'hidden',theme:'amoled',visibility:'visible',background:true,themeIcon:'#i-amoled'},
+      'Home must paint with its theme and background while the browser provider and bookmarks are pending');
+    assert(await page.getByText('Загрузка закладок…',{exact:true}).isVisible(),
+      'Bookmarks must show their loading state until the browser replies');
     // A draft can also arrive through restoration/autofill before the bridge.
     await native(()=>{document.querySelector('#search-input').value='черновик запроса';});
     await native(()=>window.argonNativeFixture.release());
     await focusCount(1);
-    await page.waitForFunction(()=>window.argonNativeFixture.readyFrames.length===1);
-    assert.deepEqual(await native(()=>window.argonNativeFixture.readyFrames[0]),
-      {provider:'Google',theme:'amoled',visibility:'visible',background:true,themeIcon:'#i-amoled'},
-      'First native frame acknowledgement must follow provider, theme, image decoding and theme button configuration');
     assert.equal(await page.locator('#search-input').evaluate(node=>node.tagName),'BUTTON');
     assert.equal(await native(()=>window.argonNativeFixture.calls
       .find(call=>call[0]==='focusArgonOmnibox')[1]),'черновик запроса');
     assert.equal(await page.locator('#selected-engine-name').textContent(),'Google');
     assert.deepEqual(await state(),original,'Native provider updates must not rewrite homepage data');
     assert.deepEqual((await native(()=>window.argonNativeFixture.listenerCalls)).sort(),
-      ['argon-search-box-state','argon-search-state-changed'],'Startup and pageshow must share one connector');
+      ['argon-bookmarks-changed','argon-search-box-state','argon-search-state-changed'],
+      'Startup and pageshow must share one connector per service');
 
     await restore();
     await page.locator('#search-input').click();

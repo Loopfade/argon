@@ -1,0 +1,311 @@
+// Execute Chromium's real sanitizer and ToNavigationEntry. The adapters retain
+// separate entry URL and per-frame PageState, as in NavigationEntryImpl.
+#include <cassert>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
+#define BUILDFLAG(flag) flag
+#define DCHECK(value) assert(value)
+#define DCHECK_EQ(a, b) assert((a) == (b))
+struct GURL {
+  std::string value;
+  GURL() = default;
+  explicit GURL(std::string text) : value(std::move(text)) {}
+  explicit GURL(std::u16string text) : value(text.begin(), text.end()) {}
+  struct Replacements {
+    std::string scheme;
+    void SetSchemeStr(const char* value) { scheme = value; }
+  };
+  GURL ReplaceComponents(const Replacements& replacement) const {
+    return GURL(replacement.scheme + value.substr(value.find(':')));
+  }
+  bool is_empty() const { return value.empty(); }
+  bool SchemeIs(const char* scheme) const { return value.starts_with(std::string(scheme) + ":"); }
+  std::string host() const {
+    auto start = value.find("://");
+    if (start == std::string::npos) return "";
+    start += 3;
+    return value.substr(start, value.find_first_of("/?#", start) - start);
+  }
+  const std::string& spec() const { return value; }
+  friend bool operator==(const GURL&, const GURL&) = default;
+};
+namespace base {
+std::u16string UTF8ToUTF16(const std::string& text) { return {text.begin(), text.end()}; }
+}
+namespace network::mojom { enum class ReferrerPolicy { kDefault = 0 }; }
+namespace ui { constexpr int PAGE_TRANSITION_RELOAD = 1; }
+namespace url { struct Origin {}; }
+namespace blink {
+struct ExplodedFrameState {
+  std::optional<std::u16string> url_string;
+  std::u16string document_state = u"typed form", state_object = u"history state";
+  std::string http_body = "POST=body";
+  long item_sequence_number = 17, document_sequence_number = 19;
+  double page_scale_factor = 2.5;
+  std::vector<ExplodedFrameState> children;
+  friend bool operator==(const ExplodedFrameState&, const ExplodedFrameState&) = default;
+};
+struct ExplodedPageState {
+  ExplodedFrameState top;
+  std::vector<std::u16string> referenced_files{u"upload.txt"};
+  friend bool operator==(const ExplodedPageState&, const ExplodedPageState&) = default;
+};
+std::map<std::string, ExplodedPageState> states;
+void EncodePageState(const ExplodedPageState& state, std::string* encoded) {
+  *encoded = "state-" + std::to_string(states.size());
+  states[*encoded] = state;
+}
+bool DecodePageState(const std::string& encoded, ExplodedPageState* state) {
+  auto found = states.find(encoded);
+  if (found == states.end()) return false;
+  *state = found->second;
+  return true;
+}
+struct PageState {
+  std::string encoded;
+  static PageState CreateFromEncodedData(std::string value) { return {std::move(value)}; }
+  static PageState CreateFromURL(const GURL& url) {
+    ExplodedPageState state;
+    state.top.url_string = base::UTF8ToUTF16(url.spec());
+    std::string encoded;
+    EncodePageState(state, &encoded);
+    return {encoded};
+  }
+  const std::string& ToEncodedData() const { return encoded; }
+};
+}
+namespace content {
+constexpr char kChromeUIScheme[] = "chrome";
+struct Referrer {
+  GURL url;
+  int policy = 0;
+  Referrer() = default;
+  Referrer(GURL u, int p) : url(std::move(u)), policy(p) {}
+  static int ConvertToPolicy(int p) { return p; }
+  static Referrer SanitizeForRequest(const GURL&, Referrer referrer) { return referrer; }
+};
+struct BrowserContext {
+  bool incognito = false;
+  GURL policy_home, extension_home;
+  bool IsOffTheRecord() const { return incognito; }
+};
+struct NavigationEntryRestoreContext {};
+struct NavigationEntry {
+  GURL actual_url, virtual_url, original;
+  blink::PageState frame_state;
+  Referrer referrer;
+  std::u16string title;
+  bool post = false, desktop = false;
+  long post_id = -1;
+  int timestamp = 0, status = 0;
+  std::vector<GURL> redirects;
+  const GURL& GetURL() const { return actual_url; }
+  void SetURL(const GURL& url) { actual_url = url; }
+  void SetPageState(blink::PageState state, NavigationEntryRestoreContext*) {
+    blink::ExplodedPageState decoded;
+    if (!blink::DecodePageState(state.ToEncodedData(), &decoded)) {
+      frame_state = blink::PageState::CreateFromURL(actual_url);
+      return;
+    }
+    actual_url = GURL(decoded.top.url_string.value_or(std::u16string()));
+    frame_state = std::move(state);
+  }
+  blink::PageState GetPageState() const {
+    // RecursivelyGenerateFrameState rewrites URL from FrameNavigationEntry.
+    auto decoded = blink::states.at(frame_state.ToEncodedData());
+    decoded.top.url_string = base::UTF8ToUTF16(actual_url.spec());
+    std::string encoded;
+    blink::EncodePageState(decoded, &encoded);
+    return {encoded};
+  }
+  void SetReferrer(Referrer value) { referrer = std::move(value); }
+  void SetTitle(std::u16string value) { title = std::move(value); }
+  void SetHasPostData(bool value) { post = value; }
+  void SetPostID(long value) { post_id = value; }
+  void SetOriginalRequestURL(GURL value) { original = std::move(value); }
+  void SetIsOverridingUserAgent(bool value) { desktop = value; }
+  void SetTimestamp(int value) { timestamp = value; }
+  void SetHttpStatusCode(int value) { status = value; }
+  void SetRedirectChain(std::vector<GURL> value) { redirects = std::move(value); }
+  void SetVirtualURL(GURL value) { virtual_url = std::move(value); }
+};
+struct NavigationController {
+  static std::unique_ptr<NavigationEntry> CreateNavigationEntry(
+      GURL url, Referrer referrer, std::optional<url::Origin>, std::optional<GURL>,
+      int, bool, std::string, BrowserContext* profile, std::nullptr_t) {
+    auto entry = std::make_unique<NavigationEntry>();
+    entry->actual_url = url;
+    if (url.host() == "newtab" && (url.SchemeIs("chrome") || url.SchemeIs("chrome-native"))) {
+      // Chromium runs the policy and extension handlers first. They require
+      // chrome://, whereas Argon's built-in handler also accepts chrome-native://.
+      if (profile->IsOffTheRecord()) {
+        entry->actual_url = GURL("chrome-native://newtab/");
+      } else if (url.SchemeIs("chrome") && !profile->policy_home.is_empty()) {
+        entry->actual_url = profile->policy_home;
+      } else if (url.SchemeIs("chrome") && !profile->extension_home.is_empty()) {
+        entry->actual_url = profile->extension_home;
+      } else {
+        entry->actual_url = GURL("chrome://argon/");
+      }
+    }
+    entry->referrer = std::move(referrer);
+    entry->frame_state = blink::PageState::CreateFromURL(entry->actual_url);
+    return entry;
+  }
+};
+}
+namespace chrome {
+constexpr char kChromeUINewTabHost[] = "newtab";
+constexpr char kChromeUINativeNewTabURL[] = "chrome-native://newtab/";
+}
+namespace sessions {
+struct SerializedNavigationEntry {
+  GURL virtual_url_, original_request_url_, referrer_url_;
+  int referrer_policy_ = 0, timestamp_ = 42, http_status_code_ = 200;
+  std::string encoded_page_state_;
+  std::u16string title_ = u"saved tab";
+  bool has_post_data_ = false, is_overriding_user_agent_ = false;
+  long post_id_ = -1;
+  std::vector<GURL> redirect_chain_;
+  std::map<std::string, std::string> extended_info_map_;
+  static constexpr int STATE_INVALID = 0;
+  int blocked_state_ = STATE_INVALID;
+  int task_id() const { return 1; }
+  int parent_task_id() const { return 2; }
+  int root_task_id() const { return 3; }
+  const GURL& virtual_url() const { return virtual_url_; }
+  const GURL& referrer_url() const { return referrer_url_; }
+  int referrer_policy() const { return referrer_policy_; }
+  const std::string& encoded_page_state() const { return encoded_page_state_; }
+  void set_virtual_url(GURL value) { virtual_url_ = std::move(value); }
+  void set_original_request_url(GURL value) { original_request_url_ = std::move(value); }
+  void set_encoded_page_state(std::string value) { encoded_page_state_ = std::move(value); }
+  void set_referrer_url(GURL value) { referrer_url_ = std::move(value); }
+  void set_referrer_policy(int value) { referrer_policy_ = value; }
+};
+struct SerializedNavigationDriver {
+  static SerializedNavigationDriver* Get() { static SerializedNavigationDriver value; return &value; }
+  int GetDefaultReferrerPolicy() const { return 0; }
+  std::string StripReferrerFromPageState(std::string value) { return value; }
+};
+struct ExtendedInfoHandler { void RestoreExtendedInfo(const std::string&, content::NavigationEntry*) {} };
+struct ContentSerializedNavigationDriver {
+  using ExtendedInfoHandlerMap = std::map<std::string, std::unique_ptr<ExtendedInfoHandler>>;
+  static ContentSerializedNavigationDriver* GetInstance() { static ContentSerializedNavigationDriver value; return &value; }
+  const ExtendedInfoHandlerMap& GetAllExtendedInfoHandlers() const { static ExtendedInfoHandlerMap value; return value; }
+};
+struct NavigationTaskId {
+  static NavigationTaskId* Get(content::NavigationEntry*) { static NavigationTaskId value; return &value; }
+  void set_id(int) {} void set_parent_id(int) {} void set_root_id(int) {}
+};
+struct ContentSerializedNavigationBuilder {
+  static std::unique_ptr<content::NavigationEntry> ToNavigationEntry(
+      const SerializedNavigationEntry*, content::BrowserContext*, content::NavigationEntryRestoreContext*);
+};
+@RESTORE_METHOD@
+}
+struct ChromeSerializedNavigationDriver { void Sanitize(sessions::SerializedNavigationEntry*) const; };
+@CHANGE_DESTINATION@
+@SANITIZE_METHOD@
+
+void check(bool value, const char* message) {
+  if (!value) throw std::runtime_error(message);
+}
+sessions::SerializedNavigationEntry saved(const std::string& visible, const std::string& actual) {
+  sessions::SerializedNavigationEntry result;
+  result.virtual_url_ = GURL(visible);
+  result.original_request_url_ = GURL(visible);
+  auto page = blink::PageState::CreateFromURL(GURL(actual));
+  result.encoded_page_state_ = page.ToEncodedData();
+  return result;
+}
+std::unique_ptr<content::NavigationEntry> restore(
+    sessions::SerializedNavigationEntry& nav, content::BrowserContext& profile) {
+  content::NavigationEntryRestoreContext context;
+  return sessions::ContentSerializedNavigationBuilder::ToNavigationEntry(&nav, &profile, &context);
+}
+void run() {
+  content::BrowserContext profile;
+  ChromeSerializedNavigationDriver sanitizer;
+  for (const auto& alias : {"chrome://newtab/", "chrome-native://newtab/"}) {
+    auto home = saved(alias, "chrome://argon/");
+    for (int round = 0; round < 3; ++round) {
+      sanitizer.Sanitize(&home);
+      auto entry = restore(home, profile);
+      check(entry->actual_url == GURL("chrome://argon/"), "restored entry URL is not Argon");
+      auto frame = blink::states.at(entry->frame_state.ToEncodedData());
+      check(GURL(frame.top.url_string.value()) == entry->actual_url,
+            "renderer still receives chrome-native://newtab/ in per-frame PageState");
+      check(entry->virtual_url == home.virtual_url_ && entry->timestamp == 42,
+            "restore changed display URL or history metadata");
+      home.encoded_page_state_ = entry->GetPageState().ToEncodedData();
+    }
+  }
+  profile.extension_home = GURL("chrome-extension://example/home.html");
+  for (bool managed : {false, true}) {
+    if (managed) profile.policy_home = GURL("https://policy.example/start");
+    const GURL& replacement = managed ? profile.policy_home : profile.extension_home;
+    for (const auto& alias : {"chrome://newtab/", "chrome-native://newtab/"}) {
+      auto nav = saved(alias, alias);
+      sanitizer.Sanitize(&nav);
+      auto entry = restore(nav, profile);
+      check(entry->actual_url == replacement, "saved native NTP bypassed profile override");
+      const auto& frame = blink::states.at(entry->frame_state.ToEncodedData());
+      check(GURL(frame.top.url_string.value()) == replacement, "override lost in renderer PageState");
+      check(entry->virtual_url == nav.virtual_url_, "override changed the saved display URL");
+    }
+    auto mixed_aliases = saved("chrome-native://newtab/", "chrome://newtab/");
+    auto entry = restore(mixed_aliases, profile);
+    const auto& frame = blink::states.at(entry->frame_state.ToEncodedData());
+    check(GURL(frame.top.url_string.value()) == replacement,
+          "override lost when the saved frame uses the canonical NTP alias");
+  }
+  auto direct = saved("chrome://argon/", "chrome://argon/");
+  check(restore(direct, profile)->actual_url == GURL("chrome://argon/"),
+        "profile override replaced an explicit Argon home");
+  profile.incognito = true;
+  for (const auto& alias : {"chrome://newtab/", "chrome-native://newtab/"}) {
+    auto private_home = saved(alias, alias);
+    sanitizer.Sanitize(&private_home);
+    auto private_entry = restore(private_home, profile);
+    check(private_entry->actual_url == GURL("chrome-native://newtab/"), "incognito changed to regular home");
+  }
+  profile.incognito = false;
+  profile.extension_home = GURL();
+  profile.policy_home = GURL();
+  // Changing the root URL alone must preserve all other PageState fields.
+  auto nav = saved("chrome-native://newtab/", "chrome-native://newtab/");
+  auto original = blink::states.at(nav.encoded_page_state_);
+  original.top.children.push_back(original.top);
+  blink::EncodePageState(original, &nav.encoded_page_state_);
+  nav.has_post_data_ = true; nav.post_id_ = 7; nav.is_overriding_user_agent_ = true;
+  auto entry = restore(nav, profile);
+  auto expected = original;
+  expected.top.url_string = u"chrome://argon/";
+  check(blink::states.at(entry->frame_state.ToEncodedData()) == expected,
+        "home repair lost forms, POST, files, children, scale or history identifiers");
+  check(entry->post && entry->post_id == 7 && entry->desktop, "entry POST/UA metadata changed");
+  // Redirected web content and ordinary forms remain authoritative.
+  for (const auto& visible : {"chrome-native://newtab/", "https://example.test/form", "chrome://argon/"}) {
+    auto unchanged = saved(visible, "https://redirected.example/form");
+    const auto before = blink::states.at(unchanged.encoded_page_state_);
+    auto result = restore(unchanged, profile);
+    check(result->actual_url == GURL("https://redirected.example/form"), "redirect destination overwritten");
+    check(blink::states.at(result->frame_state.ToEncodedData()) == before, "ordinary PageState changed");
+  }
+  for (const std::string& broken : {std::string(), std::string("corrupt")}) {
+    auto fallback = saved("chrome-native://newtab/", "chrome-native://newtab/");
+    fallback.encoded_page_state_ = broken;
+    auto result = restore(fallback, profile);
+    check(result->actual_url == GURL("chrome://argon/"), "empty/corrupt state lost URL rewrite");
+  }
+  std::cout << "PASS: restored NTP frame, repeated sessions, profile overrides, incognito, forms, POST, UA and history\n";
+}
+int main() {
+  try { run(); } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
+}

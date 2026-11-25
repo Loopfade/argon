@@ -65,11 +65,23 @@ jobs:
           python3 .github/ci/update-dashboard.py --read-published
 
       - name: Подготовить сайт панели
+        id: site
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p _site
           cp index.html dashboard-data.json .nojekyll _site/
+          # The separately maintained dashboard branch can still have the
+          # legacy filter. Adapt the deployed copy without changing the branch.
+          python3 - <<'PY'
+          from pathlib import Path
+          index = Path('_site/index.html')
+          html = index.read_text()
+          old = '/^Argon-(arm64|arm)-/.test(a.name)'
+          new = '/^Argon-(?:(?:arm64|arm)-|Test-(?:arm64-v8a|armeabi-v7a)$)/.test(a.name)'
+          if old in html:
+              index.write_text(html.replace(old, new, 1))
+          PY
 
       - name: Загрузить артефакт сайта
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

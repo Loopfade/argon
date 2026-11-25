@@ -52,8 +52,8 @@ def verify_search(src):
         if compiled.returncode:
             raise ValueError(compiled.stdout + compiled.stderr)
         for locale, header, queries in (
-            ('values', 'Security', ['Open links in apps', 'LINKS', 'apps', 'external apps']),
-            ('values-ru', 'Безопасность', ['Открытие ссылок в приложениях', 'ОТКРЫТИЕ', 'ссылки', 'приложения', 'внешние приложения']),
+            ('values', 'Security', ['Switching to apps', 'LINKS', 'apps', 'external apps', 'phone', 'calls']),
+            ('values-ru', 'Безопасность', ['Переходы в приложения', 'ПЕРЕХОДЫ', 'открытие ссылок', 'ссылки', 'приложения', 'внешние приложения', 'телефон', 'звонки']),
         ):
             strings = {node.attrib['name']: node.text for node in ET.parse(
                 OVERLAY / 'res' / locale / 'argon_external_navigation_strings.xml').getroot()}

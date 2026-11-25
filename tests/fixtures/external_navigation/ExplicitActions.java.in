@@ -1,0 +1,141 @@
+// Link action bodies and the Open in app callback from pinned Chromium.
+// tests/external_navigation_flow.py also executes the patched upstream bodies.
+package org.chromium.chrome.browser.externalnav;
+
+import android.content.Context;
+import android.content.Intent;
+import android.net.MailTo;
+import android.net.Uri;
+import android.provider.ContactsContract;
+import org.chromium.base.IntentUtils;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.components.embedder_support.util.UrlUtilities;
+import org.chromium.components.external_intents.ExternalNavigationHelper;
+import org.chromium.url.GURL;
+
+public class ExplicitActions {
+    private final Context mContext = new Context();
+    private final Tab mTab = new Tab();
+    public boolean incognito;
+    public int closures, confirmations;
+
+    public void onCall(GURL url) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setData(Uri.parse(url.getSpec()));
+        IntentUtils.safeStartActivity(mTab.getContext(), intent);
+    }
+
+    public void onSendEmailMessage(GURL url) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setData(Uri.parse(url.getSpec()));
+        IntentUtils.safeStartActivity(mTab.getContext(), intent);
+    }
+
+    public void onSendTextMessage(GURL url) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("sms:" + UrlUtilities.getTelNumber(url)));
+        IntentUtils.safeStartActivity(mTab.getContext(), intent);
+    }
+
+    public void onAddToContacts(GURL url) {
+        Intent intent = new Intent(Intent.ACTION_INSERT);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setType(ContactsContract.Contacts.CONTENT_TYPE);
+        if (MailTo.isMailTo(url.getSpec())) {
+            intent.putExtra(
+                    ContactsContract.Intents.Insert.EMAIL,
+                    MailTo.parse(url.getSpec()).getTo().split(",")[0]);
+        } else if (UrlUtilities.isTelScheme(url)) {
+            intent.putExtra(ContactsContract.Intents.Insert.PHONE, UrlUtilities.getTelNumber(url));
+        }
+        IntentUtils.safeStartActivity(mTab.getContext(), intent);
+    }
+
+    public Runnable openInAppAction(GURL url) {
+        var delegate = new Delegate();
+        var targetIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url.getSpec()));
+        long navigationId = 1;
+        Runnable openInApp =
+                () -> {
+                    var helper = delegate.getExternalNavigationHelper();
+                    if (helper != null) {
+                        var openInAppInfo = delegate.getCurrentOpenInAppInfo();
+                        if (openInAppInfo != null) {
+                            Tab tab = delegate.getTab();
+                            Runnable closeTab =
+                                    () -> {
+                                        var tabModelSelector =
+                                                TabModelSelectorSupplier.getValueOrNullFrom(
+                                                        tab.getWindowAndroid());
+                                        if (tabModelSelector == null) return;
+                                        tabModelSelector.closeTab(
+                                                TabClosureParams.closeTab(tab)
+                                                        .allowUndo(/* allowUndo= */ false)
+                                                        .tabClosingSource(
+                                                                TabClosingSource.OPEN_IN_APP)
+                                                        .build());
+                                    };
+                            // This is posted to prevent a crash as a result of the WebContents
+                            // being destroyed before the intent can be reported to safe browsing.
+                            Runnable postClose =
+                                    () -> PostTask.postTask(TaskTraits.UI_DEFAULT, closeTab);
+
+                            if (tab.isOffTheRecord()) {
+                                helper.launchExternalAppWithIncognitoConfirmation(
+                                        targetIntent, navigationId, mContext, postClose);
+                            } else {
+                                helper.launchExternalApp(targetIntent, mContext);
+                                postClose.run();
+                            }
+                        }
+                    }
+                };
+        return openInApp;
+    }
+
+    private class Tab {
+        Context getContext() { return mContext; }
+        boolean isOffTheRecord() { return incognito; }
+        Object getWindowAndroid() { return new TabModelSelector(); }
+    }
+    private class Delegate {
+        Helper getExternalNavigationHelper() { return new Helper(); }
+        Object getCurrentOpenInAppInfo() { return this; }
+        Tab getTab() { return mTab; }
+    }
+    private class Helper implements ExternalNavigationHelper {
+        private final PolicyDelegate mDelegate = new PolicyDelegate();
+        /* HELPER_POLICY */
+        public void launchExternalApp(Intent intent, Context context) {
+            IntentUtils.safeStartActivity(context, intent);
+        }
+        public void launchExternalAppWithIncognitoConfirmation(
+                Intent intent, long navigationId, Context context, Runnable confirmed) {
+            confirmations++;
+            launchExternalApp(intent, context);
+            confirmed.run();
+        }
+    }
+    private class PolicyDelegate {
+        boolean shouldBlockExternalNavigationForUser(GURL url, Intent intent) {
+            return ArgonExternalNavigationPolicy.get().shouldBlock(url, intent);
+        }
+        void onExternalNavigationBlocked() { ArgonExternalNavigationPolicy.showBlockedMessage(); }
+    }
+    private class TabModelSelector {
+        void closeTab(TabClosureParams params) { closures++; }
+    }
+    private static class TabModelSelectorSupplier {
+        static TabModelSelector getValueOrNullFrom(Object window) { return (TabModelSelector) window; }
+    }
+    private static class TabClosureParams {
+        static TabClosureParams closeTab(Tab tab) { return new TabClosureParams(); }
+        TabClosureParams allowUndo(boolean allow) { return this; }
+        TabClosureParams tabClosingSource(int source) { return this; }
+        TabClosureParams build() { return this; }
+    }
+    private static class TabClosingSource { static final int OPEN_IN_APP = 1; }
+}

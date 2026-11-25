@@ -81,6 +81,20 @@ if [[ "$*" == *Argon-graph-arm* && "$FAIL_ANDROID" == 1 ]]; then exit 42; fi
                     self.assertEqual('cc_wrapper = "ccache"' in text, cached)
                 self.assertEqual("ccache:--show-stats" in commands, cached)
 
+    def test_homepage_restore_compiles_objects_without_building_the_sessions_library(self):
+        result, _args, commands = self.run_validation(False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        checks = [line for line in commands.splitlines()
+                  if line.startswith(("ninja:", "compile:-C out/Argon-graph-arm "))]
+        self.assertEqual(len(checks), 3)
+        for line in checks:
+            targets = line.split()
+            self.assertIn(
+                "obj/components/sessions/sessions/content_serialized_navigation_builder.o",
+                targets)
+            self.assertIn("obj/content/browser/browser/navigation_controller_impl.o", targets)
+            self.assertNotIn("components/sessions:sessions", targets)
+
     def test_compiler_failure_is_not_hidden_by_cache_statistics(self):
         result, _args, commands = self.run_validation(True, fail=True)
         self.assertEqual(result.returncode, 42, result.stdout + result.stderr)

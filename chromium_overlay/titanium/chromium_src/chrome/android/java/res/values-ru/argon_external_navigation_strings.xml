@@ -1,30 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="argon_external_title">Открытие ссылок в приложениях</string>
-    <string name="argon_external_menu_summary">Выберите, каким сайтам разрешено открывать внешние приложения</string>
-    <string name="argon_external_search_keywords">ссылки, приложения, внешние приложения, открытие ссылок</string>
-    <string name="argon_external_mode">Режим открытия</string>
+    <string name="argon_external_title">Переходы в приложения</string>
+    <string name="argon_external_menu_summary">Управление переходами по ссылкам в другие приложения</string>
+    <string name="argon_external_search_keywords">переходы, ссылки, приложения, внешние приложения, открытие ссылок, телефон, звонки</string>
+    <string name="argon_external_mode">Режим переходов</string>
     <string name="argon_external_allow">Разрешать</string>
     <string name="argon_external_allow_list">Только для сайтов из списка</string>
     <string name="argon_external_block">Запрещать</string>
-    <string name="argon_external_allow_description">Открывать ссылки в установленных приложениях по обычным правилам браузера.</string>
-    <string name="argon_external_list_description">Приложения могут открывать только ссылки на сайты из списка и их поддомены. Остальные веб-ссылки остаются в Argon.</string>
-    <string name="argon_external_block_description">Оставлять веб-ссылки в Argon и запрещать ссылки, для которых требуется другое приложение.</string>
-    <string name="argon_external_sites">Разрешённые сайты</string>
+    <string name="argon_external_allow_description">Разрешать переходы по ссылкам в другие приложения по обычным правилам браузера.</string>
+    <string name="argon_external_list_description">Открывать в приложениях только ссылки на сайты из списка и их поддомены. Ссылки на телефон, почту и SMS блокировать.</string>
+    <string name="argon_external_block_description">Оставлять веб-ссылки в Argon. Блокировать переходы в другие приложения, включая телефон, почту и SMS.</string>
+    <string name="argon_external_sites">Разрешённые сайты назначения</string>
     <string name="argon_external_add_site">Добавить сайт</string>
     <string name="argon_external_site_scope">Все страницы и поддомены · Нажмите, чтобы удалить</string>
     <string name="argon_external_remove">Удалить сайт</string>
     <string name="argon_external_remove_description">Удалить %1$s и его поддомены из списка разрешённых?</string>
     <string name="argon_external_empty">Список пуст. В режиме «Только для сайтов из списка» ни одна ссылка не сможет открыть приложение.</string>
     <string name="argon_external_saved_list">Список действует только в режиме «Только для сайтов из списка». При смене режима добавленные сайты сохраняются.</string>
-    <string name="argon_external_details">Проверяется адрес назначения ссылки, в том числе при перенаправлениях, а не страница, на которой она размещена. Каждое правило действует на весь сайт и его поддомены. Ссылки без веб-адреса могут открывать приложения только в режиме «Разрешать». Если у ссылки на приложение есть веб-версия, при запрете Argon откроет её. Настройка действует также в режиме инкогнито и во вкладках браузера, открытых другими приложениями.</string>
+    <string name="argon_external_details">Проверяется сайт, на который ведёт ссылка, в том числе после перенаправлений. Сайт, где вы нажали ссылку, не даёт разрешения. Правило охватывает все страницы сайта назначения и его поддомены.</string>
+    <string name="argon_external_actions">Ссылки на телефон, почту, SMS и другие ссылки без веб-адреса назначения открывают приложения только в режиме «Разрешать». Это относится и к командам «Позвонить», «Написать» и «Добавить в контакты» в меню ссылки.</string>
+    <string name="argon_external_scope">При запрете перехода Argon откроет веб-версию ссылки, если она доступна. Правила действуют также для команды «Открыть в приложении», в инкогнито и во вкладках Argon, открытых другими приложениями.</string>
     <string name="argon_external_domain">Сайт или ссылка</string>
     <string name="argon_external_domain_hint">Введите сайт, например example.com, или вставьте веб-ссылку.</string>
     <string name="argon_external_invalid_site">Введите корректный сайт или ссылку HTTP(S). Адреса с логином, IP-адреса и общие доменные суффиксы не поддерживаются.</string>
-    <string name="argon_external_preview">Разрешить всем страницам сайта %1$s и его поддоменам открывать приложения.</string>
+    <string name="argon_external_preview">Разрешить открытие ссылок на %1$s и его поддомены в приложениях.</string>
     <string name="argon_external_save">Добавить в список</string>
     <string name="argon_external_duplicate">Этот сайт уже есть в списке.</string>
     <string name="argon_external_limit">Можно добавить до 100 сайтов. Удалите сайт, чтобы добавить другой.</string>
     <string name="argon_external_save_failed">Не удалось добавить сайт. Проверьте адрес, повторы и ограничение размера списка.</string>
-    <string name="argon_external_blocked">Переход во внешнее приложение запрещён в настройках браузера.</string>
+    <string name="argon_external_blocked">Переход в приложение запрещён в настройках «Переходы в приложения».</string>
 </resources>

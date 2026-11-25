@@ -38,6 +38,16 @@ class UserAgentNavigationTests(unittest.TestCase):
                 result = run_flow(self.patched, scenario)
                 self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_pending_navigation_cannot_undo_selected_mode(self):
+        # A pending desktop (or mobile) navigation must not silently win over
+        # the selected mode just because the visible page already agrees.
+        for scenario in ("pending_opposite", "pending_same", "pending_initial"):
+            with self.subTest(scenario=scenario):
+                if scenario != "pending_same":
+                    self.assertNotEqual(run_flow(self.original, scenario).returncode, 0)
+                result = run_flow(self.patched, scenario)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_latest_selection_supersedes_deferred_switch(self):
         for scenario in ("deferred", "superseded"):
             with self.subTest(scenario=scenario):

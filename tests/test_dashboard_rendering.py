@@ -4,6 +4,8 @@ import re
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
+import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -112,8 +114,10 @@ class DashboardRenderingTests(unittest.TestCase):
             self.assertEqual(data["timeline"].count('class="bar '), len(jobs))
 
 
-    def execute_view(self, code):
-        script = (ROOT / "index.html").read_text().split("<script>", 1)[1].split("</script>", 1)[0]
+    def execute_view(self, code, html=None):
+        if html is None:
+            html = (ROOT / "index.html").read_text()
+        script = html.split("<script>", 1)[1].split("</script>", 1)[0]
         script = script[:script.index('  $("refresh").addEventListener')]
         setup = """
           const elements={};
@@ -123,6 +127,43 @@ class DashboardRenderingTests(unittest.TestCase):
         result = subprocess.run(["node", "-e", "global.document={getElementById:()=>({})};" + script + setup + code + "})();"],
                                 capture_output=True, text=True, check=True)
         return json.loads(result.stdout)
+
+    def test_final_apks_render_from_both_current_and_legacy_dashboard_templates(self):
+        markup = (ROOT / "index.html").read_text()
+        old_filter = '/^Argon-(arm64|arm)-/.test(a.name)'
+        new_filter = '/^Argon-(?:(?:arm64|arm)-|Test-(?:arm64-v8a|armeabi-v7a)$)/.test(a.name)'
+        self.assertIn(new_filter, markup)
+        legacy = markup.replace(new_filter, old_filter)
+        workflow = (ROOT / ".github/workflows/deploy-dashboard.yml").read_text()
+        step = workflow.split("        id: site\n", 1)[1].split("\n      - name:", 1)[0]
+        command = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "dashboard-data.json").write_text("{}")
+            (root / ".nojekyll").touch()
+            for template in (legacy, markup):
+                (root / "index.html").write_text(template)
+                subprocess.run(["bash", "-c", command], cwd=root, check=True, capture_output=True)
+                self.assertEqual((root / "index.html").read_text(), template)
+                self.assertEqual((root / "_site/index.html").read_text(), markup)
+
+        data = self.execute_view('''
+          const run={html_url:"https://github.com/fixture/argon/actions/runs/42"};
+          const artifact=name=>({name,size_in_bytes:2048});
+          const finalPair=renderArtifacts({artifacts:[artifact("Argon-Test-arm64-v8a"),
+            artifact("Argon-Test-armeabi-v7a"),artifact("argon-test-source"),
+            artifact("fixture.dockerbuild")]},run,null);
+          const oldRelease=renderArtifacts({artifacts:[artifact("Argon-arm64-old-commit"),
+            artifact("Argon-arm-old-commit")]},run,null);
+          process.stdout.write(JSON.stringify({finalPair,oldRelease}));
+        ''')
+        for name in ("Argon-Test-arm64-v8a", "Argon-Test-armeabi-v7a"):
+            self.assertIn(name, data["finalPair"])
+        self.assertIn("Открыть сборку и скачать APK", data["finalPair"])
+        self.assertNotIn("argon-test-source", data["finalPair"])
+        self.assertNotIn("dockerbuild", data["finalPair"])
+        self.assertIn("Argon-arm64-old-commit", data["oldRelease"])
+        self.assertIn("Argon-arm-old-commit", data["oldRelease"])
 
     def test_month_view_filters_and_untrusted_titles_are_escaped(self):
         data = self.execute_view("""

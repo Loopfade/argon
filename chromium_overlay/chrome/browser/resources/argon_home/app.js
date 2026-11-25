@@ -27,6 +27,8 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   let syncModalState=()=>{};
   const editing = () => store.editing;
   const homeTheme = globalThis.argonHomeTheme;
+  const root = document.documentElement;
+  root.classList.add('argon-search-loading','argon-bookmarks-loading');
   let browserSearch=null, browserSearchState=null, selectingEngine=false, searchBoundsFrame=0;
   let connectingSearch=null, nativeSearchRetries=0;
   let browserBookmarks=null, browserBookmarksState=null, connectingBookmarks=null, migratingBookmarks=null;
@@ -34,7 +36,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   const bookmarkVisibleLimits=new Map();
   let metadataState=null, metadataByUrl=new Map(), metadataById=new Map();
   const nativeBookmarks = () => browserBookmarksState?.available === true;
-  let initialThemeReady=false, startupFinished=false;
+  let startupFinished=false;
   let backgroundReady=Promise.resolve(),backgroundVersion=0,currentBackgroundImage;
   const nativeSearch = () => browserSearchState?.available === true;
   const originalSearchInput=$('search-input').cloneNode(true);
@@ -73,7 +75,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   }
   function reportHomeFrame() {
     reportSearchBounds();
-    globalThis.argonHomeStartup.finish(()=>browserSearch?.bindings.send('argonHomeReady',[]));
+    globalThis.argonHomeStartup.finish(()=>globalThis.chrome?.send?.('argonHomeReady',[]));
   }
   function finishStartup() {
     if(startupFinished)return;
@@ -114,7 +116,7 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       scheduleSearchBounds();
     }
     renderEngine();
-    if(initialThemeReady&&value.available)finishStartup();
+    root.classList.remove('argon-search-loading');
   }
   const connectSearch = async () => {
     if(connectingSearch)return connectingSearch;
@@ -127,13 +129,17 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
           $('search-form').style.opacity=String(focused?0:alpha);
           $('search-form').inert=focused;
         });
+        if(!browserSearch)root.classList.remove('argon-search-loading');
         scheduleSearchBounds();
         // A restored document may acquire a new native bridge without running
         // this module again. Acknowledge its current frame without hiding it.
         if(reconnecting&&browserSearch?.available)reportHomeFrame();
         if(browserSearch&&!browserSearch.available&&!document.hidden&&nativeSearchRetries++<20)
           setTimeout(()=>void connectSearch(),250);
-      }catch(error){console.warn('Argon search:',error);}
+      }catch(error){
+        root.classList.remove('argon-search-loading');
+        console.warn('Argon search:',error);
+      }
     })();
     try{await connectingSearch;}finally{connectingSearch=null;}
   };
@@ -329,11 +335,12 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
     const index=siblings.findIndex(entry=>entry.id===id);
     if(index>=bookmarkLimit(parent))bookmarkVisibleLimits.set(parent,Math.ceil((index+1)/200)*200);
   }
+  const loadingBookmarksMarkup='<p class="folder-empty">'+t("Загрузка закладок…")+'</p>';
   function renderBrowserBookmarks() {
     const ready=browserBookmarksState.ready;
     const roots=browserBookmarksState.roots;
     const hint=browserBookmarksState.canEdit?t("Добавляйте сайты звёздочкой или через карандаш рядом с «Избранное»."):t("Изменение закладок запрещено настройками браузера.");
-    let content=ready?roots.slice(0,bookmarkLimit('')).map(browserBookmarkMarkup).join(''):'<p class="folder-empty">'+t("Загрузка закладок…")+'</p>';
+    let content=ready?roots.slice(0,bookmarkLimit('')).map(browserBookmarkMarkup).join(''):loadingBookmarksMarkup;
     if(ready&&!roots.length&&(!editing()||!browserBookmarks.canAdd()))content='<div class="empty-favorites"><span class="empty-favorites-icon">'+svg('book')+'</span><span>'+t("Нет закладок")+'</span><small>'+hint+'</small></div>';
     if(ready)content+=nativeAddMarkup();
     if(ready)content+=moreBookmarksMarkup('',roots.length);
@@ -477,11 +484,18 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
         else browserBookmarks=await connectBrowserBookmarks(value=>{
           const activating=!nativeBookmarks()&&value.available;
           browserBookmarksState=value;
+          root.classList.remove('argon-bookmarks-loading');
           if(activating){moving=null;setEditing(false);}else {updateEditing();renderShortcuts();}
           if(value.ready&&browserBookmarks)void migrateBookmarks();
         });
         await migrateBookmarks();
       }catch{notify(t("Не удалось прочитать закладки браузера."));}
+      finally {
+        if(root.classList.contains('argon-bookmarks-loading')){
+          root.classList.remove('argon-bookmarks-loading');
+          renderShortcuts();
+        }
+      }
     })();
     try{await connectingBookmarks;}finally{connectingBookmarks=null;}
   }
@@ -494,6 +508,10 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
   function addMarkup(parent=null) { return editing()&&!moving?'<button type="button" class="shortcut shortcut-add" data-add data-parent="'+esc(parent||'')+t("\" aria-label=\"Добавить сайт")+(parent?t(" в папку"):t(" или папку"))+'"><span class="shortcut-icon">'+svg('plus')+t("</span><span class=\"shortcut-label\">Добавить</span></button>"):''; }
   function renderShortcuts() {
     document.body.classList.toggle('hidden-labels',!state.showLabels);
+    if(root.classList.contains('argon-bookmarks-loading')){
+      setHtml($('shortcut-grid'),loadingBookmarksMarkup);
+      return;
+    }
     if(nativeBookmarks()){renderBrowserBookmarks();return;}
     const positions=new Map([...document.querySelectorAll('[data-holder]')].map(el=>[el.dataset.holder,el.getBoundingClientRect()]));
     const content=state.shortcuts.map(s=>shortcutMarkup(s)).join('')+addMarkup();
@@ -1233,12 +1251,11 @@ import {loadBingWallpapers,downloadBingWallpaper,prepareBackground,backgroundBlo
       if(draft)void connectBookmarks().then(()=>openShortcutDialog(null,null,null,draft));
     } catch(error) {notify(error.message);}
   }
-  // Normal startup is released by the native provider reply, followed by a
-  // visual-state acknowledgement. startup.js owns the independent fail-open.
-  void Promise.all([initialTheme,connectSearch(),connectBookmarks(),backgroundReady]).then(()=>{
-    initialThemeReady=true;
-    if(!browserSearch||browserSearch.available)finishStartup();
-  });
+  // Normal startup paints the configured theme and background while the search
+  // and bookmark services load. Their controls appear with their own state.
+  void connectSearch();
+  void connectBookmarks();
+  void Promise.all([initialTheme,backgroundReady]).then(finishStartup);
   if(store.loadError)notify(t("Не удалось прочитать настройки. Исходные данные сохранены; можно восстановить дамп."));
 })();
 
