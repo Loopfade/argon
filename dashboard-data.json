@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-26T21:05:15Z",
+  "generated_at": "2026-11-26T21:35:29Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -29,8 +29,8 @@
         "run_attempt": 2,
         "first_started_at": "2026-11-26T13:16:14Z",
         "completed_at": null,
-        "duration_ms": 28141000,
-        "runner_ms": 56209000
+        "duration_ms": 29955000,
+        "runner_ms": 59837000
       },
       "jobs": [
         {
@@ -87891,8 +87891,8 @@
     "run_attempt": 2,
     "first_started_at": "2026-11-26T13:16:14Z",
     "completed_at": null,
-    "duration_ms": 28141000,
-    "runner_ms": 56209000
+    "duration_ms": 29955000,
+    "runner_ms": 59837000
   },
   "runs": [
     {
@@ -87912,8 +87912,8 @@
       "run_attempt": 2,
       "first_started_at": "2026-11-26T13:16:14Z",
       "completed_at": null,
-      "duration_ms": 28141000,
-      "runner_ms": 56209000
+      "duration_ms": 29955000,
+      "runner_ms": 59837000
     },
     {
       "id": 45181603763,
