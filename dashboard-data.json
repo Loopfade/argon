@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-26T01:09:18Z",
+  "generated_at": "2026-11-26T06:26:25Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -87781,26 +87781,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-25T08:02:24Z",
-      "updated_at": "2026-11-25T08:02:24Z",
+      "updated_at": "2026-11-26T06:26:03Z",
       "merged_at": null,
-      "head_sha": "ac930d7788cef4411bc51df314739f5dd3075fcf",
-      "merge_commit_sha": "8b30a1ee65f0a7a0e768e6cb02faad2edcc34c5c",
+      "head_sha": "2832c2935dee961d18d120791cf3b8fddff19a82",
+      "merge_commit_sha": "b4d5c87a9774561a3649c76634a88927dc364cec",
       "author": "Loopfade",
-      "additions": 9,
-      "deletions": 6,
-      "changed_files": 3,
-      "commits": 5,
+      "additions": 257,
+      "deletions": 7,
+      "changed_files": 7,
+      "commits": 6,
       "comparison": {
         "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-        "head_sha": "ac930d7788cef4411bc51df314739f5dd3075fcf",
+        "head_sha": "2832c2935dee961d18d120791cf3b8fddff19a82",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...ac930d7788cef4411bc51df314739f5dd3075fcf",
-        "commits": 5,
+        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...2832c2935dee961d18d120791cf3b8fddff19a82",
+        "commits": 6,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 3,
-        "additions": 9,
-        "deletions": 6,
+        "changed_files": 7,
+        "additions": 257,
+        "deletions": 7,
         "files": [
           {
             "filename": "build-lock.json",
@@ -87813,7 +87813,35 @@
             "filename": "patch.sh",
             "previous_filename": null,
             "status": "modified",
-            "additions": 4,
+            "additions": 5,
+            "deletions": 1
+          },
+          {
+            "filename": "patches/argon-android-ui.patch",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 226,
+            "deletions": 0
+          },
+          {
+            "filename": "res/translations/ru.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 10,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/check_upstream_patches.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 10,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/browsing_data_period.json",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
             "deletions": 1
           },
           {
@@ -98447,14 +98475,15 @@
         }
       ]
     },
-    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...ac930d7788cef4411bc51df314739f5dd3075fcf": {
+    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...2832c2935dee961d18d120791cf3b8fddff19a82": {
       "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-      "head_sha": "ac930d7788cef4411bc51df314739f5dd3075fcf",
+      "head_sha": "2832c2935dee961d18d120791cf3b8fddff19a82",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...ac930d7788cef4411bc51df314739f5dd3075fcf",
-      "commits": 5,
+      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...2832c2935dee961d18d120791cf3b8fddff19a82",
+      "commits": 6,
       "commit_shas": [
         "124ac01c99f174acc8477711f132cf7c3d52d720",
+        "2832c2935dee961d18d120791cf3b8fddff19a82",
         "9b3a181e48d2223c6482c855d1845ba51b5d0321",
         "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
         "ac930d7788cef4411bc51df314739f5dd3075fcf",
@@ -98462,9 +98491,9 @@
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 3,
-      "additions": 9,
-      "deletions": 6,
+      "changed_files": 7,
+      "additions": 257,
+      "deletions": 7,
       "files": [
         {
           "filename": "build-lock.json",
@@ -98477,7 +98506,35 @@
           "filename": "patch.sh",
           "previous_filename": null,
           "status": "modified",
-          "additions": 4,
+          "additions": 5,
+          "deletions": 1
+        },
+        {
+          "filename": "patches/argon-android-ui.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 226,
+          "deletions": 0
+        },
+        {
+          "filename": "res/translations/ru.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/check_upstream_patches.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
           "deletions": 1
         },
         {
