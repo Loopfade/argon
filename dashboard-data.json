@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-27T04:01:41Z",
+  "generated_at": "2026-11-27T05:37:50Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -88905,26 +88905,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-25T08:02:24Z",
-      "updated_at": "2026-11-27T04:01:21Z",
+      "updated_at": "2026-11-27T05:37:25Z",
       "merged_at": null,
-      "head_sha": "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
-      "merge_commit_sha": "06ae529f9d7f18eb7ec854b5c78dc544b2ad1824",
+      "head_sha": "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
+      "merge_commit_sha": "f8a27a48f1b52742cfee6cf36d1704aa7f588fa1",
       "author": "Loopfade",
-      "additions": 2069,
-      "deletions": 8,
-      "changed_files": 14,
+      "additions": 2100,
+      "deletions": 152,
+      "changed_files": 18,
       "commits": 5,
       "comparison": {
         "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-        "head_sha": "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
+        "head_sha": "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...b99bd8264b6fc41329da7ae40e1df791bf52f99e",
+        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
         "commits": 5,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 14,
-        "additions": 2069,
-        "deletions": 8,
+        "changed_files": 18,
+        "additions": 2100,
+        "deletions": 152,
         "files": [
           {
             "filename": ".github/ci/test-domain-policy.sh",
@@ -88934,11 +88934,32 @@
             "deletions": 0
           },
           {
+            "filename": ".github/workflows/build-test-branch.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 1,
+            "deletions": 81
+          },
+          {
             "filename": "build-lock.json",
             "previous_filename": null,
             "status": "modified",
             "additions": 4,
             "deletions": 4
+          },
+          {
+            "filename": "docs/build-pipeline.md",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 5,
+            "deletions": 8
+          },
+          {
+            "filename": "docs/chromium-158-upgrade.md",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 6,
+            "deletions": 14
           },
           {
             "filename": "patch.sh",
@@ -89016,6 +89037,13 @@
             "status": "modified",
             "additions": 1,
             "deletions": 1
+          },
+          {
+            "filename": "tests/test_test_apk_collection.py",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 19,
+            "deletions": 41
           },
           {
             "filename": "vanadium",
@@ -99476,24 +99504,24 @@
         }
       ]
     },
-    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...b99bd8264b6fc41329da7ae40e1df791bf52f99e": {
+    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243": {
       "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-      "head_sha": "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
+      "head_sha": "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...b99bd8264b6fc41329da7ae40e1df791bf52f99e",
+      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
       "commits": 5,
       "commit_shas": [
         "124ac01c99f174acc8477711f132cf7c3d52d720",
         "9b3a181e48d2223c6482c855d1845ba51b5d0321",
         "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
-        "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
-        "cbed49d59c118e9d4403591fa426a45ad7d18d78"
+        "cbed49d59c118e9d4403591fa426a45ad7d18d78",
+        "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 14,
-      "additions": 2069,
-      "deletions": 8,
+      "changed_files": 18,
+      "additions": 2100,
+      "deletions": 152,
       "files": [
         {
           "filename": ".github/ci/test-domain-policy.sh",
@@ -99503,11 +99531,32 @@
           "deletions": 0
         },
         {
+          "filename": ".github/workflows/build-test-branch.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 81
+        },
+        {
           "filename": "build-lock.json",
           "previous_filename": null,
           "status": "modified",
           "additions": 4,
           "deletions": 4
+        },
+        {
+          "filename": "docs/build-pipeline.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 8
+        },
+        {
+          "filename": "docs/chromium-158-upgrade.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 6,
+          "deletions": 14
         },
         {
           "filename": "patch.sh",
@@ -99585,6 +99634,13 @@
           "status": "modified",
           "additions": 1,
           "deletions": 1
+        },
+        {
+          "filename": "tests/test_test_apk_collection.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 19,
+          "deletions": 41
         },
         {
           "filename": "vanadium",
