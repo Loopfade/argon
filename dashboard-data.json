@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-26T23:16:39Z",
+  "generated_at": "2026-11-27T02:50:12Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -88905,25 +88905,25 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-25T08:02:24Z",
-      "updated_at": "2026-11-26T06:26:03Z",
+      "updated_at": "2026-11-27T02:49:40Z",
       "merged_at": null,
-      "head_sha": "2832c2935dee961d18d120791cf3b8fddff19a82",
-      "merge_commit_sha": "b4d5c87a9774561a3649c76634a88927dc364cec",
+      "head_sha": "8ca7df5c5157de7fe7c18f543d9410d9624ad7df",
+      "merge_commit_sha": "2c452580f783c450b6f1763f0a4ff47e3f4f21e4",
       "author": "Loopfade",
-      "additions": 257,
+      "additions": 742,
       "deletions": 7,
-      "changed_files": 7,
-      "commits": 6,
+      "changed_files": 11,
+      "commits": 7,
       "comparison": {
         "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-        "head_sha": "2832c2935dee961d18d120791cf3b8fddff19a82",
+        "head_sha": "8ca7df5c5157de7fe7c18f543d9410d9624ad7df",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...2832c2935dee961d18d120791cf3b8fddff19a82",
-        "commits": 6,
+        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...8ca7df5c5157de7fe7c18f543d9410d9624ad7df",
+        "commits": 7,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 7,
-        "additions": 257,
+        "changed_files": 11,
+        "additions": 742,
         "deletions": 7,
         "files": [
           {
@@ -88944,7 +88944,14 @@
             "filename": "patches/argon-android-ui.patch",
             "previous_filename": null,
             "status": "added",
-            "additions": 226,
+            "additions": 305,
+            "deletions": 0
+          },
+          {
+            "filename": "patches/titanium-extension-recovery.patch",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 37,
             "deletions": 0
           },
           {
@@ -88955,10 +88962,31 @@
             "deletions": 0
           },
           {
+            "filename": "tests/android_upstream_regressions.py",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 53,
+            "deletions": 0
+          },
+          {
             "filename": "tests/check_upstream_patches.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 10,
+            "additions": 19,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/android/UiRegressionFlow.java.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 174,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/android/extension_recovery.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 133,
             "deletions": 0
           },
           {
@@ -88984,7 +89012,7 @@
           "status": "completed",
           "conclusion": "failure",
           "source_sha": "2832c2935dee961d18d120791cf3b8fddff19a82",
-          "current": true
+          "current": false
         }
       ]
     }
@@ -99424,6 +99452,106 @@
           "status": "modified",
           "additions": 7,
           "deletions": 0
+        }
+      ]
+    },
+    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...8ca7df5c5157de7fe7c18f543d9410d9624ad7df": {
+      "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
+      "head_sha": "8ca7df5c5157de7fe7c18f543d9410d9624ad7df",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...8ca7df5c5157de7fe7c18f543d9410d9624ad7df",
+      "commits": 7,
+      "commit_shas": [
+        "124ac01c99f174acc8477711f132cf7c3d52d720",
+        "2832c2935dee961d18d120791cf3b8fddff19a82",
+        "8ca7df5c5157de7fe7c18f543d9410d9624ad7df",
+        "9b3a181e48d2223c6482c855d1845ba51b5d0321",
+        "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
+        "ac930d7788cef4411bc51df314739f5dd3075fcf",
+        "cbed49d59c118e9d4403591fa426a45ad7d18d78"
+      ],
+      "commits_complete": true,
+      "files_complete": true,
+      "changed_files": 11,
+      "additions": 742,
+      "deletions": 7,
+      "files": [
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 4
+        },
+        {
+          "filename": "patch.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 1
+        },
+        {
+          "filename": "patches/argon-android-ui.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 305,
+          "deletions": 0
+        },
+        {
+          "filename": "patches/titanium-extension-recovery.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 37,
+          "deletions": 0
+        },
+        {
+          "filename": "res/translations/ru.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/android_upstream_regressions.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 53,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/check_upstream_patches.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 19,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/android/UiRegressionFlow.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 174,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/android/extension_recovery.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 133,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "vanadium",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         }
       ]
     },
