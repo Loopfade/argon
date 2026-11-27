@@ -1,0 +1,68 @@
+#include <cassert>
+#include <cstdint>
+#include <optional>
+
+using SkColor = uint32_t;
+using JNIEnv = void;
+constexpr SkColor SK_ColorTRANSPARENT = 0;
+constexpr SkColor kDarkBackground = 0xff121212;
+
+struct PageImpl;
+
+struct PageDelegate {
+  void OnAutoDarkenedBackgroundColorChanged(PageImpl&) { ++updates; }
+  int updates = 0;
+};
+
+struct PageImpl {
+  void SetAutoDarkenedBackgroundColor(std::optional<SkColor>);
+  std::optional<SkColor> auto_darkened_background_color() const {
+    return auto_darkened_background_color_;
+  }
+
+  PageDelegate* delegate_;
+  std::optional<SkColor> auto_darkened_background_color_;
+};
+
+struct WebContents {
+  PageImpl& GetPrimaryPage() { return *primary; }
+  bool IsCrashed() const { return crashed; }
+  PageImpl* primary;
+  bool crashed = false;
+};
+
+struct WebContentsAndroid {
+  int32_t GetAutoDarkenedPageBackgroundColor(JNIEnv*);
+  WebContents* web_contents_;
+};
+
+/* PAGE_METHOD */
+
+/* ANDROID_METHOD */
+
+int main() {
+  PageDelegate delegate;
+  PageImpl original{&delegate};
+  PageImpl new_page{&delegate};
+  WebContents contents{&original};
+  WebContentsAndroid android{&contents};
+  auto color = [&] {
+    return static_cast<SkColor>(android.GetAutoDarkenedPageBackgroundColor(nullptr));
+  };
+
+  assert(color() == SK_ColorTRANSPARENT);
+  original.SetAutoDarkenedBackgroundColor(kDarkBackground);
+  assert(color() == kDarkBackground);
+  original.SetAutoDarkenedBackgroundColor(kDarkBackground);
+  assert(delegate.updates == 1);
+  contents.primary = &new_page;
+  assert(color() == SK_ColorTRANSPARENT);
+  contents.primary = &original;
+  assert(color() == kDarkBackground);
+  contents.crashed = true;
+  assert(color() == SK_ColorTRANSPARENT);
+  contents.crashed = false;
+  original.SetAutoDarkenedBackgroundColor(std::nullopt);
+  assert(color() == SK_ColorTRANSPARENT);
+  assert(delegate.updates == 2);
+}

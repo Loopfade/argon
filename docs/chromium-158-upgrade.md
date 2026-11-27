@@ -65,21 +65,14 @@ The independently pinned depot_tools revision is unchanged.
 A pinned source transition is **not** proof of a functioning APK: keep the
 PR open until CI, both APK builds and the Android acceptance scenarios pass.
 
-## Final test artifacts
+## Test APK artifacts
 
-After both verified test APKs have been uploaded, `collect` downloads the exact
-new artifact IDs and verifies their provenance, signatures and source journals.
-Only then are this run's intermediate APK copies, source snapshot, continuation
-markers and Docker build records removed. The completed run retains
-`Argon-Test-arm64-v8a` and `Argon-Test-armeabi-v7a`. Docker record upload is
-disabled for new test image builds; release image diagnostics are unchanged.
-
-Each final archive contains `test-source.json`, so reruns retain the original
-PR SHA and version even after the separate source artifact is removed. A
-repeated `collect` can validate the existing final APKs; it saves temporary
-backups before overwriting either final, and removes them only after both new
-uploads are verified. Failed builds or publication preserve their recoverable
-inputs. Cleanup is restricted to known intermediates in the current test run.
+The architecture jobs upload the verified APKs directly to the run's
+**Artifacts** section. ARM64 and ARMv7 archives have the prefixes
+`Argon-arm64-` and `Argon-arm-` and contain the APK, licenses, APK SHA-256
+checksum and signing certificate SHA-256 fingerprint.
+The `argon-test-source` artifact pins the PR commit for retries. Both archives
+are available in the same run when its architectures finish in different attempts.
 
 The publication helper is staged outside the source checkout from the exact
 `main` commit that started the workflow. It receives the pinned PR checkout

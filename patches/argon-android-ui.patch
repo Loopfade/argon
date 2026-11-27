@@ -1,0 +1,354 @@
+diff --git a/chrome/android/java/res/xml/appearance_preferences.xml b/chrome/android/java/res/xml/appearance_preferences.xml
+index c5449e8c46162c82545028b01d9c877b08f70e25..a3b420cf309fda273bd4e885bf9c5e02ac8fa9d9 100644
+--- a/chrome/android/java/res/xml/appearance_preferences.xml
++++ b/chrome/android/java/res/xml/appearance_preferences.xml
+@@ -58,4 +58,11 @@ exclusive options. -->
+         android:order="6"
+         android:title="@string/tab_position_settings_title" />
+ 
++    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
++        android:key="argon_tab_switcher_on_toolbar_swipe"
++        android:order="7"
++        android:persistent="false"
++        android:title="@string/argon_tab_switcher_on_toolbar_swipe"
++        android:summary="@string/argon_tab_switcher_on_toolbar_swipe_summary" />
++
+ </PreferenceScreen>
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/appearance/settings/AppearanceSettingsFragment.java b/chrome/android/java/src/org/chromium/chrome/browser/appearance/settings/AppearanceSettingsFragment.java
+index b77b5de1b74e8460b71bf1ed56625effca918a31..c07b6990d77fb79d27d194fe7ab44b4dce8b8f00 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/appearance/settings/AppearanceSettingsFragment.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/appearance/settings/AppearanceSettingsFragment.java
+@@ -15,6 +15,7 @@ import org.chromium.base.Callback;
+ import org.chromium.base.ContextUtils;
+ import org.chromium.base.DeviceInfo;
+ import org.chromium.base.metrics.RecordUserAction;
++import org.chromium.base.shared_preferences.SharedPreferencesManager;
+ import org.chromium.base.supplier.MonotonicObservableSupplier;
+ import org.chromium.base.supplier.ObservableSuppliers;
+ import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
+@@ -23,11 +24,13 @@ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.R;
+ import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarConstants;
+ import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
++import org.chromium.chrome.browser.device.DeviceClassManager;
+ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+ import org.chromium.chrome.browser.flags.ChromeFeatureList;
+ import org.chromium.chrome.browser.homepage.HomepageManager;
+ import org.chromium.chrome.browser.night_mode.NightModeUtils;
+ import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+ import org.chromium.chrome.browser.preferences.Pref;
+ import org.chromium.chrome.browser.preferences.PrefServiceUtil;
+ import org.chromium.chrome.browser.profiles.Profile;
+@@ -61,6 +64,9 @@ public class AppearanceSettingsFragment extends ChromeBaseSettingsFragment
+     public static final String PREF_UI_THEME = "ui_theme";
+     public static final String PREF_TAB_POSITION = "tab_position";
+ 
++    private static final String PREF_TAB_SWITCHER_ON_TOOLBAR_SWIPE =
++            "argon_tab_switcher_on_toolbar_swipe";
++
+     private static final String USER_ACTION_BOTTOM_BAR_ENABLED = "Settings.BottomBar.Enabled";
+     private static final String USER_ACTION_BOTTOM_BAR_DISABLED = "Settings.BottomBar.Disabled";
+ 
+@@ -88,6 +94,7 @@ public class AppearanceSettingsFragment extends ChromeBaseSettingsFragment
+         initBottomBarPref();
+         initHomepagePref();
+         initTabPositionPref();
++        initTabSwitcherSwipePref();
+     }
+ 
+     @Override
+@@ -166,6 +173,23 @@ public class AppearanceSettingsFragment extends ChromeBaseSettingsFragment
+ 
+     // Private methods.
+ 
++    private void initTabSwitcherSwipePref() {
++        if (!DeviceClassManager.enableToolbarSwipe()) {
++            removePreference(PREF_TAB_SWITCHER_ON_TOOLBAR_SWIPE);
++            return;
++        }
++        ChromeSwitchPreference swipePreference = findPreference(PREF_TAB_SWITCHER_ON_TOOLBAR_SWIPE);
++        assert swipePreference != null;
++        SharedPreferencesManager preferences = ChromeSharedPreferences.getInstance();
++        String key = ChromePreferenceKeys.ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE;
++        swipePreference.setChecked(preferences.readBoolean(key, true));
++        swipePreference.setOnPreferenceChangeListener(
++                (preference, enabled) -> {
++                    preferences.writeBoolean(key, (boolean) enabled);
++                    return true;
++                });
++    }
++
+     private void initBookmarkBarPref() {
+         if (!shouldShowBookmarkPref(getContext())) {
+             removePreference(PREF_BOOKMARK_BAR);
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/compositor/layouts/LayoutManagerChrome.java b/chrome/android/java/src/org/chromium/chrome/browser/compositor/layouts/LayoutManagerChrome.java
+index e83d8ce2d6258953118b278a007877dd58bb0063..f610d523821ea955b3c973d5d9dff5eba737061a 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/compositor/layouts/LayoutManagerChrome.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/compositor/layouts/LayoutManagerChrome.java
+@@ -36,6 +36,8 @@ import org.chromium.chrome.browser.hub.HubLayout;
+ import org.chromium.chrome.browser.hub.HubLayoutDependencyHolder;
+ import org.chromium.chrome.browser.layouts.LayoutType;
+ import org.chromium.chrome.browser.layouts.components.VirtualView;
++import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
++import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+ import org.chromium.chrome.browser.tab.Tab;
+ import org.chromium.chrome.browser.tab.TabBrowserControlsConstraintsHelper;
+ import org.chromium.chrome.browser.tab_ui.TabContentManager;
+@@ -621,7 +623,12 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
+             @ScrollDirection
+             int showTabSwitcherScrollDirection =
+                     toolbarShownOnTop ? ScrollDirection.DOWN : ScrollDirection.UP;
+-            return direction == showTabSwitcherScrollDirection && mSupportsSwipeToShowTabSwitcher;
++            return direction == showTabSwitcherScrollDirection
++                    && mSupportsSwipeToShowTabSwitcher
++                    && ChromeSharedPreferences.getInstance()
++                            .readBoolean(
++                                    ChromePreferenceKeys.ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE,
++                                    true);
+         }
+ 
+         /** Opens the tab switcher in response to a toolbar swipe. */
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabActivity.java
+index 62ed84b70331dcbad872c3d4cee07b3918a7657c..d1da432077cd0a5a63530e8951c88abcf9da7427 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/BaseCustomTabActivity.java
+@@ -573,6 +573,38 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
+                 this, getSplashController(), getTabObserverRegistrar(), mIntentDataProvider);
+         getSharedActivityCoordinator();
+ 
++        if (mIntentDataProvider.isWebappOrWebApkActivity()) {
++            var statusBarColorController = mRootUiCoordinator.getStatusBarColorController();
++            getTabObserverRegistrar()
++                    .registerActivityTabObserver(
++                            new TabObserverRegistrar.CustomTabTabObserver() {
++                                @Override
++                                protected void onAttachedToInitialTab(Tab tab) {
++                                    statusBarColorController.updateStatusBarColor();
++                                }
++
++                                @Override
++                                public void onContentChanged(Tab tab) {
++                                    statusBarColorController.updateStatusBarColor();
++                                }
++
++                                @Override
++                                public void onCrash(Tab tab) {
++                                    statusBarColorController.updateStatusBarColor();
++                                }
++
++                                @Override
++                                public void didFirstVisuallyNonEmptyPaint(Tab tab) {
++                                    statusBarColorController.updateStatusBarColor();
++                                }
++
++                                @Override
++                                public void onAutoDarkenedBackgroundColorChanged(Tab tab) {
++                                    statusBarColorController.updateStatusBarColor();
++                                }
++                            });
++        }
++
+         if (mIntentDataProvider.isWebApkActivity()) initializeForWebApk();
+     }
+ 
+@@ -1131,6 +1163,14 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
+         super.finishNativeInitialization();
+     }
+ 
++    @Override
++    public void onResumeWithNative() {
++        super.onResumeWithNative();
++        if (mIntentDataProvider != null && mIntentDataProvider.isWebappOrWebApkActivity()) {
++            mRootUiCoordinator.getStatusBarColorController().updateStatusBarColor();
++        }
++    }
++
+     /**
+      * Applies the navigation bar color (and divider) for the current activity based on the intent /
+      * manifest theme color and the current edge-to-edge state.
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabStatusBarColorProvider.java b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabStatusBarColorProvider.java
+index e0cc996614a17416ef6cab50dec6a93b529307cc..bf065919249543f6d38dd6d9fec3f7114cfd939e 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabStatusBarColorProvider.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/customtabs/CustomTabStatusBarColorProvider.java
+@@ -7,6 +7,8 @@ package org.chromium.chrome.browser.customtabs;
+ import static org.chromium.chrome.browser.ui.system.StatusBarColorController.DEFAULT_STATUS_BAR_COLOR;
+ import static org.chromium.chrome.browser.ui.system.StatusBarColorController.UNDEFINED_STATUS_BAR_COLOR;
+ 
++import android.graphics.Color;
++
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
+@@ -14,6 +16,8 @@ import org.chromium.chrome.browser.customtabs.features.toolbar.BrowserServicesTh
+ import org.chromium.chrome.browser.customtabs.features.toolbar.BrowserServicesThemeColorProvider.ThemeColorSource;
+ import org.chromium.chrome.browser.tab.Tab;
+ import org.chromium.chrome.browser.ui.system.StatusBarColorController;
++import org.chromium.content_public.browser.WebContents;
++import org.chromium.ui.util.ColorUtils;
+ 
+ /** Manages the status bar color for a CustomTabActivity. */
+ @NullMarked
+@@ -42,6 +46,17 @@ public class CustomTabStatusBarColorProvider {
+     }
+ 
+     int getBaseStatusBarColor(@Nullable Tab tab) {
++        if (mIntentDataProvider.isWebappOrWebApkActivity() && tab != null) {
++            WebContents webContents = tab.getWebContents();
++            if (webContents != null && !webContents.isDestroyed()) {
++                int backgroundColor = webContents.getAutoDarkenedPageBackgroundColor();
++                if (Color.alpha(backgroundColor) == 255
++                        && ColorUtils.shouldUseLightForegroundOnBackground(backgroundColor)) {
++                    return Color.BLACK;
++                }
++            }
++        }
++
+         @ThemeColorSource
+         int toolbarColorType =
+                 BrowserServicesThemeColorProvider.computeColorSource(
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiInstanceManagerApi31.java b/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiInstanceManagerApi31.java
+index c108bbbe0bd3b581e38dac7756373b0bd863dd4d..3d268b757270009238e385c19413f458fd0270d2 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiInstanceManagerApi31.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiInstanceManagerApi31.java
+@@ -167,6 +167,16 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
+ 
+     @Override
+     public boolean handleMenuOrKeyboardAction(int id, boolean fromMenu) {
++        if (id == R.id.incognito_toggle_menu_id) {
++            int regularWindowId = MultiWindowUtils.getLastRegularWindowForIncognitoSwitch(mInstanceId);
++            if (regularWindowId == INVALID_WINDOW_ID) {
++                openNewWindow(false);
++            } else {
++                openWindow(regularWindowId, NewWindowAppSource.WINDOW_MANAGER);
++            }
++            return true;
++        }
++
+         if (id == R.id.manage_all_windows_menu_id) {
+             showInstanceSwitcherDialog();
+ 
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiWindowUtils.java b/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiWindowUtils.java
+index 3519e4dfa5ad1cf8b1fcf8aa40717a16b75397bb..7318c8e325fe185bca8fe05b612d80037ffc3510 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiWindowUtils.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiWindowUtils.java
+@@ -1239,7 +1239,7 @@ public class MultiWindowUtils implements ActivityStateListener {
+         return getLastAccessedWindowIdInternal(
+                 /* includeRunningActivitiesOnly= */ true,
+                 /* idToExclude= */ INVALID_WINDOW_ID,
+-                PersistedInstanceType.ANY);
++                () -> getPersistedInstanceIds(PersistedInstanceType.ANY));
+     }
+ 
+     /**
+@@ -1250,26 +1250,55 @@ public class MultiWindowUtils implements ActivityStateListener {
+         return getLastAccessedWindowIdInternal(
+                 /* includeRunningActivitiesOnly= */ false,
+                 /* idToExclude= */ INVALID_WINDOW_ID,
+-                PersistedInstanceType.ANY);
++                () -> getPersistedInstanceIds(PersistedInstanceType.ANY));
+     }
+ 
+     /**
+      * @param currentInstanceId The id of the current instance.
+      * @param targetInstanceType The {@link PersistedInstanceType} to determine the search pool for
+      *     the last accessed id.
+-     * @return The instance ID of the Chrome window that was last accessed. This will return {@code
++     * @return The last accessed window that is not marked for deletion, or {@code
+      *     INVALID_WINDOW_ID} if no other eligible window is found.
+      */
+     /* package */ static int getLastAccessedWindowIdExcludingSelf(
+             int currentInstanceId, @PersistedInstanceType int targetInstanceType) {
+         return getLastAccessedWindowIdInternal(
+-                /* includeRunningActivitiesOnly= */ false, currentInstanceId, targetInstanceType);
++                /* includeRunningActivitiesOnly= */ false,
++                currentInstanceId,
++                () -> getUsableInstanceIds(targetInstanceType));
++    }
++
++    /* package */ static int getLastRegularWindowForIncognitoSwitch(int currentInstanceId) {
++        return getLastAccessedWindowIdInternal(
++                /* includeRunningActivitiesOnly= */ false,
++                currentInstanceId,
++                MultiWindowUtils::getUsableRegularWindows);
++    }
++
++    private static Set<Integer> getUsableRegularWindows() {
++        Set<Integer> candidates = getUsableInstanceIds(PersistedInstanceType.ANY);
++        Set<Integer> appTaskIds = getAllAppTaskIds(ContextUtils.getApplicationContext());
++        candidates.removeIf(
++                id -> {
++                    if (!isRestorableInstance(appTaskIds, id)) return true;
++                    int profileType = ChromeMultiInstancePersistentStore.readProfileType(id);
++                    if (profileType == SupportedProfileType.REGULAR) return false;
++
++                    // Older records may have normal tabs but no stored profile type.
++                    if (profileType != SupportedProfileType.UNSET
++                            || ChromeMultiInstancePersistentStore.readNormalTabCount(id) == 0) {
++                        return true;
++                    }
++                    return appTaskIds.contains(ChromeMultiInstancePersistentStore.readTaskId(id))
++                            && ChromeMultiInstancePersistentStore.readIncognitoSelected(id);
++                });
++        return candidates;
+     }
+ 
+     private static int getLastAccessedWindowIdInternal(
+             boolean includeRunningActivitiesOnly,
+             int idToExclude,
+-            @PersistedInstanceType int targetInstanceType) {
++            Supplier<Set<Integer>> candidateWindows) {
+         if (sLastAccessedWindowIdForTesting != null) return sLastAccessedWindowIdForTesting;
+ 
+         int lastAccessedWindowId = INVALID_WINDOW_ID;
+@@ -1282,9 +1311,7 @@ public class MultiWindowUtils implements ActivityStateListener {
+             windowIdsOfRunningTabbedActivities = getWindowIdsOfRunningTabbedActivities();
+         }
+ 
+-        Set<Integer> persistedIds = getPersistedInstanceIds(targetInstanceType);
+-
+-        for (int id : persistedIds) {
++        for (int id : candidateWindows.get()) {
+             if (id == idToExclude) continue;
+             if (includeRunningActivitiesOnly) {
+                 int windowId = assumeNonNull(windowIdsOfRunningTabbedActivities).indexOfValue(id);
+diff --git a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
+index 5e8888d3d25589b5d6eeab7a6c250f05586bc6a3..49dad38e5398d436a0d2320a598eb3c6031d659d 100644
+--- a/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
++++ b/chrome/browser/preferences/android/java/src/org/chromium/chrome/browser/preferences/ChromePreferenceKeys.java
+@@ -1068,6 +1068,10 @@ public final class ChromePreferenceKeys {
+     public static final String TIPS_NOTIFICATIONS_OPT_IN_PROMO_LAST_SHOWN_TIMESTAMP =
+             "Chrome.TipsNotifications.OptInLastShownTimestamp";
+ 
++    /** Whether a vertical swipe on the toolbar opens the tab switcher. */
++    public static final String ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE =
++            "Chrome.Argon.TabSwitcherOnToolbarSwipe";
++
+     // If the toolbar should be shown on top.
+     public static final String TOOLBAR_TOP_ANCHORED = "Chrome.Toolbar.TopAnchored";
+ 
+@@ -1369,6 +1373,7 @@ public final class ChromePreferenceKeys {
+                 TIPS_NOTIFICATIONS_OPT_IN_PROMO_ACCEPTED,
+                 TIPS_NOTIFICATIONS_OPT_IN_PROMO_SHOW_COUNT,
+                 TIPS_NOTIFICATIONS_OPT_IN_PROMO_LAST_SHOWN_TIMESTAMP,
++                ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE,
+                 TOOLBAR_TOP_ANCHORED,
+                 TWA_DISCLOSURE_SEEN_PACKAGES,
+                 UMA_ON_POSTCREATE_COUNTER,
+diff --git a/chrome/browser/ui/android/strings/android_chrome_strings.grd b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+index 147bfb57ce389bf0ab0fde28b935f4c4c5c91652..526c2313c124f8f17123594d6430fb15a24bd1c3 100644
+--- a/chrome/browser/ui/android/strings/android_chrome_strings.grd
++++ b/chrome/browser/ui/android/strings/android_chrome_strings.grd
+@@ -958,6 +958,12 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
+       <message name="IDS_APPEARANCE_SETTINGS" desc="Title for Appearance settings.">
+         Appearance
+       </message>
++      <message name="IDS_ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE" desc="Title for the switch that makes a vertical swipe on the address bar open the tab switcher.">
++        Swipe to open the tab switcher
++      </message>
++      <message name="IDS_ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE_SUMMARY" desc="Explains the direction of the swipe that opens the tab switcher for each position of the address bar.">
++        Swipe down on the top address bar or up on the bottom address bar
++      </message>
+       <message name="IDS_BOOKMARK_BAR_SETTINGS_TITLE" desc="Title for the bookmarks bar settings page.">
+         Bookmarks bar
+       </message>
