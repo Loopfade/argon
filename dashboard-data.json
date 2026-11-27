@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-27T14:26:45Z",
+  "generated_at": "2026-11-27T16:26:43Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -92046,26 +92046,26 @@
       "state": "open",
       "draft": false,
       "created_at": "2026-11-25T08:02:24Z",
-      "updated_at": "2026-11-27T05:37:25Z",
+      "updated_at": "2026-11-27T16:26:17Z",
       "merged_at": null,
-      "head_sha": "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
-      "merge_commit_sha": "f8a27a48f1b52742cfee6cf36d1704aa7f588fa1",
+      "head_sha": "bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a",
+      "merge_commit_sha": "e215f71678423200aae6358cff44cfa89c4a5a89",
       "author": "Loopfade",
-      "additions": 2100,
-      "deletions": 152,
-      "changed_files": 18,
+      "additions": 2162,
+      "deletions": 153,
+      "changed_files": 19,
       "commits": 5,
       "comparison": {
         "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-        "head_sha": "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
+        "head_sha": "bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
+        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a",
         "commits": 5,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 18,
-        "additions": 2100,
-        "deletions": 152,
+        "changed_files": 19,
+        "additions": 2162,
+        "deletions": 153,
         "files": [
           {
             "filename": ".github/ci/test-domain-policy.sh",
@@ -92080,6 +92080,13 @@
             "status": "modified",
             "additions": 1,
             "deletions": 81
+          },
+          {
+            "filename": ".github/workflows/build-unified-arch.yml",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 25,
+            "deletions": 1
           },
           {
             "filename": "build-lock.json",
@@ -92099,8 +92106,8 @@
             "filename": "docs/chromium-158-upgrade.md",
             "previous_filename": null,
             "status": "modified",
-            "additions": 6,
-            "deletions": 14
+            "additions": 8,
+            "deletions": 15
           },
           {
             "filename": "patch.sh",
@@ -92183,8 +92190,8 @@
             "filename": "tests/test_test_apk_collection.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 19,
-            "deletions": 41
+            "additions": 54,
+            "deletions": 40
           },
           {
             "filename": "vanadium",
@@ -92202,7 +92209,7 @@
           "status": "completed",
           "conclusion": "success",
           "source_sha": "e8ef3d2ba61ca9f5201c915f4e98ed63f42bc243",
-          "current": true
+          "current": false
         },
         {
           "id": 45827511899,
@@ -102797,6 +102804,160 @@
           "status": "modified",
           "additions": 7,
           "deletions": 0
+        }
+      ]
+    },
+    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a": {
+      "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
+      "head_sha": "bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a",
+      "status": "ahead",
+      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a",
+      "commits": 5,
+      "commit_shas": [
+        "124ac01c99f174acc8477711f132cf7c3d52d720",
+        "9b3a181e48d2223c6482c855d1845ba51b5d0321",
+        "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
+        "bc1ef6400ae4dfc7079cd5551d3c7f058d68f27a",
+        "cbed49d59c118e9d4403591fa426a45ad7d18d78"
+      ],
+      "commits_complete": true,
+      "files_complete": true,
+      "changed_files": 19,
+      "additions": 2162,
+      "deletions": 153,
+      "files": [
+        {
+          "filename": ".github/ci/test-domain-policy.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 15,
+          "deletions": 0
+        },
+        {
+          "filename": ".github/workflows/build-test-branch.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 81
+        },
+        {
+          "filename": ".github/workflows/build-unified-arch.yml",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 25,
+          "deletions": 1
+        },
+        {
+          "filename": "build-lock.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 4,
+          "deletions": 4
+        },
+        {
+          "filename": "docs/build-pipeline.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 5,
+          "deletions": 8
+        },
+        {
+          "filename": "docs/chromium-158-upgrade.md",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 8,
+          "deletions": 15
+        },
+        {
+          "filename": "patch.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 6,
+          "deletions": 2
+        },
+        {
+          "filename": "patches/argon-android-ui.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 354,
+          "deletions": 0
+        },
+        {
+          "filename": "patches/argon-pwa-auto-darkening.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 402,
+          "deletions": 0
+        },
+        {
+          "filename": "patches/titanium-extension-recovery.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 432,
+          "deletions": 0
+        },
+        {
+          "filename": "res/translations/ru.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 10,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/android_upstream_regressions.py",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 94,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/check_upstream_patches.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 14,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/android/UiRegressionFlow.java.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 324,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/android/extension_recovery.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 344,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/android/pwa_color.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 68,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/browsing_data_period.json",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
+        },
+        {
+          "filename": "tests/test_test_apk_collection.py",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 54,
+          "deletions": 40
+        },
+        {
+          "filename": "vanadium",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1
         }
       ]
     },
