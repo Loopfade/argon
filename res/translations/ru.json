@@ -3,6 +3,16 @@
     "source": "chrome/browser/ui/android/strings/android_chrome_strings.grd",
     "catalog": "chrome/browser/ui/android/strings/translations/android_chrome_strings_ru.xtb",
     "messages": {
+      "IDS_ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE": {
+        "english": "Swipe to open the tab switcher",
+        "meaning": "",
+        "russian": "Открывать список вкладок свайпом"
+      },
+      "IDS_ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE_SUMMARY": {
+        "english": "Swipe down on the top address bar or up on the bottom address bar",
+        "meaning": "",
+        "russian": "Свайп вниз по верхней адресной строке или вверх по нижней"
+      },
       "IDS_PASSWORD_MANAGER_SETTINGS_TITLE": {
         "english": "Password Manager",
         "meaning": "",

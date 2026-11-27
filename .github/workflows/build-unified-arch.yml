@@ -243,12 +243,36 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CURRENT_CACHE_KEY: ${{ steps.cache.outputs.cache-primary-key }}
         run: python3 .github/ci/prune-compiler-cache.py "$CURRENT_CACHE_KEY"
+      - name: Подготовить файлы для скачивания тестового APK
+        if: inputs.standalone_test && steps.build.outcome == 'success' && steps.provenance.outcome == 'success'
+        env:
+          BUILD_CERTIFICATE: ${{ inputs.certificate }}
+        run: |
+          set -euo pipefail
+          case "$TARGET_ARCH" in
+            arm64) abi=arm64-v8a ;;
+            arm) abi=armeabi-v7a ;;
+            *) exit 1 ;;
+          esac
+          [[ "$BUILD_CERTIFICATE" =~ ^[0-9a-f]{64}$ ]]
+          shopt -s nullglob
+          source_dir="artifacts/$abi"
+          apks=("$source_dir"/*.apk)
+          [[ ${#apks[@]} == 1 ]]
+          files=("${apks[0]}" "${apks[0]}.sha256" "$source_dir"/{Bare,Chromium,Ruthenium,Titanium}-LICENSE.txt)
+          for file in "${files[@]}"; do
+            [[ -f "$file" && ! -L "$file" ]]
+          done
+          upload="$RUNNER_TEMP/argon-test-apk"
+          mkdir -- "$upload"
+          cp --reflink=auto -- "${files[@]}" "$upload/"
+          printf '%s\n' "$BUILD_CERTIFICATE" > "$upload/signing-certificate.sha256"
       - name: Загрузить проверенный APK и данные о его происхождении
         if: steps.build.outcome == 'success' && steps.provenance.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Argon-${{ inputs.arch }}-${{ inputs.source_sha || github.sha }}-${{ inputs.fingerprint }}
-          path: artifacts/
+          path: ${{ inputs.standalone_test && format('{0}/argon-test-apk', runner.temp) || 'artifacts/' }}
           if-no-files-found: error
           overwrite: true
           retention-days: 30

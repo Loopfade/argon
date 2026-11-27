@@ -1,0 +1,432 @@
+diff --git a/chrome/browser/extensions/chrome_extension_registrar_delegate.cc b/chrome/browser/extensions/chrome_extension_registrar_delegate.cc
+index 7ff5fb309529d5a776f0fdb29e07ef1e001f06f4..e15370f6fde14cb5eb94928b798544016c866fa9 100644
+--- a/chrome/browser/extensions/chrome_extension_registrar_delegate.cc
++++ b/chrome/browser/extensions/chrome_extension_registrar_delegate.cc
+@@ -264,10 +264,14 @@ void ChromeExtensionRegistrarDelegate::PostUninstallExtension(
+ void ChromeExtensionRegistrarDelegate::DoLoadExtensionForReload(
+     const ExtensionId& extension_id,
+     const base::FilePath& path,
+-    bool load_error_behavior_noisy) {
++    bool load_error_behavior_noisy,
++    base::OnceCallback<bool()> can_install) {
+   // If we're reloading a component extension, use the component extension
+   // loader's reloader.
+   if (component_loader_->Exists(extension_id)) {
++    if (can_install && !std::move(can_install).Run()) {
++      return;
++    }
+     component_loader_->Reload(extension_id);
+     return;
+   }
+@@ -277,6 +281,9 @@ void ChromeExtensionRegistrarDelegate::DoLoadExtensionForReload(
+   std::optional<ExtensionPrefs::InstallRecord> installed_extension(
+       extension_prefs_->GetInstalledExtensionInfo(extension_id));
+   if (installed_extension && installed_extension->extension_manifest.get()) {
++    if (can_install && !std::move(can_install).Run()) {
++      return;
++    }
+     InstalledLoader(profile_).Load(*installed_extension, false);
+   } else {
+     // Otherwise, the extension is unpacked (location LOAD). We must load it
+@@ -286,6 +293,10 @@ void ChromeExtensionRegistrarDelegate::DoLoadExtensionForReload(
+     scoped_refptr<UnpackedInstaller> unpacked_installer =
+         UnpackedInstaller::Create(profile_);
+     unpacked_installer->set_be_noisy_on_failure(load_error_behavior_noisy);
++    if (can_install) {
++      unpacked_installer->SetCrashRecoveryGuard(extension_id,
++                                                 std::move(can_install));
++    }
+     unpacked_installer->set_completion_callback(base::BindOnce(
+         &ChromeExtensionRegistrarDelegate::OnUnpackedReloadFailure,
+         weak_factory_.GetWeakPtr()));
+@@ -303,6 +314,13 @@ void ChromeExtensionRegistrarDelegate::LoadExtensionForReloadWithQuietFailure(
+   DoLoadExtensionForReload(extension_id, path, false);
+ }
+ 
++void ChromeExtensionRegistrarDelegate::LoadExtensionForCrashRecovery(
++    const ExtensionId& extension_id,
++    const base::FilePath& path,
++    base::OnceCallback<bool()> can_install) {
++  DoLoadExtensionForReload(extension_id, path, false, std::move(can_install));
++}
++
+ void ChromeExtensionRegistrarDelegate::ShowExtensionDisabledError(
+     const Extension* extension,
+     bool is_remote_install) {
+diff --git a/chrome/browser/extensions/chrome_extension_registrar_delegate.h b/chrome/browser/extensions/chrome_extension_registrar_delegate.h
+index 3c4784f0c2b722f8e3f02d35820dbf384e7b3b0a..91c9af42fb84c33bcfecbec154787543aa13cc50 100644
+--- a/chrome/browser/extensions/chrome_extension_registrar_delegate.h
++++ b/chrome/browser/extensions/chrome_extension_registrar_delegate.h
+@@ -56,6 +56,10 @@ class ChromeExtensionRegistrarDelegate : public ExtensionRegistrar::Delegate {
+   void LoadExtensionForReloadWithQuietFailure(
+       const ExtensionId& extension_id,
+       const base::FilePath& path) override;
++  void LoadExtensionForCrashRecovery(
++      const ExtensionId& extension_id,
++      const base::FilePath& path,
++      base::OnceCallback<bool()> can_install) override;
+   void ShowExtensionDisabledError(const Extension* extension,
+                                   bool is_remote_install) override;
+   bool CanEnableExtension(const Extension* extension) override;
+@@ -80,7 +84,8 @@ class ChromeExtensionRegistrarDelegate : public ExtensionRegistrar::Delegate {
+   // Given an extension ID and/or path, loads that extension as a reload.
+   void DoLoadExtensionForReload(const ExtensionId& extension_id,
+                                 const base::FilePath& path,
+-                                bool load_error_behavior_noisy);
++                                bool load_error_behavior_noisy,
++                                base::OnceCallback<bool()> can_install = {});
+ 
+   // Helper that updates the active extension list used for crash reporting.
+   void UpdateActiveExtensionsInCrashReporter();
+diff --git a/chrome/browser/extensions/extension_service.cc b/chrome/browser/extensions/extension_service.cc
+index bbfff3d18ee839a4beecc8f1d4e5713b7fe6bf04..0a482b4c76be4b66ce69034cda342efc46e6f389 100644
+--- a/chrome/browser/extensions/extension_service.cc
++++ b/chrome/browser/extensions/extension_service.cc
+@@ -21,6 +21,7 @@
+ #include "base/functional/bind.h"
+ #include "base/functional/callback.h"
+ #include "base/location.h"
++#include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/observer_list.h"
+ #include "base/one_shot_event.h"
+@@ -797,15 +798,45 @@ void ExtensionService::OnExtensionHostRenderProcessGone(
+   CHECK(profile_->IsSameOrParent(Profile::FromBrowserContext(browser_context)),
+         base::NotFatalUntil::M161);
+ 
++  auto extension = base::WrapRefCounted(extension_host->extension());
++  if (!extension) {
++    return;
++  }
++
+   // Mark the extension as terminated and deactivated. We want it to
+   // be in a consistent state: either fully working or not loaded
+   // at all, but never half-crashed.  We do it in a PostTask so
+   // that other handlers of this notification will still have
+   // access to the Extension and ExtensionHost.
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-      FROM_HERE, base::BindOnce(&ExtensionRegistrar::TerminateExtension,
+-                                extension_registrar_->GetWeakPtr(),
+-                                extension_host->extension_id()));
++      FROM_HERE,
++      base::BindOnce(
++          [](base::WeakPtr<ExtensionService> service,
++             scoped_refptr<const Extension> extension) {
++            if (service && service->registry_->enabled_extensions().GetByID(
++                               extension->id()) == extension.get()) {
++              service->extension_registrar_->TerminateExtension(extension->id());
++            }
++          },
++          weak_ptr_factory_.GetWeakPtr(), extension));
++
++  content::RenderProcessHost* process = extension_host->render_process_host();
++  if (!process) {
++    return;
++  }
++
++  // A failed launch has no timestamp of its own. A reused host can still
++  // carry the previous process's launch time.
++  const base::TimeTicks launched = process->GetProcessLaunchedTime();
++  if (launched.is_null() || launched < process->GetLastInitTime() ||
++      base::TimeTicks::Now() - launched < base::Minutes(1)) {
++    return;
++  }
++
++  extension_registrar_->ScheduleCrashedExtensionReload(
++      std::move(extension), base::BindRepeating([] {
++        return g_browser_process && !g_browser_process->IsShuttingDown();
++      }));
+ }
+ 
+ void ExtensionService::OnRenderProcessHostCreated(
+diff --git a/extensions/browser/extension_registrar.cc b/extensions/browser/extension_registrar.cc
+index 49fa880c1f2df48acb273c12596de36244591f86..93d599c762ec0e1006257be909bf1f35506e9119 100644
+--- a/extensions/browser/extension_registrar.cc
++++ b/extensions/browser/extension_registrar.cc
+@@ -15,6 +15,8 @@
+ #include "base/metrics/histogram_macros.h"
+ #include "base/notreached.h"
+ #include "base/stl_util.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
+ #include "base/version_info/version_info.h"
+ #include "build/chromeos_buildflags.h"
+ #include "content/public/browser/browser_context.h"
+@@ -140,6 +142,7 @@ void ExtensionRegistrar::Shutdown() {
+   // the `ExtensionSystem` keyed service is destroyed.
+   extension_system_ = nullptr;
+   delegate_ = nullptr;
++  pending_crash_recoveries_.clear();
+   delayed_install_manager_observation_.Reset();
+   delayed_install_manager_ = nullptr;
+ }
+@@ -177,6 +180,8 @@ void ExtensionRegistrar::AddExtension(
+     return;
+   }
+ 
++  pending_crash_recoveries_.erase(extension->id());
++
+   bool is_extension_installed = false;
+   const Extension* old = registry_->GetInstalledExtension(extension->id());
+   if (old) {
+@@ -300,6 +305,7 @@ void ExtensionRegistrar::OnExtensionInstalled(
+ void ExtensionRegistrar::RemoveExtension(const ExtensionId& extension_id,
+                                          UnloadedExtensionReason reason) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  pending_crash_recoveries_.erase(extension_id);
+ 
+   int include_mask = ExtensionRegistry::ENABLED | ExtensionRegistry::DISABLED |
+                      ExtensionRegistry::TERMINATED;
+@@ -435,6 +441,7 @@ void ExtensionRegistrar::DisableExtensionWithRawReasons(
+     }
+   }
+ 
++  pending_crash_recoveries_.erase(extension_id);
+   auto passkey = ExtensionPrefs::DisableReasonRawManipulationPasskey();
+ 
+   // The extension may have been disabled already. Just add the disable reasons.
+@@ -707,14 +714,85 @@ std::vector<scoped_refptr<DevToolsAgentHost>> GetDevToolsAgentHostsFor(
+ }  // namespace
+ 
+ void ExtensionRegistrar::ReloadExtension(const ExtensionId& extension_id) {
++  pending_crash_recoveries_.erase(extension_id);
+   DoReloadExtension(extension_id, LoadErrorBehavior::kNoisy);
+ }
+ 
+ void ExtensionRegistrar::ReloadExtensionWithQuietFailure(
+     const ExtensionId& extension_id) {
++  pending_crash_recoveries_.erase(extension_id);
+   DoReloadExtension(extension_id, LoadErrorBehavior::kQuiet);
+ }
+ 
++void ExtensionRegistrar::ScheduleCrashedExtensionReload(
++    scoped_refptr<const Extension> extension,
++    base::RepeatingCallback<bool()> can_continue) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  const ExtensionId id = extension->id();
++  if (!delegate_ ||
++      registry_->enabled_extensions().GetByID(id) != extension.get() ||
++      pending_crash_recoveries_.contains(id)) {
++    return;
++  }
++
++  const uint64_t recovery_id = ++next_crash_recovery_id_;
++  pending_crash_recoveries_.emplace(id, recovery_id);
++  if (!base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++          FROM_HERE,
++          base::BindOnce(&ExtensionRegistrar::ReloadCrashedExtension,
++                         weak_factory_.GetWeakPtr(), std::move(extension),
++                         recovery_id, std::move(can_continue)),
++          base::Seconds(3))) {
++    ClearCrashRecovery(id, recovery_id);
++  }
++}
++
++bool ExtensionRegistrar::IsCurrentCrashRecovery(const Extension& extension,
++                                                uint64_t recovery_id) const {
++  auto it = pending_crash_recoveries_.find(extension.id());
++  return it != pending_crash_recoveries_.end() && it->second == recovery_id &&
++         registry_->terminated_extensions().GetByID(extension.id()) ==
++             &extension;
++}
++
++void ExtensionRegistrar::ClearCrashRecovery(const ExtensionId& extension_id,
++                                             uint64_t recovery_id) {
++  auto it = pending_crash_recoveries_.find(extension_id);
++  if (it != pending_crash_recoveries_.end() && it->second == recovery_id) {
++    pending_crash_recoveries_.erase(it);
++  }
++}
++
++void ExtensionRegistrar::ReloadCrashedExtension(
++    scoped_refptr<const Extension> extension,
++    uint64_t recovery_id,
++    base::RepeatingCallback<bool()> can_continue) {
++  const ExtensionId id = extension->id();
++  auto weak = weak_factory_.GetWeakPtr();
++  base::ScopedClosureRunner clear_recovery(
++      base::BindOnce(&ExtensionRegistrar::ClearCrashRecovery, weak, id,
++                     recovery_id));
++  if (!IsCurrentCrashRecovery(*extension, recovery_id) || !can_continue.Run()) {
++    return;
++  }
++
++  // The unpacked loader runs asynchronously. Keep the same check until the
++  // actual installation, and clear the request even if loading fails.
++  DoReloadExtension(
++      id, LoadErrorBehavior::kQuiet,
++      base::BindOnce(
++          [](base::WeakPtr<ExtensionRegistrar> registrar,
++             scoped_refptr<const Extension> extension, uint64_t recovery_id,
++             base::RepeatingCallback<bool()> can_continue,
++             base::ScopedClosureRunner) {
++            return registrar &&
++                   registrar->IsCurrentCrashRecovery(*extension, recovery_id) &&
++                   can_continue.Run();
++          },
++          weak, std::move(extension), recovery_id, std::move(can_continue),
++          std::move(clear_recovery)));
++}
++
+ bool ExtensionRegistrar::UninstallExtension(
+     // "transient" because the process of uninstalling may cause the reference
+     // to become invalid. Instead, use |extension->id()|.
+@@ -1160,7 +1238,8 @@ void ExtensionRegistrar::DeactivateExtension(const Extension* extension,
+ 
+ void ExtensionRegistrar::DoReloadExtension(
+     ExtensionId extension_id,
+-    LoadErrorBehavior load_error_behavior) {
++    LoadErrorBehavior load_error_behavior,
++    base::OnceCallback<bool()> can_install) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+ 
+   base::FilePath path;
+@@ -1234,7 +1313,10 @@ void ExtensionRegistrar::DoReloadExtension(
+     return;
+   }
+ 
+-  if (load_error_behavior == LoadErrorBehavior::kQuiet) {
++  if (can_install) {
++    delegate_->LoadExtensionForCrashRecovery(extension_id, path,
++                                             std::move(can_install));
++  } else if (load_error_behavior == LoadErrorBehavior::kQuiet) {
+     delegate_->LoadExtensionForReloadWithQuietFailure(extension_id, path);
+   } else {
+     delegate_->LoadExtensionForReload(extension_id, path);
+diff --git a/extensions/browser/extension_registrar.h b/extensions/browser/extension_registrar.h
+index 11c4aaf94187648d4184c027c1f028ff8bf1a4ca..dac37bd23124cfa8523dad51455faf58ac8f4664 100644
+--- a/extensions/browser/extension_registrar.h
++++ b/extensions/browser/extension_registrar.h
+@@ -5,10 +5,13 @@
+ #ifndef EXTENSIONS_BROWSER_EXTENSION_REGISTRAR_H_
+ #define EXTENSIONS_BROWSER_EXTENSION_REGISTRAR_H_
+ 
++#include <stdint.h>
++
+ #include <memory>
+ #include <set>
+ 
+ #include "base/auto_reset.h"
++#include "base/containers/flat_map.h"
+ #include "base/containers/span.h"
+ #include "base/files/file_path.h"
+ #include "base/functional/callback_helpers.h"
+@@ -103,6 +106,12 @@ class ExtensionRegistrar : public KeyedService,
+         const ExtensionId& extension_id,
+         const base::FilePath& path) = 0;
+ 
++    // A crash recovery's installation must be cancellable until it commits.
++    virtual void LoadExtensionForCrashRecovery(
++        const ExtensionId& extension_id,
++        const base::FilePath& path,
++        base::OnceCallback<bool()> can_install) {}
++
+     // Informs the user that an extension was disabled after upgrading to higher
+     // permissions. If `is_remote_install` is true, the extension was disabled
+     // because it was installed remotely.
+@@ -275,6 +284,10 @@ class ExtensionRegistrar : public KeyedService,
+   // Attempts to reload extension with suppressing noisy failures.
+   void ReloadExtensionWithQuietFailure(const ExtensionId& extension_id);
+ 
++  void ScheduleCrashedExtensionReload(
++      scoped_refptr<const Extension> extension,
++      base::RepeatingCallback<bool()> can_continue);
++
+   // Uninstalls the specified extension. Callers should only call this method
+   // with extensions that exist. `reason` lets the caller specify why the
+   // extension is uninstalled.
+@@ -418,7 +431,16 @@ class ExtensionRegistrar : public KeyedService,
+   // `extension_id` first by passing value and retrieve a new Extension pointer
+   // afterwards.
+   void DoReloadExtension(ExtensionId extension_id,
+-                         LoadErrorBehavior load_error_behavior);
++                         LoadErrorBehavior load_error_behavior,
++                         base::OnceCallback<bool()> can_install = {});
++
++  void ReloadCrashedExtension(scoped_refptr<const Extension> extension,
++                              uint64_t recovery_id,
++                              base::RepeatingCallback<bool()> can_continue);
++  bool IsCurrentCrashRecovery(const Extension& extension,
++                              uint64_t recovery_id) const;
++  void ClearCrashRecovery(const ExtensionId& extension_id,
++                          uint64_t recovery_id);
+ 
+   // Records the current browser version in `extension_id`'s prefs and returns
+   // whether it differed from the previously recorded one (also true if there
+@@ -493,6 +515,11 @@ class ExtensionRegistrar : public KeyedService,
+   // which were disabled for a reload.
+   ExtensionIdSet reloading_extensions_;
+ 
++  // Tracks one recovery per crashed extension until loading finishes or the
++  // user changes the extension's state.
++  base::flat_map<ExtensionId, uint64_t> pending_crash_recoveries_;
++  uint64_t next_crash_recovery_id_ = 0;
++
+   // Store the paths of extensions that failed to reload. We use this to retry
+   // reload.
+   std::set<base::FilePath> failed_to_reload_unpacked_extensions_;
+diff --git a/extensions/browser/unpacked_installer.cc b/extensions/browser/unpacked_installer.cc
+index 642115f8e65cd59f3d3b70f49f35fe12741a862d..4138569b34ec9cf3153d4019aa1b0f97dabf5122 100644
+--- a/extensions/browser/unpacked_installer.cc
++++ b/extensions/browser/unpacked_installer.cc
+@@ -417,6 +417,11 @@ void UnpackedInstaller::LoadWithFileAccessOnFileThread(int flags) {
+ void UnpackedInstaller::ReportExtensionLoadError(const std::u16string& error) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+ 
++  if (can_install_callback_ && !std::move(can_install_callback_).Run()) {
++    callback_.Reset();
++    return;
++  }
++
+   if (browser_context_) {
+     LoadErrorReporter::GetInstance()->ReportLoadError(
+         extension_path_, error, browser_context_, be_noisy_on_failure_);
+@@ -430,8 +435,12 @@ void UnpackedInstaller::ReportExtensionLoadError(const std::u16string& error) {
+ void UnpackedInstaller::InstallExtension() {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+ 
+-  if (!browser_context_) {
++  if (!browser_context_ ||
++      (can_install_callback_ &&
++       (extension()->id() != expected_recovery_id_ ||
++        !std::move(can_install_callback_).Run()))) {
+     callback_.Reset();
++    can_install_callback_.Reset();
+     return;
+   }
+ 
+diff --git a/extensions/browser/unpacked_installer.h b/extensions/browser/unpacked_installer.h
+index 723fcd240767a0941cdbf03165888ec8fdc0f3df..372e13c07e91ced91b65e0aa3373a5ebbfc75262 100644
+--- a/extensions/browser/unpacked_installer.h
++++ b/extensions/browser/unpacked_installer.h
+@@ -21,6 +21,7 @@
+ #include "content/public/browser/browser_thread.h"
+ #include "extensions/browser/preload_check.h"
+ #include "extensions/buildflags/buildflags.h"
++#include "extensions/common/extension_id.h"
+ #include "extensions/common/manifest.h"
+ 
+ static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
+@@ -91,6 +92,13 @@ class UnpackedInstaller : public base::RefCountedThreadSafe<
+     callback_ = std::move(callback);
+   }
+ 
++  // A recovery may only reinstall the extension it was started for.
++  void SetCrashRecoveryGuard(const ExtensionId& expected_id,
++                             base::OnceCallback<bool()> callback) {
++    expected_recovery_id_ = expected_id;
++    can_install_callback_ = std::move(callback);
++  }
++
+   void set_allow_file_access(bool allow) { allow_file_access_ = allow; }
+ 
+   void set_allow_incognito_access(bool allow) {
+@@ -194,6 +202,8 @@ class UnpackedInstaller : public base::RefCountedThreadSafe<
+   base::DictValue ruleset_install_prefs_;
+ 
+   CompletionCallback callback_;
++  ExtensionId expected_recovery_id_;
++  base::OnceCallback<bool()> can_install_callback_;
+ 
+   // Override default file access.
+   std::optional<bool> allow_file_access_;

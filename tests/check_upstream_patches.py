@@ -36,6 +36,7 @@ import apply_exit as explicit_exit
 import apply_user_agent as user_agent
 import apply_homepage as homepage
 import apply_external_navigation as external_navigation
+from android_upstream_regressions import verify_upstream as verify_android_regressions
 from test_dark_theme_prepaint import run_prepaint_flow
 from browsing_data_period_flow import verify_upstream as verify_deletion_period_flow
 from test_modulemap import verify_pinned_generator
@@ -139,6 +140,16 @@ BASE_PATHS += tuple(path for path in (*external_navigation.INPUT_PATHS, *externa
 LINKER_HEADER = Path("base/android/linker/linker_jni.h")
 BASE_PATHS += (LINKER_HEADER,)
 BASE_PATHS += tuple(path for path in IDENTITY_PATHS if path not in BASE_PATHS)
+ANDROID_PATCHES = (
+    ROOT / "patches/argon-android-ui.patch",
+    ROOT / "patches/argon-pwa-auto-darkening.patch",
+    ROOT / "patches/titanium-extension-recovery.patch",
+)
+ANDROID_PATCH_PATHS = (
+    Path(path) for patch_file in ANDROID_PATCHES
+    for path in re.findall(r"^--- a/(.+)$", patch_file.read_text(), re.MULTILINE)
+)
+BASE_PATHS = tuple(dict.fromkeys((*BASE_PATHS, *ANDROID_PATCH_PATHS)))
 EXTENSION_PATHS = (
     user_agent.PRIVACY_HOOKS,
     patch.TITANIUM_CHROME_JAVA_SOURCES, patch.TITANIUM_CHROME_RESOURCES,
@@ -642,11 +653,14 @@ def main():
         verify_devtools_version_gate(src, lock["chromium_version"])
         verify_background_media_observer_api(src)
         apply_and_verify_linker_reservation(src)
+        for android_patch in ANDROID_PATCHES:
+            subprocess.run(["git", "apply", str(android_patch)], cwd=src, check=True)
         modulemap.apply(src)
         verify_pinned_generator(src)
         deletion_period.apply(src)
         homepage.apply(src)
         dark_themes.apply(src)
+        print(verify_android_regressions(src))
         patch.apply(src, product_name=False)
         user_agent.apply(src)
         print(verify_user_agent_tab(src))

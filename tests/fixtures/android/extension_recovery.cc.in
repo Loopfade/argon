@@ -1,0 +1,344 @@
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#define CHECK(condition, ...) assert(condition)
+#define DCHECK_CURRENTLY_ON(thread) assert(true)
+#define FROM_HERE 0
+
+using ExtensionId = std::string;
+
+template <typename T>
+using scoped_refptr = std::shared_ptr<T>;
+
+namespace base {
+struct TimeTicks {
+  int seconds = 0;
+
+  static TimeTicks Now() { return {300}; }
+  bool is_null() const { return seconds == 0; }
+  bool operator<(TimeTicks other) const { return seconds < other.seconds; }
+  int operator-(TimeTicks other) const { return seconds - other.seconds; }
+};
+
+int Minutes(int count) { return count * 60; }
+int Seconds(int count) { return count; }
+
+template <typename T>
+using WeakPtr = T*;
+
+template <typename T>
+struct WeakPtrFactory {
+  T* value;
+  WeakPtr<T> GetWeakPtr() { return value; }
+};
+
+template <typename T>
+auto WrapRefCounted(const T* value) {
+  return value ? value->shared_from_this() : scoped_refptr<const T>();
+}
+
+template <typename Signature>
+class OnceCallback;
+
+template <typename Return>
+class OnceCallback<Return()> {
+ public:
+  OnceCallback() = default;
+  OnceCallback(OnceCallback&&) = default;
+  OnceCallback& operator=(OnceCallback&&) = default;
+
+  template <typename Function>
+  OnceCallback(Function function)
+      : callback_([bound = std::make_shared<Function>(std::move(function))] {
+          return std::move(*bound)();
+        }) {}
+
+  explicit operator bool() const { return static_cast<bool>(callback_); }
+  void Reset() { callback_ = {}; }
+  Return Run() && {
+    auto callback = std::exchange(callback_, {});
+    return callback();
+  }
+
+ private:
+  std::function<Return()> callback_;
+};
+
+template <typename Signature>
+struct RepeatingCallback {
+  std::function<Signature> callback;
+  bool Run() const { return callback(); }
+};
+
+template <typename Function>
+auto BindRepeating(Function function) {
+  return RepeatingCallback<bool()>{function};
+}
+
+template <typename Function, typename... Args>
+auto BindOnce(Function function, Args... args) {
+  return std::bind_front(function, std::move(args)...);
+}
+
+struct ScopedClosureRunner {
+  explicit ScopedClosureRunner(OnceCallback<void()> closure)
+      : closure(std::move(closure)) {}
+  ScopedClosureRunner(ScopedClosureRunner&&) = default;
+  ~ScopedClosureRunner() {
+    if (closure) {
+      std::move(closure).Run();
+    }
+  }
+  OnceCallback<void()> closure;
+};
+
+struct SingleThreadTaskRunner {
+  static SingleThreadTaskRunner* GetCurrentDefault() {
+    static SingleThreadTaskRunner runner;
+    return &runner;
+  }
+
+  void PostTask(int, OnceCallback<void()> task) {
+    ready.push_back(std::move(task));
+  }
+
+  bool PostDelayedTask(int, OnceCallback<void()> task, int delay) {
+    assert(delay == 3);
+    delayed.push_back(std::move(task));
+    return true;
+  }
+
+  void DrainReadyTasks() {
+    for (auto& task : std::exchange(ready, {})) {
+      std::move(task).Run();
+    }
+  }
+
+  void RunNextDelayedTask() {
+    auto task = std::move(delayed.front());
+    delayed.erase(delayed.begin());
+    std::move(task).Run();
+  }
+
+  std::vector<OnceCallback<void()>> ready;
+  std::vector<OnceCallback<void()>> delayed;
+};
+}  // namespace base
+
+namespace content {
+struct BrowserContext {};
+
+struct RenderProcessHost {
+  base::TimeTicks launched;
+  base::TimeTicks last_init;
+
+  base::TimeTicks GetProcessLaunchedTime() const { return launched; }
+  const base::TimeTicks& GetLastInitTime() const { return last_init; }
+};
+}  // namespace content
+
+struct Profile {
+  static Profile* FromBrowserContext(content::BrowserContext*) { return nullptr; }
+  bool IsSameOrParent(Profile*) const { return true; }
+};
+
+struct Extension : std::enable_shared_from_this<Extension> {
+  explicit Extension(ExtensionId id = "test") : id_(std::move(id)) {}
+  const ExtensionId& id() const { return id_; }
+
+  ExtensionId id_;
+};
+
+struct ExtensionHost {
+  content::RenderProcessHost* process;
+  scoped_refptr<const Extension> loaded;
+  content::RenderProcessHost* render_process_host() const { return process; }
+  const Extension* extension() const { return loaded.get(); }
+};
+
+struct BrowserProcess {
+  bool shutting_down = false;
+  bool IsShuttingDown() const { return shutting_down; }
+} browser_process;
+
+BrowserProcess* g_browser_process = &browser_process;
+
+struct ExtensionSet {
+  scoped_refptr<const Extension> value;
+  const Extension* GetByID(const ExtensionId& id) const {
+    return value && value->id() == id ? value.get() : nullptr;
+  }
+};
+
+struct Registry {
+  ExtensionSet enabled;
+  ExtensionSet terminated;
+  const ExtensionSet& enabled_extensions() const { return enabled; }
+  const ExtensionSet& terminated_extensions() const { return terminated; }
+};
+
+struct UnpackedInstaller {
+  const Extension* extension() const { return loaded.get(); }
+
+  /* INSTALL_GUARD */
+    installed = true;
+  }
+
+  scoped_refptr<const Extension> loaded;
+  base::OnceCallback<bool()> can_install_callback_;
+  ExtensionId expected_recovery_id_ = "test";
+  base::OnceCallback<void()> callback_ = [] {};
+  bool browser_context_ = true;
+  bool installed = false;
+};
+
+struct ExtensionRegistrar {
+  enum class LoadErrorBehavior { kQuiet, kNoisy };
+
+  void TerminateExtension(const ExtensionId&) {
+    registry_->terminated = std::exchange(registry_->enabled, {});
+  }
+
+  void ReloadExtension(const ExtensionId&);
+  void ScheduleCrashedExtensionReload(
+      scoped_refptr<const Extension>, base::RepeatingCallback<bool()>);
+  bool IsCurrentCrashRecovery(const Extension&, uint64_t) const;
+  void ClearCrashRecovery(const ExtensionId&, uint64_t);
+  void ReloadCrashedExtension(
+      scoped_refptr<const Extension>, uint64_t, base::RepeatingCallback<bool()>);
+
+  void DoReloadExtension(
+      ExtensionId id, LoadErrorBehavior behavior,
+      base::OnceCallback<bool()> guard = {}) {
+    if (guard) {
+      assert(behavior == LoadErrorBehavior::kQuiet);
+      assert(!ongoing_load.can_install_callback_);
+      ongoing_load.expected_recovery_id_ = std::move(id);
+      ongoing_load.can_install_callback_ = std::move(guard);
+      ++automatic_reloads;
+    } else {
+      assert(behavior == LoadErrorBehavior::kNoisy);
+      ++manual_reloads;
+    }
+  }
+
+  Registry* registry_;
+  int automatic_reloads = 0;
+  int manual_reloads = 0;
+  void* delegate_ = this;
+  std::map<ExtensionId, uint64_t> pending_crash_recoveries_;
+  uint64_t next_crash_recovery_id_ = 0;
+  base::WeakPtrFactory<ExtensionRegistrar> weak_factory_{this};
+  UnpackedInstaller ongoing_load;
+};
+
+struct ExtensionService {
+  void OnExtensionHostRenderProcessGone(content::BrowserContext*, ExtensionHost*);
+
+  Profile profile;
+  Profile* profile_ = &profile;
+  Registry registry;
+  Registry* registry_ = &registry;
+  ExtensionRegistrar registrar{registry_};
+  ExtensionRegistrar* extension_registrar_ = &registrar;
+  base::WeakPtrFactory<ExtensionService> weak_ptr_factory_{this};
+};
+
+/* HOST_METHOD */
+
+/* REGISTRAR_METHODS */
+
+int main() {
+  ExtensionService service;
+  auto& registrar = service.registrar;
+  auto& runner = *base::SingleThreadTaskRunner::GetCurrentDefault();
+  auto extension = std::make_shared<Extension>();
+  content::RenderProcessHost stable{{240}, {239}};
+  ExtensionHost host{&stable, extension};
+
+  content::RenderProcessHost no_launch{{0}, {200}};
+  content::RenderProcessHost failed_relaunch{{120}, {200}};
+  content::RenderProcessHost short_lived{{250}, {249}};
+  for (auto* process : {static_cast<content::RenderProcessHost*>(nullptr),
+                        &no_launch, &failed_relaunch, &short_lived}) {
+    service.registry.enabled.value = extension;
+    ExtensionHost failed_host{process, extension};
+    service.OnExtensionHostRenderProcessGone(nullptr, &failed_host);
+    runner.DrainReadyTasks();
+    assert(service.registry.terminated.value == extension);
+    assert(runner.delayed.empty());
+  }
+
+  service.registry.enabled.value = extension;
+  service.OnExtensionHostRenderProcessGone(nullptr, &host);
+  service.OnExtensionHostRenderProcessGone(nullptr, &host);
+  assert(runner.delayed.size() == 1);
+  runner.DrainReadyTasks();
+  assert(service.registry.terminated.value == extension);
+  registrar.ReloadExtension(extension->id());
+
+  auto replacement = std::make_shared<Extension>();
+  service.registry.enabled.value = replacement;
+  service.OnExtensionHostRenderProcessGone(nullptr, &host);
+  runner.DrainReadyTasks();
+  assert(service.registry.enabled.value == replacement);
+
+  ExtensionHost replacement_host{&stable, replacement};
+  service.OnExtensionHostRenderProcessGone(nullptr, &replacement_host);
+  runner.DrainReadyTasks();
+  assert(runner.delayed.size() == 2);
+  runner.RunNextDelayedTask();
+  assert(registrar.automatic_reloads == 0);
+  runner.RunNextDelayedTask();
+  assert(registrar.manual_reloads == 1);
+  assert(registrar.automatic_reloads == 1);
+
+  // Uninstall after asynchronous loading starts.
+  service.registry.terminated.value.reset();
+  registrar.ongoing_load.loaded = replacement;
+  registrar.ongoing_load.InstallExtension();
+  assert(!registrar.ongoing_load.installed);
+  assert(registrar.pending_crash_recoveries_.empty());
+
+  // A changed key in the unpacked manifest must not install a different ID.
+  service.registry.enabled.value = replacement;
+  service.OnExtensionHostRenderProcessGone(nullptr, &replacement_host);
+  runner.DrainReadyTasks();
+  runner.RunNextDelayedTask();
+  registrar.ongoing_load.loaded = std::make_shared<Extension>("changed_id");
+  registrar.ongoing_load.InstallExtension();
+  assert(!registrar.ongoing_load.installed);
+  assert(registrar.pending_crash_recoveries_.empty());
+
+  // Shutdown after loading starts follows the same guard.
+  service.registry.enabled.value = replacement;
+  service.OnExtensionHostRenderProcessGone(nullptr, &replacement_host);
+  runner.DrainReadyTasks();
+  runner.RunNextDelayedTask();
+  browser_process.shutting_down = true;
+  registrar.ongoing_load.loaded = replacement;
+  registrar.ongoing_load.InstallExtension();
+  assert(!registrar.ongoing_load.installed);
+  assert(registrar.pending_crash_recoveries_.empty());
+
+  browser_process.shutting_down = false;
+  service.registry.enabled.value = replacement;
+  service.OnExtensionHostRenderProcessGone(nullptr, &replacement_host);
+  runner.DrainReadyTasks();
+  runner.RunNextDelayedTask();
+  registrar.ongoing_load.InstallExtension();
+  assert(registrar.ongoing_load.installed);
+  assert(registrar.pending_crash_recoveries_.empty());
+
+  // An ordinary unpacked install retains its existing ungated path.
+  UnpackedInstaller installer;
+  installer.loaded = extension;
+  installer.InstallExtension();
+  assert(installer.installed);
+}

@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -326,7 +327,7 @@ class TestApkCollectionTests(unittest.TestCase):
         self.assertFalse((self.root / "artifacts").exists())
         self.assertEqual(self.deleted, [])
 
-    def test_expired_primary_uses_verified_final_and_allows_backup_name_replacement(self):
+    def test_expired_primary_uses_verified_final_for_legacy_collection(self):
         self.final_pair()
         self.items[0]["expired"] = True
         self.collect()
@@ -334,17 +335,6 @@ class TestApkCollectionTests(unittest.TestCase):
         outputs = dict(line.split("=", 1) for line in (self.root / "output").read_text().splitlines())
         self.assertEqual(outputs["backup_arm64"], "true")
         self.assertEqual(outputs["backup_arm"], "false")
-        # upload-artifact defaults to rejecting an existing name, including an
-        # expired primary still present in inventory. Replace only that unusable copy.
-        workflow = (ROOT / branch.WORKFLOW).read_text()
-        collect = workflow.split("\n  collect:\n", 1)[1].split("\n  cleanup:\n", 1)[0]
-        steps = collect.split("\n      - name: ")
-        for arch in ("arm64", "arm"):
-            with self.subTest(arch=arch):
-                guard = f"\n        if: steps.collected.outputs.backup_{arch} == 'true'\n"
-                backup = next(step for step in steps if guard in step)
-                self.assertIn("\n        uses: actions/upload-artifact@", backup)
-                self.assertIn("\n          overwrite: true\n", backup)
 
     def test_source_retry_recovers_pinned_sha_from_finals_without_resolving_the_pr(self):
         self.final_pair()
@@ -411,36 +401,60 @@ class TestApkCollectionTests(unittest.TestCase):
         image = (ROOT / ".github/workflows/build-chromium-image.yml").read_text()
         self.assertIn("DOCKER_BUILD_RECORD_UPLOAD: ${{ inputs.source_sha == '' && 'true' || 'false' }}", image)
 
-    def test_workflow_uploads_both_outputs_after_verification_and_before_cleanup(self):
+    def test_workflow_keeps_apks_uploaded_by_the_build_matrix(self):
         workflow = (ROOT / branch.WORKFLOW).read_text()
-        collect = workflow.split("\n  collect:\n", 1)[1].split("\n  cleanup:\n", 1)[0]
-        self.assertIn("needs: [plan, build]", collect)
-        self.assertIn("needs.build.result == 'success'", collect)
-        self.assertIn("ref: ${{ needs.plan.outputs.sha }}", collect)
-        self.assertIn("TEST_BUILD_MATRIX: ${{ needs.plan.outputs.matrix }}", collect)
-        self.assertIn("ARGON_TEST_VERSION_CODE: ${{ needs.plan.outputs.version_code }}", collect)
-        command = 'run: python3 "$RUNNER_TEMP/argon-branch-test.py"'
-        verify, uploads = collect.split(command + ' collect --checkout-root "$GITHUB_WORKSPACE"', 1)
-        self.assertNotIn("actions/upload-artifact", verify)
-        self.assertLess(verify.index("ref: ${{ github.sha }}"),
-                        verify.index('cp .github/ci/branch-test.py "$RUNNER_TEMP/argon-branch-test.py"'))
-        self.assertLess(verify.index('cp .github/ci/branch-test.py "$RUNNER_TEMP/argon-branch-test.py"'),
-                        verify.index("ref: ${{ needs.plan.outputs.sha }}"))
-        for abi in ("arm64-v8a", "armeabi-v7a"):
-            self.assertIn(f"name: Argon-Test-{abi}\n", uploads)
-            self.assertIn(f"path: artifacts/{abi}/\n", uploads)
-        self.assertEqual(uploads.count("overwrite: true"), 4)
-        self.assertEqual(uploads.count("if-no-files-found: error"), 4)
-        self.assertIn("needs: [plan, image, build, collect]", workflow)
-        self.assertNotIn("secrets.", collect)
-        self.assertIn("actions: write", collect)
-        self.assertLess(uploads.index("id: final_arm\n"),
-                        uploads.index(command + ' prune-artifacts --checkout-root "$GITHUB_WORKSPACE"'))
-        self.assertIn("steps.final_arm64.outputs.artifact-id", uploads)
-        self.assertIn("steps.final_arm.outputs.artifact-id", uploads)
+        build, cleanup = workflow.split("\n  build:\n", 1)[1].split("\n  cleanup:\n", 1)
+        self.assertIn("matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}", build)
+        self.assertIn("uses: ./.github/workflows/build-unified-arch.yml", build)
+        self.assertIn("source_sha: ${{ needs.plan.outputs.sha }}", build)
+        self.assertIn("test_version_code: ${{ needs.plan.outputs.version_code }}", build)
+        self.assertNotIn("\n  collect:\n", workflow)
+        self.assertNotIn("prune-artifacts", workflow)
+        self.assertIn("needs: [plan, image, build]\n", cleanup)
+        self.assertIn("name: argon-test-source", workflow)
+
+        worker = (ROOT / ".github/workflows/build-unified-arch.yml").read_text()
+        upload = next(step for step in worker.split("\n      - name: ")
+                      if "name: Argon-${{ inputs.arch }}-" in step)
+        self.assertIn("actions/upload-artifact@", upload)
+        self.assertIn("if: steps.build.outcome == 'success' && steps.provenance.outcome == 'success'", upload)
+        self.assertIn("path: ${{ inputs.standalone_test && format('{0}/argon-test-apk', runner.temp) "
+                      "|| 'artifacts/' }}", upload)
+        self.assertIn("overwrite: true", upload)
+
+    def test_test_apk_upload_contains_only_the_apk_licenses_and_fingerprints(self):
+        worker = (ROOT / ".github/workflows/build-unified-arch.yml").read_text()
+        prepare = worker.split("\n      - name: Подготовить файлы для скачивания тестового APK\n", 1)[1]
+        prepare = prepare.split("\n      - name: ", 1)[0]
+        self.assertIn("if: inputs.standalone_test && steps.build.outcome == 'success' "
+                      "&& steps.provenance.outcome == 'success'", prepare)
+        command = textwrap.dedent(prepare.split("        run: |\n", 1)[1])
         for arch in ("arm64", "arm"):
-            self.assertLess(uploads.index(f"if: steps.collected.outputs.backup_{arch} == 'true'"),
-                            uploads.index("id: final_arm64"))
+            with self.subTest(arch=arch):
+                workspace = self.root / arch
+                source = workspace / "artifacts" / pipeline.TARGET_ABIS[arch]
+                source.mkdir(parents=True)
+                runner_temp = workspace / "runner-temp"
+                runner_temp.mkdir()
+                payload = self.payload(arch)
+                apk_name = next(name for name in payload if name.endswith(".apk"))
+                payload.update({apk_name + ".idsig": b"v4 signature",
+                                "manifest-identity.json": b"{}",
+                                "test-source.json": b"{}",
+                                "apk-signature.txt": b"signature report",
+                                "signing.p12": b"fixture, never upload"})
+                for name, data in payload.items():
+                    (source / name).write_bytes(data)
+                subprocess.run(["bash", "-c", command], cwd=workspace, check=True,
+                               env={**os.environ, "TARGET_ARCH": arch,
+                                    "RUNNER_TEMP": str(runner_temp),
+                                    "BUILD_CERTIFICATE": self.certificate})
+                files = {path.name: path.read_bytes()
+                         for path in (runner_temp / "argon-test-apk").iterdir()}
+                expected = {name: payload[name]
+                            for name in (apk_name, apk_name + ".sha256", *pipeline.RELEASE_LICENSES)}
+                expected["signing-certificate.sha256"] = (self.certificate + "\n").encode()
+                self.assertEqual(files, expected)
 
 
 if __name__ == "__main__":

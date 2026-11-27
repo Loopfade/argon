@@ -1,0 +1,324 @@
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiPredicate;
+import java.util.function.Supplier;
+
+public class UiRegressionFlow {
+    private static final int INTENT_COLOR = 0xff4799b1;
+    private static final int DARK_BACKGROUND = 0xff121212;
+    private static final int DEFAULT_STATUS_BAR_COLOR = 0x01000000;
+    private static final int UNDEFINED_STATUS_BAR_COLOR = 0;
+
+    private final BrowserServicesIntentDataProvider mIntentDataProvider =
+            new BrowserServicesIntentDataProvider();
+    private final boolean mUseTabThemeColor = false;
+
+    /* STATUS_BAR_METHOD */
+
+    private void verifyStatusBar() {
+        WebContents contents = new WebContents();
+        Tab tab = new Tab(contents);
+
+        assert getBaseStatusBarColor(null) == INTENT_COLOR;
+        assert getBaseStatusBarColor(new Tab(null)) == INTENT_COLOR;
+        // A new page and a site with an author-provided theme both fall through.
+        assert getBaseStatusBarColor(tab) == INTENT_COLOR;
+        mIntentDataProvider.themeSource = ThemeColorSource.WEB_PAGE_THEME;
+        assert getBaseStatusBarColor(tab) == UNDEFINED_STATUS_BAR_COLOR;
+        contents.autoDarkenedBackgroundColor = DARK_BACKGROUND;
+        assert getBaseStatusBarColor(tab) == Color.BLACK;
+        contents.autoDarkenedBackgroundColor = 0;
+        assert getBaseStatusBarColor(tab) == UNDEFINED_STATUS_BAR_COLOR;
+        mIntentDataProvider.themeSource = ThemeColorSource.INTENT;
+        contents.autoDarkenedBackgroundColor = 0xffffffff;
+        assert getBaseStatusBarColor(tab) == INTENT_COLOR;
+        contents.autoDarkenedBackgroundColor = 0x80121212;
+        assert getBaseStatusBarColor(tab) == INTENT_COLOR;
+        contents.autoDarkenedBackgroundColor = DARK_BACKGROUND;
+        assert getBaseStatusBarColor(tab) == Color.BLACK;
+        mIntentDataProvider.installed = false;
+        assert getBaseStatusBarColor(tab) == INTENT_COLOR;
+        mIntentDataProvider.installed = true;
+        contents.destroyed = true;
+        assert getBaseStatusBarColor(tab) == INTENT_COLOR;
+    }
+
+    private static final class MultiWindowUtils {
+        private static final int INVALID_WINDOW_ID = -1;
+        private static final Integer sLastAccessedWindowIdForTesting = null;
+        private static boolean multiInstanceEnabled = true;
+        private static Map<Integer, Long> useTimes;
+        private static Set<Integer> closedIds;
+        private static Set<Integer> liveTasks;
+        private static Set<Integer> normalTabs;
+        private static Set<Integer> incognitoSelected;
+        private static Map<Integer, Integer> profileTypes;
+
+        /* WINDOW_METHODS */
+
+        private static void verifySelection() {
+            useTimes = Map.of(1, 40L, 2, 30L, 3, 90L, 4, 20L, 5, 70L, 6, 80L, 7, 100L);
+            profileTypes = Map.of(
+                    1, SupportedProfileType.OFF_THE_RECORD,
+                    3, SupportedProfileType.REGULAR,
+                    4, SupportedProfileType.REGULAR,
+                    7, SupportedProfileType.OFF_THE_RECORD);
+            closedIds = Set.of(3);
+            liveTasks = Set.of(1, 4, 5, 7);
+            normalTabs = Set.of(2, 3, 5, 7);
+            incognitoSelected = Set.of(2, 5);
+
+            // Archived legacy windows with regular tabs are restorable. A live legacy
+            // window displaying private tabs, a deleted window and an empty one are skipped.
+            assert getLastRegularWindowForIncognitoSwitch(1) == 2;
+            assert getLastAccessedWindowId() == 7;
+            assert getInstanceIdForViewIntent() == 7;
+            liveTasks = Set.of(1, 4, 5);
+            assert getInstanceIdForViewIntent() == 5;
+            assert getLastAccessedWindowId() == 7;
+            assert getLastAccessedWindowIdExcludingSelf(1, PersistedInstanceType.REGULAR) == 4;
+
+            incognitoSelected = Set.of(2);
+            assert getLastRegularWindowForIncognitoSwitch(1) == 5;
+            closedIds = Set.of(2, 3, 5);
+            assert getLastRegularWindowForIncognitoSwitch(1) == 4;
+            closedIds = Set.of(2, 3, 4, 5);
+            assert getLastRegularWindowForIncognitoSwitch(1) == INVALID_WINDOW_ID;
+            assert getLastAccessedWindowIdExcludingSelf(1, PersistedInstanceType.REGULAR)
+                    == INVALID_WINDOW_ID;
+            multiInstanceEnabled = false;
+            assert getInstanceIdForViewIntent() == INVALID_WINDOW_ID;
+        }
+
+        private static boolean isMultiInstanceApi31Enabled() {
+            return multiInstanceEnabled;
+        }
+
+        private static Set<Integer> getPersistedInstanceIds(int type) {
+            Set<Integer> ids = new HashSet<>(useTimes.keySet());
+            if (type == PersistedInstanceType.REGULAR) {
+                ids.removeIf(id ->
+                        ChromeMultiInstancePersistentStore.readProfileType(id)
+                                != SupportedProfileType.REGULAR);
+            }
+            return ids;
+        }
+
+        private static Set<Integer> getAllAppTaskIds(Context context) {
+            return liveTasks;
+        }
+
+        private static SparseIntArray getWindowIdsOfRunningTabbedActivities() {
+            return new SparseIntArray(liveTasks);
+        }
+
+        private static <T> T assumeNonNull(T value) {
+            return value;
+        }
+
+        private static final class ChromeMultiInstancePersistentStore {
+            static boolean readMarkedForDeletion(int id) {
+                return closedIds.contains(id);
+            }
+
+            static long readLastAccessedTime(int id) {
+                return useTimes.get(id);
+            }
+
+            static int readTaskId(int id) {
+                return id;
+            }
+
+            static int readNormalTabCount(int id) {
+                return normalTabs.contains(id) ? 1 : 0;
+            }
+
+            static int readProfileType(int id) {
+                return profileTypes.getOrDefault(id, SupportedProfileType.UNSET);
+            }
+
+            static boolean readIncognitoSelected(int id) {
+                return incognitoSelected.contains(id);
+            }
+        }
+    }
+
+    private static final class Context {}
+
+    private static final class ContextUtils {
+        static Context getApplicationContext() {
+            return new Context();
+        }
+    }
+
+    private @interface SupportedProfileType {
+        int UNSET = 0;
+        int REGULAR = 1;
+        int OFF_THE_RECORD = 2;
+    }
+
+    private @interface Nullable {}
+
+    private @interface PersistedInstanceType {
+        int ANY = 0;
+        int REGULAR = 1;
+    }
+
+    private @interface ThemeColorSource {
+        int WEB_PAGE_THEME = 0;
+        int BROWSER_DEFAULT = 1;
+        int INTENT = 2;
+    }
+
+    private static final class BrowserServicesThemeColorProvider {
+        static int computeColorSource(
+                BrowserServicesIntentDataProvider provider, boolean useTabThemeColor, Tab tab) {
+            return provider.themeSource;
+        }
+    }
+
+    private static final class BrowserServicesIntentDataProvider {
+        boolean installed = true;
+        int themeSource = ThemeColorSource.INTENT;
+
+        boolean isWebappOrWebApkActivity() {
+            return installed;
+        }
+
+        BrowserServicesIntentDataProvider getColorProvider() {
+            return this;
+        }
+
+        int getToolbarColor() {
+            return INTENT_COLOR;
+        }
+    }
+
+    private record Tab(WebContents contents) {
+        WebContents getWebContents() {
+            return contents;
+        }
+    }
+
+    private static final class WebContents {
+        int autoDarkenedBackgroundColor;
+        boolean destroyed;
+
+        boolean isDestroyed() {
+            return destroyed;
+        }
+
+        int getAutoDarkenedPageBackgroundColor() {
+            assert !destroyed;
+            return autoDarkenedBackgroundColor;
+        }
+    }
+
+    private static final class Color {
+        static final int BLACK = 0xff000000;
+
+        static int alpha(int color) {
+            return color >>> 24;
+        }
+    }
+
+    private static final class ColorUtils {
+        static boolean shouldUseLightForegroundOnBackground(int color) {
+            return color == DARK_BACKGROUND;
+        }
+    }
+
+    private record SparseIntArray(Set<Integer> ids) {
+        int indexOfValue(int value) {
+            return ids.contains(value) ? 0 : -1;
+        }
+    }
+
+    private static final class Appearance {
+        private static final String PREF_TAB_SWITCHER_ON_TOOLBAR_SWIPE = "swipe";
+        private ChromeSwitchPreference preference = new ChromeSwitchPreference();
+
+        /* SWIPE_METHOD */
+
+        ChromeSwitchPreference findPreference(String key) {
+            assert PREF_TAB_SWITCHER_ON_TOOLBAR_SWIPE.equals(key);
+            return preference;
+        }
+
+        void removePreference(String key) {
+            assert PREF_TAB_SWITCHER_ON_TOOLBAR_SWIPE.equals(key);
+            preference = null;
+        }
+
+        static void verify() {
+            Appearance supported = new Appearance();
+            supported.initTabSwitcherSwipePref();
+            assert supported.preference.checked;
+            assert supported.preference.listener.test(supported.preference, false);
+
+            DeviceClassManager.supported = false;
+            Appearance unsupported = new Appearance();
+            unsupported.initTabSwitcherSwipePref();
+            assert unsupported.preference == null;
+
+            DeviceClassManager.supported = true;
+            Appearance restored = new Appearance();
+            restored.initTabSwitcherSwipePref();
+            assert !restored.preference.checked;
+        }
+    }
+
+    private static final class ChromeSwitchPreference {
+        boolean checked;
+        BiPredicate<ChromeSwitchPreference, Object> listener;
+
+        void setChecked(boolean checked) {
+            this.checked = checked;
+        }
+
+        void setOnPreferenceChangeListener(BiPredicate<ChromeSwitchPreference, Object> listener) {
+            this.listener = listener;
+        }
+    }
+
+    private static final class DeviceClassManager {
+        static boolean supported = true;
+
+        static boolean enableToolbarSwipe() {
+            return supported;
+        }
+    }
+
+    private static final class ChromePreferenceKeys {
+        static final String ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE = "swipe";
+    }
+
+    private static final class ChromeSharedPreferences {
+        private static final SharedPreferencesManager instance = new SharedPreferencesManager();
+
+        static SharedPreferencesManager getInstance() {
+            return instance;
+        }
+    }
+
+    private static final class SharedPreferencesManager {
+        private Boolean saved;
+
+        boolean readBoolean(String key, boolean defaultValue) {
+            assert ChromePreferenceKeys.ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE.equals(key);
+            return saved == null ? defaultValue : saved;
+        }
+
+        void writeBoolean(String key, boolean enabled) {
+            assert ChromePreferenceKeys.ARGON_TAB_SWITCHER_ON_TOOLBAR_SWIPE.equals(key);
+            saved = enabled;
+        }
+    }
+
+    public static void main(String[] args) {
+        new UiRegressionFlow().verifyStatusBar();
+        MultiWindowUtils.verifySelection();
+        Appearance.verify();
+    }
+}

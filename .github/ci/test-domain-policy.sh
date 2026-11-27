@@ -37,6 +37,18 @@ rds_observer_object=obj/chrome/browser/content_settings/impl/request_desktop_sit
 # Compile the translation units for NTP state decoding and initial navigation.
 session_restore_object=obj/components/sessions/sessions/content_serialized_navigation_builder.o
 navigation_controller_object=obj/content/browser/browser/navigation_controller_impl.o
+# Exercise the production Mojom/JNI bridge and extension recovery loaders.
+android_regression_objects=(
+  obj/third_party/blink/renderer/core/core/web_frame_widget_impl.o
+  obj/content/browser/browser/render_frame_host_impl.o
+  obj/content/browser/browser/page_impl.o
+  obj/content/browser/browser/web_contents_android.o
+  obj/content/browser/browser/web_contents_observer_proxy.o
+  obj/chrome/browser/extensions/extensions/extension_service.o
+  obj/chrome/browser/extensions/extensions/chrome_extension_registrar_delegate.o
+  obj/extensions/browser/browser_sources/extension_registrar.o
+  obj/extensions/browser/browser_sources/unpacked_installer.o
+)
 
 # Validate the full Android graphs for both APK architectures before narrowing
 # the host-test graph. Query the same explicit JNI, Java and APK targets used by
@@ -59,6 +71,7 @@ for arch in arm64 arm; do
       "$rds_observer_object" \
       "$session_restore_object" \
       "$navigation_controller_object" \
+      "${android_regression_objects[@]}" \
       obj/content/browser/browser/navigation_request.o \
       chrome_java chrome_public_apk > "$graph_out/argon-targets.txt"
   )
@@ -82,6 +95,7 @@ done
     "$rds_observer_object" \
     "$session_restore_object" \
     "$navigation_controller_object" \
+    "${android_regression_objects[@]}" \
     obj/chrome/browser/android/android/content_utils.o \
     obj/chrome/browser/android/android/argon_exit.o \
     obj/components/embedder_support/user_agent/user_agent_utils.o \
@@ -102,6 +116,7 @@ echo "PASS: night mode Java module compiled"
 echo "PASS: RDS observer compiled against pinned Chromium native headers"
 echo "PASS: native Argon exit compiled against Chromium 158 per-profile archive API"
 echo "PASS: User-Agent navigation, scale restoration, subresources, renderer flags, JNI and browser Java compiled"
+echo "PASS: PWA color signals and extension recovery compiled"
 
 # Use this PR's header/tests even when the image predates the PR.
 mkdir -p "$src/argon_tests" "$src/net/cert" "$src/chrome/browser/net"
