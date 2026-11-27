@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-11-27T03:04:47Z",
+  "generated_at": "2026-11-27T04:01:41Z",
   "repository": "Loopfade/argon",
   "window": {
     "days": 30,
@@ -88900,32 +88900,39 @@
   "open_prs": [
     {
       "number": 98,
-      "title": "Merge Titanium upstream and align Chromium 158.0.8127.92",
+      "title": "\u0421\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c Argon \u0441 Titanium \u0438 \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u044c Chromium \u0434\u043e 158.0.8127.92",
       "html_url": "https://github.com/Loopfade/argon/pull/98",
       "state": "open",
       "draft": false,
       "created_at": "2026-11-25T08:02:24Z",
-      "updated_at": "2026-11-27T03:04:25Z",
+      "updated_at": "2026-11-27T04:01:21Z",
       "merged_at": null,
-      "head_sha": "42869b995a055a36ba210a981b1f58d608877e30",
-      "merge_commit_sha": "05f6e4d2263486ba3c3dc5f97c27762084d7fc8f",
+      "head_sha": "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
+      "merge_commit_sha": "06ae529f9d7f18eb7ec854b5c78dc544b2ad1824",
       "author": "Loopfade",
-      "additions": 742,
-      "deletions": 7,
-      "changed_files": 11,
+      "additions": 2069,
+      "deletions": 8,
+      "changed_files": 14,
       "commits": 5,
       "comparison": {
         "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-        "head_sha": "42869b995a055a36ba210a981b1f58d608877e30",
+        "head_sha": "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
         "status": "ahead",
-        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...42869b995a055a36ba210a981b1f58d608877e30",
+        "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...b99bd8264b6fc41329da7ae40e1df791bf52f99e",
         "commits": 5,
         "commits_complete": true,
         "files_complete": true,
-        "changed_files": 11,
-        "additions": 742,
-        "deletions": 7,
+        "changed_files": 14,
+        "additions": 2069,
+        "deletions": 8,
         "files": [
+          {
+            "filename": ".github/ci/test-domain-policy.sh",
+            "previous_filename": null,
+            "status": "modified",
+            "additions": 15,
+            "deletions": 0
+          },
           {
             "filename": "build-lock.json",
             "previous_filename": null,
@@ -88937,21 +88944,28 @@
             "filename": "patch.sh",
             "previous_filename": null,
             "status": "modified",
-            "additions": 5,
-            "deletions": 1
+            "additions": 6,
+            "deletions": 2
           },
           {
             "filename": "patches/argon-android-ui.patch",
             "previous_filename": null,
             "status": "added",
-            "additions": 305,
+            "additions": 354,
+            "deletions": 0
+          },
+          {
+            "filename": "patches/argon-pwa-auto-darkening.patch",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 402,
             "deletions": 0
           },
           {
             "filename": "patches/titanium-extension-recovery.patch",
             "previous_filename": null,
             "status": "added",
-            "additions": 37,
+            "additions": 432,
             "deletions": 0
           },
           {
@@ -88965,28 +88979,35 @@
             "filename": "tests/android_upstream_regressions.py",
             "previous_filename": null,
             "status": "added",
-            "additions": 53,
+            "additions": 94,
             "deletions": 0
           },
           {
             "filename": "tests/check_upstream_patches.py",
             "previous_filename": null,
             "status": "modified",
-            "additions": 19,
+            "additions": 14,
             "deletions": 0
           },
           {
             "filename": "tests/fixtures/android/UiRegressionFlow.java.in",
             "previous_filename": null,
             "status": "added",
-            "additions": 174,
+            "additions": 324,
             "deletions": 0
           },
           {
             "filename": "tests/fixtures/android/extension_recovery.cc.in",
             "previous_filename": null,
             "status": "added",
-            "additions": 133,
+            "additions": 344,
+            "deletions": 0
+          },
+          {
+            "filename": "tests/fixtures/android/pwa_color.cc.in",
+            "previous_filename": null,
+            "status": "added",
+            "additions": 68,
             "deletions": 0
           },
           {
@@ -99455,25 +99476,32 @@
         }
       ]
     },
-    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...42869b995a055a36ba210a981b1f58d608877e30": {
+    "d455c5eb2f216308b5aa7887e352c3b6076e3f99...b99bd8264b6fc41329da7ae40e1df791bf52f99e": {
       "base_sha": "d455c5eb2f216308b5aa7887e352c3b6076e3f99",
-      "head_sha": "42869b995a055a36ba210a981b1f58d608877e30",
+      "head_sha": "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
       "status": "ahead",
-      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...42869b995a055a36ba210a981b1f58d608877e30",
+      "html_url": "https://github.com/Loopfade/argon/compare/d455c5eb2f216308b5aa7887e352c3b6076e3f99...b99bd8264b6fc41329da7ae40e1df791bf52f99e",
       "commits": 5,
       "commit_shas": [
         "124ac01c99f174acc8477711f132cf7c3d52d720",
-        "42869b995a055a36ba210a981b1f58d608877e30",
         "9b3a181e48d2223c6482c855d1845ba51b5d0321",
         "9fc8b178df2a71592e2ea0cd61e9818a359a9ff8",
+        "b99bd8264b6fc41329da7ae40e1df791bf52f99e",
         "cbed49d59c118e9d4403591fa426a45ad7d18d78"
       ],
       "commits_complete": true,
       "files_complete": true,
-      "changed_files": 11,
-      "additions": 742,
-      "deletions": 7,
+      "changed_files": 14,
+      "additions": 2069,
+      "deletions": 8,
       "files": [
+        {
+          "filename": ".github/ci/test-domain-policy.sh",
+          "previous_filename": null,
+          "status": "modified",
+          "additions": 15,
+          "deletions": 0
+        },
         {
           "filename": "build-lock.json",
           "previous_filename": null,
@@ -99485,21 +99513,28 @@
           "filename": "patch.sh",
           "previous_filename": null,
           "status": "modified",
-          "additions": 5,
-          "deletions": 1
+          "additions": 6,
+          "deletions": 2
         },
         {
           "filename": "patches/argon-android-ui.patch",
           "previous_filename": null,
           "status": "added",
-          "additions": 305,
+          "additions": 354,
+          "deletions": 0
+        },
+        {
+          "filename": "patches/argon-pwa-auto-darkening.patch",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 402,
           "deletions": 0
         },
         {
           "filename": "patches/titanium-extension-recovery.patch",
           "previous_filename": null,
           "status": "added",
-          "additions": 37,
+          "additions": 432,
           "deletions": 0
         },
         {
@@ -99513,28 +99548,35 @@
           "filename": "tests/android_upstream_regressions.py",
           "previous_filename": null,
           "status": "added",
-          "additions": 53,
+          "additions": 94,
           "deletions": 0
         },
         {
           "filename": "tests/check_upstream_patches.py",
           "previous_filename": null,
           "status": "modified",
-          "additions": 19,
+          "additions": 14,
           "deletions": 0
         },
         {
           "filename": "tests/fixtures/android/UiRegressionFlow.java.in",
           "previous_filename": null,
           "status": "added",
-          "additions": 174,
+          "additions": 324,
           "deletions": 0
         },
         {
           "filename": "tests/fixtures/android/extension_recovery.cc.in",
           "previous_filename": null,
           "status": "added",
-          "additions": 133,
+          "additions": 344,
+          "deletions": 0
+        },
+        {
+          "filename": "tests/fixtures/android/pwa_color.cc.in",
+          "previous_filename": null,
+          "status": "added",
+          "additions": 68,
           "deletions": 0
         },
         {
